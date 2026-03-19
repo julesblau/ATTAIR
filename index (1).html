@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ATTAIR — See it. Shop it. At any budget.</title>
+  <meta name="description" content="ATTAIR uses AI to identify any outfit from a photo, then finds you a budget, mid-range, and premium option for every item.">
+  <meta property="og:title" content="ATTAIR — AI Outfit Identifier">
+  <meta property="og:description" content="Snap a photo. Our AI identifies every item, then finds you three price options — budget, mid-range, and premium.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0A0A0C;
+      --bg-subtle: #111114;
+      --gold: #C9A96E;
+      --gold-dim: rgba(201, 169, 110, 0.12);
+      --gold-glow: rgba(201, 169, 110, 0.06);
+      --text: #E8E6E1;
+      --text-dim: rgba(255, 255, 255, 0.35);
+      --text-faint: rgba(255, 255, 255, 0.12);
+      --border: rgba(255, 255, 255, 0.06);
+      --serif: 'Instrument Serif', Georgia, serif;
+      --sans: 'Outfit', -apple-system, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── Noise texture overlay ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 9999;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ─── Nav ─── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      background: rgba(10, 10, 12, 0.85);
+      backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: var(--serif);
+      font-size: 24px;
+      font-style: italic;
+      color: var(--gold);
+      letter-spacing: -0.5px;
+      text-decoration: none;
+    }
+
+    .nav-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 28px 80px;
+      position: relative;
+    }
+
+    /* Radial glow behind hero */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(201, 169, 110, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: 100px;
+      background: var(--gold-dim);
+      border: 1px solid rgba(201, 169, 110, 0.15);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 32px;
+      animation: fadeUp 0.8s ease both;
+    }
+
+    .hero-badge::before {
+      content: '✦';
+      font-size: 10px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-size: clamp(40px, 7vw, 72px);
+      line-height: 1.05;
+      color: #fff;
+      max-width: 700px;
+      margin-bottom: 24px;
+      animation: fadeUp 0.8s ease 0.1s both;
+    }
+
+    h1 em {
+      color: var(--gold);
+      font-style: italic;
+    }
+
+    .hero-sub {
+      font-size: clamp(15px, 2vw, 18px);
+      font-weight: 400;
+      color: var(--text-dim);
+      max-width: 480px;
+      line-height: 1.7;
+      margin-bottom: 48px;
+      animation: fadeUp 0.8s ease 0.2s both;
+    }
+
+    .hero-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 18px 40px;
+      background: var(--gold);
+      color: var(--bg);
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.25s ease;
+      animation: fadeUp 0.8s ease 0.3s both;
+    }
+
+    .hero-cta:hover { background: #D4B87A; transform: translateY(-2px); box-shadow: 0 12px 40px rgba(201, 169, 110, 0.2); }
+
+    .hero-cta svg { width: 16px; height: 16px; }
+
+    /* ─── How it works ─── */
+    .how {
+      padding: 100px 28px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: var(--serif);
+      font-size: clamp(28px, 4vw, 40px);
+      color: #fff;
+      line-height: 1.15;
+      margin-bottom: 60px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .step {
+      padding: 36px 28px;
+      border-radius: 20px;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      transition: border-color 0.3s, transform 0.3s;
+    }
+
+    .step:hover { border-color: rgba(201, 169, 110, 0.15); transform: translateY(-4px); }
+
+    .step-num {
+      font-family: var(--serif);
+      font-size: 48px;
+      font-style: italic;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 20px;
+    }
+
+    .step h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    .step p {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--text-dim);
+    }
+
+    /* ─── Tiers section ─── */
+    .tiers {
+      padding: 100px 28px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .tier-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .tier-card {
+      padding: 32px 24px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--bg-subtle);
+      transition: border-color 0.3s, transform 0.3s;
+    }
+
+    .tier-card:hover { transform: translateY(-4px); }
+    .tier-card:nth-child(1):hover { border-color: rgba(90, 200, 255, 0.25); }
+    .tier-card:nth-child(2):hover { border-color: rgba(201, 169, 110, 0.3); }
+    .tier-card:nth-child(3):hover { border-color: rgba(199, 125, 255, 0.25); }
+
+    .tier-icon {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+    }
+
+    .tier-card:nth-child(1) .tier-icon { color: #5AC8FF; }
+    .tier-card:nth-child(2) .tier-icon { color: var(--gold); }
+    .tier-card:nth-child(3) .tier-icon { color: #C77DFF; }
+
+    .tier-card h3 {
+      font-family: var(--serif);
+      font-size: 24px;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .tier-price {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    .tier-card p {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-dim);
+    }
+
+    .tier-retailers {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-faint);
+      line-height: 1.8;
+    }
+
+    /* ─── CTA section ─── */
+    .cta-section {
+      padding: 120px 28px;
+      text-align: center;
+      position: relative;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      bottom: 30%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(201, 169, 110, 0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-section h2 {
+      font-family: var(--serif);
+      font-size: clamp(32px, 5vw, 48px);
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+
+    .cta-section p {
+      font-size: 16px;
+      color: var(--text-dim);
+      margin-bottom: 40px;
+    }
+
+    /* ─── Footer ─── */
+    footer {
+      padding: 40px 28px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .foot-logo {
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 18px;
+      color: var(--gold);
+    }
+
+    .foot-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .foot-links a {
+      font-size: 12px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .foot-links a:hover { color: var(--text); }
+
+    .foot-copy {
+      font-size: 11px;
+      color: var(--text-faint);
+    }
+
+    /* ─── Animations ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 768px) {
+      nav { padding: 16px 20px; }
+      .steps, .tier-cards { grid-template-columns: 1fr; }
+      .hero { padding: 100px 24px 60px; }
+      footer { flex-direction: column; gap: 16px; text-align: center; }
+      .foot-links { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="#" class="logo">ATTAIR</a>
+    <span class="nav-tag">Coming Soon</span>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">AI-Powered Fashion</div>
+    <h1>See it. Shop it.<br>At <em>any</em> budget.</h1>
+    <p class="hero-sub">Snap a photo of any outfit. ATTAIR's AI identifies every item, then finds you a budget, mid-range, and premium option for each.</p>
+    <a href="#how" class="hero-cta">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+      See how it works
+    </a>
+  </section>
+
+  <!-- How it works -->
+  <section class="how" id="how">
+    <div class="section-label">How It Works</div>
+    <h2 class="section-title">Three steps to your perfect look</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Snap a photo</h3>
+        <p>Take a picture of any outfit you see — on the street, on social media, on a friend. ATTAIR works with any image.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>AI identifies every item</h3>
+        <p>Our AI breaks down the outfit piece by piece — brand, color, material, fit. It knows the difference between a Lululemon Scuba and a generic fleece.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Shop at your budget</h3>
+        <p>For each item, get three real product links: a budget dupe, a mid-range alternative, and the premium original. You choose your price point.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tiers -->
+  <section class="tiers" id="tiers">
+    <div class="section-label">Three Tiers, Every Item</div>
+    <h2 class="section-title">Your budget, your rules</h2>
+    <div class="tier-cards">
+      <div class="tier-card">
+        <div class="tier-icon">$ SAVE</div>
+        <h3>Budget</h3>
+        <div class="tier-price">Under $50</div>
+        <p>Get the look without the price tag. Same silhouette, same vibe — just easier on the wallet.</p>
+        <div class="tier-retailers">H&M · Zara · Uniqlo · ASOS · Amazon · Target</div>
+      </div>
+      <div class="tier-card">
+        <div class="tier-icon">$$ BEST VALUE</div>
+        <h3>Mid-Range</h3>
+        <div class="tier-price">$50 – $150</div>
+        <p>The sweet spot. Better materials, better construction, and brands that balance quality with price.</p>
+        <div class="tier-retailers">COS · Everlane · J.Crew · Mango · Massimo Dutti</div>
+      </div>
+      <div class="tier-card">
+        <div class="tier-icon">$$$ SPLURGE</div>
+        <h3>Premium</h3>
+        <div class="tier-price">$150+</div>
+        <p>The real thing — or its luxury equivalent. When you want the exact brand, the exact piece, the best quality.</p>
+        <div class="tier-retailers">Nordstrom · SSENSE · Mr Porter · Net-a-Porter · Revolve</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>Ready to find<br>your look?</h2>
+    <p>ATTAIR is launching soon. Be the first to try it.</p>
+    <a href="mailto:hello@attair.app" class="hero-cta">Get Early Access</a>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <span class="foot-logo">ATTAIR</span>
+    <div class="foot-links">
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="mailto:hello@attair.app">Contact</a>
+    </div>
+    <span class="foot-copy">&copy; 2026 ATTAIR. All rights reserved.</span>
+  </footer>
+
+</body>
+</html>
