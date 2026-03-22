@@ -416,6 +416,7 @@ export default function App() {
   const [crop, setCrop] = useState();
   const [completedCrop, setCompletedCrop] = useState();
   const cropImgRef = useRef(null);
+  const cropRestoredRef = useRef(false); // true when re-entering crop with a saved position
 
   // ─── Fetch user status on auth ────────────────────────────
   const refreshStatus = useCallback(async () => {
@@ -607,7 +608,8 @@ export default function App() {
 
   // ─── Crop helpers ─────────────────────────────────────────
   const openCrop = (r, source = "file") => {
-    setCropPending({ src: r.dataUrl, base64: r.base64, mime: r.mime, source });
+    setCropPending({ src: r.dataUrl, base64: r.base64, mime: r.mime, source,
+                     originalSrc: r.dataUrl, originalBase64: r.base64, lastCrop: null });
     setCropMode(false);
     setCrop(undefined);
     setCompletedCrop(undefined);
@@ -625,6 +627,10 @@ export default function App() {
   };
 
   const onCropImageLoad = (e) => {
+    if (cropRestoredRef.current) {
+      cropRestoredRef.current = false; // restored crop box already set — don't override
+      return;
+    }
     const { width, height } = e.currentTarget;
     const w = width * 0.85;
     const h = height * 0.85;
@@ -648,8 +654,8 @@ export default function App() {
     if (completedCrop?.width && completedCrop?.height && cropImgRef.current) {
       const dataUrl = getCroppedImg(cropImgRef.current, completedCrop);
       const base64 = dataUrl.split(",")[1];
-      // Update pending image with the cropped version, return to preview
-      setCropPending({ src: dataUrl, base64, mime: "image/jpeg", source: cropPending.source });
+      // Update preview with cropped version; preserve originals and save crop position
+      setCropPending(prev => ({ ...prev, src: dataUrl, base64, lastCrop: completedCrop }));
       setCropMode(false);
     } else {
       setCropMode(false);
@@ -1747,7 +1753,7 @@ export default function App() {
               >
                 <img
                   ref={cropImgRef}
-                  src={cropPending.src}
+                  src={cropPending.originalSrc}
                   onLoad={onCropImageLoad}
                   style={{ maxWidth: "100%", maxHeight: "calc(100vh - 120px)", display: "block" }}
                   alt=""
@@ -1776,7 +1782,14 @@ export default function App() {
                 <button onClick={retakeCrop} style={{ flex: 1, padding: "14px 0", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, color: "rgba(255,255,255,.55)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                   Re-take
                 </button>
-                <button onClick={() => setCropMode(true)} style={{ flex: 1, padding: "14px 0", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={() => {
+                  if (cropPending.lastCrop) {
+                    cropRestoredRef.current = true;
+                    setCrop(cropPending.lastCrop);
+                    setCompletedCrop(cropPending.lastCrop);
+                  }
+                  setCropMode(true);
+                }} style={{ flex: 1, padding: "14px 0", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                   Crop
                 </button>
                 <button onClick={skipCrop} style={{ flex: 2, padding: "14px 0", background: "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
