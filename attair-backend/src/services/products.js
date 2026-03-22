@@ -62,10 +62,8 @@ function getSizeTermForItem(item, sizePrefs) {
 }
 
 function getTierBounds(budgetMin, budgetMax) {
-  let min = budgetMin || DEFAULT_BUDGET.min;
-  let max = budgetMax || DEFAULT_BUDGET.max;
-  if (min > 500) min = DEFAULT_BUDGET.min;
-  if (max > 1000) max = DEFAULT_BUDGET.max;
+  let min = budgetMin != null && budgetMin > 0 ? budgetMin : DEFAULT_BUDGET.min;
+  let max = budgetMax != null && budgetMax > 0 ? budgetMax : DEFAULT_BUDGET.max;
   if (max <= min) max = min * 2;
   return { min, max };
 }
@@ -226,7 +224,7 @@ function matchLensResultToItem(result, items) {
 // ═════════════════════════════════════════════════════════════
 // STEP 3: Text search fallback (for items Lens didn't cover)
 // ═════════════════════════════════════════════════════════════
-async function textSearch(query) {
+async function textSearch(query, priceMin, priceMax) {
   const params = new URLSearchParams({
     engine: "google_shopping",
     q: query,
@@ -235,6 +233,13 @@ async function textSearch(query) {
     gl: "us",
     num: "20",
   });
+  // Add price filter when a budget is set so results land in the right range
+  if (priceMin != null || priceMax != null) {
+    const tbsParts = ["mr:1", "price:1"];
+    if (priceMin != null) tbsParts.push(`ppr_min:${Math.floor(priceMin)}`);
+    if (priceMax != null) tbsParts.push(`ppr_max:${Math.ceil(priceMax * 1.5)}`); // 1.5x headroom for premium tier
+    params.set("tbs", tbsParts.join(","));
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -290,10 +295,14 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
   }
 
   const uniqueQueries = [...new Set(queries)].slice(0, 2);
-  console.log(`[TextFallback] Item: "${item.name}" — ${uniqueQueries.map(q => `"${q}"`).join(", ")}`);
+  console.log(`[TextFallback] Item: "${item.name}" — ${uniqueQueries.map(q => `"${q}"`).join(", ")} budget=$${tierBounds.min}-$${tierBounds.max}`);
+
+  // Use half of min as floor so budget-tier results are also returned
+  const priceFloor = tierBounds.min > DEFAULT_BUDGET.min ? Math.floor(tierBounds.min * 0.4) : null;
+  const priceCeil = tierBounds.max > DEFAULT_BUDGET.max ? tierBounds.max : null;
 
   const allResults = [];
-  const batches = await Promise.all(uniqueQueries.map(q => textSearch(q).catch(() => [])));
+  const batches = await Promise.all(uniqueQueries.map(q => textSearch(q, priceFloor, priceCeil).catch(() => [])));
   for (const batch of batches) allResults.push(...batch);
 
   return allResults;
@@ -576,12 +585,18 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       const isBrand = true;
       tiers.mid = formatAndTrack(original, "mid", isBrand);
 
-      // Budget = cheapest alternative that isn't the original
-      const cheaper = priced.filter(s => !usedUrls.has(getUrl(s))).sort((a, b) => a.price - b.price);
+      // Budget = best-scored alternative cheaper than the original (not dirt cheap: floor at 15% of original)
+      const origPrice = original.price || itemTierBounds.min;
+      const budgetFloor = origPrice * 0.15;
+      const cheaper = priced
+        .filter(s => !usedUrls.has(getUrl(s)) && s.price < origPrice && s.price >= budgetFloor)
+        .sort((a, b) => b.score - a.score);
       tiers.budget = cheaper.length ? formatAndTrack(cheaper[0], "budget", false) : null;
 
-      // Premium = most expensive alternative that isn't the original or the budget pick
-      const pricier = priced.filter(s => !usedUrls.has(getUrl(s))).sort((a, b) => b.price - a.price);
+      // Premium = most expensive alternative above the original price
+      const pricier = priced
+        .filter(s => !usedUrls.has(getUrl(s)) && s.price > origPrice)
+        .sort((a, b) => b.price - a.price);
       tiers.premium = pricier.length ? formatAndTrack(pricier[0], "premium", false) : null;
 
       // Fill any still-empty tier with unpriced Lens results
