@@ -431,14 +431,12 @@ export default function App() {
 
   useEffect(() => {
     if (authed) {
-      // Restore email from JWT immediately (no API call needed)
       const token = Auth.getToken();
       if (token) {
         const jwt = decodeJwt(token);
         if (jwt?.email) setAuthEmail(jwt.email);
       }
       refreshStatus();
-      // Fetch profile to restore display name + preferences
       authFetch(`${API_BASE}/api/user/profile`)
         .then(r => r.json())
         .then(profile => {
@@ -952,7 +950,7 @@ export default function App() {
       {/* ─── CAMERA ──────────────────────────────────────── */}
       {camOn && (
         <div className="cam">
-          <video ref={vidRef} autoPlay playsInline muted />
+          <video ref={(el) => { vidRef.current = el; if (el && streamRef.current && !el.srcObject) { el.srcObject = streamRef.current; el.onloadedmetadata = () => setCamReady(true); } }} autoPlay playsInline muted />
           <div className="cam-corners"><div className="cc tl" /><div className="cc tr" /><div className="cc bl" /><div className="cc br" /></div>
           <canvas ref={canRef} className="hid" />
           <div className="cam-bar">
