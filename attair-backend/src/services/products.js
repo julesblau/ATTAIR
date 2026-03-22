@@ -224,7 +224,7 @@ function matchLensResultToItem(result, items) {
 // ═════════════════════════════════════════════════════════════
 // STEP 3: Text search fallback (for items Lens didn't cover)
 // ═════════════════════════════════════════════════════════════
-async function textSearch(query, priceMin, priceMax) {
+async function textSearch(query, _priceMin, priceMax) {
   const params = new URLSearchParams({
     engine: "google_shopping",
     q: query,
@@ -233,13 +233,10 @@ async function textSearch(query, priceMin, priceMax) {
     gl: "us",
     num: "20",
   });
-  // Add price filter when a budget is set so results land in the right range
-  // Format: price:1,ppr_min:X,ppr_max:Y  (SerpAPI Google Shopping syntax)
-  if (priceMin != null || priceMax != null) {
-    const tbsParts = ["price:1"];
-    if (priceMin != null) tbsParts.push(`ppr_min:${Math.floor(priceMin)}`);
-    if (priceMax != null) tbsParts.push(`ppr_max:${Math.ceil(priceMax * 1.5)}`); // 1.5x headroom for premium tier
-    params.set("tbs", tbsParts.join(","));
+  // Add a price ceiling when a budget is set — this keeps premium headroom but avoids
+  // stripping all results for common items that have no products at the floor price.
+  if (priceMax != null) {
+    params.set("tbs", `price:1,ppr_max:${Math.ceil(priceMax * 1.5)}`);
   }
 
   const controller = new AbortController();
@@ -298,12 +295,10 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
   const uniqueQueries = [...new Set(queries)].slice(0, 2);
   console.log(`[TextFallback] Item: "${item.name}" — ${uniqueQueries.map(q => `"${q}"`).join(", ")} budget=$${tierBounds.min}-$${tierBounds.max}`);
 
-  // Use half of min as floor so budget-tier results are also returned
-  const priceFloor = tierBounds.min > DEFAULT_BUDGET.min ? Math.floor(tierBounds.min * 0.4) : null;
   const priceCeil = tierBounds.max > DEFAULT_BUDGET.max ? tierBounds.max : null;
 
   const allResults = [];
-  const batches = await Promise.all(uniqueQueries.map(q => textSearch(q, priceFloor, priceCeil).catch(() => [])));
+  const batches = await Promise.all(uniqueQueries.map(q => textSearch(q, null, priceCeil).catch(() => [])));
   for (const batch of batches) allResults.push(...batch);
 
   return allResults;
@@ -557,7 +552,11 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       .filter(s => s.score > 0)
       .sort((a, b) => b.score - a.score);
 
-    const priced = allScored.filter(s => s.price !== null);
+    // Hard floor: exclude products priced implausibly below the user's budget minimum.
+    // e.g. a $15 cap when budget min is $1000 is almost certainly a different product.
+    const isCustomBudget = itemTierBounds.min > DEFAULT_BUDGET.min;
+    const priceFloor = isCustomBudget ? itemTierBounds.min * 0.15 : 0;
+    const priced = allScored.filter(s => s.price !== null && s.price >= priceFloor);
     const unpriced = allScored.filter(s => s.price === null);
 
     // ── Find the ORIGINAL product ───────────────────
@@ -633,13 +632,13 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       tiers.mid = pickBestAvailable(midPool, "mid");
       tiers.premium = pickBestAvailable(premiumPool, "premium");
 
-      // Fill empty tiers with widened ranges
-      if (!tiers.budget) tiers.budget = pickBestAvailable(priced.filter(s => s.price < itemTierBounds.min * 1.5), "budget");
-      if (!tiers.mid) tiers.mid = pickBestAvailable(priced, "mid");
-      if (!tiers.premium) tiers.premium = pickBestAvailable(priced.filter(s => s.price > itemTierBounds.max * 0.7), "premium");
-
-      // Still empty? Use unpriced Lens results
+      // Widen budget tier only — show what exists even if slightly over budget min
+      if (!tiers.budget) tiers.budget = pickBestAvailable(priced, "budget");
       if (!tiers.budget) tiers.budget = pickBestAvailable(unpriced, "budget");
+
+      // For mid and premium: if nothing landed in range, use unpriced Lens results only.
+      // Do NOT fall back to off-budget priced items — the caller's fallbackTier (Google
+      // Shopping search link) is more honest than a $15 product in a $1000+ budget slot.
       if (!tiers.mid) tiers.mid = pickBestAvailable(unpriced, "mid");
       if (!tiers.premium) tiers.premium = pickBestAvailable(unpriced, "premium");
     }

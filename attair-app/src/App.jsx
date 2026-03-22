@@ -1238,7 +1238,7 @@ export default function App() {
                       </div>
                       {ov?.budgetMin != null
                         ? <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "#C9A96E", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 7, padding: "4px 9px", whiteSpace: "nowrap" }}>${ov.budgetMin}–${ov.budgetMax}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#C9A96E", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 7, padding: "4px 9px", whiteSpace: "nowrap" }}>${ov.budgetMin}–${ov.budgetMax ?? ov.budgetMin * 2}</div>
                             <div style={{ fontSize: 9, color: "rgba(201,169,110,.5)", letterSpacing: .3 }}>tap to edit</div>
                           </div>
                         : <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 10, flexShrink: 0, cursor: "pointer" }}>
@@ -1643,8 +1643,17 @@ export default function App() {
                         type="number"
                         placeholder="0"
                         value={bMin || ""}
-                        onChange={e => setOv(o2 => ({ ...(o2||ov), budgetMin: parseInt(e.target.value) || 0 }))}
-                        onBlur={() => { if (bMin >= bMax) setOv(o2 => ({ ...(o2||ov), budgetMax: bMin + 50 })); }}
+                        onChange={e => {
+                          const val = parseInt(e.target.value) || 0;
+                          setOv(o2 => {
+                            const cur = o2 || ov;
+                            const next = { ...cur, budgetMin: val };
+                            // Auto-init max to 2× min whenever max is unset or now below min
+                            if (!cur.budgetMax || cur.budgetMax <= val) next.budgetMax = val * 2;
+                            return next;
+                          });
+                        }}
+                        onBlur={() => { if (bMin >= bMax) setOv(o2 => ({ ...(o2||ov), budgetMax: bMin * 2 })); }}
                       />
                     </div>
                     <span style={{ color: "rgba(255,255,255,.2)", fontSize: 18, flexShrink: 0 }}>—</span>
