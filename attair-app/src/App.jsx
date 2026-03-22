@@ -415,6 +415,7 @@ export default function App() {
   const streamRef = useRef(null);
   const [camOn, setCamOn] = useState(false);
   const [camReady, setCamReady] = useState(false);
+  const [camFacing, setCamFacing] = useState("environment"); // "environment" (back) | "user" (front)
 
   // ─── Fetch user status on auth ────────────────────────────
   const refreshStatus = useCallback(async () => {
@@ -524,13 +525,27 @@ export default function App() {
   };
 
   // Camera
-  const camStart = async () => {
+  const camStart = async (facing) => {
+    const mode = facing || camFacing;
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 } } });
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode, width: { ideal: 1280 } } });
       streamRef.current = s;
       if (vidRef.current) { vidRef.current.srcObject = s; vidRef.current.onloadedmetadata = () => setCamReady(true); }
       setCamOn(true);
     } catch { setError("Camera denied. Upload a photo instead."); }
+  };
+  const camFlip = async () => {
+    const newFacing = camFacing === "environment" ? "user" : "environment";
+    setCamFacing(newFacing);
+    setCamReady(false);
+    // Stop current stream
+    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
+    // Start new stream with flipped camera — attach directly to existing video element
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: newFacing, width: { ideal: 1280 } } });
+      streamRef.current = s;
+      if (vidRef.current) { vidRef.current.srcObject = s; vidRef.current.onloadedmetadata = () => setCamReady(true); }
+    } catch { setError("Could not switch camera."); }
   };
   const camCapture = async () => {
     if (!vidRef.current || !canRef.current) return;
@@ -950,13 +965,15 @@ export default function App() {
       {/* ─── CAMERA ──────────────────────────────────────── */}
       {camOn && (
         <div className="cam">
-          <video ref={(el) => { vidRef.current = el; if (el && streamRef.current && !el.srcObject) { el.srcObject = streamRef.current; el.onloadedmetadata = () => setCamReady(true); } }} autoPlay playsInline muted />
+          <video ref={(el) => { vidRef.current = el; if (el && streamRef.current && !el.srcObject) { el.srcObject = streamRef.current; el.onloadedmetadata = () => setCamReady(true); } }} autoPlay playsInline muted style={camFacing === "user" ? {transform:"scaleX(-1)"} : undefined} />
           <div className="cam-corners"><div className="cc tl" /><div className="cc tr" /><div className="cc bl" /><div className="cc br" /></div>
           <canvas ref={canRef} className="hid" />
           <div className="cam-bar">
             <button className="cam-x" onClick={camStop}>Cancel</button>
             <button className="shutter" onClick={camCapture} style={{opacity:camReady?1:.3}} disabled={!camReady} />
-            <div style={{width:44}} />
+            <button onClick={camFlip} style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,.15)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}} title="Flip camera">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 3h5v5"/><path d="M21 3l-7 7"/><path d="M8 21H3v-5"/><path d="M3 21l7-7"/></svg>
+            </button>
           </div>
         </div>
       )}
