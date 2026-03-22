@@ -570,42 +570,88 @@ async function textSearch(query, _priceMin, priceMax) {
   }
 }
 
+// ─── Search query helpers ────────────────────────────────────
+
+/**
+ * Normalize typographic/Unicode apostrophes to straight apostrophes so that
+ * Claude's AI-generated queries (which use curly quotes) compare correctly
+ * to our plain-ASCII gender-prefix strings.
+ */
+function normalizeApostrophes(str) {
+  return str.replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'");
+}
+
+/**
+ * Detect whether a query already has a gender prefix.
+ * Uses a word-boundary regex so "men's", "mens", "women's", "womens" all match,
+ * regardless of apostrophe style (handled by normalizeApostrophes first).
+ */
+function hasGenderPrefix(q) {
+  return /\b(men'?s?|women'?s?|boys?|girls?)\b/i.test(normalizeApostrophes(q));
+}
+
+/**
+ * Strip qualifiers that confuse shopping search engines.
+ * Google Shopping doesn't understand style negations or occasion phrases —
+ * worse, "no tie" causes it to return actual neckties.
+ */
+function cleanForSearch(q) {
+  return normalizeApostrophes(q)
+    .replace(/\bno\s+\w+/gi, "")           // "no tie", "no logo", "no pattern"
+    .replace(/\bwithout\s+\w+/gi, "")      // "without collar"
+    .replace(/\bfor\s+(work|office|business|formal|casual|evening|day|night)\b/gi, "")
+    .replace(/\b(business\s+casual|smart\s+casual|semi-formal|black\s+tie|dress\s+code)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
   const g = gender === "female" ? "women's" : "men's";
-  const genderWords = ["men's", "mens", "women's", "womens"];
-  const hasGender = (q) => genderWords.some(w => q.toLowerCase().includes(w));
 
-  // Derive size/fit/body modifiers from prefs (body_type and fit are now arrays)
   const bodyTypes = Array.isArray(sizePrefs.body_type) ? sizePrefs.body_type : (sizePrefs.body_type ? [sizePrefs.body_type] : []);
   const fitStyles = Array.isArray(sizePrefs.fit) ? sizePrefs.fit : (sizePrefs.fit ? [sizePrefs.fit] : []);
   const bodyTerm = BODY_TYPE_TERMS[bodyTypes[0]] || null;
   const fitTerm = FIT_TERMS[fitStyles[0]] || null;
   const sizeTerm = getSizeTermForItem(item, sizePrefs);
 
-  // Build 2 queries: Claude's search query + description-based
   const queries = [];
+
+  // ── Query A: Claude's search_query, cleaned and correctly gender-prefixed ──
+  // Fixes: (1) Unicode apostrophe → double prefix bug, (2) "no tie" style noise
   if (item.search_query) {
-    const sq = item.search_query;
-    let q = hasGender(sq) ? sq : `${g} ${sq}`;
+    const cleaned = cleanForSearch(item.search_query);
+    let q = hasGenderPrefix(cleaned) ? cleaned : `${g} ${cleaned}`;
     if (bodyTerm && !q.toLowerCase().includes(bodyTerm)) q = `${bodyTerm} ${q}`;
-    queries.push(q);
+    queries.push(q.replace(/\s{2,}/g, " ").trim());
   }
 
+  // ── Query B: Brand + product line (high-confidence brands only) ──
   const brand = item.brand && item.brand !== "Unidentified" ? item.brand : "";
   if (brand && (item.brand_confidence === "confirmed" || item.brand_confidence === "high")) {
     queries.push(item.product_line ? `${brand} ${item.product_line}` : `${brand} ${item.name}`);
   }
 
+  // ── Query C: Simple clean descriptor — guaranteed to find results ──
+  // Just gender + color + subcategory, no fit/body/size qualifiers.
+  // This is the safety net: even if A is too specific, C always works for
+  // common items like "men's white dress shirt".
+  const simpleDesc = `${g} ${item.color || ""} ${item.subcategory || item.category}`.replace(/\s+/g, " ").trim();
+  if (!queries.some(q => q.toLowerCase() === simpleDesc.toLowerCase())) {
+    queries.push(simpleDesc);
+  }
+
+  // ── Query D: Full descriptor with fit/body/size (only if distinct from C) ──
   const bodyPrefix = bodyTerm ? `${bodyTerm} ` : "";
   const fitSuffix = fitTerm ? ` ${fitTerm}` : "";
   const sizeSuffix = sizeTerm ? ` size ${sizeTerm}` : "";
-  const desc = `${g} ${bodyPrefix}${item.subcategory || item.category} ${item.color || ""}${fitSuffix}${sizeSuffix}`.replace(/\s+/g, " ").trim();
-  if (!queries.some(q => q.toLowerCase() === desc.toLowerCase())) {
-    queries.push(desc);
+  const fullDesc = `${g} ${bodyPrefix}${item.subcategory || item.category} ${item.color || ""}${fitSuffix}${sizeSuffix}`.replace(/\s+/g, " ").trim();
+  if (fullDesc !== simpleDesc && !queries.some(q => q.toLowerCase() === fullDesc.toLowerCase())) {
+    queries.push(fullDesc);
   }
 
-  const uniqueQueries = [...new Set(queries)].slice(0, 2);
-  console.log(`[TextFallback] Item: "${item.name}" — ${uniqueQueries.map(q => `"${q}"`).join(", ")} budget=$${tierBounds.min}-$${tierBounds.max}`);
+  // Run up to 3 unique queries concurrently (increased from 2)
+  const uniqueQueries = [...new Set(queries.filter(Boolean))].slice(0, 3);
+  console.log(`[TextFallback] "${item.name}" → ${uniqueQueries.map(q => `"${q}"`).join(" | ")} budget=$${tierBounds.min}-$${tierBounds.max}`);
 
   const priceCeil = tierBounds.max > DEFAULT_BUDGET.max ? tierBounds.max : null;
 
@@ -642,14 +688,37 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   // Lens results WITH a price are even more valuable (can be properly tiered)
   if (isFromLens && price !== null) score += 10;
 
-  // Subcategory match
+  // ── Clothing keyword baseline ────────────────────────────────
+  // Any product from a verified vendor whose title contains a clothing/fashion
+  // keyword gets a small base score. This prevents valid items from scoring
+  // exactly 0 and being incorrectly discarded by the score > 0 gate.
+  const CLOTHING_KEYWORDS = [
+    "shirt", "pant", "jean", "dress", "jacket", "coat", "shoe", "sneaker",
+    "boot", "top", "blouse", "skirt", "short", "sweater", "hoodie", "blazer",
+    "suit", "trouser", "legging", "vest", "cardigan", "polo", "tee", "sock",
+    "hat", "cap", "scarf", "belt", "watch", "bag", "purse", "sandal", "loafer",
+    "oxford", "chino", "bomber", "parka", "bra", "underwear", "boxer",
+  ];
+  if (CLOTHING_KEYWORDS.some(kw => title.includes(kw))) score += 3;
+
+  // ── Subcategory match ────────────────────────────────────────
   const sub = (item.subcategory || "").toLowerCase();
   if (sub && sub.length > 2) {
-    if (title.includes(sub)) score += 25;
-    else if (sub.length > 4 && title.includes(sub.slice(0, -1))) score += 15;
+    if (title.includes(sub)) {
+      score += 25;                                              // exact: "dress shirt"
+    } else if (title.includes(sub + "s")) {
+      score += 22;                                              // singular→plural: "sneaker" → "sneakers"
+    } else if (sub.endsWith("s") && title.includes(sub.slice(0, -1))) {
+      score += 22;                                              // plural→singular: "sneakers" → "sneaker"
+    } else {
+      // Multi-word subcategory: "dress shirt" — check if all significant words match
+      const subWords = sub.split(/\s+/).filter(w => w.length > 3);
+      if (subWords.length > 1 && subWords.every(w => title.includes(w))) score += 20;
+      else if (subWords.some(w => w.length > 4 && title.includes(w))) score += 10;
+    }
   }
 
-  // Category match
+  // ── Category match ───────────────────────────────────────────
   const cat = (item.category || "").toLowerCase();
   if (cat && title.includes(cat)) score += 8;
 
