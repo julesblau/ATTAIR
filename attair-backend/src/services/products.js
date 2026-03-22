@@ -234,8 +234,9 @@ async function textSearch(query, priceMin, priceMax) {
     num: "20",
   });
   // Add price filter when a budget is set so results land in the right range
+  // Format: price:1,ppr_min:X,ppr_max:Y  (SerpAPI Google Shopping syntax)
   if (priceMin != null || priceMax != null) {
-    const tbsParts = ["mr:1", "price:1"];
+    const tbsParts = ["price:1"];
     if (priceMin != null) tbsParts.push(`ppr_min:${Math.floor(priceMin)}`);
     if (priceMax != null) tbsParts.push(`ppr_max:${Math.ceil(priceMax * 1.5)}`); // 1.5x headroom for premium tier
     params.set("tbs", tbsParts.join(","));
@@ -311,7 +312,7 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
 // ═════════════════════════════════════════════════════════════
 // SCORING — How relevant is this product to the identified item?
 // ═════════════════════════════════════════════════════════════
-function scoreProduct(product, item, isFromLens, sizePrefs = {}) {
+function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = null) {
   const title = (product.title || "").toLowerCase();
   const source = (product.source || "").toLowerCase();
   const link = product.link || product.product_link || product.url || "";
@@ -379,6 +380,25 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}) {
   for (const fs of fitStyles) {
     const fitTerm = FIT_TERMS[fs];
     if (fitTerm && title.includes(fitTerm.toLowerCase())) { score += 10; break; }
+  }
+
+  // Price proximity — only applied when the user has set a non-default budget
+  // Products in the user's target range get a strong bonus; items that are a fraction
+  // of the minimum budget get heavily penalised (e.g. a $15 item for a $1000 budget)
+  if (price !== null && tierBounds) {
+    const { min, max } = tierBounds;
+    if (price >= min && price <= max) {
+      score += 30; // squarely in the user's target range
+    } else if (price < min) {
+      const ratio = price / min;
+      if (ratio < 0.1) score -= 50;       // way too cheap (e.g. $10 vs $1000 min)
+      else if (ratio < 0.3) score -= 30;  // significantly under budget
+      else if (ratio < 0.6) score -= 15;  // moderately under budget
+    } else if (price > max) {
+      const ratio = price / max;
+      if (ratio > 5) score -= 20;         // extreme luxury outlier
+      else if (ratio > 2) score -= 8;
+    }
   }
 
   return score;
@@ -531,7 +551,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       .map(({ product, isLens }) => ({
         product,
         isLens,
-        score: scoreProduct(product, item, isLens, itemSizePrefs),
+        score: scoreProduct(product, item, isLens, itemSizePrefs, itemTierBounds),
         price: extractPrice(product.price) || extractPrice(product.extracted_price),
       }))
       .filter(s => s.score > 0)
