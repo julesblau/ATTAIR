@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
 // ═══════════════════════════════════════════════════════════════
-// CONFIG — Change this to your Railway URL in production
+// CONFIG — Set VITE_API_BASE in Vercel env vars for production
 // ═══════════════════════════════════════════════════════════════
-const API_BASE = "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
 
 // Supabase public config for OAuth (safe to expose — anon key is public)
 const SUPABASE_URL="https://cmlgqztjkrfipzknwnfm.supabase.co"
@@ -56,12 +56,10 @@ const Auth = {
 
 /**
  * Decode a Supabase JWT to extract user info (email, etc.)
- * Returns { email, sub } or null if decode fails.
  */
 function decodeJwt(token) {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload;
+    return JSON.parse(atob(token.split('.')[1]));
   } catch {
     return null;
   }
@@ -450,10 +448,8 @@ export default function App() {
           if (profile.budget_max != null) setBudgetMax(profile.budget_max);
         })
         .catch(() => {});
-      // Also load history + saved
       API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
       API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
-      // Skip onboarding if returning user
       if (screen === "onboarding") setScreen("app");
     }
   }, [authed]);
@@ -485,7 +481,6 @@ export default function App() {
       const refresh = params.get("refresh_token");
       if (access && refresh) {
         Auth.setTokens(access, refresh);
-        // Extract email from JWT for immediate display
         const jwt = decodeJwt(access);
         if (jwt?.email) setAuthEmail(jwt.email);
         setAuthed(true);
