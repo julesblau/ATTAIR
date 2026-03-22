@@ -22,6 +22,94 @@ const SERPAPI_URL = "https://serpapi.com/search.json";
 // ─── Budget config ──────────────────────────────────────────
 const DEFAULT_BUDGET = { min: 50, max: 100 };
 
+// ─── Market type classification ─────────────────────────────
+// Domains that are definitively secondary/resale markets
+const RESALE_DOMAINS = [
+  "poshmark.com",
+  "depop.com",
+  "grailed.com",
+  "ebay.com",
+  "thredup.com",
+  "therealreal.com",
+  "vestiairecollective.com",
+  "stockx.com",
+  "goat.com",
+  "vinted.com",
+  "tradesy.com",
+  "mercari.com",
+  "offerup.com",
+  "fashionphile.com",
+  "rebag.com",
+  "trove.com",
+  "swap.com",
+  "kidizen.com",
+  "luxurygarage.com",
+  "flyp.com",
+  "curtsy.com",
+  "deserved.com",
+  "poshmark.ca",
+  "vestiaire.com",
+  "snobswap.com",
+  "threadflip.com",
+  "yerdle.com",
+  "second-hand.com",
+  "truefacet.com",
+  "circa.watches",
+  "chrono24.com",
+];
+
+// Keyword patterns in title/source that indicate a listing is pre-owned/used
+const RESALE_TITLE_KEYWORDS = [
+  "pre-owned", "preowned", "pre owned",
+  "second-hand", "secondhand", "second hand",
+  "used condition", "pre-loved", "preloved", "pre loved",
+  "consignment",
+  "thrifted",
+  "resale",
+  "worn once", "worn twice",
+  "lightly used", "gently used",
+  "like new condition", "good used condition", "great used condition", // resale condition descriptors
+];
+
+// Source names that indicate resale (for SerpAPI "source" field)
+const RESALE_SOURCE_NAMES = [
+  "poshmark", "depop", "grailed", "ebay", "thredup", "the real real",
+  "therealreal", "vestiaire collective", "vestiairecollective",
+  "stockx", "goat", "vinted", "tradesy", "mercari", "offerup",
+  "fashionphile", "rebag", "swap.com", "kidizen", "curtsy",
+];
+
+/**
+ * Classify a product as "resale" (secondary market) or "retail" (first-hand).
+ * Uses three signals: URL domain, source name, and title keywords.
+ */
+function classifyMarket(product) {
+  const link = (product.link || product.product_link || product.url || "").toLowerCase();
+  const source = (product.source || "").toLowerCase();
+  const title = (product.title || "").toLowerCase();
+
+  // 1. Domain match — most reliable signal
+  if (RESALE_DOMAINS.some(d => link.includes(d))) return "resale";
+
+  // 2. Source name match (SerpAPI "source" field is the retailer/platform name)
+  if (RESALE_SOURCE_NAMES.some(s => source.includes(s))) return "resale";
+
+  // 3. Title keyword match — catches resale listings on mixed platforms
+  if (RESALE_TITLE_KEYWORDS.some(kw => title.includes(kw))) return "resale";
+
+  return "retail";
+}
+
+/**
+ * Returns true if the product is allowed given the user's market preference.
+ * marketPref: "both" | "retail" | "resale"
+ */
+function isAllowedByMarket(product, marketPref) {
+  if (!marketPref || marketPref === "both") return true;
+  const market = classifyMarket(product);
+  return market === marketPref;
+}
+
 // ─── Size preference helpers ────────────────────────────────
 const BODY_TYPE_TERMS = {
   petite: "petite",
@@ -416,6 +504,7 @@ function formatProduct(product, isOriginalBrand) {
     image_url: product.thumbnail || product.image || "",
     is_product_page: true,
     is_identified_brand: isOriginalBrand,
+    is_resale: classifyMarket(product) === "resale",
     why: "",
   };
 }
@@ -485,6 +574,10 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
   function getItemSizePrefs(item) {
     return item._size_prefs != null ? item._size_prefs : defaultSizePrefs;
   }
+  // "both" | "retail" | "resale" — defaults to "both" if not specified
+  function getItemMarketPref(item) {
+    return item._market_pref || "both";
+  }
 
   // ── Step 1: Google Lens on the full image ─────────
   const lensResults = await googleLensSearch(imageUrl);
@@ -529,6 +622,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
   const output = items.map((rawItem, i) => {
     const itemTierBounds = getItemTierBounds(rawItem);
     const itemSizePrefs = getItemSizePrefs(rawItem);
+    const itemMarketPref = getItemMarketPref(rawItem);
     const item = { ...rawItem, gender };
     const pool = itemPools[i];
     const brandLower = (item.brand || "").toLowerCase();
@@ -547,8 +641,18 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       if (url && !seen.has(url)) { seen.add(url); allProducts.push({ product: r, isLens: false }); }
     }
 
+    // ── Market preference filter ────────────────────────────
+    // Apply before scoring so market-excluded products never appear in any tier.
+    const marketFiltered = itemMarketPref === "both"
+      ? allProducts
+      : allProducts.filter(({ product }) => isAllowedByMarket(product, itemMarketPref));
+
+    if (itemMarketPref !== "both") {
+      console.log(`[Market] "${item.name}": pref="${itemMarketPref}" — ${allProducts.length} total → ${marketFiltered.length} after filter`);
+    }
+
     // Score everything
-    const allScored = allProducts
+    const allScored = marketFiltered
       .map(({ product, isLens }) => ({
         product,
         isLens,

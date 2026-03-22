@@ -260,8 +260,11 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
     <a href={href} target="_blank" rel="noopener noreferrer" style={{ padding: 16, background: isFallback ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.02)", border: `1px solid ${data.is_identified_brand ? "rgba(201,169,110,0.3)" : isFallback ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.05)"}`, borderRadius: 14, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 8, transition: "all 0.2s" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: isFallback ? "rgba(255,255,255,.2)" : tierCfg.accent, textTransform: "uppercase" }}>{tierCfg.icon} {tierCfg.label}</span>
-        {data.is_identified_brand && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(201,169,110,0.12)", color: "#C9A96E" }}>ORIGINAL</span>}
-        {data.is_product_page && !data.is_identified_brand && <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: .5, padding: "2px 6px", borderRadius: 3, background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.3)" }}>Product page</span>}
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          {data.is_identified_brand && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(201,169,110,0.12)", color: "#C9A96E" }}>ORIGINAL</span>}
+          {data.is_resale && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(120,200,120,0.12)", color: "#7BC87B" }}>RESALE</span>}
+          {data.is_product_page && !data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: .5, padding: "2px 6px", borderRadius: 3, background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.3)" }}>Product page</span>}
+        </div>
       </div>
       {isFallback ? (
         <>
@@ -730,6 +733,7 @@ export default function App() {
       _budget_min: itemOverrides[i]?.budgetMin ?? null,
       _budget_max: itemOverrides[i]?.budgetMax ?? null,
       _size_prefs: itemOverrides[i]?.sizePrefs ?? null,
+      _market_pref: itemOverrides[i]?.marketPref ?? "both",
     }));
     const pickedIndices = [...pickedItems].sort((a, b) => a - b);
 
@@ -1602,7 +1606,7 @@ export default function App() {
           const idx = itemSettingsIdx;
           const item = results.items[idx];
           const isPicked = pickedItems.has(idx);
-          const ov = itemOverrides[idx] || { budget: budgetMax, sizePrefs: { body_type: [...(sizePrefs.body_type||[])], fit: [...(sizePrefs.fit||[])], sizes: { ...(sizePrefs.sizes||{}) } } };
+          const ov = itemOverrides[idx] || { budget: budgetMax, sizePrefs: { body_type: [...(sizePrefs.body_type||[])], fit: [...(sizePrefs.fit||[])], sizes: { ...(sizePrefs.sizes||{}) } }, marketPref: "both" };
           const setOv = (updater) => setItemOverrides(o => ({ ...o, [idx]: typeof updater === "function" ? updater(o[idx] || ov) : updater }));
 
           // Determine the most relevant size for this item
@@ -1638,6 +1642,28 @@ export default function App() {
                   <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.6)" }}>Include in search</span>
                   <div style={{ width: 42, height: 24, borderRadius: 12, background: isPicked ? "#C9A96E" : "rgba(255,255,255,.08)", position: "relative", transition: "background .2s", cursor: "pointer" }}>
                     <div style={{ position: "absolute", top: 3, left: isPicked ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .2s" }} />
+                  </div>
+                </div>
+
+                {/* Market type preference */}
+                <div style={{ marginBottom: 20 }}>
+                  <div className="item-opts-label">Market type</div>
+                  <div style={{ display: "flex", gap: 7 }}>
+                    {[
+                      { l: "All", v: "both", desc: "Retail + resale" },
+                      { l: "Retail only", v: "retail", desc: "Direct from brands & stores" },
+                      { l: "Resale only", v: "resale", desc: "Pre-owned & secondary market" },
+                    ].map(o => {
+                      const on = (ov.marketPref || "both") === o.v;
+                      return (
+                        <div key={o.v}
+                          style={{ flex: 1, padding: "8px 6px", textAlign: "center", background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.03)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.07)"}`, borderRadius: 10, cursor: "pointer", transition: "all .2s" }}
+                          onClick={() => setOv(o2 => ({ ...(o2 || ov), marketPref: o.v }))}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: on ? "#C9A96E" : "rgba(255,255,255,.45)", marginBottom: 2 }}>{o.l}</div>
+                          <div style={{ fontSize: 9, color: on ? "rgba(201,169,110,.55)" : "rgba(255,255,255,.2)", lineHeight: 1.3 }}>{o.desc}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
