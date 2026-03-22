@@ -22,6 +22,45 @@ const SERPAPI_URL = "https://serpapi.com/search.json";
 // ─── Budget config ──────────────────────────────────────────
 const DEFAULT_BUDGET = { min: 50, max: 100 };
 
+// ─── Size preference helpers ────────────────────────────────
+const BODY_TYPE_TERMS = {
+  petite: "petite",
+  tall: "tall",
+  plus: "plus size",
+  big_tall: "big & tall",
+  athletic: "athletic fit",
+  curvy: "curvy",
+};
+const BODY_TYPE_OPPOSITES = {
+  petite: ["plus size", "big & tall"],
+  plus: ["petite"],
+  big_tall: ["petite"],
+};
+const FIT_TERMS = {
+  slim: "slim fit",
+  fitted: "fitted",
+  relaxed: "relaxed fit",
+  oversized: "oversized",
+  flowy: "flowy",
+};
+
+function getSizeTermForItem(item, sizePrefs) {
+  const sizes = sizePrefs?.sizes;
+  if (!sizes) return null;
+  const cat = (item.category || "").toLowerCase();
+  const sub = (item.subcategory || "").toLowerCase();
+  const combined = cat + " " + sub;
+  if (["top", "shirt", "tee", "blouse", "polo", "sweater", "hoodie", "pullover", "sweatshirt"].some(k => combined.includes(k))) return sizes.tops || null;
+  if (["jean", "denim"].some(k => combined.includes(k))) return sizes.jeans || sizes.bottoms || null;
+  if (["short"].some(k => combined.includes(k))) return sizes.shorts || sizes.bottoms || null;
+  if (["pant", "trouser", "chino", "legging", "bottom"].some(k => combined.includes(k))) return sizes.bottoms || null;
+  if (["dress", "gown", "romper", "jumpsuit"].some(k => combined.includes(k))) return sizes.dresses || null;
+  if (["outerwear", "jacket", "coat", "blazer", "parka", "bomber"].some(k => combined.includes(k))) return sizes.outerwear || null;
+  if (["shoe", "sneaker", "boot", "sandal", "loafer", "heel", "flat", "trainer"].some(k => combined.includes(k))) return sizes.shoes || null;
+  if (["sock"].some(k => combined.includes(k))) return sizes.socks || null;
+  return null;
+}
+
 function getTierBounds(budgetMin, budgetMax) {
   let min = budgetMin || DEFAULT_BUDGET.min;
   let max = budgetMax || DEFAULT_BUDGET.max;
@@ -216,16 +255,23 @@ async function textSearch(query) {
   }
 }
 
-async function textSearchForItem(item, gender, tierBounds) {
+async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
   const g = gender === "female" ? "women's" : "men's";
   const genderWords = ["men's", "mens", "women's", "womens"];
   const hasGender = (q) => genderWords.some(w => q.toLowerCase().includes(w));
+
+  // Derive size/fit/body modifiers from prefs
+  const bodyTerm = BODY_TYPE_TERMS[sizePrefs.body_type] || null;
+  const fitTerm = FIT_TERMS[sizePrefs.fit] || null;
+  const sizeTerm = getSizeTermForItem(item, sizePrefs);
 
   // Build 2 queries: Claude's search query + description-based
   const queries = [];
   if (item.search_query) {
     const sq = item.search_query;
-    queries.push(hasGender(sq) ? sq : `${g} ${sq}`);
+    let q = hasGender(sq) ? sq : `${g} ${sq}`;
+    if (bodyTerm && !q.toLowerCase().includes(bodyTerm)) q = `${bodyTerm} ${q}`;
+    queries.push(q);
   }
 
   const brand = item.brand && item.brand !== "Unidentified" ? item.brand : "";
@@ -233,7 +279,10 @@ async function textSearchForItem(item, gender, tierBounds) {
     queries.push(item.product_line ? `${brand} ${item.product_line}` : `${brand} ${item.name}`);
   }
 
-  const desc = `${g} ${item.subcategory || item.category} ${item.color || ""}`.replace(/\s+/g, " ").trim();
+  const bodyPrefix = bodyTerm ? `${bodyTerm} ` : "";
+  const fitSuffix = fitTerm ? ` ${fitTerm}` : "";
+  const sizeSuffix = sizeTerm ? ` size ${sizeTerm}` : "";
+  const desc = `${g} ${bodyPrefix}${item.subcategory || item.category} ${item.color || ""}${fitSuffix}${sizeSuffix}`.replace(/\s+/g, " ").trim();
   if (!queries.some(q => q.toLowerCase() === desc.toLowerCase())) {
     queries.push(desc);
   }
@@ -251,7 +300,7 @@ async function textSearchForItem(item, gender, tierBounds) {
 // ═════════════════════════════════════════════════════════════
 // SCORING — How relevant is this product to the identified item?
 // ═════════════════════════════════════════════════════════════
-function scoreProduct(product, item, isFromLens) {
+function scoreProduct(product, item, isFromLens, sizePrefs = {}) {
   const title = (product.title || "").toLowerCase();
   const source = (product.source || "").toLowerCase();
   const link = product.link || product.product_link || product.url || "";
@@ -303,6 +352,18 @@ function scoreProduct(product, item, isFromLens) {
   if (isMale && (title.includes("women's") || title.includes("womens"))) score -= 40;
   if (!isMale && (title.includes("men's ") || title.includes("mens "))) score -= 40;
   if (/\b(set of|pack of|\d+\s*pack|bundle)\b/i.test(product.title || "")) score -= 25;
+
+  // Size preference scoring
+  const bodyTerm = BODY_TYPE_TERMS[sizePrefs.body_type];
+  if (bodyTerm) {
+    if (title.includes(bodyTerm.toLowerCase())) score += 15;
+    const opposites = BODY_TYPE_OPPOSITES[sizePrefs.body_type] || [];
+    for (const opp of opposites) {
+      if (title.includes(opp.toLowerCase())) { score -= 25; break; }
+    }
+  }
+  const fitTerm = FIT_TERMS[sizePrefs.fit];
+  if (fitTerm && title.includes(fitTerm.toLowerCase())) score += 10;
 
   return score;
 }
@@ -372,7 +433,7 @@ function fallbackTier(item, tier, tierBounds) {
 // ═════════════════════════════════════════════════════════════
 // MAIN: Process all items for a scan
 // ═════════════════════════════════════════════════════════════
-export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl) {
+export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}) {
   cleanupExpiredCache();
   const tierBounds = getTierBounds(budgetMin, budgetMax);
 
@@ -404,7 +465,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     });
     // Text search if we have fewer than 3 priced Lens results
     if (pricedLens.length < 3) {
-      const textResults = await textSearchForItem(item, gender, tierBounds);
+      const textResults = await textSearchForItem(item, gender, tierBounds, sizePrefs);
       itemPools[i].text = textResults;
       console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
     }
@@ -440,7 +501,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       .map(({ product, isLens }) => ({
         product,
         isLens,
-        score: scoreProduct(product, item, isLens),
+        score: scoreProduct(product, item, isLens, sizePrefs),
         price: extractPrice(product.price) || extractPrice(product.extracted_price),
       }))
       .filter(s => s.score > 0)

@@ -368,6 +368,7 @@ const OB_STEPS = [
   { id: "welcome", type: "info", icon: "✦", title: "Identify any outfit.\nShop it at any budget.", sub: "Snap a photo. Our AI identifies every item, then finds you a budget, mid-range, and premium option for each.", cta: "Get Started" },
   { id: "gender", type: "select", title: "I usually shop for…", sub: "We also auto-detect from each photo.", opts: [{ l: "Menswear", v: "men" },{ l: "Womenswear", v: "women" },{ l: "Both", v: "both" }] },
   { id: "budget", type: "budget_range", title: "What's your budget\nper item?", sub: "We'll tailor budget, mid, and premium tiers to your range. You can change this anytime." },
+  { id: "size_prefs", type: "size_prefs", title: "How do you like to fit?", sub: "We'll prioritize results in your size. You can skip and update this anytime in Profile." },
   { id: "proof", type: "info", icon: "◎", title: "You're all set.", sub: "Every scan gives you 3 price options per item — budget, mid-range, and premium. You choose.", cta: "Continue" },
 ];
 
@@ -387,6 +388,7 @@ export default function App() {
   const [authPhone, setAuthPhone] = useState("");
   const [budgetMin, setBudgetMin] = useState(50);
   const [budgetMax, setBudgetMax] = useState(100);
+  const [sizePrefs, setSizePrefs] = useState({ body_type: null, fit: null, sizes: {} });
 
   // ─── User status (from backend) ───────────────────────────
   const [userStatus, setUserStatus] = useState(null); // { tier, scans_remaining_today, saved_count, show_ads, ... }
@@ -446,6 +448,7 @@ export default function App() {
           if (profile.gender_pref) setPrefs(p => ({ ...p, gender: profile.gender_pref }));
           if (profile.budget_min != null) setBudgetMin(profile.budget_min);
           if (profile.budget_max != null) setBudgetMax(profile.budget_max);
+          if (profile.size_prefs) setSizePrefs(profile.size_prefs);
         })
         .catch(() => {});
       API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
@@ -460,6 +463,10 @@ export default function App() {
     const step = OB_STEPS[obIdx];
     if (step.type === "budget_range") {
       setPrefs(p => ({ ...p, budget_min: budgetMin, budget_max: budgetMax }));
+    } else if (step.type === "size_prefs") {
+      const sp = v || {};
+      setSizePrefs(sp);
+      setPrefs(p => ({ ...p, size_prefs: sp }));
     } else if (v) {
       setPrefs(p => ({ ...p, [step.id]: v }));
     }
@@ -502,6 +509,7 @@ export default function App() {
           gender_pref: prefs.gender,
           budget_min: prefs.budget_min || budgetMin,
           budget_max: prefs.budget_max || budgetMax,
+          size_prefs: prefs.size_prefs || sizePrefs,
         });
       } else {
         await API.login(authEmail, authPass);
@@ -742,6 +750,10 @@ export default function App() {
       .ob-opts{display:flex;flex-direction:column;gap:10px}
       .ob-opt{padding:18px 22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;cursor:pointer;transition:all .2s;font-size:15px;font-weight:500;color:rgba(255,255,255,.75)}
       .ob-opt:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
+      .ob-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+      .ob-chip{padding:9px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:100px;cursor:pointer;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);transition:all .2s;-webkit-tap-highlight-color:transparent}
+      .ob-chip.on{background:rgba(201,169,110,.1);border-color:rgba(201,169,110,.4);color:#C9A96E}
+      .ob-skip{background:none;border:none;color:rgba(255,255,255,.2);font-size:13px;cursor:pointer;font-family:'Outfit';padding:10px 0;margin-top:4px;text-align:center;width:100%}
       .ob-stats{display:flex;gap:32px;margin-bottom:36px}
       .ob-sn{font-family:'Outfit';font-size:24px;font-weight:700;color:#C9A96E}
       .ob-sl{font-size:11px;color:rgba(255,255,255,.3);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
@@ -906,6 +918,28 @@ export default function App() {
                 <button className="cta" onClick={() => obNext()}>Continue</button>
               </div>
             )}
+            {step.type === "size_prefs" && (() => {
+              const bodyOpts = [{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"}];
+              const fitOpts = [{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"}];
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 10 }}>Body Type</div>
+                    <div className="ob-chips">
+                      {bodyOpts.map(o => <div key={o.v} className={`ob-chip${sizePrefs.body_type === o.v ? " on" : ""}`} onClick={() => setSizePrefs(p => ({ ...p, body_type: p.body_type === o.v ? null : o.v }))}>{o.l}</div>)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 10 }}>Fit Style</div>
+                    <div className="ob-chips">
+                      {fitOpts.map(o => <div key={o.v} className={`ob-chip${sizePrefs.fit === o.v ? " on" : ""}`} onClick={() => setSizePrefs(p => ({ ...p, fit: p.fit === o.v ? null : o.v }))}>{o.l}</div>)}
+                    </div>
+                  </div>
+                  <button className="cta" onClick={() => obNext(sizePrefs)}>Continue</button>
+                  <button className="ob-skip" onClick={() => obNext({})}>Skip for now</button>
+                </div>
+              );
+            })()}
             {step.type === "info" && <button className="cta" onClick={() => obNext()}>{step.cta}</button>}
             {obIdx === 0 && <button style={{background:"none",border:"none",color:"rgba(255,255,255,.25)",fontSize:13,cursor:"pointer",fontFamily:"'Outfit'",padding:"12px 0",marginTop:8}} onClick={() => { setScreen("auth"); setAuthScreen("login"); }}>Already have an account? Log in</button>}
           </div>
@@ -1405,6 +1439,55 @@ export default function App() {
                   </div>
                 </div>
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 8 }}>Budget: under ${budgetMin} · Mid: ${budgetMin}–${budgetMax} · Premium: ${budgetMax}+</div>
+              </div>
+
+              <div className="sec-t">Size Preferences</div>
+              <div className="pcard">
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 14, lineHeight: 1.5 }}>Prioritizes search results that match your fit. Applied to all new searches.</div>
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 8 }}>Body Type</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {[{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"}].map(o => {
+                      const on = sizePrefs.body_type === o.v;
+                      return <div key={o.v} style={{ padding: "7px 13px", background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.03)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.07)"}`, borderRadius: 100, cursor: "pointer", fontSize: 12, fontWeight: 500, color: on ? "#C9A96E" : "rgba(255,255,255,.5)", transition: "all .2s" }} onClick={() => { const next = { ...sizePrefs, body_type: sizePrefs.body_type === o.v ? null : o.v }; setSizePrefs(next); API.updateProfile({ size_prefs: next }); }}>{o.l}</div>;
+                    })}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 8 }}>Fit Style</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {[{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"}].map(o => {
+                      const on = sizePrefs.fit === o.v;
+                      return <div key={o.v} style={{ padding: "7px 13px", background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.03)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.07)"}`, borderRadius: 100, cursor: "pointer", fontSize: 12, fontWeight: 500, color: on ? "#C9A96E" : "rgba(255,255,255,.5)", transition: "all .2s" }} onClick={() => { const next = { ...sizePrefs, fit: sizePrefs.fit === o.v ? null : o.v }; setSizePrefs(next); API.updateProfile({ size_prefs: next }); }}>{o.l}</div>;
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 10 }}>Specific Sizes <span style={{ color: "rgba(255,255,255,.12)", fontWeight: 400, letterSpacing: 0 }}>— optional</span></div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {[
+                      { label: "Tops", key: "tops", opts: ["XS","S","M","L","XL","XXL","XXXL"] },
+                      { label: "Bottoms", key: "bottoms", opts: ["24","26","28","30","32","34","36","38","40","42"] },
+                      { label: "Jeans", key: "jeans", opts: ["24","25","26","27","28","29","30","31","32","33","34","36","38","40"] },
+                      { label: "Shorts", key: "shorts", opts: ["XS","S","M","L","XL","XXL"] },
+                      { label: "Outerwear", key: "outerwear", opts: ["XS","S","M","L","XL","XXL"] },
+                      { label: "Dresses", key: "dresses", opts: ["0","2","4","6","8","10","12","14","16","18","20","XS","S","M","L","XL"] },
+                      { label: "Shoes", key: "shoes", opts: ["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14"] },
+                      { label: "Socks", key: "socks", opts: ["S","M","L","XL"] },
+                    ].map(({ label, key, opts }) => {
+                      const val = sizePrefs.sizes?.[key] || "";
+                      return (
+                        <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 13, color: "rgba(255,255,255,.45)" }}>{label}</span>
+                          <select value={val} onChange={e => { const next = { ...sizePrefs, sizes: { ...(sizePrefs.sizes || {}), [key]: e.target.value || null } }; setSizePrefs(next); API.updateProfile({ size_prefs: next }); }} style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, color: val ? "#fff" : "rgba(255,255,255,.2)", fontSize: 13, padding: "7px 10px", fontFamily: "'Outfit'", cursor: "pointer", outline: "none", minWidth: 90 }}>
+                            <option value="">Not set</option>
+                            {opts.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
 
               <div className="sec-t">Refer & earn</div>

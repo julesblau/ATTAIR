@@ -26,7 +26,7 @@ router.post("/", requireAuth, async (req, res) => {
     // Get user's budget preferences
     const { data: profile } = await supabase
       .from("profiles")
-      .select("budget_min, budget_max")
+      .select("budget_min, budget_max, size_prefs")
       .eq("id", req.userId)
       .single();
 
@@ -42,7 +42,7 @@ router.post("/", requireAuth, async (req, res) => {
       imageUrl = scan?.image_url || null;
     }
 
-    const results = await findProductsForItems(items, gender, profile?.budget_min, profile?.budget_max, imageUrl);
+    const results = await findProductsForItems(items, gender, profile?.budget_min, profile?.budget_max, imageUrl, profile?.size_prefs || {});
 
     // Persist tier results back to the scan row
     if (scan_id) {

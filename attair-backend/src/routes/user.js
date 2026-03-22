@@ -54,7 +54,7 @@ router.get("/status", requireAuth, async (req, res) => {
 router.get("/profile", requireAuth, async (req, res) => {
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, display_name, phone, avatar_url, gender_pref, budget_min, budget_max, tier, created_at, referral_code")
+    .select("id, display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs, tier, created_at, referral_code")
     .eq("id", req.userId)
     .single();
 
@@ -64,7 +64,7 @@ router.get("/profile", requireAuth, async (req, res) => {
 
 // ─── PATCH /api/user/profile ────────────────────────────────
 router.patch("/profile", requireAuth, async (req, res) => {
-  const { display_name, phone, avatar_url, gender_pref, budget_min, budget_max } = req.body;
+  const { display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs } = req.body;
 
   const updates = {};
   if (display_name !== undefined) updates.display_name = display_name;
@@ -73,6 +73,7 @@ router.patch("/profile", requireAuth, async (req, res) => {
   if (gender_pref !== undefined) updates.gender_pref = gender_pref;
   if (budget_min !== undefined) updates.budget_min = budget_min;
   if (budget_max !== undefined) updates.budget_max = budget_max;
+  if (size_prefs !== undefined) updates.size_prefs = size_prefs;
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "No fields to update" });
