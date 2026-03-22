@@ -779,13 +779,13 @@ export default function App() {
       .btn.ghost{background:rgba(255,255,255,.04);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.06)}
       .btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
 
-      .cam{position:fixed;inset:0;z-index:200;background:#000;display:flex;flex-direction:column}
-      .cam video{flex:1;object-fit:cover}
+      .cam{position:fixed;inset:0;z-index:200;background:#000;display:flex;flex-direction:column;overflow:hidden}
+      .cam video{flex:1;object-fit:cover;min-height:0}
       .cam-corners{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:260px;height:340px;pointer-events:none}
       .cc{position:absolute;width:28px;height:28px;border-color:#C9A96E;border-style:solid}
       .cc.tl{top:0;left:0;border-width:2px 0 0 2px;border-radius:6px 0 0 0}.cc.tr{top:0;right:0;border-width:2px 2px 0 0;border-radius:0 6px 0 0}
       .cc.bl{bottom:0;left:0;border-width:0 0 2px 2px;border-radius:0 0 0 6px}.cc.br{bottom:0;right:0;border-width:0 2px 2px 0;border-radius:0 0 6px 0}
-      .cam-bar{padding:24px;display:flex;align-items:center;justify-content:center;gap:36px;background:rgba(0,0,0,.85);backdrop-filter:blur(16px);padding-bottom:max(24px,env(safe-area-inset-bottom))}
+      .cam-bar{flex-shrink:0;padding:24px;display:flex;align-items:center;justify-content:center;gap:36px;background:rgba(0,0,0,.85);backdrop-filter:blur(16px);padding-bottom:max(24px,env(safe-area-inset-bottom))}
       .cam-x{background:none;border:none;color:#fff;font-family:'Outfit';font-size:15px;cursor:pointer}
       .shutter{width:64px;height:64px;border-radius:50%;background:#C9A96E;border:4px solid rgba(201,169,110,.25);cursor:pointer;transition:transform .15s}.shutter:active{transform:scale(.88)}
 
