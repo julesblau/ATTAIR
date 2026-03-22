@@ -818,7 +818,10 @@ export default function App() {
       .res-img-sec{position:relative;width:100%}
       .res-img{width:100%;aspect-ratio:3/4;max-height:48vh;object-fit:cover;display:block}
       .res-grad{position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(transparent,#0C0C0E)}
-      .res-new{position:absolute;top:14px;right:14px;background:rgba(0,0,0,.45);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.08);border-radius:100px;color:#fff;font-family:'Outfit';font-size:11px;font-weight:600;padding:7px 14px;cursor:pointer}
+      .res-new{position:absolute;top:14px;right:14px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border:none;border-radius:100px;color:#0C0C0E;font-family:'Outfit';font-size:12px;font-weight:700;padding:9px 16px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.35);transition:all .2s}.res-new:hover{background:#fff;transform:scale(1.03)}
+      .res-new svg{width:13px;height:13px;stroke:#0C0C0E;fill:none;stroke-width:2.2;flex-shrink:0}
+      .res-close{position:absolute;top:14px;left:14px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:50%;cursor:pointer;transition:all .2s}.res-close:hover{background:rgba(0,0,0,.7)}
+      .res-close svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
       .hs{position:absolute;transform:translate(-50%,-50%);cursor:pointer;transition:all .2s;z-index:10}
       .hs-ring{width:32px;height:32px;border-radius:50%;border:2px solid #C9A96E;display:flex;align-items:center;justify-content:center;background:rgba(12,12,14,.5);backdrop-filter:blur(4px);transition:all .2s}
       .hs.on .hs-ring{background:#C9A96E;transform:scale(1.15);box-shadow:0 0 0 4px rgba(201,169,110,.2)}
@@ -834,14 +837,11 @@ export default function App() {
       .pick-item.picked .pick-check{background:#C9A96E;border-color:#C9A96E}
       .pick-cta{position:sticky;bottom:80px;padding:12px 20px;z-index:10}
       .pick-cta button{width:100%;padding:16px;border-radius:14px;font-size:15px;font-weight:700;font-family:'Outfit';cursor:pointer;transition:all .2s;border:none}
-      .rng-wrap{position:relative;height:36px;display:flex;align-items:center;margin:4px 0}
-      .rng-track{position:absolute;left:0;right:0;height:4px;background:rgba(255,255,255,.08);border-radius:2px;pointer-events:none}
-      .rng-fill{position:absolute;height:4px;background:#C9A96E;border-radius:2px;pointer-events:none}
-      .rng-wrap input[type=range]{position:absolute;width:100%;margin:0;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none}
-      .rng-wrap input[type=range]::-webkit-slider-runnable-track{background:transparent;height:4px}
-      .rng-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#C9A96E;pointer-events:all;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);border:2px solid #1a1a1e;margin-top:-10px}
-      .rng-wrap input[type=range]::-moz-range-track{background:transparent;height:4px}
-      .rng-wrap input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#C9A96E;pointer-events:all;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);border:2px solid #1a1a1e}
+      .budget-input-wrap{flex:1;display:flex;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 14px;gap:4px;transition:border-color .2s}
+      .budget-input-wrap:focus-within{border-color:rgba(201,169,110,.4)}
+      .budget-input-wrap input{background:none;border:none;color:#fff;font-family:'Outfit';font-size:20px;font-weight:700;width:100%;outline:none}
+      .budget-input-wrap input::placeholder{color:rgba(255,255,255,.15)}
+      .budget-input-wrap span{color:rgba(255,255,255,.3);font-size:16px;font-weight:600;flex-shrink:0}
       .item-opts-overlay{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.65);backdrop-filter:blur(4px)}
       .item-opts-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#111114;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,.08);padding:20px 20px;padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:251;animation:slideIn .22s ease;max-height:82vh;overflow-y:auto}
       .item-opts-handle{width:36px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;margin:0 auto 18px}
@@ -1124,7 +1124,8 @@ export default function App() {
               {/* Image with toggleable hotspots */}
               <div className="res-img-sec">
                 <img src={img} className="res-img" alt="" /><div className="res-grad" />
-                <button className="res-new" onClick={reset}>New scan</button>
+                <button className="res-close" onClick={reset}><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
+                <button className="res-new" onClick={reset}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>New scan</button>
                 {results.items.map((item, i) => {
                   const py = item.position_y != null ? Math.max(0.08, Math.min(0.85, item.position_y)) : (CAT_POSITIONS[item.category] || 0.5);
                   const px = 0.5 + (i % 2 === 0 ? -0.22 : 0.22);
@@ -1215,7 +1216,8 @@ export default function App() {
               {/* Image with hotspots — only picked items */}
               <div className="res-img-sec">
                 <img src={img} className="res-img" alt="" /><div className="res-grad" />
-                <button className="res-new" onClick={reset}>New scan</button>
+                <button className="res-close" onClick={reset}><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
+                <button className="res-new" onClick={reset}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>New scan</button>
                 {results.items.map((item, i) => {
                   if (!pickedItems.has(i)) return null;
                   const py = item.position_y != null ? Math.max(0.08, Math.min(0.85, item.position_y)) : (CAT_POSITIONS[item.category] || 0.5);
@@ -1533,7 +1535,6 @@ export default function App() {
           else if (["shoe","sneaker","boot","sandal","loafer","heel"].some(k=>combined.includes(k))||cat==="shoes") sizeInfo = { key:"shoes", label:"Shoe size", opts:["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14"] };
           else if (["sock"].some(k=>combined.includes(k))) sizeInfo = { key:"socks", label:"Sock size", opts:["S","M","L","XL"] };
 
-          const SLIDER_MAX = 500;
           const bMin = ov.budgetMin ?? budgetMin;
           const bMax = ov.budgetMax ?? budgetMax;
           const spVal = ov.sizePrefs || {};
@@ -1561,30 +1562,37 @@ export default function App() {
                 {/* Budget */}
                 <div style={{ marginBottom: 24 }}>
                   <div className="item-opts-label">Budget range for this item</div>
-                  {/* Value labels */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-                    <div>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginRight: 3 }}>$</span>
-                      <span style={{ fontSize: 24, fontWeight: 700, color: "#fff" }}>{bMin}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div className="budget-input-wrap">
+                      <span>$</span>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={bMin || ""}
+                        onChange={e => setOv(o2 => ({ ...(o2||ov), budgetMin: parseInt(e.target.value) || 0 }))}
+                        onBlur={() => { if (bMin >= bMax) setOv(o2 => ({ ...(o2||ov), budgetMax: bMin + 50 })); }}
+                      />
                     </div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>—</div>
-                    <div>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginRight: 3 }}>$</span>
-                      <span style={{ fontSize: 24, fontWeight: 700, color: "#fff" }}>{bMax === SLIDER_MAX ? `${SLIDER_MAX}+` : bMax}</span>
+                    <span style={{ color: "rgba(255,255,255,.2)", fontSize: 18, flexShrink: 0 }}>—</span>
+                    <div className="budget-input-wrap">
+                      <span>$</span>
+                      <input
+                        type="number"
+                        placeholder="0"
+                        value={bMax || ""}
+                        onChange={e => setOv(o2 => ({ ...(o2||ov), budgetMax: parseInt(e.target.value) || 0 }))}
+                        onBlur={() => { if (bMax <= bMin) setOv(o2 => ({ ...(o2||ov), budgetMax: bMin + 50 })); }}
+                      />
                     </div>
                   </div>
-                  {/* Dual-range slider */}
-                  <div className="rng-wrap">
-                    <div className="rng-track" />
-                    <div className="rng-fill" style={{ left: `${(bMin/SLIDER_MAX)*100}%`, right: `${100-(bMax/SLIDER_MAX)*100}%` }} />
-                    <input type="range" min={0} max={SLIDER_MAX} step={5} value={bMin}
-                      onChange={e => { const v = Math.min(parseInt(e.target.value), bMax - 5); setOv(o2 => ({ ...(o2||ov), budgetMin: v })); }} />
-                    <input type="range" min={0} max={SLIDER_MAX} step={5} value={bMax}
-                      onChange={e => { const v = Math.max(parseInt(e.target.value), bMin + 5); setOv(o2 => ({ ...(o2||ov), budgetMax: v })); }} />
-                  </div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 8 }}>
-                    Budget tier: under ${bMin} · Mid: ${bMin}–${bMax} · Premium: ${bMax}+
-                  </div>
+                  {bMax > 0 && bMax <= bMin && (
+                    <div style={{ fontSize: 11, color: "rgba(255,100,100,.7)", marginTop: 6 }}>Max must be greater than min</div>
+                  )}
+                  {bMin >= 0 && bMax > bMin && (
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 6 }}>
+                      Budget tier: under ${bMin} · Mid: ${bMin}–${bMax} · Premium: ${bMax}+
+                    </div>
+                  )}
                 </div>
 
                 {/* Body type */}
