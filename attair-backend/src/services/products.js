@@ -260,9 +260,11 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
   const genderWords = ["men's", "mens", "women's", "womens"];
   const hasGender = (q) => genderWords.some(w => q.toLowerCase().includes(w));
 
-  // Derive size/fit/body modifiers from prefs
-  const bodyTerm = BODY_TYPE_TERMS[sizePrefs.body_type] || null;
-  const fitTerm = FIT_TERMS[sizePrefs.fit] || null;
+  // Derive size/fit/body modifiers from prefs (body_type and fit are now arrays)
+  const bodyTypes = Array.isArray(sizePrefs.body_type) ? sizePrefs.body_type : (sizePrefs.body_type ? [sizePrefs.body_type] : []);
+  const fitStyles = Array.isArray(sizePrefs.fit) ? sizePrefs.fit : (sizePrefs.fit ? [sizePrefs.fit] : []);
+  const bodyTerm = BODY_TYPE_TERMS[bodyTypes[0]] || null;
+  const fitTerm = FIT_TERMS[fitStyles[0]] || null;
   const sizeTerm = getSizeTermForItem(item, sizePrefs);
 
   // Build 2 queries: Claude's search query + description-based
@@ -353,17 +355,22 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}) {
   if (!isMale && (title.includes("men's ") || title.includes("mens "))) score -= 40;
   if (/\b(set of|pack of|\d+\s*pack|bundle)\b/i.test(product.title || "")) score -= 25;
 
-  // Size preference scoring
-  const bodyTerm = BODY_TYPE_TERMS[sizePrefs.body_type];
-  if (bodyTerm) {
-    if (title.includes(bodyTerm.toLowerCase())) score += 15;
-    const opposites = BODY_TYPE_OPPOSITES[sizePrefs.body_type] || [];
-    for (const opp of opposites) {
-      if (title.includes(opp.toLowerCase())) { score -= 25; break; }
-    }
+  // Size preference scoring (body_type and fit are arrays)
+  const bodyTypes = Array.isArray(sizePrefs.body_type) ? sizePrefs.body_type : (sizePrefs.body_type ? [sizePrefs.body_type] : []);
+  const fitStyles = Array.isArray(sizePrefs.fit) ? sizePrefs.fit : (sizePrefs.fit ? [sizePrefs.fit] : []);
+  for (const bt of bodyTypes) {
+    const bodyTerm = BODY_TYPE_TERMS[bt];
+    if (bodyTerm && title.includes(bodyTerm.toLowerCase())) { score += 15; break; }
   }
-  const fitTerm = FIT_TERMS[sizePrefs.fit];
-  if (fitTerm && title.includes(fitTerm.toLowerCase())) score += 10;
+  // Penalise if title mentions a body type incompatible with ALL user preferences
+  const allOpposites = bodyTypes.flatMap(bt => BODY_TYPE_OPPOSITES[bt] || []);
+  for (const opp of allOpposites) {
+    if (title.includes(opp.toLowerCase())) { score -= 25; break; }
+  }
+  for (const fs of fitStyles) {
+    const fitTerm = FIT_TERMS[fs];
+    if (fitTerm && title.includes(fitTerm.toLowerCase())) { score += 10; break; }
+  }
 
   return score;
 }

@@ -8,11 +8,14 @@ const router = Router();
 /**
  * POST /api/find-products
  *
- * Request:  { items: [...identified items], gender: "male"|"female", scan_id?: "uuid" }
+ * Request:  { items: [...identified items], gender: "male"|"female", scan_id?: "uuid",
+ *             budget_min?: number, budget_max?: number, size_prefs?: object }
  * Response: [ { item_index, brand_verified, tiers: { budget, mid, premium } } ]
+ *
+ * budget_min/max and size_prefs override profile defaults when provided.
  */
 router.post("/", requireAuth, async (req, res) => {
-  const { items, gender, scan_id } = req.body;
+  const { items, gender, scan_id, budget_min: reqBudgetMin, budget_max: reqBudgetMax, size_prefs: reqSizePrefs } = req.body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Missing or empty items array" });
@@ -23,12 +26,17 @@ router.post("/", requireAuth, async (req, res) => {
   }
 
   try {
-    // Get user's budget preferences
+    // Get user's profile defaults
     const { data: profile } = await supabase
       .from("profiles")
       .select("budget_min, budget_max, size_prefs")
       .eq("id", req.userId)
       .single();
+
+    // Per-scan overrides take priority over profile defaults
+    const budgetMin = reqBudgetMin != null ? reqBudgetMin : profile?.budget_min;
+    const budgetMax = reqBudgetMax != null ? reqBudgetMax : profile?.budget_max;
+    const sizePrefs = reqSizePrefs != null ? reqSizePrefs : (profile?.size_prefs || {});
 
     // Get the scan's image URL for Google Lens visual search
     let imageUrl = null;
@@ -42,7 +50,7 @@ router.post("/", requireAuth, async (req, res) => {
       imageUrl = scan?.image_url || null;
     }
 
-    const results = await findProductsForItems(items, gender, profile?.budget_min, profile?.budget_max, imageUrl, profile?.size_prefs || {});
+    const results = await findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs);
 
     // Persist tier results back to the scan row
     if (scan_id) {
