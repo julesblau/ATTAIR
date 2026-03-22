@@ -316,6 +316,12 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   // Must have a link to a product page
   if (!link) return -1;
 
+  // Reject social media, blogs, and other non-shopping domains
+  const NON_SHOPPING = ["instagram.com", "twitter.com", "x.com", "pinterest.com", "tiktok.com",
+    "facebook.com", "reddit.com", "youtube.com", "tumblr.com", "snapchat.com",
+    "threads.net", "depop.com/g/", "vsco.co"];
+  if (NON_SHOPPING.some(d => link.toLowerCase().includes(d))) return -1;
+
   // Text results MUST have a price (otherwise useless for tiering)
   // Lens results WITHOUT a price are still valuable — they're visual matches
   if (!isFromLens && price === null) return -1;

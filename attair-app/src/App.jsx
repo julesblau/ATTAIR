@@ -1347,7 +1347,9 @@ export default function App() {
                     </div>
 
 
-                    <div style={{ fontSize: 20, fontWeight: 700, color: "#C9A96E", marginBottom: 18 }}>{item.price_range}</div>
+                    {item.status !== "verified" && item.price_range && (
+                      <div style={{ fontSize: 13, color: "rgba(255,255,255,.25)", marginBottom: 14, fontStyle: "italic" }}>Typical retail: {item.price_range}</div>
+                    )}
 
                     {/* Three-tier product cards */}
                     <div className="sec-t">
