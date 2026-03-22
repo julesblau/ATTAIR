@@ -411,7 +411,8 @@ export default function App() {
   const [itemSettingsIdx, setItemSettingsIdx] = useState(null); // which item's popup is open
 
   // ─── Crop ─────────────────────────────────────────────────
-  const [cropPending, setCropPending] = useState(null); // { src, base64, mime }
+  const [cropPending, setCropPending] = useState(null); // { src, base64, mime, source }
+  const [cropMode, setCropMode] = useState(false); // true = editing handles shown
   const [crop, setCrop] = useState();
   const [completedCrop, setCompletedCrop] = useState();
   const cropImgRef = useRef(null);
@@ -559,7 +560,7 @@ export default function App() {
     c.getContext("2d").drawImage(v, 0, 0);
     camStop();
     const r = await resizeImage(c.toDataURL("image/jpeg", 0.85));
-    openCrop(r);
+    openCrop(r, "camera");
   };
   const camStop = () => {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
@@ -605,10 +606,22 @@ export default function App() {
   };
 
   // ─── Crop helpers ─────────────────────────────────────────
-  const openCrop = (r) => {
-    setCropPending({ src: r.dataUrl, base64: r.base64, mime: r.mime });
+  const openCrop = (r, source = "file") => {
+    setCropPending({ src: r.dataUrl, base64: r.base64, mime: r.mime, source });
+    setCropMode(false);
     setCrop(undefined);
     setCompletedCrop(undefined);
+  };
+
+  const retakeCrop = () => {
+    const source = cropPending?.source;
+    setCropPending(null);
+    setCropMode(false);
+    if (source === "camera") {
+      camStart();
+    } else {
+      fileRef.current?.click();
+    }
   };
 
   const onCropImageLoad = (e) => {
@@ -1713,29 +1726,53 @@ export default function App() {
       {cropPending && (
         <div className="crop-screen">
           <div className="crop-stage">
-            <ReactCrop
-              crop={crop}
-              onChange={c => setCrop(c)}
-              onComplete={c => setCompletedCrop(c)}
-              minWidth={40}
-              minHeight={40}
-            >
+            {cropMode ? (
+              <ReactCrop
+                crop={crop}
+                onChange={c => setCrop(c)}
+                onComplete={c => setCompletedCrop(c)}
+                minWidth={40}
+                minHeight={40}
+              >
+                <img
+                  ref={cropImgRef}
+                  src={cropPending.src}
+                  onLoad={onCropImageLoad}
+                  style={{ maxWidth: "100%", maxHeight: "calc(100vh - 120px)", display: "block" }}
+                  alt=""
+                />
+              </ReactCrop>
+            ) : (
               <img
-                ref={cropImgRef}
                 src={cropPending.src}
-                onLoad={onCropImageLoad}
-                style={{ maxWidth: "100%", maxHeight: "calc(100vh - 120px)", display: "block" }}
+                style={{ maxWidth: "100%", maxHeight: "calc(100vh - 120px)", display: "block", borderRadius: 12 }}
                 alt=""
               />
-            </ReactCrop>
+            )}
           </div>
           <div className="crop-bar">
-            <button onClick={skipCrop} style={{ flex: 1, padding: "14px 0", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, color: "rgba(255,255,255,.55)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-              Skip
-            </button>
-            <button onClick={applyCrop} style={{ flex: 2, padding: "14px 0", background: "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-              Use photo
-            </button>
+            {cropMode ? (
+              <>
+                <button onClick={() => setCropMode(false)} style={{ flex: 1, padding: "14px 0", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, color: "rgba(255,255,255,.55)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                  Back
+                </button>
+                <button onClick={applyCrop} style={{ flex: 2, padding: "14px 0", background: "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                  Apply crop
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={retakeCrop} style={{ flex: 1, padding: "14px 0", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, color: "rgba(255,255,255,.55)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                  Re-take
+                </button>
+                <button onClick={() => setCropMode(true)} style={{ flex: 1, padding: "14px 0", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                  Crop
+                </button>
+                <button onClick={skipCrop} style={{ flex: 2, padding: "14px 0", background: "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                  Use photo
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
