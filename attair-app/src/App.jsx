@@ -653,7 +653,7 @@ export default function App() {
   const runProductSearch = async () => {
     if (!results || pickedItems.size === 0) return;
 
-    const picked = results.items.filter((_, i) => pickedItems.has(i));
+    const picked = [...pickedItems].sort((a, b) => a - b).map(i => ({ ...results.items[i], _scan_item_index: i }));
     const pickedIndices = [...pickedItems].sort((a, b) => a - b);
 
     setPhase("searching");
@@ -667,11 +667,9 @@ export default function App() {
       const searchResults = await API.findProducts(picked, results.gender, scanId);
       setResults(prev => {
         if (!prev) return prev;
-        let searchIdx = 0;
         const updated = prev.items.map((item, idx) => {
           if (!pickedItems.has(idx)) return item; // Skip unpicked items
-          const sr = Array.isArray(searchResults) ? (searchResults.find(s => s.item_index === searchIdx) || searchResults[searchIdx]) : null;
-          searchIdx++;
+          const sr = Array.isArray(searchResults) ? searchResults.find(s => s.item_index === idx) : null;
           if (!sr || !sr.tiers) return { ...item, status: "failed" };
           return { ...item, status: "verified", brand_verified: sr.brand_verified || false, tiers: sr.tiers };
         });
@@ -1274,10 +1272,10 @@ export default function App() {
               const items = h.items || [];
               setResults({ gender: h.detected_gender || "male", summary: h.summary || "", items: items.map(it => ({ ...it, status: h.tiers ? "verified" : "identified", tiers: null })) });
               if (h.tiers && Array.isArray(h.tiers)) {
-                setResults(prev => prev ? { ...prev, items: prev.items.map((item, idx) => { const sr = h.tiers[idx]; return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev);
+                setResults(prev => prev ? { ...prev, items: prev.items.map((item, idx) => { const sr = h.tiers.find(t => t.item_index === idx); return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev);
               }
               setImg(h.image_url || h.image_thumbnail || null);
-              setScanId(h.id); setSelIdx(0); setPhase("done"); setTab("scan");
+              setScanId(h.id); setSelIdx(0); setPickedItems(new Set(h.tiers.map(t => t.item_index))); setPhase("done"); setTab("scan");
             };
             return filteredHistory.length === 0 && history.length === 0
               ? <div className="empty"><div className="empty-i">◎</div><div className="empty-t">No scans yet</div><div className="empty-s">Your scan history will appear here</div></div>

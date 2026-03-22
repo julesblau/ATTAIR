@@ -531,7 +531,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       Object.values(tiers).some(t => t?.is_identified_brand);
 
     return {
-      item_index: i,
+      item_index: rawItem._scan_item_index ?? i,
       brand_verified: brandVerified,
       tiers: {
         budget: tiers.budget || fallbackTier(item, "budget", tierBounds),
