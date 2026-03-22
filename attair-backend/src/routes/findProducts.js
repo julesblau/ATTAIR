@@ -8,14 +8,14 @@ const router = Router();
 /**
  * POST /api/find-products
  *
- * Request:  { items: [...identified items], gender: "male"|"female", scan_id?: "uuid",
- *             budget_min?: number, budget_max?: number, size_prefs?: object }
+ * Request:  { items: [...identified items], gender: "male"|"female", scan_id?: "uuid" }
  * Response: [ { item_index, brand_verified, tiers: { budget, mid, premium } } ]
  *
- * budget_min/max and size_prefs override profile defaults when provided.
+ * Per-item budget and size overrides are embedded in each item as _budget and _size_prefs.
+ * Profile values are used as defaults for items without overrides.
  */
 router.post("/", requireAuth, async (req, res) => {
-  const { items, gender, scan_id, budget_min: reqBudgetMin, budget_max: reqBudgetMax, size_prefs: reqSizePrefs } = req.body;
+  const { items, gender, scan_id } = req.body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Missing or empty items array" });
@@ -26,17 +26,12 @@ router.post("/", requireAuth, async (req, res) => {
   }
 
   try {
-    // Get user's profile defaults
+    // Get user's profile defaults (used as fallback when no per-item override)
     const { data: profile } = await supabase
       .from("profiles")
       .select("budget_min, budget_max, size_prefs")
       .eq("id", req.userId)
       .single();
-
-    // Per-scan overrides take priority over profile defaults
-    const budgetMin = reqBudgetMin != null ? reqBudgetMin : profile?.budget_min;
-    const budgetMax = reqBudgetMax != null ? reqBudgetMax : profile?.budget_max;
-    const sizePrefs = reqSizePrefs != null ? reqSizePrefs : (profile?.size_prefs || {});
 
     // Get the scan's image URL for Google Lens visual search
     let imageUrl = null;
@@ -50,7 +45,7 @@ router.post("/", requireAuth, async (req, res) => {
       imageUrl = scan?.image_url || null;
     }
 
-    const results = await findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs);
+    const results = await findProductsForItems(items, gender, profile?.budget_min, profile?.budget_max, imageUrl, profile?.size_prefs || {});
 
     // Persist tier results back to the scan row
     if (scan_id) {

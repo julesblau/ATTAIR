@@ -442,7 +442,22 @@ function fallbackTier(item, tier, tierBounds) {
 // ═════════════════════════════════════════════════════════════
 export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}) {
   cleanupExpiredCache();
-  const tierBounds = getTierBounds(budgetMin, budgetMax);
+  const defaultTierBounds = getTierBounds(budgetMin, budgetMax);
+  const defaultSizePrefs = sizePrefs;
+
+  // Helper: derive per-item tier bounds from a single budget target number.
+  // _budget = user's max comfortable spend; budget tier = under 40%, mid = 40-100%, premium = over 100%.
+  function getItemTierBounds(item) {
+    if (item._budget != null && item._budget > 0) {
+      const max = item._budget;
+      const min = Math.round(max * 0.4);
+      return getTierBounds(min, max);
+    }
+    return defaultTierBounds;
+  }
+  function getItemSizePrefs(item) {
+    return item._size_prefs != null ? item._size_prefs : defaultSizePrefs;
+  }
 
   // ── Step 1: Google Lens on the full image ─────────
   const lensResults = await googleLensSearch(imageUrl);
@@ -472,7 +487,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     });
     // Text search if we have fewer than 3 priced Lens results
     if (pricedLens.length < 3) {
-      const textResults = await textSearchForItem(item, gender, tierBounds, sizePrefs);
+      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item));
       itemPools[i].text = textResults;
       console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
     }
@@ -485,6 +500,8 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
   // 2. Budget = cheaper alternative, Premium = pricier alternative
   // 3. If no original found, fall back to best-in-each-tier as before
   const output = items.map((rawItem, i) => {
+    const itemTierBounds = getItemTierBounds(rawItem);
+    const itemSizePrefs = getItemSizePrefs(rawItem);
     const item = { ...rawItem, gender };
     const pool = itemPools[i];
     const brandLower = (item.brand || "").toLowerCase();
@@ -508,7 +525,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       .map(({ product, isLens }) => ({
         product,
         isLens,
-        score: scoreProduct(product, item, isLens, sizePrefs),
+        score: scoreProduct(product, item, isLens, itemSizePrefs),
         price: extractPrice(product.price) || extractPrice(product.extracted_price),
       }))
       .filter(s => s.score > 0)
@@ -531,7 +548,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       }
     }
 
-    console.log(`[Tier] "${item.name}": ${priced.length} priced + ${unpriced.length} unpriced (bounds: $${tierBounds.min}-$${tierBounds.max})`);
+    console.log(`[Tier] "${item.name}": ${priced.length} priced + ${unpriced.length} unpriced (bounds: $${itemTierBounds.min}-$${itemTierBounds.max})`);
     if (allScored.length > 0) {
       for (const s of allScored.slice(0, 3)) {
         console.log(`  → score=${s.score} ${s.price != null ? "$" + s.price : "no-price"} ${s.isLens ? "[LENS]" : "[TEXT]"} "${(s.product.title || "").slice(0, 55)}"`);
@@ -576,18 +593,18 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
 
     } else {
       // ── NO ORIGINAL: partition by price as before ──
-      const budgetPool = priced.filter(s => s.price < tierBounds.min).sort((a, b) => b.score - a.score);
-      const midPool = priced.filter(s => s.price >= tierBounds.min && s.price <= tierBounds.max).sort((a, b) => b.score - a.score);
-      const premiumPool = priced.filter(s => s.price > tierBounds.max).sort((a, b) => b.score - a.score);
+      const budgetPool = priced.filter(s => s.price < itemTierBounds.min).sort((a, b) => b.score - a.score);
+      const midPool = priced.filter(s => s.price >= itemTierBounds.min && s.price <= itemTierBounds.max).sort((a, b) => b.score - a.score);
+      const premiumPool = priced.filter(s => s.price > itemTierBounds.max).sort((a, b) => b.score - a.score);
 
       tiers.budget = pickBestAvailable(budgetPool, "budget");
       tiers.mid = pickBestAvailable(midPool, "mid");
       tiers.premium = pickBestAvailable(premiumPool, "premium");
 
       // Fill empty tiers with widened ranges
-      if (!tiers.budget) tiers.budget = pickBestAvailable(priced.filter(s => s.price < tierBounds.min * 1.5), "budget");
+      if (!tiers.budget) tiers.budget = pickBestAvailable(priced.filter(s => s.price < itemTierBounds.min * 1.5), "budget");
       if (!tiers.mid) tiers.mid = pickBestAvailable(priced, "mid");
-      if (!tiers.premium) tiers.premium = pickBestAvailable(priced.filter(s => s.price > tierBounds.max * 0.7), "premium");
+      if (!tiers.premium) tiers.premium = pickBestAvailable(priced.filter(s => s.price > itemTierBounds.max * 0.7), "premium");
 
       // Still empty? Use unpriced Lens results
       if (!tiers.budget) tiers.budget = pickBestAvailable(unpriced, "budget");
@@ -602,9 +619,9 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       item_index: rawItem._scan_item_index ?? i,
       brand_verified: brandVerified,
       tiers: {
-        budget: tiers.budget || fallbackTier(item, "budget", tierBounds),
-        mid: tiers.mid || fallbackTier(item, "mid", tierBounds),
-        premium: tiers.premium || fallbackTier(item, "premium", tierBounds),
+        budget: tiers.budget || fallbackTier(item, "budget", itemTierBounds),
+        mid: tiers.mid || fallbackTier(item, "mid", itemTierBounds),
+        premium: tiers.premium || fallbackTier(item, "premium", itemTierBounds),
       },
     };
   });

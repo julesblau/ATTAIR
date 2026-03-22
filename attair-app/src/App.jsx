@@ -133,10 +133,10 @@ const API = {
     return await res.json();
   },
 
-  async findProducts(items, gender, scanId, budgetMin, budgetMax, sizePrefs) {
+  async findProducts(items, gender, scanId) {
     const res = await authFetch(`${API_BASE}/api/find-products`, {
       method: "POST",
-      body: JSON.stringify({ items, gender, scan_id: scanId, budget_min: budgetMin, budget_max: budgetMax, size_prefs: sizePrefs }),
+      body: JSON.stringify({ items, gender, scan_id: scanId }),
     });
     if (!res.ok) { const data = await res.json(); throw new Error(data.message || "Product search failed"); }
     return await res.json();
@@ -420,11 +420,9 @@ export default function App() {
   const [camReady, setCamReady] = useState(false);
   const [camFacing, setCamFacing] = useState("environment"); // "environment" (back) | "user" (front)
 
-  // ─── Per-scan overrides (reset each new scan) ─────────────
-  const [scanBudgetMin, setScanBudgetMin] = useState(50);
-  const [scanBudgetMax, setScanBudgetMax] = useState(100);
-  const [scanSizePrefs, setScanSizePrefs] = useState({ body_type: [], fit: [], sizes: {} });
-  const [scanSettingsOpen, setScanSettingsOpen] = useState(false);
+  // ─── Per-item overrides (reset each new scan) ─────────────
+  const [itemOverrides, setItemOverrides] = useState({}); // { [itemIdx]: { budget, sizePrefs } }
+  const [itemSettingsIdx, setItemSettingsIdx] = useState(null); // which item's popup is open
 
   // ─── Fetch user status on auth ────────────────────────────
   const refreshStatus = useCallback(async () => {
@@ -630,11 +628,8 @@ export default function App() {
       const identified = { gender: raw.gender || "male", summary: raw.summary || "", items, scanId: raw.scan_id, imageUrl: raw.image_url };
       setScanId(raw.scan_id);
       setResults(identified);
-      // Init per-scan overrides from profile defaults
-      setScanBudgetMin(budgetMin);
-      setScanBudgetMax(budgetMax);
-      setScanSizePrefs({ ...sizePrefs });
-      setScanSettingsOpen(false);
+      setItemOverrides({});
+      setItemSettingsIdx(null);
       setPhase("picking"); // Stop here — let user choose which items to search
 
       // Update status (scan count changed) — optimistic local update + server confirm
@@ -672,7 +667,12 @@ export default function App() {
   const runProductSearch = async () => {
     if (!results || pickedItems.size === 0) return;
 
-    const picked = [...pickedItems].sort((a, b) => a - b).map(i => ({ ...results.items[i], _scan_item_index: i }));
+    const picked = [...pickedItems].sort((a, b) => a - b).map(i => ({
+      ...results.items[i],
+      _scan_item_index: i,
+      _budget: itemOverrides[i]?.budget ?? null,
+      _size_prefs: itemOverrides[i]?.sizePrefs ?? null,
+    }));
     const pickedIndices = [...pickedItems].sort((a, b) => a - b);
 
     setPhase("searching");
@@ -683,7 +683,7 @@ export default function App() {
     setSelIdx(pickedIndices[0]); // Auto-select first picked item
 
     try {
-      const searchResults = await API.findProducts(picked, results.gender, scanId, scanBudgetMin, scanBudgetMax, scanSizePrefs);
+      const searchResults = await API.findProducts(picked, results.gender, scanId);
       setResults(prev => {
         if (!prev) return prev;
         const updated = prev.items.map((item, idx) => {
@@ -705,7 +705,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setScanSettingsOpen(false); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); };
 
   // ─── Save with backend persistence ────────────────────────
   const toggleSave = async (item) => {
@@ -849,12 +849,12 @@ export default function App() {
       .pick-item.picked .pick-check{background:#C9A96E;border-color:#C9A96E}
       .pick-cta{position:sticky;bottom:80px;padding:12px 20px;z-index:10}
       .pick-cta button{width:100%;padding:16px;border-radius:14px;font-size:15px;font-weight:700;font-family:'Outfit';cursor:pointer;transition:all .2s;border:none}
-      .scan-opts{margin:0 20px 8px;border:1px solid rgba(255,255,255,.06);border-radius:14px;overflow:hidden}
-      .scan-opts-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:rgba(255,255,255,.02);border:none;color:rgba(255,255,255,.45);font-family:'Outfit';font-size:12px;font-weight:600;cursor:pointer;text-align:left;letter-spacing:.3px}
-      .scan-opts-toggle svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .2s;flex-shrink:0}
-      .scan-opts-body{padding:14px 16px;display:flex;flex-direction:column;gap:16px;background:rgba(255,255,255,.01)}
-      .scan-opts-row{display:flex;align-items:center;gap:8px}
-      .scan-opts-label{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.2);margin-bottom:8px}
+      .item-opts-overlay{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.65);backdrop-filter:blur(4px)}
+      .item-opts-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#111114;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,.08);padding:20px 20px;padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:251;animation:slideIn .22s ease;max-height:82vh;overflow-y:auto}
+      .item-opts-handle{width:36px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;margin:0 auto 18px}
+      .item-opts-label{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.2);margin-bottom:8px}
+      .pick-item{display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent}
+      .pick-item.picked{background:rgba(201,169,110,.06);border-color:rgba(201,169,110,.25)}
 
       .v-banner{padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.03)}
       .v-steps{display:flex;gap:6px;flex:1}
@@ -1151,13 +1151,14 @@ export default function App() {
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>Tap items on the image or below</div>
               </div>
 
-              {/* Item pick list */}
+              {/* Item pick list — tap row to set per-item prefs, tap checkbox to toggle */}
               <div className="pick-list">
                 {results.items.map((item, i) => {
                   const isPicked = pickedItems.has(i);
+                  const ov = itemOverrides[i];
                   return (
-                    <div key={i} className={`pick-item ${isPicked ? "picked" : ""}`} onClick={() => setPickedItems(prev => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
-                      <div className="pick-check">
+                    <div key={i} className={`pick-item ${isPicked ? "picked" : ""}`} onClick={() => setItemSettingsIdx(i)}>
+                      <div className="pick-check" onClick={e => { e.stopPropagation(); setPickedItems(prev => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; }); }}>
                         {isPicked && <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6.5L5 9L9.5 3.5" fill="none" stroke="#0C0C0E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -1166,85 +1167,13 @@ export default function App() {
                           {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
                         </div>
                       </div>
-                      {item.identification_confidence && <ConfidenceRing value={item.identification_confidence} size={36} stroke={2.5} />}
+                      {ov?.budget
+                        ? <div style={{ fontSize: 11, fontWeight: 700, color: "#C9A96E", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>${ov.budget}</div>
+                        : <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", flexShrink: 0 }}>set prefs →</div>
+                      }
                     </div>
                   );
                 })}
-              </div>
-
-              {/* Per-scan search options */}
-              <div className="scan-opts">
-                <button className="scan-opts-toggle" onClick={() => setScanSettingsOpen(o => !o)}>
-                  <span>Search options — budget &amp; size</span>
-                  <svg viewBox="0 0 24 24" style={{ transform: scanSettingsOpen ? "rotate(180deg)" : "rotate(0deg)" }}><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-                {scanSettingsOpen && (
-                  <div className="scan-opts-body">
-                    {/* Budget */}
-                    <div>
-                      <div className="scan-opts-label">Budget for this scan</div>
-                      <div className="scan-opts-row">
-                        <div style={{ flex: 1, display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", borderRadius: 10, padding: "10px 12px" }}>
-                          <span style={{ color: "rgba(255,255,255,.25)", fontSize: 14, fontWeight: 600, marginRight: 3 }}>$</span>
-                          <input type="number" value={scanBudgetMin} onChange={e => setScanBudgetMin(Math.max(0, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, width: "100%", outline: "none" }} />
-                        </div>
-                        <span style={{ color: "rgba(255,255,255,.15)", fontSize: 13 }}>—</span>
-                        <div style={{ flex: 1, display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", borderRadius: 10, padding: "10px 12px" }}>
-                          <span style={{ color: "rgba(255,255,255,.25)", fontSize: 14, fontWeight: 600, marginRight: 3 }}>$</span>
-                          <input type="number" value={scanBudgetMax} onChange={e => setScanBudgetMax(Math.max(scanBudgetMin + 1, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, width: "100%", outline: "none" }} />
-                        </div>
-                      </div>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 6 }}>Budget: under ${scanBudgetMin} · Mid: ${scanBudgetMin}–${scanBudgetMax} · Premium: ${scanBudgetMax}+</div>
-                    </div>
-                    {/* Body type */}
-                    <div>
-                      <div className="scan-opts-label">Body type</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {[{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"}].map(o => {
-                          const on = (scanSizePrefs.body_type || []).includes(o.v);
-                          return <div key={o.v} style={{ padding: "6px 12px", background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.03)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.07)"}`, borderRadius: 100, cursor: "pointer", fontSize: 12, fontWeight: 500, color: on ? "#C9A96E" : "rgba(255,255,255,.45)", transition: "all .2s" }} onClick={() => { const a = scanSizePrefs.body_type || []; setScanSizePrefs(p => ({ ...p, body_type: a.includes(o.v) ? a.filter(x => x !== o.v) : [...a, o.v] })); }}>{o.l}</div>;
-                        })}
-                      </div>
-                    </div>
-                    {/* Fit style */}
-                    <div>
-                      <div className="scan-opts-label">Fit style</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {[{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"}].map(o => {
-                          const on = (scanSizePrefs.fit || []).includes(o.v);
-                          return <div key={o.v} style={{ padding: "6px 12px", background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.03)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.07)"}`, borderRadius: 100, cursor: "pointer", fontSize: 12, fontWeight: 500, color: on ? "#C9A96E" : "rgba(255,255,255,.45)", transition: "all .2s" }} onClick={() => { const a = scanSizePrefs.fit || []; setScanSizePrefs(p => ({ ...p, fit: a.includes(o.v) ? a.filter(x => x !== o.v) : [...a, o.v] })); }}>{o.l}</div>;
-                        })}
-                      </div>
-                    </div>
-                    {/* Specific sizes */}
-                    <div>
-                      <div className="scan-opts-label">Specific sizes <span style={{ color: "rgba(255,255,255,.12)", fontWeight: 400, letterSpacing: 0 }}>— optional</span></div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-                        {[
-                          { label: "Tops", key: "tops", opts: ["XS","S","M","L","XL","XXL","XXXL"] },
-                          { label: "Bottoms", key: "bottoms", opts: ["24","26","28","30","32","34","36","38","40","42"] },
-                          { label: "Jeans", key: "jeans", opts: ["24","25","26","27","28","29","30","31","32","33","34","36","38","40"] },
-                          { label: "Shorts", key: "shorts", opts: ["XS","S","M","L","XL","XXL"] },
-                          { label: "Outerwear", key: "outerwear", opts: ["XS","S","M","L","XL","XXL"] },
-                          { label: "Dresses", key: "dresses", opts: ["0","2","4","6","8","10","12","14","16","18","20","XS","S","M","L","XL"] },
-                          { label: "Shoes", key: "shoes", opts: ["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14"] },
-                          { label: "Socks", key: "socks", opts: ["S","M","L","XL"] },
-                        ].map(({ label, key, opts }) => {
-                          const val = scanSizePrefs.sizes?.[key] || "";
-                          return (
-                            <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <span style={{ fontSize: 12, color: "rgba(255,255,255,.4)" }}>{label}</span>
-                              <select value={val} onChange={e => setScanSizePrefs(p => ({ ...p, sizes: { ...(p.sizes || {}), [key]: e.target.value || null } }))} style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, color: val ? "#fff" : "rgba(255,255,255,.2)", fontSize: 12, padding: "6px 10px", fontFamily: "'Outfit'", cursor: "pointer", outline: "none", minWidth: 80 }}>
-                                <option value="" style={{ color: "#111", background: "#fff" }}>—</option>
-                                {opts.map(o => <option key={o} value={o} style={{ color: "#111", background: "#fff" }}>{o}</option>)}
-                              </select>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Search CTA */}
@@ -1593,6 +1522,111 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* ─── Per-item preferences popup ─────────────── */}
+        {itemSettingsIdx !== null && results?.items[itemSettingsIdx] && (() => {
+          const idx = itemSettingsIdx;
+          const item = results.items[idx];
+          const isPicked = pickedItems.has(idx);
+          const ov = itemOverrides[idx] || { budget: budgetMax, sizePrefs: { body_type: [...(sizePrefs.body_type||[])], fit: [...(sizePrefs.fit||[])], sizes: { ...(sizePrefs.sizes||{}) } } };
+          const setOv = (updater) => setItemOverrides(o => ({ ...o, [idx]: typeof updater === "function" ? updater(o[idx] || ov) : updater }));
+
+          // Determine the most relevant size for this item
+          const cat = (item.category||"").toLowerCase(), sub = (item.subcategory||"").toLowerCase(), combined = cat+" "+sub;
+          let sizeInfo = null;
+          if (["jean","denim"].some(k=>combined.includes(k))) sizeInfo = { key:"jeans", label:"Jean size", opts:["24","25","26","27","28","29","30","31","32","33","34","36","38","40"] };
+          else if (["short"].some(k=>combined.includes(k))) sizeInfo = { key:"shorts", label:"Shorts size", opts:["XS","S","M","L","XL","XXL"] };
+          else if (["pant","trouser","chino","legging"].some(k=>combined.includes(k))||cat==="bottom") sizeInfo = { key:"bottoms", label:"Bottom size", opts:["24","26","28","30","32","34","36","38","40","42"] };
+          else if (["shirt","tee","blouse","polo","sweater","hoodie","pullover","sweatshirt"].some(k=>combined.includes(k))||cat==="top") sizeInfo = { key:"tops", label:"Top size", opts:["XS","S","M","L","XL","XXL","XXXL"] };
+          else if (["jacket","coat","blazer","parka","bomber"].some(k=>combined.includes(k))||cat==="outerwear") sizeInfo = { key:"outerwear", label:"Outerwear size", opts:["XS","S","M","L","XL","XXL"] };
+          else if (["dress","gown","romper","jumpsuit","skirt"].some(k=>combined.includes(k))||cat==="dress") sizeInfo = { key:"dresses", label:"Dress size", opts:["0","2","4","6","8","10","12","14","16","XS","S","M","L","XL"] };
+          else if (["shoe","sneaker","boot","sandal","loafer","heel"].some(k=>combined.includes(k))||cat==="shoes") sizeInfo = { key:"shoes", label:"Shoe size", opts:["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14"] };
+          else if (["sock"].some(k=>combined.includes(k))) sizeInfo = { key:"socks", label:"Sock size", opts:["S","M","L","XL"] };
+
+          const budgetVal = ov.budget ?? budgetMax;
+          const spVal = ov.sizePrefs || {};
+
+          return (
+            <>
+              <div className="item-opts-overlay" onClick={() => setItemSettingsIdx(null)} />
+              <div className="item-opts-sheet">
+                <div className="item-opts-handle" />
+                {/* Header */}
+                <div style={{ marginBottom: 18 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 3 }}>{item.name}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)" }}>{item.subcategory || item.category}</div>
+                </div>
+
+                {/* Include toggle */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12, marginBottom: 20 }}
+                  onClick={() => setPickedItems(prev => { const n = new Set(prev); if (n.has(idx)) n.delete(idx); else n.add(idx); return n; })}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.6)" }}>Include in search</span>
+                  <div style={{ width: 42, height: 24, borderRadius: 12, background: isPicked ? "#C9A96E" : "rgba(255,255,255,.08)", position: "relative", transition: "background .2s", cursor: "pointer" }}>
+                    <div style={{ position: "absolute", top: 3, left: isPicked ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .2s" }} />
+                  </div>
+                </div>
+
+                {/* Budget */}
+                <div style={{ marginBottom: 20 }}>
+                  <div className="item-opts-label">My budget for this item</div>
+                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "14px 16px", gap: 4 }}>
+                    <span style={{ color: "rgba(255,255,255,.3)", fontSize: 22, fontWeight: 600 }}>$</span>
+                    <input
+                      type="number"
+                      value={budgetVal}
+                      onChange={e => setOv(o => ({ ...(o||ov), budget: Math.max(1, parseInt(e.target.value)||0) }))}
+                      style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 22, fontWeight: 700, width: "100%", outline: "none" }}
+                    />
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 6 }}>
+                    Budget: under ${Math.round(budgetVal*0.4)} · Mid: ${Math.round(budgetVal*0.4)}–${budgetVal} · Premium: ${budgetVal}+
+                  </div>
+                </div>
+
+                {/* Body type */}
+                <div style={{ marginBottom: 16 }}>
+                  <div className="item-opts-label">Body type</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                    {[{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"}].map(o => {
+                      const on = (spVal.body_type||[]).includes(o.v);
+                      return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"rgba(255,255,255,.03)", border:`1px solid ${on?"rgba(201,169,110,.4)":"rgba(255,255,255,.07)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"#C9A96E":"rgba(255,255,255,.45)", transition:"all .2s" }}
+                        onClick={() => { const a=spVal.body_type||[]; setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, body_type: a.includes(o.v)?a.filter(x=>x!==o.v):[...a,o.v] } })); }}>{o.l}</div>;
+                    })}
+                  </div>
+                </div>
+
+                {/* Fit style */}
+                <div style={{ marginBottom: sizeInfo ? 16 : 0 }}>
+                  <div className="item-opts-label">Fit style</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                    {[{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"}].map(o => {
+                      const on = (spVal.fit||[]).includes(o.v);
+                      return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"rgba(255,255,255,.03)", border:`1px solid ${on?"rgba(201,169,110,.4)":"rgba(255,255,255,.07)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"#C9A96E":"rgba(255,255,255,.45)", transition:"all .2s" }}
+                        onClick={() => { const a=spVal.fit||[]; setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, fit: a.includes(o.v)?a.filter(x=>x!==o.v):[...a,o.v] } })); }}>{o.l}</div>;
+                    })}
+                  </div>
+                </div>
+
+                {/* Relevant size */}
+                {sizeInfo && (
+                  <div style={{ marginTop: 0 }}>
+                    <div className="item-opts-label">{sizeInfo.label}</div>
+                    <select value={spVal.sizes?.[sizeInfo.key]||""} onChange={e => setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, sizes: { ...((o2||ov).sizePrefs?.sizes||{}), [sizeInfo.key]: e.target.value||null } } }))}
+                      style={{ width:"100%", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:10, color: spVal.sizes?.[sizeInfo.key]?"#fff":"rgba(255,255,255,.3)", fontSize:14, padding:"12px 14px", fontFamily:"'Outfit'", cursor:"pointer", outline:"none" }}>
+                      <option value="" style={{color:"#111",background:"#fff"}}>Not set</option>
+                      {sizeInfo.opts.map(o=><option key={o} value={o} style={{color:"#111",background:"#fff"}}>{o}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                <button onClick={() => setItemSettingsIdx(null)}
+                  style={{ width:"100%", marginTop:22, padding:15, background:"#C9A96E", color:"#0C0C0E", border:"none", borderRadius:14, fontFamily:"'Outfit'", fontSize:15, fontWeight:700, cursor:"pointer" }}>
+                  Done
+                </button>
+              </div>
+            </>
+          );
+        })()}
 
         {/* ─── Tab bar (3 tabs) ────────────────────────── */}
         <div className="tb">
