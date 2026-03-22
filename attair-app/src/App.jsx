@@ -403,6 +403,7 @@ export default function App() {
   const [phase, setPhase] = useState("idle");
   const [error, setError] = useState(null);
   const [selIdx, setSelIdx] = useState(null);
+  const [pickedItems, setPickedItems] = useState(new Set()); // indices of items user chose to search
   const [history, setHistory] = useState([]);
   const [saved, setSaved] = useState([]);
   const [fade, setFade] = useState("fi");
@@ -601,23 +602,21 @@ export default function App() {
   };
 
   // ═══════════════════════════════════════════════════════════
-  // SCAN ENGINE — now calls backend, not Anthropic directly
+  // SCAN ENGINE — Phase 1: Identify, then user picks items
   // ═══════════════════════════════════════════════════════════
   const runScan = async (base64, mime) => {
     if (!canScan()) return;
 
-    setPhase("identifying"); setResults(null); setSelIdx(null); setError(null); setScanId(null);
+    setPhase("identifying"); setResults(null); setSelIdx(null); setError(null); setScanId(null); setPickedItems(new Set());
 
     // Phase 1: Identify (backend handles Claude + dedup + rate limit + image storage)
-    let identified;
     try {
       const raw = await API.identifyClothing(base64, mime, prefs);
       let items = (raw.items || []).map(item => ({ ...item, status: "identified", tiers: null }));
-      identified = { gender: raw.gender || "male", summary: raw.summary || "", items, scanId: raw.scan_id, imageUrl: raw.image_url };
+      const identified = { gender: raw.gender || "male", summary: raw.summary || "", items, scanId: raw.scan_id, imageUrl: raw.image_url };
       setScanId(raw.scan_id);
       setResults(identified);
-      setSelIdx(0);
-      setPhase("identified");
+      setPhase("picking"); // Stop here — let user choose which items to search
 
       // Update status (scan count changed) — optimistic local update + server confirm
       setUserStatus(prev => prev ? { ...prev, scans_remaining_today: Math.max(0, (prev.scans_remaining_today ?? 3) - 1) } : prev);
@@ -627,13 +626,11 @@ export default function App() {
       if (showAds && scansLeft < 2) {
         setShowInterstitial(true);
       }
-      // After 2nd scan of the day, also show upgrade prompt
       if (showAds && scansLeft <= 1) {
         setTimeout(() => setUpgradeModal("ad_fatigue"), 800);
       }
     } catch (err) {
       setPhase("idle");
-      // Check if it's a rate limit error → show upgrade
       if (err.message.includes("scan limit") || err.message.includes("3/3")) {
         setUpgradeModal("scan_limit");
         setError("You've used all your free scans for today.");
@@ -647,19 +644,34 @@ export default function App() {
         console.error("Identify error:", err.message);
         setError("Something went wrong analyzing the photo. Please try again.");
       }
-      return;
     }
+  };
 
-    // Phase 2: Find products (three-tier via SerpAPI on backend)
+  // ═══════════════════════════════════════════════════════════
+  // SCAN ENGINE — Phase 2: Search products for picked items only
+  // ═══════════════════════════════════════════════════════════
+  const runProductSearch = async () => {
+    if (!results || pickedItems.size === 0) return;
+
+    const picked = results.items.filter((_, i) => pickedItems.has(i));
+    const pickedIndices = [...pickedItems].sort((a, b) => a - b);
+
     setPhase("searching");
-    setResults(prev => prev ? { ...prev, items: prev.items.map(it => ({ ...it, status: "searching" })) } : prev);
+    setResults(prev => prev ? {
+      ...prev,
+      items: prev.items.map((it, i) => pickedItems.has(i) ? { ...it, status: "searching" } : it)
+    } : prev);
+    setSelIdx(pickedIndices[0]); // Auto-select first picked item
 
     try {
-      const searchResults = await API.findProducts(identified.items, identified.gender, identified.scanId);
+      const searchResults = await API.findProducts(picked, results.gender, scanId);
       setResults(prev => {
         if (!prev) return prev;
+        let searchIdx = 0;
         const updated = prev.items.map((item, idx) => {
-          const sr = Array.isArray(searchResults) ? (searchResults.find(s => s.item_index === idx) || searchResults[idx]) : null;
+          if (!pickedItems.has(idx)) return item; // Skip unpicked items
+          const sr = Array.isArray(searchResults) ? (searchResults.find(s => s.item_index === searchIdx) || searchResults[searchIdx]) : null;
+          searchIdx++;
           if (!sr || !sr.tiers) return { ...item, status: "failed" };
           return { ...item, status: "verified", brand_verified: sr.brand_verified || false, tiers: sr.tiers };
         });
@@ -676,7 +688,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setError(null); setPhase("idle"); setScanId(null); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); };
 
   // ─── Save with backend persistence ────────────────────────
   const toggleSave = async (item) => {
@@ -806,6 +818,16 @@ export default function App() {
       .hs.on .hs-ring{background:#C9A96E;transform:scale(1.15);box-shadow:0 0 0 4px rgba(201,169,110,.2)}
       .hs-num{font-size:11px;font-weight:700;color:#C9A96E;transition:color .2s}.hs.on .hs-num{color:#0C0C0E}
       .hs-tag{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:4px;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#C9A96E;background:rgba(12,12,14,.7);backdrop-filter:blur(8px);padding:2px 6px;border-radius:3px;white-space:nowrap}
+      .hs.picked .hs-ring{background:#C9A96E;transform:scale(1.15);box-shadow:0 0 0 4px rgba(201,169,110,.2)}
+      .hs.picked .hs-num{color:#0C0C0E}
+      .hs.unpicked .hs-ring{border-color:rgba(255,255,255,.15);background:rgba(12,12,14,.5)}.hs.unpicked .hs-num{color:rgba(255,255,255,.25)}
+      .pick-list{padding:12px 20px;display:flex;flex-direction:column;gap:8px}
+      .pick-item{display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent}
+      .pick-item.picked{background:rgba(201,169,110,.06);border-color:rgba(201,169,110,.25)}
+      .pick-check{width:22px;height:22px;border-radius:6px;border:1.5px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+      .pick-item.picked .pick-check{background:#C9A96E;border-color:#C9A96E}
+      .pick-cta{position:sticky;bottom:80px;padding:12px 20px;z-index:10}
+      .pick-cta button{width:100%;padding:16px;border-radius:14px;font-size:15px;font-weight:700;font-family:'Outfit';cursor:pointer;transition:all .2s;border:none}
 
       .v-banner{padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.03)}
       .v-steps{display:flex;gap:6px;flex:1}
@@ -1041,8 +1063,85 @@ export default function App() {
             </div>
           )}
 
+          {/* ─── Picking — choose which items to search ── */}
+          {tab === "scan" && results && phase === "picking" && (
+            <div className="res">
+              <div className="v-banner">
+                <div className="v-steps">
+                  <div className="v-step">
+                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: "100%", background: "#C9A96E" }} /></div>
+                    <div className="v-step-l" style={{ color: "#C9A96E" }}>✓ Identified</div>
+                  </div>
+                  <div className="v-step">
+                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: "0%", background: "rgba(255,255,255,.08)" }} /></div>
+                    <div className="v-step-l" style={{ color: "rgba(255,255,255,.2)" }}>Select items</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Image with toggleable hotspots */}
+              <div className="res-img-sec">
+                <img src={img} className="res-img" alt="" /><div className="res-grad" />
+                <button className="res-new" onClick={reset}>New scan</button>
+                {results.items.map((item, i) => {
+                  const py = item.position_y != null ? Math.max(0.08, Math.min(0.85, item.position_y)) : (CAT_POSITIONS[item.category] || 0.5);
+                  const px = 0.5 + (i % 2 === 0 ? -0.22 : 0.22);
+                  const isPicked = pickedItems.has(i);
+                  return (
+                    <div key={i} className={`hs ${isPicked ? "picked" : "unpicked"}`} style={{ top: `${py*100}%`, left: `${Math.max(0.12, Math.min(0.88, px))*100}%` }} onClick={() => setPickedItems(prev => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
+                      <div className="hs-ring"><span className="hs-num">{i+1}</span></div>
+                      <div className="hs-tag">{item.subcategory || item.category}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Prompt */}
+              <div style={{ padding: "16px 20px 6px", textAlign: "center" }}>
+                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 22, color: "#fff", marginBottom: 6 }}>What do you want to shop?</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>Tap items on the image or below</div>
+              </div>
+
+              {/* Item pick list */}
+              <div className="pick-list">
+                {results.items.map((item, i) => {
+                  const isPicked = pickedItems.has(i);
+                  return (
+                    <div key={i} className={`pick-item ${isPicked ? "picked" : ""}`} onClick={() => setPickedItems(prev => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; })}>
+                      <div className="pick-check">
+                        {isPicked && <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6.5L5 9L9.5 3.5" fill="none" stroke="#0C0C0E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "#fff" : "rgba(255,255,255,.5)", transition: "color .2s" }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: isPicked ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.15)", transition: "color .2s" }}>
+                          {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
+                        </div>
+                      </div>
+                      {item.identification_confidence && <ConfidenceRing value={item.identification_confidence} size={36} stroke={2.5} />}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Search CTA */}
+              <div className="pick-cta">
+                <button
+                  style={{ background: pickedItems.size > 0 ? "#C9A96E" : "rgba(255,255,255,.06)", color: pickedItems.size > 0 ? "#0C0C0E" : "rgba(255,255,255,.2)" }}
+                  onClick={runProductSearch}
+                  disabled={pickedItems.size === 0}
+                >
+                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}`}
+                </button>
+                <button style={{ width: "100%", padding: 12, background: "none", border: "none", color: "rgba(255,255,255,.2)", fontSize: 12, fontFamily: "'Outfit'", cursor: "pointer", marginTop: 4 }}
+                  onClick={() => { setPickedItems(new Set(results.items.map((_, i) => i))); }}>
+                  Select all
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ─── Results ───────────────────────────────── */}
-          {tab === "scan" && results && phase !== "idle" && phase !== "identifying" && (
+          {tab === "scan" && results && (phase === "searching" || phase === "done") && (
             <div className="res">
               {/* Verification progress */}
               <div className="v-banner">
@@ -1060,16 +1159,17 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Image with hotspots */}
+              {/* Image with hotspots — only picked items */}
               <div className="res-img-sec">
                 <img src={img} className="res-img" alt="" /><div className="res-grad" />
                 <button className="res-new" onClick={reset}>New scan</button>
                 {results.items.map((item, i) => {
+                  if (!pickedItems.has(i)) return null;
                   const py = item.position_y != null ? Math.max(0.08, Math.min(0.85, item.position_y)) : (CAT_POSITIONS[item.category] || 0.5);
                   const px = 0.5 + (i % 2 === 0 ? -0.22 : 0.22);
                   return (
                     <div key={i} className={`hs ${selIdx === i ? "on" : ""}`} style={{ top: `${py*100}%`, left: `${Math.max(0.12, Math.min(0.88, px))*100}%` }} onClick={() => setSelIdx(i)}>
-                      <div className="hs-ring"><span className="hs-num">{i+1}</span></div>
+                      <div className="hs-ring"><span className="hs-num">{[...pickedItems].sort((a,b)=>a-b).indexOf(i)+1}</span></div>
                       {selIdx === i && <div className="hs-tag">{item.subcategory || item.category}</div>}
                     </div>
                   );
@@ -1079,7 +1179,7 @@ export default function App() {
               {/* Summary */}
               <div style={{ padding: "14px 20px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,.35)", textTransform: "uppercase" }}>{results.items.length} items</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,.35)", textTransform: "uppercase" }}>{pickedItems.size} items</span>
                   <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: results.gender === "female" ? "rgba(201,110,169,.1)" : "rgba(110,169,201,.1)", color: results.gender === "female" ? "#C96EAE" : "#6EAEC9" }}>
                     {results.gender === "female" ? "Women's" : "Men's"}
                   </span>
@@ -1091,7 +1191,7 @@ export default function App() {
               {showAds && <div className="ad-slot ad-banner">BANNER AD</div>}
 
               {/* Selected item detail */}
-              {selIdx !== null && results.items[selIdx] && (() => {
+              {selIdx !== null && results.items[selIdx] && pickedItems.has(selIdx) && (() => {
                 const item = results.items[selIdx];
                 const bc = brandConfLabel(item.brand_confidence);
                 return (
