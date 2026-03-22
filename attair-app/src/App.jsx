@@ -648,11 +648,11 @@ export default function App() {
     if (completedCrop?.width && completedCrop?.height && cropImgRef.current) {
       const dataUrl = getCroppedImg(cropImgRef.current, completedCrop);
       const base64 = dataUrl.split(",")[1];
-      setCropPending(null);
-      setImg(dataUrl);
-      runScan(base64, "image/jpeg");
+      // Update pending image with the cropped version, return to preview
+      setCropPending({ src: dataUrl, base64, mime: "image/jpeg", source: cropPending.source });
+      setCropMode(false);
     } else {
-      skipCrop();
+      setCropMode(false);
     }
   };
 
