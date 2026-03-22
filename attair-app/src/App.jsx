@@ -232,22 +232,6 @@ function resizeImage(dataUrl, maxDim = 1024) {
 // ═══════════════════════════════════════════════════════════════
 // COMPONENTS
 // ═══════════════════════════════════════════════════════════════
-const ConfidenceRing = ({ value, size = 48, stroke = 3, label }) => {
-  const r = (size - stroke) / 2, c = 2 * Math.PI * r, off = c - (value / 100) * c;
-  const color = value >= 80 ? "#C9A96E" : value >= 55 ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.25)";
-  return (
-    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
-      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{ transition: "stroke-dashoffset 0.8s ease" }} />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontFamily: "'Outfit'", fontSize: size * 0.22, fontWeight: 700, color, lineHeight: 1 }}>{value}%</span>
-        {label && <span style={{ fontSize: 7, fontWeight: 600, letterSpacing: 0.8, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", marginTop: 1 }}>{label}</span>}
-      </div>
-    </div>
-  );
-};
 
 const StatusPill = ({ status }) => {
   const cfg = {
@@ -1174,11 +1158,18 @@ export default function App() {
                         <div style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "#fff" : "rgba(255,255,255,.5)", transition: "color .2s" }}>{item.name}</div>
                         <div style={{ fontSize: 11, color: isPicked ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.15)", transition: "color .2s" }}>
                           {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
+                          {item.identification_confidence ? <span style={{ marginLeft: 4, color: "rgba(255,255,255,.25)" }}>· {item.identification_confidence}%</span> : null}
                         </div>
                       </div>
                       {ov?.budgetMin != null
-                        ? <div style={{ fontSize: 11, fontWeight: 700, color: "#C9A96E", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>${ov.budgetMin}–${ov.budgetMax}</div>
-                        : <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", flexShrink: 0 }}>set prefs →</div>
+                        ? <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#C9A96E", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 7, padding: "4px 9px" }}>${ov.budgetMin}–${ov.budgetMax}</div>
+                            <div style={{ fontSize: 9, color: "rgba(201,169,110,.5)", letterSpacing: .3 }}>tap to edit</div>
+                          </div>
+                        : <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 10, flexShrink: 0, cursor: "pointer" }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A96E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="#C9A96E" stroke="none"/><circle cx="16" cy="12" r="2" fill="#C9A96E" stroke="none"/><circle cx="10" cy="18" r="2" fill="#C9A96E" stroke="none"/></svg>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "#C9A96E" }}>Set prefs</span>
+                          </div>
                       }
                     </div>
                   );
@@ -1279,16 +1270,6 @@ export default function App() {
                       {item.subcategory && <span className="det-tag">{item.subcategory}</span>}
                     </div>
 
-                    <div className="det-conf">
-                      <ConfidenceRing value={item.identification_confidence || 50} size={50} stroke={3} label="ID" />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>Identification confidence</div>
-                        <div style={{ fontSize: 11, color: "rgba(255,255,255,.25)", marginTop: 2 }}>
-                          {item.identification_confidence >= 80 ? "High certainty" : item.identification_confidence >= 55 ? "Moderate certainty" : "Visual estimate"}
-                        </div>
-                      </div>
-                      <StatusPill status={item.status} />
-                    </div>
 
                     <div style={{ fontSize: 20, fontWeight: 700, color: "#C9A96E", marginBottom: 18 }}>{item.price_range}</div>
 
