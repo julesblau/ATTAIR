@@ -824,7 +824,12 @@ function explainMatch(product, item, tier, isFromLens) {
 // ─── Google Shopping fallback link ──────────────────────────
 function fallbackTier(item, tier, tierBounds) {
   const g = (item.gender || "male") === "female" ? "women's" : "men's";
-  const q = encodeURIComponent(`${g} ${item.search_query || item.name}`);
+  // Clean the query exactly like textSearchForItem does — strip qualifiers,
+  // normalize apostrophes, and only add the gender prefix if it's not already there.
+  const rawQuery = item.search_query || item.name;
+  const cleaned = cleanForSearch(rawQuery);
+  const fullQuery = hasGenderPrefix(cleaned) ? cleaned : `${g} ${cleaned}`;
+  const q = encodeURIComponent(fullQuery);
   const prices = {
     budget: { min: 0, max: tierBounds.min },
     mid: { min: tierBounds.min, max: tierBounds.max },
