@@ -670,7 +670,8 @@ export default function App() {
     const picked = [...pickedItems].sort((a, b) => a - b).map(i => ({
       ...results.items[i],
       _scan_item_index: i,
-      _budget: itemOverrides[i]?.budget ?? null,
+      _budget_min: itemOverrides[i]?.budgetMin ?? null,
+      _budget_max: itemOverrides[i]?.budgetMax ?? null,
       _size_prefs: itemOverrides[i]?.sizePrefs ?? null,
     }));
     const pickedIndices = [...pickedItems].sort((a, b) => a - b);
@@ -849,6 +850,14 @@ export default function App() {
       .pick-item.picked .pick-check{background:#C9A96E;border-color:#C9A96E}
       .pick-cta{position:sticky;bottom:80px;padding:12px 20px;z-index:10}
       .pick-cta button{width:100%;padding:16px;border-radius:14px;font-size:15px;font-weight:700;font-family:'Outfit';cursor:pointer;transition:all .2s;border:none}
+      .rng-wrap{position:relative;height:36px;display:flex;align-items:center;margin:4px 0}
+      .rng-track{position:absolute;left:0;right:0;height:4px;background:rgba(255,255,255,.08);border-radius:2px;pointer-events:none}
+      .rng-fill{position:absolute;height:4px;background:#C9A96E;border-radius:2px;pointer-events:none}
+      .rng-wrap input[type=range]{position:absolute;width:100%;margin:0;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none}
+      .rng-wrap input[type=range]::-webkit-slider-runnable-track{background:transparent;height:4px}
+      .rng-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#C9A96E;pointer-events:all;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);border:2px solid #1a1a1e;margin-top:-10px}
+      .rng-wrap input[type=range]::-moz-range-track{background:transparent;height:4px}
+      .rng-wrap input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#C9A96E;pointer-events:all;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5);border:2px solid #1a1a1e}
       .item-opts-overlay{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.65);backdrop-filter:blur(4px)}
       .item-opts-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#111114;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,.08);padding:20px 20px;padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:251;animation:slideIn .22s ease;max-height:82vh;overflow-y:auto}
       .item-opts-handle{width:36px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;margin:0 auto 18px}
@@ -1167,8 +1176,8 @@ export default function App() {
                           {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
                         </div>
                       </div>
-                      {ov?.budget
-                        ? <div style={{ fontSize: 11, fontWeight: 700, color: "#C9A96E", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>${ov.budget}</div>
+                      {ov?.budgetMin != null
+                        ? <div style={{ fontSize: 11, fontWeight: 700, color: "#C9A96E", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 6, padding: "3px 8px", flexShrink: 0 }}>${ov.budgetMin}–${ov.budgetMax}</div>
                         : <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", flexShrink: 0 }}>set prefs →</div>
                       }
                     </div>
@@ -1543,7 +1552,9 @@ export default function App() {
           else if (["shoe","sneaker","boot","sandal","loafer","heel"].some(k=>combined.includes(k))||cat==="shoes") sizeInfo = { key:"shoes", label:"Shoe size", opts:["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14"] };
           else if (["sock"].some(k=>combined.includes(k))) sizeInfo = { key:"socks", label:"Sock size", opts:["S","M","L","XL"] };
 
-          const budgetVal = ov.budget ?? budgetMax;
+          const SLIDER_MAX = 500;
+          const bMin = ov.budgetMin ?? budgetMin;
+          const bMax = ov.budgetMax ?? budgetMax;
           const spVal = ov.sizePrefs || {};
 
           return (
@@ -1567,19 +1578,31 @@ export default function App() {
                 </div>
 
                 {/* Budget */}
-                <div style={{ marginBottom: 20 }}>
-                  <div className="item-opts-label">My budget for this item</div>
-                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "14px 16px", gap: 4 }}>
-                    <span style={{ color: "rgba(255,255,255,.3)", fontSize: 22, fontWeight: 600 }}>$</span>
-                    <input
-                      type="number"
-                      value={budgetVal}
-                      onChange={e => setOv(o => ({ ...(o||ov), budget: Math.max(1, parseInt(e.target.value)||0) }))}
-                      style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 22, fontWeight: 700, width: "100%", outline: "none" }}
-                    />
+                <div style={{ marginBottom: 24 }}>
+                  <div className="item-opts-label">Budget range for this item</div>
+                  {/* Value labels */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                    <div>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginRight: 3 }}>$</span>
+                      <span style={{ fontSize: 24, fontWeight: 700, color: "#fff" }}>{bMin}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>—</div>
+                    <div>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginRight: 3 }}>$</span>
+                      <span style={{ fontSize: 24, fontWeight: 700, color: "#fff" }}>{bMax === SLIDER_MAX ? `${SLIDER_MAX}+` : bMax}</span>
+                    </div>
                   </div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 6 }}>
-                    Budget: under ${Math.round(budgetVal*0.4)} · Mid: ${Math.round(budgetVal*0.4)}–${budgetVal} · Premium: ${budgetVal}+
+                  {/* Dual-range slider */}
+                  <div className="rng-wrap">
+                    <div className="rng-track" />
+                    <div className="rng-fill" style={{ left: `${(bMin/SLIDER_MAX)*100}%`, right: `${100-(bMax/SLIDER_MAX)*100}%` }} />
+                    <input type="range" min={0} max={SLIDER_MAX} step={5} value={bMin}
+                      onChange={e => { const v = Math.min(parseInt(e.target.value), bMax - 5); setOv(o2 => ({ ...(o2||ov), budgetMin: v })); }} />
+                    <input type="range" min={0} max={SLIDER_MAX} step={5} value={bMax}
+                      onChange={e => { const v = Math.max(parseInt(e.target.value), bMin + 5); setOv(o2 => ({ ...(o2||ov), budgetMax: v })); }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 8 }}>
+                    Budget tier: under ${bMin} · Mid: ${bMin}–${bMax} · Premium: ${bMax}+
                   </div>
                 </div>
 

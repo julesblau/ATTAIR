@@ -11,7 +11,7 @@ const router = Router();
  * Request:  { items: [...identified items], gender: "male"|"female", scan_id?: "uuid" }
  * Response: [ { item_index, brand_verified, tiers: { budget, mid, premium } } ]
  *
- * Per-item budget and size overrides are embedded in each item as _budget and _size_prefs.
+ * Per-item budget and size overrides are embedded in each item as _budget_min, _budget_max, and _size_prefs.
  * Profile values are used as defaults for items without overrides.
  */
 router.post("/", requireAuth, async (req, res) => {

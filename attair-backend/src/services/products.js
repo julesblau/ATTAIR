@@ -445,13 +445,10 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
   const defaultTierBounds = getTierBounds(budgetMin, budgetMax);
   const defaultSizePrefs = sizePrefs;
 
-  // Helper: derive per-item tier bounds from a single budget target number.
-  // _budget = user's max comfortable spend; budget tier = under 40%, mid = 40-100%, premium = over 100%.
+  // Helper: per-item tier bounds from _budget_min/_budget_max, falling back to profile defaults.
   function getItemTierBounds(item) {
-    if (item._budget != null && item._budget > 0) {
-      const max = item._budget;
-      const min = Math.round(max * 0.4);
-      return getTierBounds(min, max);
+    if (item._budget_min != null || item._budget_max != null) {
+      return getTierBounds(item._budget_min, item._budget_max);
     }
     return defaultTierBounds;
   }
