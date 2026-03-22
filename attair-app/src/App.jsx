@@ -606,7 +606,7 @@ export default function App() {
 
   // ─── Crop helpers ─────────────────────────────────────────
   const openCrop = (r) => {
-    setCropPending(r);
+    setCropPending({ src: r.dataUrl, base64: r.base64, mime: r.mime });
     setCrop(undefined);
     setCompletedCrop(undefined);
   };
