@@ -110,6 +110,230 @@ function isAllowedByMarket(product, marketPref) {
   return market === marketPref;
 }
 
+// ─── Vendor page validation ──────────────────────────────────
+//
+// The core problem: Google Lens scans the entire web for visually similar
+// images. A white shirt on a realtor's portfolio is visually similar to a
+// white shirt product photo. We need to positively confirm a URL is a
+// shopping page, not just blacklist known bad domains.
+//
+// Three-layer approach:
+//   1. Hard-reject known non-vendor domains (extended denylist)
+//   2. Hard-accept known retail domains (large allowlist)
+//   3. URL structure heuristics for everything else
+
+// Domains that are definitively NOT shopping pages.
+// Any result linking here is rejected regardless of score or price.
+const NON_VENDOR_DOMAINS = [
+  // Social media
+  "instagram.com", "twitter.com", "x.com", "pinterest.com", "tiktok.com",
+  "facebook.com", "reddit.com", "youtube.com", "tumblr.com", "snapchat.com",
+  "threads.net", "vsco.co", "linkedin.com", "whatsapp.com", "telegram.org",
+  // Blogs / media / news / editorial
+  "wordpress.com", "blogspot.com", "medium.com", "substack.com",
+  "buzzfeed.com", "refinery29.com", "vogue.com", "elle.com",
+  "harpersbazaar.com", "gq.com", "esquire.com", "menshealth.com",
+  "womenshealthmag.com", "allure.com", "cosmopolitan.com", "glamour.com",
+  "huffpost.com", "nytimes.com", "washingtonpost.com", "theguardian.com",
+  "wwd.com", "businessoffashion.com", "fashionista.com", "whowhatwear.com",
+  "byrdie.com", "popsugar.com", "thecut.com",
+  // Portfolio / creative tools (the realtor bug lives here)
+  "squarespace.com", "wix.com", "weebly.com", "strikingly.com",
+  "cargo.site", "format.com", "pixpa.com", "sitebuilder.com",
+  "portfoliobox.net", "zenfolio.com", "smugmug.com", "flickr.com",
+  "behance.net", "dribbble.com", "carbonmade.com", "cargocollective.com",
+  // Real estate / home
+  "realtor.com", "zillow.com", "trulia.com", "redfin.com",
+  "homes.com", "homesnap.com", "loopnet.com",
+  // Image hosting / stock photo (not product pages)
+  "imgur.com", "giphy.com", "unsplash.com", "pexels.com",
+  "shutterstock.com", "gettyimages.com", "istockphoto.com", "alamy.com",
+  "dreamstime.com", "stocksy.com",
+  // Wikis / encyclopedias
+  "wikipedia.org", "wikimedia.org", "wikihow.com", "fandom.com",
+  // Review / discovery (not direct purchase)
+  "yelp.com", "tripadvisor.com", "goodreads.com", "imdb.com",
+  // Travel / hospitality
+  "expedia.com", "booking.com", "airbnb.com", "vrbo.com", "hotels.com",
+  // Depop gallery (search browse pages, not product pages)
+  "depop.com/g/",
+];
+
+// Domains that are definitively shopping/retail pages.
+// A result from here is accepted even without a price in the data.
+const KNOWN_RETAIL_DOMAINS = [
+  // ── Department stores ──
+  "nordstrom.com", "nordstromrack.com", "macys.com", "bloomingdales.com",
+  "saksfifthavenue.com", "saks.com", "neimanmarcus.com", "bergdorfgoodman.com",
+  "dillards.com", "kohls.com", "jcpenney.com", "belk.com", "lordandtaylor.com",
+  "houseoffraser.co.uk", "johnlewis.com", "selfridges.com", "harrods.com",
+  "libertylondon.com", "galerieslafayette.com", "elcorteingles.es",
+  // ── Mass market ──
+  "amazon.com", "amazon.co.uk", "amazon.ca", "amazon.de", "amazon.fr",
+  "amazon.es", "amazon.it", "amazon.co.jp", "amazon.com.au", "amazon.com.mx",
+  "target.com", "walmart.com", "costco.com", "samsclub.com",
+  // ── Fast fashion / high street ──
+  "hm.com", "zara.com", "uniqlo.com", "asos.com", "boohoo.com",
+  "nastygal.com", "prettylittlething.com", "fashionnova.com",
+  "shein.com", "romwe.com", "zaful.com", "missguided.com",
+  "primark.com", "newlook.com", "riverisland.com", "next.co.uk",
+  "matalan.co.uk", "peacocks.co.uk",
+  // ── Gap family ──
+  "gap.com", "oldnavy.com", "bananarepublic.com", "athleta.com",
+  // ── American specialty / mid-market ──
+  "jcrew.com", "madewell.com", "anthropologie.com", "freepeople.com",
+  "urbanoutfitters.com", "abercrombie.com", "hollisterco.com",
+  "ae.com", "americaneagle.com", "express.com", "forever21.com",
+  "victoriassecret.com", "soma.com", "cacique.com",
+  "whitehouseblackmarket.com", "chicos.com", "talbot.com", "talbots.com",
+  "loft.com", "anntaylor.com", "dressbarn.com", "torrid.com", "lanebryant.com",
+  "maurices.com", "cato.com", "catherines.com",
+  // ── Workwear / tailoring ──
+  "suitsupply.com", "indochino.com", "ministryofsupply.com",
+  "bonobos.com", "untuckit.com", "mizzenandmain.com",
+  "hugoboss.com", "calvinklein.com", "thomaspink.com",
+  // ── Contemporary / premium ──
+  "theory.com", "vince.com", "ragandbone.com", "rag-bone.com",
+  "allsaints.com", "clubmonaco.com", "reiss.com", "hobbs.com",
+  "cos.com", "arket.com", "monki.com", "weekday.com",
+  "frenchconnection.com", "warehouse.co.uk", "oasis-stores.com",
+  "reformation.com", "retrofete.com", "loefflerrandall.com",
+  // ── Denim ──
+  "levi.com", "levis.com", "wrangler.com", "lee.com", "dickies.com",
+  "agolde.com", "citizens.com", "citizensofhumanity.com",
+  "framestore.com", "frame-store.com", "dl1961.com", "paige.com",
+  "good-american.com", "goodamerican.com", "moussy-vintage.com",
+  "motherdenim.com", "joesdenim.com",
+  // ── Luxury ──
+  "gucci.com", "louisvuitton.com", "prada.com", "chanel.com",
+  "hermes.com", "hermesworld.com", "burberry.com", "balenciaga.com",
+  "valentino.com", "versace.com", "givenchy.com", "lanvin.com",
+  "loewe.com", "offwhite.com", "off---white.com", "bottegaveneta.com",
+  "alexandermcqueen.com", "stellamccartney.com", "viviennewestwood.com",
+  "rickowens.eu", "jilsander.com", "acnestudios.com", "a-cold-wall.com",
+  "ami-paris.com", "maison-kitsune.com", "maisonmargiela.com",
+  "isabelmarant.com", "sandro-paris.com", "maje.com", "ba-sh.com",
+  "jacquemus.com", "coperni.co", "ganni.com", "rotate-birger-christensen.com",
+  // ── Luxury multi-brand ──
+  "net-a-porter.com", "mytheresa.com", "ssense.com", "farfetch.com",
+  "matchesfashion.com", "shopbop.com", "revolve.com", "fwrd.com",
+  "luisaviaroma.com", "brownsfashion.com", "cettire.com",
+  "theoutnet.com", "yoox.com", "24s.com", "italist.com",
+  "vestiairecollective.com", "therealreal.com", "1stdibs.com",
+  // ── Activewear ──
+  "lululemon.com", "fabletics.com", "gymshark.com", "vuori.com",
+  "rhone.com", "alo.com", "aloyoga.com", "apl.com", "setactiveclothing.com",
+  "beyond-yoga.com", "onzie.com", "manduka.com", "oiselle.com",
+  "sweaty-betty.com", "sweatybetty.com", "icebreaker.com",
+  // ── Sneakers / footwear ──
+  "nike.com", "adidas.com", "newbalance.com", "converse.com", "vans.com",
+  "puma.com", "reebok.com", "underarmour.com", "asics.com", "saucony.com",
+  "hoka.com", "hokaoneone.com", "on-running.com", "brooks.com",
+  "zappos.com", "dsw.com", "footlocker.com", "finishline.com",
+  "stevemadden.com", "aldo.com", "aldoshoes.com", "clarks.com",
+  "skechers.com", "ecco.com", "drmartens.com", "ugg.com",
+  "sorel.com", "birkenstock.com", "crocs.com", "tods.com",
+  "christianlouboutin.com", "jimmychoo.com", "manoloblahnik.com",
+  "stuartweitzman.com", "samedelman.com", "stevemadden.com",
+  "geox.com", "fitflop.com", "havaianas.com", "hunter.com",
+  "hunterboots.com", "penguinboots.com",
+  // ── Outdoors / heritage ──
+  "columbia.com", "thenorthface.com", "patagonia.com", "rei.com",
+  "arcteryx.com", "salomon.com", "timberland.com", "carhartt.com",
+  "pendleton-usa.com", "woolrich.com", "filson.com", "orvis.com",
+  "mountainhardwear.com", "marmot.com", "blackdiamondequipment.com",
+  // ── Accessories ──
+  "coach.com", "katespade.com", "michaelkors.com", "tory burch.com",
+  "toryburch.com", "furla.com", "mulberry.com", "longchamp.com",
+  "samsonite.com", "tumi.com", "herschel.com", "fjallraven.com",
+  "sunglasshut.com", "lenscrafters.com", "warbyparker.com",
+  // ── Men's focused ──
+  "ralphlauren.com", "tommyhilfiger.com", "izod.com",
+  "lacoste.com", "fred-perry.com", "fredperry.com",
+  "nautical.com", "hackett.com", "barkmale.com",
+  "thetiebar.com", "paulsmith.com",
+  // ── Sustainable / vintage ──
+  "pangaia.com", "tentree.com", "patagonia.com", "pranaclothing.com",
+  "eileen-fisher.com", "eileenfisher.com",
+  // ── Plus size ──
+  "eloquii.com", "curvissa.com", "simply-be.co.uk",
+  // ── Subscription / styling ──
+  "stitchfix.com", "trunkclub.com", "threadup.com",
+  // ── UK / EU market ──
+  "marksandspencer.com", "debenhams.com", "topshop.com",
+  "boohoo.com", "fatface.com", "seasalt.com", "joules.com",
+  "boden.co.uk", "laithwaites.co.uk",
+  // ── Marketplace (vendor storefronts count as retail) ──
+  "etsy.com",   // handmade / indie — product pages are valid
+];
+
+// URL path patterns that strongly suggest a product page, regardless of domain.
+// Used as a fallback for domains not on the known list.
+const PRODUCT_URL_PATTERNS = [
+  /\/product[s]?\//i,
+  /\/p\//i,
+  /\/dp\//i,           // Amazon product detail
+  /\/item[s]?\//i,
+  /\/buy\//i,
+  /\/catalog[ue]?\//i,
+  /\/listing[s]?\//i,
+  /\/store\//i,
+  /\/shop\//i,
+  /\/goods\//i,
+  /\/detail\//i,
+  /\/pdp\//i,          // product detail page
+  /[?&](sku|pid|product[-_]?id|item[-_]?id|variant)=/i,
+  /\/[a-z0-9][\w-]+-\d{5,}/i,  // slug ending with product ID (≥5 digits)
+  /\.(html?|aspx?)(\?|$)/i,     // explicit page extension (many retail CMS)
+];
+
+/**
+ * Returns true if the product link points to a genuine vendor/shopping page.
+ *
+ * Decision tree:
+ *   1. No link → false
+ *   2. Link is on NON_VENDOR_DOMAINS → false  (hard reject)
+ *   3. Has a price → true  (vendors always have prices; the strongest signal)
+ *   4. Domain is on KNOWN_RETAIL_DOMAINS → true  (trusted retailer)
+ *   5. URL path matches a product page pattern → true  (structural heuristic)
+ *   6. Otherwise → false  (unknown domain, no price, no product path = reject)
+ *
+ * Note: resale domains pass this check — they ARE vendors (secondary market).
+ * Market preference filtering is separate.
+ */
+function isVendorPage(product) {
+  const link = (product.link || product.product_link || product.url || "").toLowerCase();
+  if (!link) return false;
+
+  // 1. Hard reject: known non-vendor domains
+  if (NON_VENDOR_DOMAINS.some(d => link.includes(d))) return false;
+
+  // 2. Has a price → it's a product listing (any legitimate product page has a price)
+  const price = extractPrice(product.price) || extractPrice(product.extracted_price);
+  if (price !== null) return true;
+
+  // 3. Domain is a known retailer (accept even if price wasn't scraped)
+  if (KNOWN_RETAIL_DOMAINS.some(d => link.includes(d))) return true;
+
+  // 4. Resale platforms are also valid vendors
+  if (RESALE_DOMAINS.some(d => link.includes(d))) return true;
+
+  // 5. URL path looks like a product page on an unknown domain
+  if (PRODUCT_URL_PATTERNS.some(p => p.test(link))) return true;
+
+  // 6. Source name matches a known retailer (SerpAPI sometimes populates this
+  //    even when the domain is a subdomain or CDN URL we don't recognise)
+  const source = (product.source || "").toLowerCase();
+  const knownSource = KNOWN_RETAIL_DOMAINS.some(d => {
+    const base = d.replace(/^www\./, "").replace(/\.(com|co\.\w+|net|org|io|us|uk)$/, "");
+    return source.includes(base) && base.length > 3;
+  });
+  if (knownSource) return true;
+
+  // Unknown domain, no price, no product URL pattern — almost certainly not a shop
+  return false;
+}
+
 // ─── Size preference helpers ────────────────────────────────
 const BODY_TYPE_TERMS = {
   petite: "petite",
@@ -401,17 +625,14 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   const link = product.link || product.product_link || product.url || "";
   const price = extractPrice(product.price) || extractPrice(product.extracted_price);
 
-  // Must have a link to a product page
-  if (!link) return -1;
+  // Must point to a genuine vendor/shopping page.
+  // This is the primary guard against realtor portfolios, blogs, social media,
+  // and any other non-commerce page that Google Lens may match visually.
+  if (!isVendorPage(product)) return -1;
 
-  // Reject social media, blogs, and other non-shopping domains
-  const NON_SHOPPING = ["instagram.com", "twitter.com", "x.com", "pinterest.com", "tiktok.com",
-    "facebook.com", "reddit.com", "youtube.com", "tumblr.com", "snapchat.com",
-    "threads.net", "depop.com/g/", "vsco.co"];
-  if (NON_SHOPPING.some(d => link.toLowerCase().includes(d))) return -1;
-
-  // Text results MUST have a price (otherwise useless for tiering)
-  // Lens results WITHOUT a price are still valuable — they're visual matches
+  // Text search results MUST have a price (otherwise useless for tiering).
+  // Lens results without a price are still accepted if they passed isVendorPage —
+  // the vendor check above already ensures they're from a legitimate shop.
   if (!isFromLens && price === null) return -1;
 
   let score = 0;
