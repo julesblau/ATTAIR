@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import ReactCrop from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIG — Set VITE_API_BASE in Vercel env vars for production
@@ -408,6 +410,12 @@ export default function App() {
   const [itemOverrides, setItemOverrides] = useState({}); // { [itemIdx]: { budget, sizePrefs } }
   const [itemSettingsIdx, setItemSettingsIdx] = useState(null); // which item's popup is open
 
+  // ─── Crop ─────────────────────────────────────────────────
+  const [cropPending, setCropPending] = useState(null); // { src, base64, mime }
+  const [crop, setCrop] = useState();
+  const [completedCrop, setCompletedCrop] = useState();
+  const cropImgRef = useRef(null);
+
   // ─── Fetch user status on auth ────────────────────────────
   const refreshStatus = useCallback(async () => {
     try {
@@ -551,8 +559,7 @@ export default function App() {
     c.getContext("2d").drawImage(v, 0, 0);
     camStop();
     const r = await resizeImage(c.toDataURL("image/jpeg", 0.85));
-    setImg(r.dataUrl);
-    runScan(r.base64, r.mime);
+    openCrop(r);
   };
   const camStop = () => {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
@@ -571,7 +578,7 @@ export default function App() {
       try {
         const url = URL.createObjectURL(file);
         const im = new Image();
-        im.onload = async () => { const r = await resizeImage(url); URL.revokeObjectURL(url); setImg(r.dataUrl); runScan(r.base64, r.mime); };
+        im.onload = async () => { const r = await resizeImage(url); URL.revokeObjectURL(url); openCrop(r); };
         im.onerror = () => { URL.revokeObjectURL(url); tryReader(); };
         im.src = url;
       } catch { tryReader(); }
@@ -579,7 +586,7 @@ export default function App() {
     const tryReader = () => {
       const rd = new FileReader();
       rd.onload = async (e) => {
-        try { const r = await resizeImage(e.target.result); setImg(r.dataUrl); runScan(r.base64, r.mime); }
+        try { const r = await resizeImage(e.target.result); openCrop(r); }
         catch { setError("Couldn't process image. Try screenshotting it first."); }
       };
       rd.readAsDataURL(file);
@@ -595,6 +602,53 @@ export default function App() {
       return false;
     }
     return true;
+  };
+
+  // ─── Crop helpers ─────────────────────────────────────────
+  const openCrop = (r) => {
+    setCropPending(r);
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+  };
+
+  const onCropImageLoad = (e) => {
+    const { width, height } = e.currentTarget;
+    const w = width * 0.85;
+    const h = height * 0.85;
+    const c = { unit: "px", x: (width - w) / 2, y: (height - h) / 2, width: w, height: h };
+    setCrop(c);
+    setCompletedCrop(c);
+  };
+
+  const getCroppedImg = (img, c) => {
+    const sx = img.naturalWidth / img.width;
+    const sy = img.naturalHeight / img.height;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.floor(c.width * sx);
+    canvas.height = Math.floor(c.height * sy);
+    canvas.getContext("2d").drawImage(img, c.x * sx, c.y * sy, c.width * sx, c.height * sy, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.92);
+  };
+
+  const applyCrop = () => {
+    if (!cropPending) return;
+    if (completedCrop?.width && completedCrop?.height && cropImgRef.current) {
+      const dataUrl = getCroppedImg(cropImgRef.current, completedCrop);
+      const base64 = dataUrl.split(",")[1];
+      setCropPending(null);
+      setImg(dataUrl);
+      runScan(base64, "image/jpeg");
+    } else {
+      skipCrop();
+    }
+  };
+
+  const skipCrop = () => {
+    if (!cropPending) return;
+    const { src, base64, mime } = cropPending;
+    setCropPending(null);
+    setImg(src);
+    runScan(base64, mime);
   };
 
   // ═══════════════════════════════════════════════════════════
@@ -842,6 +896,13 @@ export default function App() {
       .budget-input-wrap input{background:none;border:none;color:#fff;font-family:'Outfit';font-size:20px;font-weight:700;width:100%;outline:none}
       .budget-input-wrap input::placeholder{color:rgba(255,255,255,.15)}
       .budget-input-wrap span{color:rgba(255,255,255,.3);font-size:16px;font-weight:600;flex-shrink:0}
+      .crop-screen{position:fixed;inset:0;z-index:400;background:#000;display:flex;flex-direction:column}
+      .crop-stage{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:16px 16px 0}
+      .crop-stage img{max-width:100%;max-height:100%;display:block}
+      .crop-bar{flex-shrink:0;padding:16px 20px;padding-bottom:max(20px,env(safe-area-inset-bottom));background:#0C0C0E;display:flex;gap:12px;align-items:center;border-top:1px solid rgba(255,255,255,.06)}
+      .ReactCrop{border-radius:4px}
+      .ReactCrop__crop-selection{border:2px solid #C9A96E;box-shadow:0 0 0 9999px rgba(0,0,0,.55)}
+      .ReactCrop__drag-handle::after{background:#C9A96E;border:2px solid #0C0C0E;width:14px;height:14px;border-radius:3px}
       .item-opts-overlay{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.65);backdrop-filter:blur(4px)}
       .item-opts-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#111114;border-radius:20px 20px 0 0;border-top:1px solid rgba(255,255,255,.08);padding:20px 20px;padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:251;animation:slideIn .22s ease;max-height:82vh;overflow-y:auto}
       .item-opts-handle{width:36px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;margin:0 auto 18px}
@@ -1647,6 +1708,37 @@ export default function App() {
           <button className={`tab ${tab==="profile"?"on":""}`} onClick={() => setTab("profile")}><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7" /></svg><span className="tab-l">Profile</span></button>
         </div>
       </>)}
+
+      {/* ─── Crop screen ─────────────────────────────── */}
+      {cropPending && (
+        <div className="crop-screen">
+          <div className="crop-stage">
+            <ReactCrop
+              crop={crop}
+              onChange={c => setCrop(c)}
+              onComplete={c => setCompletedCrop(c)}
+              minWidth={40}
+              minHeight={40}
+            >
+              <img
+                ref={cropImgRef}
+                src={cropPending.src}
+                onLoad={onCropImageLoad}
+                style={{ maxWidth: "100%", maxHeight: "calc(100vh - 120px)", display: "block" }}
+                alt=""
+              />
+            </ReactCrop>
+          </div>
+          <div className="crop-bar">
+            <button onClick={skipCrop} style={{ flex: 1, padding: "14px 0", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, color: "rgba(255,255,255,.55)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              Skip
+            </button>
+            <button onClick={applyCrop} style={{ flex: 2, padding: "14px 0", background: "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+              Use photo
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   </>);
 }
