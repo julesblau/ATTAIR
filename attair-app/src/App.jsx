@@ -238,6 +238,38 @@ const API = {
     return await res.json();
   },
 
+  async getWishlists() {
+    const res = await authFetch(`${API_BASE}/api/wishlists`);
+    if (!res.ok) return { wishlists: [] };
+    return await res.json();
+  },
+
+  async createWishlist(name) {
+    const res = await authFetch(`${API_BASE}/api/wishlists`, { method: "POST", body: JSON.stringify({ name }) });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed to create list"); }
+    return await res.json();
+  },
+
+  async deleteWishlist(id) {
+    const res = await authFetch(`${API_BASE}/api/wishlists/${id}`, { method: "DELETE" });
+    return res.ok;
+  },
+
+  async renameWishlist(id, name) {
+    const res = await authFetch(`${API_BASE}/api/wishlists/${id}`, { method: "PATCH", body: JSON.stringify({ name }) });
+    return res.ok ? await res.json() : null;
+  },
+
+  async addToWishlist(wishlistId, savedItemId) {
+    const res = await authFetch(`${API_BASE}/api/wishlists/${wishlistId}/items`, { method: "POST", body: JSON.stringify({ saved_item_id: savedItemId }) });
+    return res.ok;
+  },
+
+  async removeFromWishlist(wishlistId, savedItemId) {
+    const res = await authFetch(`${API_BASE}/api/wishlists/${wishlistId}/items/${savedItemId}`, { method: "DELETE" });
+    return res.ok;
+  },
+
   async rateScan(scanId, rating) {
     const res = await authFetch(`${API_BASE}/api/user/scan/${scanId}/rating`, { method: "PATCH", body: JSON.stringify({ rating }) });
     return res.ok ? await res.json() : null;
@@ -630,6 +662,12 @@ export default function App() {
   // ─── Outfit rating ────────────────────────────────────────
   const [scanRatings, setScanRatings] = useState({});  // { [scanId]: 1-5 }
 
+  // ─── Wishlists ────────────────────────────────────────────
+  const [wishlists, setWishlists] = useState([]);       // [{ id, name, created_at }]
+  const [activeWishlist, setActiveWishlist] = useState(null); // { id, name } | null
+  const [wishlistInput, setWishlistInput] = useState("");
+  const [wishlistCreating, setWishlistCreating] = useState(false);
+
   // ─── Occasion filter ──────────────────────────────────────
   const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
 
@@ -703,6 +741,7 @@ export default function App() {
         .catch(() => {});
       API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
       API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
+      API.getWishlists().then(d => setWishlists(d.wishlists || [])).catch(() => {});
       if (screen === "onboarding") setScreen("app");
     }
   }, [authed]);
@@ -2061,12 +2100,107 @@ export default function App() {
               : <div className="hist-list">
                   {/* Filter tabs */}
                   <div style={{ display: "flex", gap: 0, marginBottom: 12, background: "rgba(255,255,255,.03)", borderRadius: 10, padding: 3 }}>
-                    {["all", "saved"].map(f => (
-                      <button key={f} onClick={() => setHistoryFilter(f)} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: historyFilter === f ? "rgba(201,169,110,.12)" : "transparent", color: historyFilter === f ? "#C9A96E" : "rgba(255,255,255,.3)", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .2s", letterSpacing: 0.5 }}>
-                        {f === "all" ? "All Scans" : "♥ Saved"}
+                    {["all", "saved", "lists"].map(f => (
+                      <button key={f} onClick={() => { setHistoryFilter(f); setActiveWishlist(null); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: historyFilter === f ? "rgba(201,169,110,.12)" : "transparent", color: historyFilter === f ? "#C9A96E" : "rgba(255,255,255,.3)", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .2s", letterSpacing: 0.5 }}>
+                        {f === "all" ? "All Scans" : f === "saved" ? "♥ Saved" : "📋 Lists"}
                       </button>
                     ))}
                   </div>
+
+                  {/* ─── Wishlists panel ─────────────────────────── */}
+                  {historyFilter === "lists" && (() => {
+                    if (activeWishlist) {
+                      // Show items in this wishlist
+                      const listItems = saved.filter(s => s.wishlist_id === activeWishlist.id);
+                      return (
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <button onClick={() => setActiveWishlist(null)} style={{ background: "none", border: "none", color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 12, cursor: "pointer", padding: 0 }}>← Back</button>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{activeWishlist.name}</span>
+                            <button onClick={async () => { if (confirm(`Delete "${activeWishlist.name}"?`)) { await API.deleteWishlist(activeWishlist.id); setWishlists(w => w.filter(x => x.id !== activeWishlist.id)); setActiveWishlist(null); } }} style={{ marginLeft: "auto", background: "none", border: "none", fontSize: 12, color: "rgba(255,100,100,.4)", cursor: "pointer", fontFamily: "'Outfit'" }}>Delete list</button>
+                          </div>
+                          {listItems.length === 0
+                            ? <div className="empty" style={{padding:"32px 20px"}}><div className="empty-i">📋</div><div className="empty-t">No items yet</div><div className="empty-s">Save items and add them to this list</div></div>
+                            : <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                {listItems.map(s => {
+                                  const item = s.item_data || s;
+                                  return (
+                                    <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12 }}>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{item.name}</div>
+                                        {item.brand && <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)" }}>{item.brand}</div>}
+                                      </div>
+                                      <button onClick={async () => {
+                                        await API.removeFromWishlist(activeWishlist.id, s.id);
+                                        setSaved(prev => prev.map(x => x.id === s.id ? { ...x, wishlist_id: null } : x));
+                                      }} style={{ background: "none", border: "none", fontSize: 13, color: "rgba(255,255,255,.15)", cursor: "pointer", fontFamily: "'Outfit'" }}>Remove</button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                          }
+                        </div>
+                      );
+                    }
+                    // Show all wishlists
+                    return (
+                      <div>
+                        {/* Create new list */}
+                        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                          <input
+                            value={wishlistInput}
+                            onChange={e => setWishlistInput(e.target.value)}
+                            onKeyDown={async e => {
+                              if (e.key === "Enter" && wishlistInput.trim()) {
+                                setWishlistCreating(true);
+                                try {
+                                  const wl = await API.createWishlist(wishlistInput.trim());
+                                  setWishlists(w => [wl, ...w]);
+                                  setWishlistInput("");
+                                } catch {}
+                                setWishlistCreating(false);
+                              }
+                            }}
+                            placeholder="New list name…"
+                            style={{ flex: 1, padding: "10px 14px", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", borderRadius: 10, color: "#fff", fontFamily: "'Outfit'", fontSize: 13, outline: "none" }}
+                          />
+                          <button onClick={async () => {
+                            if (!wishlistInput.trim()) return;
+                            setWishlistCreating(true);
+                            try {
+                              const wl = await API.createWishlist(wishlistInput.trim());
+                              setWishlists(w => [wl, ...w]);
+                              setWishlistInput("");
+                            } catch {}
+                            setWishlistCreating(false);
+                          }} disabled={wishlistCreating || !wishlistInput.trim()} style={{ padding: "10px 16px", background: wishlistInput.trim() ? "#C9A96E" : "rgba(255,255,255,.04)", border: "none", borderRadius: 10, color: wishlistInput.trim() ? "#0C0C0E" : "rgba(255,255,255,.2)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 700, cursor: wishlistInput.trim() ? "pointer" : "default", transition: "all .2s" }}>
+                            {wishlistCreating ? "…" : "+ Create"}
+                          </button>
+                        </div>
+                        {wishlists.length === 0
+                          ? <div className="empty" style={{padding:"32px 20px"}}><div className="empty-i">📋</div><div className="empty-t">No lists yet</div><div className="empty-s">Create a list to organize your saved outfits</div></div>
+                          : <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              {wishlists.map(wl => {
+                                const itemCount = saved.filter(s => s.wishlist_id === wl.id).length;
+                                return (
+                                  <div key={wl.id} onClick={() => setActiveWishlist(wl)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12, cursor: "pointer", transition: "all .2s" }}>
+                                    <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(201,169,110,.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>📋</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 2 }}>{wl.name}</div>
+                                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.25)" }}>{itemCount} item{itemCount !== 1 ? "s" : ""}</div>
+                                    </div>
+                                    <span style={{ color: "rgba(255,255,255,.2)", fontSize: 14 }}>›</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                        }
+                      </div>
+                    );
+                  })()}
+
+                  {/* ─── All Scans / Saved filter ───────────────── */}
+                  {historyFilter !== "lists" && <>
                   {isFree && <div style={{fontSize:9,color:"rgba(255,255,255,.12)",marginBottom:8,display:"flex",justifyContent:"space-between"}}><span>Last 7 days</span><span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("history_expiring")}>Keep all →</span></div>}
                   {filteredHistory.length === 0
                     ? <div className="empty" style={{padding:"40px 20px"}}><div className="empty-i">♡</div><div className="empty-t">No saved scans</div><div className="empty-s">Tap the heart on any scan to save it</div></div>
@@ -2131,6 +2265,7 @@ export default function App() {
                       );
                     })
                   }
+                  </>}
                 </div>;
           })()}
 
