@@ -1002,14 +1002,32 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     // e.g. a $15 cap when budget min is $1000 is almost certainly a different product.
     const isCustomBudget = itemTierBounds.min > DEFAULT_BUDGET.min;
     const priceFloor = isCustomBudget ? itemTierBounds.min * 0.15 : 0;
-    const priced = allScored.filter(s => s.price !== null && s.price >= priceFloor);
-    const unpriced = allScored.filter(s => s.price === null);
 
-    // ── Find the ORIGINAL product ───────────────────
+    // ── Separate resale from retail before tiering ──────────
+    // Resale products get their own dedicated tier; retail-only pool feeds budget/mid/premium.
+    const resaleScored = allScored.filter(s => classifyMarket(s.product) === "resale");
+    const retailScored = allScored.filter(s => classifyMarket(s.product) !== "resale");
+
+    // Rebuild retail-only priced/unpriced pools
+    const pricedRetail = retailScored.filter(s => s.price !== null && s.price >= priceFloor);
+    const unpricedRetail = retailScored.filter(s => s.price === null);
+
+    // Top resale products (up to 3, already scored and deduped)
+    const resaleFormatted = resaleScored.slice(0, 3).map(s => {
+      const isBrand = hasBrand && (
+        (s.product.title || "").toLowerCase().includes(brandLower) ||
+        (s.product.source || "").toLowerCase().includes(brandLower)
+      );
+      const formatted = formatProduct(s.product, isBrand);
+      formatted.why = explainMatch(s.product, item, "resale", s.isLens);
+      return formatted;
+    });
+
+    // ── Find the ORIGINAL product (retail only) ─────────────
     // = Lens result whose title or source matches the identified brand
     let original = null;
     if (hasBrand) {
-      original = allScored.find(s => {
+      original = retailScored.find(s => {
         const t = (s.product.title || "").toLowerCase();
         const src = (s.product.source || "").toLowerCase();
         return s.isLens && (t.includes(brandLower) || src.includes(brandLower));
@@ -1019,9 +1037,9 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       }
     }
 
-    console.log(`[Tier] "${item.name}": ${priced.length} priced + ${unpriced.length} unpriced (bounds: $${itemTierBounds.min}-$${itemTierBounds.max})`);
-    if (allScored.length > 0) {
-      for (const s of allScored.slice(0, 3)) {
+    console.log(`[Tier] "${item.name}": ${pricedRetail.length} retail-priced + ${resaleScored.length} resale (bounds: $${itemTierBounds.min}-$${itemTierBounds.max})`);
+    if (retailScored.length > 0) {
+      for (const s of retailScored.slice(0, 3)) {
         console.log(`  → score=${s.score} ${s.price != null ? "$" + s.price : "no-price"} ${s.isLens ? "[LENS]" : "[TEXT]"} "${(s.product.title || "").slice(0, 55)}"`);
       }
     }
@@ -1036,69 +1054,86 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       return formatted;
     }
 
-    function pickBestAvailable(candidates, tier) {
-      const pick = candidates.find(s => !usedUrls.has(getUrl(s)));
-      if (!pick) return null;
-      const isBrand = hasBrand && ((pick.product.title || "").toLowerCase().includes(brandLower) || (pick.product.source || "").toLowerCase().includes(brandLower));
-      return formatAndTrack(pick, tier, isBrand);
+    // Pick up to `n` products from candidates, deduped by URL.
+    function pickTopN(candidates, n, tier) {
+      const results = [];
+      for (const s of candidates) {
+        if (results.length >= n) break;
+        const url = getUrl(s);
+        if (!usedUrls.has(url)) {
+          const isBrand = hasBrand && (
+            (s.product.title || "").toLowerCase().includes(brandLower) ||
+            (s.product.source || "").toLowerCase().includes(brandLower)
+          );
+          results.push(formatAndTrack(s, tier, isBrand));
+        }
+      }
+      return results;
     }
 
-    const tiers = { budget: null, mid: null, premium: null };
+    const tiers = { budget: [], mid: [], premium: [] };
 
     if (original) {
       // ── ORIGINAL FOUND: place it in mid, alternatives in budget/premium ──
-      const isBrand = true;
-      tiers.mid = formatAndTrack(original, "mid", isBrand);
+      usedUrls.add(getUrl(original));
+      const origFormatted = formatProduct(original.product, true);
+      origFormatted.why = explainMatch(original.product, item, "mid", original.isLens);
+      tiers.mid = [origFormatted];
 
-      // Budget = best-scored alternative cheaper than the original (not dirt cheap: floor at 15% of original)
-      const origPrice = original.price || itemTierBounds.min;
-      const budgetFloor = origPrice * 0.15;
-      const cheaper = priced
-        .filter(s => !usedUrls.has(getUrl(s)) && s.price < origPrice && s.price >= budgetFloor)
+      // Pick one more mid-tier product near the same price range
+      const midCompanions = pricedRetail
+        .filter(s => !usedUrls.has(getUrl(s)) && s.price != null &&
+          Math.abs(s.price - (original.price || itemTierBounds.min)) / Math.max(original.price || 1, 1) < 0.5)
         .sort((a, b) => b.score - a.score);
-      tiers.budget = cheaper.length ? formatAndTrack(cheaper[0], "budget", false) : null;
+      tiers.mid.push(...pickTopN(midCompanions.slice(0, 5), 1, "mid"));
 
-      // Premium = most expensive alternative above the original price
-      const pricier = priced
+      // Budget = best-scored retail cheaper than original
+      const origPrice = original.price || itemTierBounds.min;
+      const cheaper = pricedRetail
+        .filter(s => !usedUrls.has(getUrl(s)) && s.price < origPrice && s.price >= origPrice * 0.15)
+        .sort((a, b) => b.score - a.score);
+      tiers.budget.push(...pickTopN(cheaper, 2, "budget"));
+
+      // Premium = most expensive above original
+      const pricier = pricedRetail
         .filter(s => !usedUrls.has(getUrl(s)) && s.price > origPrice)
         .sort((a, b) => b.price - a.price);
-      tiers.premium = pricier.length ? formatAndTrack(pricier[0], "premium", false) : null;
+      tiers.premium.push(...pickTopN(pricier, 2, "premium"));
 
-      // Fill any still-empty tier with unpriced Lens results
-      if (!tiers.budget) tiers.budget = pickBestAvailable(unpriced, "budget");
-      if (!tiers.premium) tiers.premium = pickBestAvailable(unpriced, "premium");
+      // Fill any still-empty tiers with unpriced Lens results
+      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 2, "budget"));
+      if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 2, "premium"));
 
     } else {
-      // ── NO ORIGINAL: partition by price as before ──
-      const budgetPool = priced.filter(s => s.price < itemTierBounds.min).sort((a, b) => b.score - a.score);
-      const midPool = priced.filter(s => s.price >= itemTierBounds.min && s.price <= itemTierBounds.max).sort((a, b) => b.score - a.score);
-      const premiumPool = priced.filter(s => s.price > itemTierBounds.max).sort((a, b) => b.score - a.score);
+      // ── NO ORIGINAL: partition by price as before, return up to 2 per tier ──
+      const budgetPool = pricedRetail.filter(s => s.price < itemTierBounds.min).sort((a, b) => b.score - a.score);
+      const midPool = pricedRetail.filter(s => s.price >= itemTierBounds.min && s.price <= itemTierBounds.max).sort((a, b) => b.score - a.score);
+      const premiumPool = pricedRetail.filter(s => s.price > itemTierBounds.max).sort((a, b) => b.score - a.score);
 
-      tiers.budget = pickBestAvailable(budgetPool, "budget");
-      tiers.mid = pickBestAvailable(midPool, "mid");
-      tiers.premium = pickBestAvailable(premiumPool, "premium");
+      tiers.budget.push(...pickTopN(budgetPool, 2, "budget"));
+      tiers.mid.push(...pickTopN(midPool, 2, "mid"));
+      tiers.premium.push(...pickTopN(premiumPool, 2, "premium"));
 
-      // Widen budget tier only — show what exists even if slightly over budget min
-      if (!tiers.budget) tiers.budget = pickBestAvailable(priced, "budget");
-      if (!tiers.budget) tiers.budget = pickBestAvailable(unpriced, "budget");
+      // Widen budget tier only
+      if (!tiers.budget.length) tiers.budget.push(...pickTopN(pricedRetail, 2, "budget"));
+      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 2, "budget"));
 
-      // For mid and premium: if nothing landed in range, use unpriced Lens results only.
-      // Do NOT fall back to off-budget priced items — the caller's fallbackTier (Google
-      // Shopping search link) is more honest than a $15 product in a $1000+ budget slot.
-      if (!tiers.mid) tiers.mid = pickBestAvailable(unpriced, "mid");
-      if (!tiers.premium) tiers.premium = pickBestAvailable(unpriced, "premium");
+      // For mid and premium: fall back to unpriced Lens results only
+      if (!tiers.mid.length) tiers.mid.push(...pickTopN(unpricedRetail, 2, "mid"));
+      if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 2, "premium"));
     }
 
     const brandVerified = item.brand && item.brand !== "Unidentified" &&
-      Object.values(tiers).some(t => t?.is_identified_brand);
+      [...tiers.budget, ...tiers.mid, ...tiers.premium].some(t => t?.is_identified_brand);
 
     return {
       item_index: rawItem._scan_item_index ?? i,
       brand_verified: brandVerified,
       tiers: {
-        budget: tiers.budget || fallbackTier(item, "budget", itemTierBounds),
-        mid: tiers.mid || fallbackTier(item, "mid", itemTierBounds),
-        premium: tiers.premium || fallbackTier(item, "premium", itemTierBounds),
+        budget: tiers.budget.length ? tiers.budget : [fallbackTier(item, "budget", itemTierBounds)],
+        mid: tiers.mid.length ? tiers.mid : [fallbackTier(item, "mid", itemTierBounds)],
+        premium: tiers.premium.length ? tiers.premium : [fallbackTier(item, "premium", itemTierBounds)],
+        resale: resaleFormatted,
       },
     };
   });

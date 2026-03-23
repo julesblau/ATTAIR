@@ -348,6 +348,39 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
   );
 };
 
+// ─── Mini product card (compact, for 2-col grid) ────────────
+const MiniCard = ({ tier, data, scanId, itemIndex }) => {
+  if (!data) return null;
+  const tierCfg = {
+    budget: { accent: "#5AC8FF" },
+    mid: { accent: "#C9A96E" },
+    premium: { accent: "#C77DFF" },
+    resale: { accent: "#7BC47F" },
+  }[tier] || { accent: "#C9A96E" };
+  const clickId = `${scanId || "x"}_${itemIndex}_${tier}_mini`;
+  const href = data.url ? API.affiliateUrl(clickId, data.url, scanId, itemIndex, tier, data.brand) : "#";
+  const isFallback = !data.is_product_page && data.brand === "Google Shopping";
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer"
+      onClick={() => track("product_clicked", { tier, brand: data.brand, price: data.price, is_fallback: isFallback }, scanId, "scan")}
+      style={{ padding: 12, background: isFallback ? "rgba(255,255,255,.01)" : "rgba(255,255,255,.02)", border: `1px solid ${data.is_identified_brand ? "rgba(201,169,110,0.25)" : "rgba(255,255,255,.05)"}`, borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 6, transition: "all 0.2s", minWidth: 0 }}>
+      {data.image_url && (
+        <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "rgba(255,255,255,.04)", marginBottom: 2 }}>
+          <img src={data.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+        </div>
+      )}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        {data.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "#C9A96E" }}>ORIG</span>}
+        {data.is_resale && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(123,196,127,.12)", color: "#7BC47F" }}>RESALE</span>}
+        {!data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 7, color: "rgba(255,255,255,.15)" }}>{data.brand?.slice(0, 14)}</span>}
+        <span style={{ fontSize: 13, fontWeight: 700, color: tierCfg.accent }}>{isFallback ? "Search →" : data.price}</span>
+      </div>
+      {!isFallback && <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,.7)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{data.product_name}</div>}
+      {isFallback && <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)", lineHeight: 1.3 }}>No match — tap to search</div>}
+    </a>
+  );
+};
+
 // ─── Upgrade Modal ──────────────────────────────────────────
 const UpgradeModal = ({ trigger, onClose, onUpgrade }) => {
   const msgs = {
@@ -412,6 +445,13 @@ const InterstitialAd = ({ onClose }) => {
 };
 
 const CAT_POSITIONS = { outerwear: 0.3, top: 0.35, dress: 0.4, bottom: 0.65, shoes: 0.88, accessory: 0.15, bag: 0.55 };
+
+// Normalise tiers: backend may return a single object (old format) or an array (new format)
+function asTierArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  return [val]; // legacy single-product format
+}
 
 // ═══════════════════════════════════════════════════════════════
 // ONBOARDING
@@ -1575,13 +1615,39 @@ export default function App() {
                               </div>
                             )}
 
-                            {item.tiers && (
-                              <div className="tiers-scroll">
-                                <TierCard tier="budget" data={item.tiers.budget} scanId={scanId} itemIndex={selIdx} />
-                                <TierCard tier="mid" data={item.tiers.mid} scanId={scanId} itemIndex={selIdx} />
-                                <TierCard tier="premium" data={item.tiers.premium} scanId={scanId} itemIndex={selIdx} />
-                              </div>
-                            )}
+                            {item.tiers && (() => {
+                              const TIER_LABELS = { budget: { label: "Save", icon: "$", accent: "#5AC8FF" }, mid: { label: "Best Value", icon: "$$", accent: "#C9A96E" }, premium: { label: "Splurge", icon: "$$$", accent: "#C77DFF" } };
+                              const resaleProducts = asTierArray(item.tiers.resale);
+                              return (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                                  {["budget", "mid", "premium"].map(t => {
+                                    const products = asTierArray(item.tiers[t]);
+                                    const cfg = TIER_LABELS[t];
+                                    if (!products.length) return null;
+                                    return (
+                                      <div key={t}>
+                                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                                          <span>{cfg.icon}</span><span>{cfg.label}</span>
+                                        </div>
+                                        <div style={{ display: "grid", gridTemplateColumns: products.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
+                                          {products.map((p, j) => <MiniCard key={j} tier={t} data={p} scanId={scanId} itemIndex={selIdx} />)}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  {resaleProducts.length > 0 && (
+                                    <div>
+                                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "#7BC47F", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                                        <span>↺</span><span>Pre-Owned &amp; Resale</span>
+                                      </div>
+                                      <div style={{ display: "grid", gridTemplateColumns: resaleProducts.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
+                                        {resaleProducts.map((p, j) => <MiniCard key={j} tier="resale" data={p} scanId={scanId} itemIndex={selIdx} />)}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </>)}
                         </>
                       );
