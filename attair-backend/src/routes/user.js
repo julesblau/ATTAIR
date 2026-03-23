@@ -256,6 +256,27 @@ router.post("/scan/:id/save", requireAuth, async (req, res) => {
   }
 });
 
+// ─── PATCH /api/user/scan/:id/rating — Rate a scan (1-5 stars) ─
+router.patch("/scan/:id/rating", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { rating } = req.body;
+
+  if (rating == null || rating < 1 || rating > 5 || !Number.isInteger(rating)) {
+    return res.status(400).json({ error: "rating must be an integer 1–5" });
+  }
+
+  const { data, error } = await supabase
+    .from("scans")
+    .update({ rating })
+    .eq("id", id)
+    .eq("user_id", req.userId)
+    .select("id, rating")
+    .single();
+
+  if (error) return res.status(500).json({ error: "Failed to save rating" });
+  return res.json(data);
+});
+
 // ─── POST /api/user/saved ───────────────────────────────────
 router.post("/saved", requireAuth, async (req, res) => {
   const { scan_id, item_data, selected_tier, tier_product } = req.body;
