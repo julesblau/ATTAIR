@@ -14,6 +14,7 @@ import adEventsRouter from "./routes/adEvents.js";
 import eventsRouter from "./routes/events.js";
 import refineItemRouter from "./routes/refineItem.js";
 import suggestPairingsRouter from "./routes/suggestPairings.js";
+import seenOnRouter from "./routes/seenOn.js";
 
 // ─── Validate required env vars ─────────────────────────────
 const REQUIRED_ENV = [
@@ -87,6 +88,7 @@ app.use("/api/ad-events", adEventsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/refine-item", refineItemRouter);
 app.use("/api/suggest-pairings", suggestPairingsRouter);
+app.use("/api/seen-on", seenOnRouter);
 
 // Health check
 app.get("/", (req, res) => {

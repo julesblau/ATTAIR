@@ -211,6 +211,15 @@ const API = {
     return res.ok ? await res.json() : null;
   },
 
+  async seenOn(brand, name) {
+    const params = new URLSearchParams();
+    if (brand) params.set("brand", brand);
+    if (name) params.set("name", name);
+    const res = await authFetch(`${API_BASE}/api/seen-on?${params}`);
+    if (!res.ok) return { appearances: [] };
+    return await res.json();
+  },
+
   async suggestPairings(scanId, items, gender) {
     const res = await authFetch(`${API_BASE}/api/suggest-pairings`, {
       method: "POST",
@@ -528,6 +537,10 @@ export default function App() {
   // ─── Complete the Look ────────────────────────────────────
   const [pairings, setPairings] = useState(null);   // null | []
   const [pairingsLoading, setPairingsLoading] = useState(false);
+
+  // ─── As Seen On ───────────────────────────────────────────
+  const [seenOnData, setSeenOnData] = useState({});     // { [itemIdx]: {appearances,loading,open} }
+
 
   // ─── AI refinement (ID/Shop toggle + chat per item) ───────
   const [itemViewModes, setItemViewModes] = useState({}); // { [idx]: "id" | "shop" }
@@ -901,7 +914,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -1527,6 +1540,44 @@ export default function App() {
                       </div>
                     )}
                     {item.brand_evidence && <div style={{ fontSize: 11, color: "rgba(255,255,255,.25)", marginTop: 6, fontStyle: "italic" }}>Evidence: {item.brand_evidence}</div>}
+
+                    {/* ─── As Seen On ─────────────────────────── */}
+                    {item.brand && item.brand !== "Unidentified" && (() => {
+                      const sod = seenOnData[selIdx] || {};
+                      const toggleSeenOn = async () => {
+                        if (sod.open) { setSeenOnData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: false } })); return; }
+                        if (sod.appearances) { setSeenOnData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: true } })); return; }
+                        setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: true } }));
+                        try {
+                          const res = await API.seenOn(item.brand, item.name);
+                          setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: res.appearances || [] } }));
+                          track("seen_on_viewed", { brand: item.brand }, scanId, "scan");
+                        } catch { setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: [] } })); }
+                      };
+                      return (
+                        <div style={{ marginTop: 10, marginBottom: 4 }}>
+                          <button onClick={toggleSeenOn} style={{ background: "none", border: "none", padding: "6px 0", cursor: "pointer", fontFamily: "'Outfit'", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.3)", display: "flex", alignItems: "center", gap: 5, letterSpacing: .5 }}>
+                            <span style={{ fontSize: 13 }}>{sod.open ? "▾" : "▸"}</span>
+                            As Seen On <span style={{ color: "rgba(255,255,255,.15)" }}>— {item.brand}</span>
+                          </button>
+                          {sod.open && (
+                            <div style={{ marginTop: 6 }}>
+                              {sod.loading && <div style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>Searching…</div>}
+                              {!sod.loading && sod.appearances?.length === 0 && <div style={{ fontSize: 11, color: "rgba(255,255,255,.15)" }}>No recent sightings found.</div>}
+                              {!sod.loading && sod.appearances?.map((a, i) => (
+                                <a key={i} href={a.source_url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,.04)", textDecoration: "none", color: "inherit" }}>
+                                  {a.thumbnail && <img src={a.thumbnail} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} onError={e => e.target.style.display = "none"} />}
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.7)", lineHeight: 1.3, marginBottom: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{a.title}</div>
+                                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.25)" }}>{a.source_name} {a.date && `· ${a.date}`}</div>
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     <div className="det-tags">
                       <span className="det-tag">{item.color}</span>
