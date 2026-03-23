@@ -109,7 +109,7 @@ export async function refineItem(originalItem, userMessage, chatHistory = []) {
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-5",
         max_tokens: 1000,
         system: systemPrompt,
         messages,
@@ -185,7 +185,7 @@ export async function identifyClothing(base64Image, mimeType, userPrefs) {
       },
       signal: controller.signal,
       body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-5",
       max_tokens: 3000,
       messages: [
         {
