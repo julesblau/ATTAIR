@@ -220,6 +220,15 @@ const API = {
     return await res.json();
   },
 
+  async nearbyStores(brand, category, lat, lng) {
+    const params = new URLSearchParams({ lat, lng });
+    if (brand && brand !== "Unidentified") params.set("brand", brand);
+    if (category) params.set("category", category);
+    const res = await authFetch(`${API_BASE}/api/nearby-stores?${params}`);
+    if (!res.ok) return { stores: [] };
+    return await res.json();
+  },
+
   async suggestPairings(scanId, items, gender) {
     const res = await authFetch(`${API_BASE}/api/suggest-pairings`, {
       method: "POST",
@@ -540,6 +549,9 @@ export default function App() {
 
   // ─── As Seen On ───────────────────────────────────────────
   const [seenOnData, setSeenOnData] = useState({});     // { [itemIdx]: {appearances,loading,open} }
+
+  // ─── Get It Today (nearby stores) ────────────────────────
+  const [nearbyData, setNearbyData] = useState({});     // { [itemIdx]: {stores,loading,open} }
 
   // ─── Occasion filter ──────────────────────────────────────
   const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
@@ -916,7 +928,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setOccasion(null); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -1592,6 +1604,64 @@ export default function App() {
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.7)", lineHeight: 1.3, marginBottom: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{a.title}</div>
                                     <div style={{ fontSize: 10, color: "rgba(255,255,255,.25)" }}>{a.source_name} {a.date && `· ${a.date}`}</div>
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* ─── Get It Today ────────────────────────── */}
+                    {(() => {
+                      const nd = nearbyData[selIdx] || {};
+                      const toggleNearby = async () => {
+                        if (nd.open) { setNearbyData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: false } })); return; }
+                        if (nd.stores) { setNearbyData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: true } })); return; }
+                        setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: true } }));
+                        // Request geolocation
+                        if (!navigator.geolocation) {
+                          setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: false, stores: [], error: "Location not supported" } }));
+                          return;
+                        }
+                        navigator.geolocation.getCurrentPosition(
+                          async (pos) => {
+                            try {
+                              const res = await API.nearbyStores(item.brand, item.category, pos.coords.latitude, pos.coords.longitude);
+                              setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: false, stores: res.stores || [] } }));
+                              track("nearby_stores_viewed", { brand: item.brand, store_count: res.stores?.length || 0 }, scanId, "scan");
+                            } catch { setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: false, stores: [] } })); }
+                          },
+                          () => setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: false, stores: [], error: "Location access denied" } }))
+                        );
+                      };
+                      return (
+                        <div style={{ marginTop: 10, marginBottom: 4 }}>
+                          <button onClick={toggleNearby} style={{ background: "none", border: "none", padding: "6px 0", cursor: "pointer", fontFamily: "'Outfit'", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.3)", display: "flex", alignItems: "center", gap: 5, letterSpacing: .5 }}>
+                            <span style={{ fontSize: 13 }}>{nd.open ? "▾" : "▸"}</span>
+                            📍 Get It Today
+                            <span style={{ color: "rgba(255,255,255,.15)" }}>— nearby stores</span>
+                          </button>
+                          {nd.open && (
+                            <div style={{ marginTop: 6 }}>
+                              {nd.loading && <div style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>Finding stores near you…</div>}
+                              {nd.error && <div style={{ fontSize: 11, color: "rgba(255,100,100,.4)" }}>{nd.error}</div>}
+                              {!nd.loading && !nd.error && nd.stores?.length === 0 && <div style={{ fontSize: 11, color: "rgba(255,255,255,.15)" }}>No stores found nearby.</div>}
+                              {!nd.loading && nd.stores?.map((s, i) => (
+                                <a key={i} href={s.maps_url || `https://www.google.com/maps/search/${encodeURIComponent(s.name + " " + s.address)}`} target="_blank" rel="noopener noreferrer"
+                                  style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,.04)", textDecoration: "none", color: "inherit" }}>
+                                  <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(255,255,255,.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>🏪</div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.7)", lineHeight: 1.3 }}>{s.name}</div>
+                                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.25)", marginTop: 1 }}>
+                                      {s.address}
+                                      {s.distance && ` · ${s.distance}`}
+                                    </div>
+                                    <div style={{ display: "flex", gap: 6, marginTop: 3, alignItems: "center" }}>
+                                      {s.rating && <span style={{ fontSize: 10, color: "#C9A96E" }}>★ {s.rating}</span>}
+                                      {s.open_now && <span style={{ fontSize: 9, color: s.open_now.toLowerCase().includes("open") ? "#7BC47F" : "rgba(255,255,255,.2)" }}>{s.open_now}</span>}
+                                    </div>
                                   </div>
                                 </a>
                               ))}
