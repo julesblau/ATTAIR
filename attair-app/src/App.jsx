@@ -238,6 +238,11 @@ const API = {
     return await res.json();
   },
 
+  async rateScan(scanId, rating) {
+    const res = await authFetch(`${API_BASE}/api/user/scan/${scanId}/rating`, { method: "PATCH", body: JSON.stringify({ rating }) });
+    return res.ok ? await res.json() : null;
+  },
+
   async refineItem(scanId, itemIndex, originalItem, userMessage, chatHistory, gender) {
     const res = await authFetch(`${API_BASE}/api/refine-item`, {
       method: "POST",
@@ -571,6 +576,9 @@ export default function App() {
 
   // ─── Get It Today (nearby stores) ────────────────────────
   const [nearbyData, setNearbyData] = useState({});     // { [itemIdx]: {stores,loading,open} }
+
+  // ─── Outfit rating ────────────────────────────────────────
+  const [scanRatings, setScanRatings] = useState({});  // { [scanId]: 1-5 }
 
   // ─── Occasion filter ──────────────────────────────────────
   const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
@@ -1623,6 +1631,35 @@ export default function App() {
                   </span>
                 </div>
                 {results.summary && <div style={{ fontSize: 13, color: "rgba(255,255,255,.5)", fontStyle: "italic", lineHeight: 1.5 }}>{results.summary}</div>}
+
+                {/* ─── Outfit star rating ──────────────── */}
+                {phase === "done" && scanId && (
+                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase" }}>Rate this outfit</span>
+                    <div style={{ display: "flex", gap: 3 }}>
+                      {[1,2,3,4,5].map(star => {
+                        const current = scanRatings[scanId] || 0;
+                        return (
+                          <button key={star} onClick={async () => {
+                            const newRating = scanRatings[scanId] === star ? 0 : star;
+                            setScanRatings(r => ({ ...r, [scanId]: newRating }));
+                            if (newRating > 0) {
+                              await API.rateScan(scanId, newRating).catch(() => {});
+                              track("outfit_rated", { rating: newRating }, scanId, "scan");
+                            }
+                          }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: "2px 1px", lineHeight: 1, color: star <= current ? "#C9A96E" : "rgba(255,255,255,.15)", transition: "color .15s, transform .1s", transform: star <= current ? "scale(1.1)" : "scale(1)" }}>
+                            ★
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {scanRatings[scanId] > 0 && (
+                      <span style={{ fontSize: 10, color: "rgba(201,169,110,.6)", fontWeight: 600 }}>
+                        {["","Awful","Meh","Okay","Good","Fire 🔥"][scanRatings[scanId]]}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* ─── Banner ad slot (free users) ──────── */}
@@ -1635,7 +1672,14 @@ export default function App() {
                 return (
                   <div className="det" key={selIdx}>
                     <div className="det-top">
-                      <h2 className="det-name">{item.name}</h2>
+                      {/* Product thumbnail pulled from best tier image */}
+                      {item.tiers && (() => {
+                        const thumb = ["mid","budget","premium"].map(t => asTierArray(item.tiers[t])[0]).find(p => p?.image_url);
+                        return thumb ? (
+                          <img src={thumb.image_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.04)" }} onError={e => e.target.style.display = "none"} />
+                        ) : null;
+                      })()}
+                      <h2 className="det-name" style={{ flex: 1 }}>{item.name}</h2>
                       <button className={`det-save ${isSaved(item)?"on":""}`} onClick={() => toggleSave(item)}>{isSaved(item)?"♥":"♡"}</button>
                     </div>
 
