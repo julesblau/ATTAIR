@@ -11,6 +11,7 @@ import userRouter from "./routes/user.js";
 import affiliateRouter from "./routes/affiliate.js";
 import authRouter from "./routes/auth.js";
 import adEventsRouter from "./routes/adEvents.js";
+import eventsRouter from "./routes/events.js";
 
 // ─── Validate required env vars ─────────────────────────────
 const REQUIRED_ENV = [
@@ -81,6 +82,7 @@ app.use("/api/find-products", findProductsRouter);
 app.use("/api/user", userRouter);
 app.use("/api/go", affiliateRouter);
 app.use("/api/ad-events", adEventsRouter);
+app.use("/api/events", eventsRouter);
 
 // Health check
 app.get("/", (req, res) => {

@@ -213,6 +213,58 @@ const API = {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════════════════════════════════
+
+// Create once per browser tab — refreshes on tab close (sessionStorage)
+const _sessionId = (() => {
+  try {
+    let id = sessionStorage.getItem("attair_sid");
+    if (!id) { id = crypto.randomUUID(); sessionStorage.setItem("attair_sid", id); }
+    return id;
+  } catch { return Math.random().toString(36).slice(2); }
+})();
+
+/**
+ * Fire-and-forget event tracker. Never throws, never blocks UI.
+ * @param {string} eventType  e.g. "scan_started", "product_clicked"
+ * @param {object} data       arbitrary payload for this event
+ * @param {string|null} scanId  associated scan UUID if applicable
+ * @param {string|null} page  e.g. "scan", "history", "profile"
+ */
+function track(eventType, data = {}, scanId = null, page = null) {
+  try {
+    authFetch(`${API_BASE}/api/events`, {
+      method: "POST",
+      body: JSON.stringify({
+        event_type: eventType,
+        event_data: data,
+        scan_id: scanId || null,
+        page,
+        session_id: _sessionId,
+      }),
+    }).catch(() => {});
+  } catch { /* ignore */ }
+}
+
+/**
+ * Send event via sendBeacon — use for logout/page-close events where
+ * the page is being torn down and a regular fetch might not complete.
+ */
+function trackBeacon(eventType, data = {}) {
+  try {
+    if (typeof navigator !== "undefined" && navigator.sendBeacon) {
+      const payload = JSON.stringify([{
+        event_type: eventType,
+        event_data: data,
+        session_id: _sessionId,
+      }]);
+      navigator.sendBeacon(`${API_BASE}/api/events`, new Blob([payload], { type: "application/json" }));
+    }
+  } catch { /* ignore */ }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════
 function resizeImage(dataUrl, maxDim = 1024) {
@@ -257,7 +309,9 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
   const href = data.url ? API.affiliateUrl(clickId, data.url, scanId, itemIndex, tier, data.brand) : "#";
   const isFallback = !data.is_product_page && data.brand === "Google Shopping";
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={{ padding: 16, background: isFallback ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.02)", border: `1px solid ${data.is_identified_brand ? "rgba(201,169,110,0.3)" : isFallback ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.05)"}`, borderRadius: 14, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 8, transition: "all 0.2s" }}>
+    <a href={href} target="_blank" rel="noopener noreferrer"
+      onClick={() => track("product_clicked", { tier, brand: data.brand, price: data.price, is_fallback: isFallback }, scanId, "scan")}
+      style={{ padding: 16, background: isFallback ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.02)", border: `1px solid ${data.is_identified_brand ? "rgba(201,169,110,0.3)" : isFallback ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.05)"}`, borderRadius: 14, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 8, transition: "all 0.2s" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: isFallback ? "rgba(255,255,255,.2)" : tierCfg.accent, textTransform: "uppercase" }}>{tierCfg.icon} {tierCfg.label}</span>
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
@@ -512,8 +566,10 @@ export default function App() {
           budget_max: prefs.budget_max || budgetMax,
           size_prefs: prefs.size_prefs || sizePrefs,
         });
+        track("signup", { method: "email" }, null, "auth");
       } else {
         await API.login(authEmail, authPass);
+        track("login", { method: "email" }, null, "auth");
         // Restore preferences from profile for returning users
         try {
           const status = await API.getUserStatus();
@@ -537,6 +593,7 @@ export default function App() {
   // Camera
   const camStart = async (facing) => {
     const mode = facing || camFacing;
+    track("camera_opened", {}, null, "scan");
     try {
       const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode, width: { ideal: 1280 } } });
       streamRef.current = s;
@@ -578,6 +635,7 @@ export default function App() {
     const ext = (file.name || "").toLowerCase().slice(file.name.lastIndexOf("."));
     const isImage = (file.type || "").startsWith("image/") || validExts.includes(ext) || !file.type;
     if (!isImage) { setError("Please upload an image file."); return; }
+    track("photo_uploaded", {}, null, "scan");
     setError(null);
     const tryBlob = () => {
       try {
@@ -680,6 +738,7 @@ export default function App() {
     if (!canScan()) return;
 
     setPhase("identifying"); setResults(null); setSelIdx(null); setError(null); setScanId(null); setPickedItems(new Set());
+    track("scan_started", {}, null, "scan");
 
     // Phase 1: Identify (backend handles Claude + dedup + rate limit + image storage)
     try {
@@ -691,6 +750,7 @@ export default function App() {
       setItemOverrides({});
       setItemSettingsIdx(null);
       setPhase("picking"); // Stop here — let user choose which items to search
+      track("scan_completed", { item_count: items.length, gender: raw.gender }, raw.scan_id, "scan");
 
       // Update status (scan count changed) — optimistic local update + server confirm
       setUserStatus(prev => prev ? { ...prev, scans_remaining_today: Math.max(0, (prev.scans_remaining_today ?? 3) - 1) } : prev);
@@ -776,16 +836,19 @@ export default function App() {
       await API.deleteSaved(existing.id).catch(() => {});
       setSaved(s => s.filter(i => i.id !== existing.id));
       refreshStatus();
+      track("item_unsaved", { item_name: item.name }, scanId, "scan");
     } else {
       // Check save limit for free users
       if (isFree && (userStatus?.saved_count || 0) >= (userStatus?.saved_limit || 20)) {
         setUpgradeModal("save_limit");
+        track("upgrade_modal_shown", { trigger: "save_limit" }, scanId, "scan");
         return;
       }
       try {
         const res = await API.saveItem(scanId, item);
         setSaved(s => [...s, { id: res.id, item_data: item, created_at: new Date().toISOString() }]);
         refreshStatus();
+        track("item_saved", { item_name: item.name }, scanId, "scan");
       } catch (err) {
         if (err.message.includes("limit")) setUpgradeModal("save_limit");
       }
@@ -795,7 +858,7 @@ export default function App() {
 
   const brandConfLabel = (c) => ({ confirmed: { t: "Confirmed", c: "#C9A96E" }, high: { t: "High confidence", c: "rgba(201,169,110,0.7)" }, moderate: { t: "Moderate", c: "rgba(255,255,255,0.4)" }, low: { t: "Estimated", c: "rgba(255,255,255,0.25)" } }[c] || { t: "Unknown", c: "rgba(255,255,255,0.2)" });
 
-  const handleLogout = () => { Auth.clear(); setAuthed(false); setAuthEmail(""); setAuthName(""); setUserStatus(null); setScreen("onboarding"); setObIdx(0); };
+  const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); setAuthed(false); setAuthEmail(""); setAuthName(""); setUserStatus(null); setScreen("onboarding"); setObIdx(0); };
 
   const step = OB_STEPS[obIdx];
   const prog = ((obIdx + 1) / OB_STEPS.length) * 100;
@@ -1759,9 +1822,9 @@ export default function App() {
 
         {/* ─── Tab bar (3 tabs) ────────────────────────── */}
         <div className="tb">
-          <button className={`tab ${tab==="scan"?"on":""}`} onClick={() => setTab("scan")}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg><span className="tab-l">Scan</span></button>
-          <button className={`tab ${tab==="history"?"on":""}`} onClick={() => setTab("history")}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" /></svg><span className="tab-l">History</span></button>
-          <button className={`tab ${tab==="profile"?"on":""}`} onClick={() => setTab("profile")}><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7" /></svg><span className="tab-l">Profile</span></button>
+          <button className={`tab ${tab==="scan"?"on":""}`} onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); }}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg><span className="tab-l">Scan</span></button>
+          <button className={`tab ${tab==="history"?"on":""}`} onClick={() => { track("tab_switched", { tab: "history" }); setTab("history"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" /></svg><span className="tab-l">History</span></button>
+          <button className={`tab ${tab==="profile"?"on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7" /></svg><span className="tab-l">Profile</span></button>
         </div>
       </>)}
 
