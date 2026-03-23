@@ -39,6 +39,9 @@ for (const key of REQUIRED_ENV) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust Railway's load balancer (fixes express-rate-limit X-Forwarded-For error)
+app.set("trust proxy", 1);
+
 // ─── Middleware ──────────────────────────────────────────────
 
 // Manual CORS — runs before everything, including helmet

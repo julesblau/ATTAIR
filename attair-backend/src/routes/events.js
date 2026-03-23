@@ -34,15 +34,15 @@ router.post("/", optionalAuth, async (req, res) => {
   }
 
   // Insert events — fire-and-forget, don't block the response
-  supabase.from("user_events").insert(rows).catch(() => {});
+  (async () => { try { await supabase.from("user_events").insert(rows); } catch {} })();
 
   // Update last_active_at for authenticated users (best-effort)
   if (req.userId) {
-    supabase
-      .from("profiles")
-      .update({ last_active_at: new Date().toISOString() })
-      .eq("id", req.userId)
-      .catch(() => {});
+    (async () => {
+      try {
+        await supabase.from("profiles").update({ last_active_at: new Date().toISOString() }).eq("id", req.userId);
+      } catch {}
+    })();
   }
 
   return res.json({ ok: true });
