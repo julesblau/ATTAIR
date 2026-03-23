@@ -135,10 +135,10 @@ const API = {
     return await res.json();
   },
 
-  async findProducts(items, gender, scanId) {
+  async findProducts(items, gender, scanId, occasion = null) {
     const res = await authFetch(`${API_BASE}/api/find-products`, {
       method: "POST",
-      body: JSON.stringify({ items, gender, scan_id: scanId }),
+      body: JSON.stringify({ items, gender, scan_id: scanId, occasion }),
     });
     if (!res.ok) { const data = await res.json(); throw new Error(data.message || "Product search failed"); }
     return await res.json();
@@ -541,6 +541,8 @@ export default function App() {
   // ─── As Seen On ───────────────────────────────────────────
   const [seenOnData, setSeenOnData] = useState({});     // { [itemIdx]: {appearances,loading,open} }
 
+  // ─── Occasion filter ──────────────────────────────────────
+  const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
 
   // ─── AI refinement (ID/Shop toggle + chat per item) ───────
   const [itemViewModes, setItemViewModes] = useState({}); // { [idx]: "id" | "shop" }
@@ -886,7 +888,7 @@ export default function App() {
     setSelIdx(pickedIndices[0]); // Auto-select first picked item
 
     try {
-      const searchResults = await API.findProducts(picked, results.gender, scanId);
+      const searchResults = await API.findProducts(picked, results.gender, scanId, occasion);
       setResults(prev => {
         if (!prev) return prev;
         const updated = prev.items.map((item, idx) => {
@@ -914,7 +916,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setOccasion(null); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -1453,6 +1455,26 @@ export default function App() {
                 })}
               </div>
 
+              {/* Occasion Filter */}
+              <div style={{ padding: "4px 20px 0" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "rgba(255,255,255,.2)", marginBottom: 8 }}>Occasion</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[
+                    { v: "casual",    l: "Casual",   icon: "☀️" },
+                    { v: "work",      l: "Work",     icon: "💼" },
+                    { v: "night_out", l: "Night Out", icon: "🌙" },
+                    { v: "athletic",  l: "Athletic",  icon: "🏃" },
+                    { v: "formal",    l: "Formal",    icon: "✨" },
+                    { v: "outdoor",   l: "Outdoor",   icon: "🌲" },
+                  ].map(({ v, l, icon }) => (
+                    <button key={v} onClick={() => setOccasion(o => o === v ? null : v)}
+                      style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${occasion === v ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: occasion === v ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.02)", color: occasion === v ? "#C9A96E" : "rgba(255,255,255,.4)", fontSize: 11, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ fontSize: 13 }}>{icon}</span>{l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Search CTA */}
               <div className="pick-cta">
                 <button
@@ -1460,7 +1482,7 @@ export default function App() {
                   onClick={runProductSearch}
                   disabled={pickedItems.size === 0}
                 >
-                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}`}
+                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` · ${["casual","work","night_out","athletic","formal","outdoor"].find(v=>v===occasion) ? {casual:"Casual",work:"Work",night_out:"Night Out",athletic:"Athletic",formal:"Formal",outdoor:"Outdoor"}[occasion] : ""}` : ""}`}
                 </button>
                 <button style={{ width: "100%", padding: 12, background: "none", border: "none", color: "rgba(255,255,255,.2)", fontSize: 12, fontFamily: "'Outfit'", cursor: "pointer", marginTop: 4 }}
                   onClick={() => { setPickedItems(new Set(results.items.map((_, i) => i))); }}>

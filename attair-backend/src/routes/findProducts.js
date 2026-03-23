@@ -15,7 +15,7 @@ const router = Router();
  * Profile values are used as defaults for items without overrides.
  */
 router.post("/", requireAuth, async (req, res) => {
-  const { items, gender, scan_id } = req.body;
+  const { items, gender, scan_id, occasion } = req.body;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Missing or empty items array" });
@@ -45,7 +45,7 @@ router.post("/", requireAuth, async (req, res) => {
       imageUrl = scan?.image_url || null;
     }
 
-    const results = await findProductsForItems(items, gender, profile?.budget_min, profile?.budget_max, imageUrl, profile?.size_prefs || {});
+    const results = await findProductsForItems(items, gender, profile?.budget_min, profile?.budget_max, imageUrl, profile?.size_prefs || {}, occasion || null);
 
     // Persist tier results back to the scan row
     if (scan_id) {

@@ -636,7 +636,7 @@ function cleanForSearch(q) {
     .trim();
 }
 
-async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
+async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occasion = null) {
   const g = gender === "female" ? "women's" : "men's";
 
   const bodyTypes = Array.isArray(sizePrefs.body_type) ? sizePrefs.body_type : (sizePrefs.body_type ? [sizePrefs.body_type] : []);
@@ -644,6 +644,7 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
   const bodyTerm = BODY_TYPE_TERMS[bodyTypes[0]] || null;
   const fitTerm = FIT_TERMS[fitStyles[0]] || null;
   const sizeTerm = getSizeTermForItem(item, sizePrefs);
+  const occasionTerm = occasion ? OCCASION_MODIFIERS[occasion] || null : null;
 
   const queries = [];
 
@@ -653,6 +654,8 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
     const cleaned = cleanForSearch(item.search_query);
     let q = hasGenderPrefix(cleaned) ? cleaned : `${g} ${cleaned}`;
     if (bodyTerm && !q.toLowerCase().includes(bodyTerm)) q = `${bodyTerm} ${q}`;
+    // Append occasion modifier when set (only if not already present in query)
+    if (occasionTerm && !q.toLowerCase().includes(occasionTerm.split(" ")[0])) q = `${q} ${occasionTerm}`;
     queries.push(q.replace(/\s{2,}/g, " ").trim());
   }
 
@@ -666,7 +669,8 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}) {
   // Just gender + color + subcategory, no fit/body/size qualifiers.
   // This is the safety net: even if A is too specific, C always works for
   // common items like "men's white dress shirt".
-  const simpleDesc = `${g} ${item.color || ""} ${item.subcategory || item.category}`.replace(/\s+/g, " ").trim();
+  const occasionSuffix = occasionTerm ? ` ${occasionTerm}` : "";
+  const simpleDesc = `${g} ${item.color || ""} ${item.subcategory || item.category}${occasionSuffix}`.replace(/\s+/g, " ").trim();
   if (!queries.some(q => q.toLowerCase() === simpleDesc.toLowerCase())) {
     queries.push(simpleDesc);
   }
@@ -895,7 +899,17 @@ function fallbackTier(item, tier, tierBounds) {
 // ═════════════════════════════════════════════════════════════
 // MAIN: Process all items for a scan
 // ═════════════════════════════════════════════════════════════
-export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}) {
+// ─── Occasion → search modifier ─────────────────────────────
+const OCCASION_MODIFIERS = {
+  casual:    "casual everyday",
+  work:      "office business professional",
+  night_out: "going out night club",
+  athletic:  "athletic gym workout activewear",
+  formal:    "formal event dress code",
+  outdoor:   "outdoor adventure hiking",
+};
+
+export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null) {
   cleanupExpiredCache();
   const defaultTierBounds = getTierBounds(budgetMin, budgetMax);
   const defaultSizePrefs = sizePrefs;
@@ -943,7 +957,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     });
     // Text search if we have fewer than 3 priced Lens results
     if (pricedLens.length < 3) {
-      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item));
+      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion);
       itemPools[i].text = textResults;
       console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
     }
