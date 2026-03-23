@@ -486,6 +486,56 @@ function asTierArray(val) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// i18n — Minimal English / Spanish support
+// ═══════════════════════════════════════════════════════════════
+const STRINGS = {
+  en: {
+    scan: "Scan",
+    history: "History",
+    saved: "Saved",
+    profile: "Profile",
+    new_scan: "New scan",
+    analyzing: "Analyzing the look…",
+    searching: "Searching the web…",
+    shop_item: "Shop this item",
+    save: "Save",
+    splurge: "Splurge",
+    best_value: "Best Value",
+    complete_look: "Complete the Look",
+    as_seen_on: "As Seen On",
+    get_it_today: "Get It Today",
+    rate_outfit: "Rate this outfit",
+    log_out: "Log out",
+    settings: "Settings",
+    light_mode: "☀️ Switch to Light Mode",
+    dark_mode: "🌙 Switch to Dark Mode",
+    language: "Language",
+  },
+  es: {
+    scan: "Escanear",
+    history: "Historial",
+    saved: "Guardados",
+    profile: "Perfil",
+    new_scan: "Nuevo escaneo",
+    analyzing: "Analizando el look…",
+    searching: "Buscando en la web…",
+    shop_item: "Comprar este artículo",
+    save: "Económico",
+    splurge: "Premium",
+    best_value: "Mejor precio",
+    complete_look: "Completa el Look",
+    as_seen_on: "Visto en",
+    get_it_today: "Cómpralo Hoy",
+    rate_outfit: "Califica este outfit",
+    log_out: "Cerrar sesión",
+    settings: "Ajustes",
+    light_mode: "☀️ Modo Claro",
+    dark_mode: "🌙 Modo Oscuro",
+    language: "Idioma",
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
 // ONBOARDING
 // ═══════════════════════════════════════════════════════════════
 const OB_STEPS = [
@@ -586,6 +636,11 @@ export default function App() {
   // ─── Theme (dark / light) ─────────────────────────────────
   const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
   const toggleTheme = () => setTheme(t => { const n = t === "dark" ? "light" : "dark"; localStorage.setItem("attair_theme", n); return n; });
+
+  // ─── Language (i18n) ──────────────────────────────────────
+  const [lang, setLang] = useState(() => localStorage.getItem("attair_lang") || "en");
+  const t = (key) => STRINGS[lang]?.[key] ?? STRINGS.en[key] ?? key;
+  const toggleLang = () => setLang(l => { const n = l === "en" ? "es" : "en"; localStorage.setItem("attair_lang", n); return n; });
 
   // ─── Loading message rotation ─────────────────────────────
   const [loadMsgIdx, setLoadMsgIdx] = useState(0);
@@ -1496,7 +1551,7 @@ export default function App() {
               <div className="res-img-sec">
                 <img src={img} className="res-img" alt="" /><div className="res-grad" />
                 <button className="res-close" onClick={reset}><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
-                <button className="res-new" onClick={reset}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>New scan</button>
+                <button className="res-new" onClick={reset}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>{t("new_scan")}</button>
                 {results.items.map((item, i) => {
                   const py = item.position_y != null ? Math.max(0.08, Math.min(0.85, item.position_y)) : (CAT_POSITIONS[item.category] || 0.5);
                   const px = 0.5 + (i % 2 === 0 ? -0.22 : 0.22);
@@ -1608,7 +1663,7 @@ export default function App() {
               <div className="res-img-sec">
                 <img src={img} className="res-img" alt="" /><div className="res-grad" />
                 <button className="res-close" onClick={reset}><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
-                <button className="res-new" onClick={reset}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>New scan</button>
+                <button className="res-new" onClick={reset}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>{t("new_scan")}</button>
                 {results.items.map((item, i) => {
                   if (!pickedItems.has(i)) return null;
                   const py = item.position_y != null ? Math.max(0.08, Math.min(0.85, item.position_y)) : (CAT_POSITIONS[item.category] || 0.5);
@@ -1635,7 +1690,7 @@ export default function App() {
                 {/* ─── Outfit star rating ──────────────── */}
                 {phase === "done" && scanId && (
                   <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase" }}>Rate this outfit</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase" }}>{t("rate_outfit")}</span>
                     <div style={{ display: "flex", gap: 3 }}>
                       {[1,2,3,4,5].map(star => {
                         const current = scanRatings[scanId] || 0;
@@ -1709,7 +1764,7 @@ export default function App() {
                         <div style={{ marginTop: 10, marginBottom: 4 }}>
                           <button onClick={toggleSeenOn} style={{ background: "none", border: "none", padding: "6px 0", cursor: "pointer", fontFamily: "'Outfit'", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.3)", display: "flex", alignItems: "center", gap: 5, letterSpacing: .5 }}>
                             <span style={{ fontSize: 13 }}>{sod.open ? "▾" : "▸"}</span>
-                            As Seen On <span style={{ color: "rgba(255,255,255,.15)" }}>— {item.brand}</span>
+                            {t("as_seen_on")} <span style={{ color: "rgba(255,255,255,.15)" }}>— {item.brand}</span>
                           </button>
                           {sod.open && (
                             <div style={{ marginTop: 6 }}>
@@ -1757,7 +1812,7 @@ export default function App() {
                         <div style={{ marginTop: 10, marginBottom: 4 }}>
                           <button onClick={toggleNearby} style={{ background: "none", border: "none", padding: "6px 0", cursor: "pointer", fontFamily: "'Outfit'", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.3)", display: "flex", alignItems: "center", gap: 5, letterSpacing: .5 }}>
                             <span style={{ fontSize: 13 }}>{nd.open ? "▾" : "▸"}</span>
-                            📍 Get It Today
+                            📍 {t("get_it_today")}
                             <span style={{ color: "rgba(255,255,255,.15)" }}>— nearby stores</span>
                           </button>
                           {nd.open && (
@@ -1870,7 +1925,7 @@ export default function App() {
                           {viewMode === "shop" && (<>
                             {/* Three-tier product cards */}
                             <div className="sec-t">
-                              <span>Shop this item</span>
+                              <span>{t("shop_item")}</span>
                               <StatusPill status={item.status} />
                             </div>
 
@@ -1930,7 +1985,7 @@ export default function App() {
                     {phase === "done" && results?.items?.length > 0 && (
                       <div style={{ marginTop: 4 }}>
                         <div className="sec-t" style={{ marginBottom: 10 }}>
-                          <span>Complete the Look</span>
+                          <span>{t("complete_look")}</span>
                         </div>
                         {!pairings && !pairingsLoading && (
                           <button
@@ -2186,12 +2241,22 @@ export default function App() {
                 <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.5,marginBottom:12}}>Share your link. Both get $5 credit.</div>
                 <button className="btn gold" style={{width:"100%"}}>Share invite link</button>
               </div>
-              <div className="sec-t">Settings</div>
+              <div className="sec-t">{t("settings")}</div>
               <div className="sitem" onClick={toggleTheme}>
-                <span>{theme === "dark" ? "☀️ Switch to Light Mode" : "🌙 Switch to Dark Mode"}</span>
+                <span>{theme === "dark" ? t("light_mode") : t("dark_mode")}</span>
                 <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)", background: "rgba(255,255,255,.04)", padding: "3px 8px", borderRadius: 5 }}>{theme === "dark" ? "DARK" : "LIGHT"}</span>
               </div>
-              <div className="sitem" onClick={handleLogout} style={{color:"rgba(255,100,100,.5)",justifyContent:"center"}}>Log out</div>
+              <div className="sitem" onClick={toggleLang}>
+                <span>🌐 {t("language")}</span>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {["en","es"].map(l => (
+                    <span key={l} onClick={e => { e.stopPropagation(); setLang(l); localStorage.setItem("attair_lang", l); }} style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, cursor: "pointer", background: lang === l ? "rgba(201,169,110,.15)" : "rgba(255,255,255,.04)", color: lang === l ? "#C9A96E" : "rgba(255,255,255,.2)", border: lang === l ? "1px solid rgba(201,169,110,.3)" : "1px solid transparent", transition: "all .15s" }}>
+                      {l === "en" ? "EN" : "ES"}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="sitem" onClick={handleLogout} style={{color:"rgba(255,100,100,.5)",justifyContent:"center"}}>{t("log_out")}</div>
             </div>
           )}
         </div>
@@ -2354,9 +2419,9 @@ export default function App() {
 
         {/* ─── Tab bar (3 tabs) ────────────────────────── */}
         <div className="tb">
-          <button className={`tab ${tab==="scan"?"on":""}`} onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); }}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg><span className="tab-l">Scan</span></button>
-          <button className={`tab ${tab==="history"?"on":""}`} onClick={() => { track("tab_switched", { tab: "history" }); setTab("history"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" /></svg><span className="tab-l">History</span></button>
-          <button className={`tab ${tab==="profile"?"on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7" /></svg><span className="tab-l">Profile</span></button>
+          <button className={`tab ${tab==="scan"?"on":""}`} onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); }}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg><span className="tab-l">{t("scan")}</span></button>
+          <button className={`tab ${tab==="history"?"on":""}`} onClick={() => { track("tab_switched", { tab: "history" }); setTab("history"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" /></svg><span className="tab-l">{t("history")}</span></button>
+          <button className={`tab ${tab==="profile"?"on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7" /></svg><span className="tab-l">{t("profile")}</span></button>
         </div>
       </>)}
 
