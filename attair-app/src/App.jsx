@@ -492,6 +492,25 @@ const OB_STEPS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
+// ─── Loading message arrays ──────────────────────────────────
+const SCAN_MESSAGES = [
+  "Analyzing the look…",
+  "Reading colors and silhouettes…",
+  "Identifying brands and styles…",
+  "Checking for visual details…",
+  "Mapping the outfit…",
+  "Almost there…",
+];
+const SEARCH_MESSAGES = [
+  "Searching the web…",
+  "Comparing prices across retailers…",
+  "Finding the best matches…",
+  "Running visual search…",
+  "Sorting by relevance…",
+  "Checking stock and sizing…",
+  "Almost ready…",
+];
+
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
 export default function App() {
@@ -555,6 +574,20 @@ export default function App() {
 
   // ─── Occasion filter ──────────────────────────────────────
   const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
+
+  // ─── Loading message rotation ─────────────────────────────
+  const [loadMsgIdx, setLoadMsgIdx] = useState(0);
+  const [loadMsgVisible, setLoadMsgVisible] = useState(true);
+  useEffect(() => {
+    const isLoading = phase === "identifying" || phase === "searching";
+    if (!isLoading) { setLoadMsgIdx(0); setLoadMsgVisible(true); return; }
+    const msgs = phase === "identifying" ? SCAN_MESSAGES : SEARCH_MESSAGES;
+    const interval = setInterval(() => {
+      setLoadMsgVisible(false);
+      setTimeout(() => { setLoadMsgIdx(i => (i + 1) % msgs.length); setLoadMsgVisible(true); }, 350);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [phase]);
 
   // ─── AI refinement (ID/Shop toggle + chat per item) ───────
   const [itemViewModes, setItemViewModes] = useState({}); // { [idx]: "id" | "shop" }
@@ -1380,7 +1413,7 @@ export default function App() {
               <div className="ld-img-wrap"><img src={img} className="ld-img" alt="" /><div className="ld-scanline" /></div>
               <div className="ld-info">
                 <div style={{fontSize:10,fontWeight:700,letterSpacing:2.5,color:"rgba(201,169,110,.5)",textTransform:"uppercase"}}>Identifying outfit</div>
-                <div className="serif" style={{fontSize:20,color:"#fff"}}>Analyzing the look…</div>
+                <div className="serif" style={{fontSize:20,color:"#fff",transition:"opacity .35s ease",opacity:loadMsgVisible?1:0}}>{SCAN_MESSAGES[loadMsgIdx]}</div>
                 <div className="ld-dots"><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
               </div>
             </div>
@@ -1516,8 +1549,8 @@ export default function App() {
                   </div>
                   <div className="v-step">
                     <div className="v-step-bar"><div className="v-step-fill" style={{ width: phase === "searching" ? "40%" : "100%", background: phase === "done" ? (results.items.some(i => i.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.15)") : "rgba(201,169,110,.4)", transition: phase === "searching" ? "width 12s linear" : "width .5s ease" }} /></div>
-                    <div className="v-step-l" style={{ color: phase === "searching" ? "rgba(201,169,110,.5)" : results.items.some(i => i.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.2)" }}>
-                      {phase === "searching" ? "Finding products…" : results.items.some(i => i.status === "verified") ? "✓ Products found" : "Search complete"}
+                    <div className="v-step-l" style={{ color: phase === "searching" ? "rgba(201,169,110,.5)" : results.items.some(i => i.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.2)", transition: "opacity .35s ease", opacity: phase === "searching" ? (loadMsgVisible ? 1 : 0.3) : 1 }}>
+                      {phase === "searching" ? SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length] : results.items.some(i => i.status === "verified") ? "✓ Products found" : "Search complete"}
                     </div>
                   </div>
                 </div>
