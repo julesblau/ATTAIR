@@ -211,6 +211,15 @@ const API = {
     return res.ok ? await res.json() : null;
   },
 
+  async suggestPairings(scanId, items, gender) {
+    const res = await authFetch(`${API_BASE}/api/suggest-pairings`, {
+      method: "POST",
+      body: JSON.stringify({ scan_id: scanId, items, gender }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  },
+
   async refineItem(scanId, itemIndex, originalItem, userMessage, chatHistory, gender) {
     const res = await authFetch(`${API_BASE}/api/refine-item`, {
       method: "POST",
@@ -515,6 +524,10 @@ export default function App() {
   // ─── Per-item overrides (reset each new scan) ─────────────
   const [itemOverrides, setItemOverrides] = useState({}); // { [itemIdx]: { budget, sizePrefs } }
   const [itemSettingsIdx, setItemSettingsIdx] = useState(null); // which item's popup is open
+
+  // ─── Complete the Look ────────────────────────────────────
+  const [pairings, setPairings] = useState(null);   // null | []
+  const [pairingsLoading, setPairingsLoading] = useState(false);
 
   // ─── AI refinement (ID/Shop toggle + chat per item) ───────
   const [itemViewModes, setItemViewModes] = useState({}); // { [idx]: "id" | "shop" }
@@ -888,7 +901,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -1652,6 +1665,59 @@ export default function App() {
                         </>
                       );
                     })()}
+
+                    {/* ─── Complete the Look ─────────────────────── */}
+                    {phase === "done" && results?.items?.length > 0 && (
+                      <div style={{ marginTop: 4 }}>
+                        <div className="sec-t" style={{ marginBottom: 10 }}>
+                          <span>Complete the Look</span>
+                        </div>
+                        {!pairings && !pairingsLoading && (
+                          <button
+                            onClick={async () => {
+                              setPairingsLoading(true);
+                              try {
+                                const res = await API.suggestPairings(scanId, results.items.filter((_, i) => pickedItems.has(i)), results.gender);
+                                setPairings(res?.pairings || []);
+                                track("pairings_requested", { item_count: pickedItems.size }, scanId, "scan");
+                              } catch { setPairings([]); }
+                              setPairingsLoading(false);
+                            }}
+                            style={{ width: "100%", padding: "12px 0", background: "rgba(255,255,255,.03)", border: "1px dashed rgba(255,255,255,.1)", borderRadius: 12, color: "rgba(255,255,255,.4)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>
+                            ✦ Suggest what's missing from this outfit
+                          </button>
+                        )}
+                        {pairingsLoading && (
+                          <div style={{ padding: "14px", textAlign: "center", color: "rgba(255,255,255,.3)", fontSize: 12 }}>
+                            <div className="ld-dots" style={{ justifyContent: "center", marginBottom: 6 }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
+                            Thinking about what completes this look…
+                          </div>
+                        )}
+                        {pairings && pairings.length > 0 && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {pairings.map((p, i) => {
+                              const shopUrl = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
+                              return (
+                                <a key={i} href={shopUrl} target="_blank" rel="noopener noreferrer" style={{ padding: "12px 14px", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", alignItems: "center", gap: 12, transition: "all .2s" }}>
+                                  <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(201,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+                                    {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[p.category] || "✦"}
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 2 }}>{p.name}</div>
+                                    <div style={{ fontSize: 11, color: "rgba(255,255,255,.35)", lineHeight: 1.4 }}>{p.why}</div>
+                                  </div>
+                                  <div style={{ fontSize: 11, color: "#C9A96E", fontWeight: 600, flexShrink: 0 }}>Shop →</div>
+                                </a>
+                              );
+                            })}
+                            <button onClick={() => setPairings(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.15)", fontFamily: "'Outfit'", fontSize: 11, cursor: "pointer", padding: "4px 0" }}>Dismiss</button>
+                          </div>
+                        )}
+                        {pairings && pairings.length === 0 && (
+                          <div style={{ fontSize: 12, color: "rgba(255,255,255,.2)", textAlign: "center", padding: "12px 0" }}>Outfit looks complete — no obvious gaps found.</div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Native ad slot — free users, every 2 items */}
                     {showAds && selIdx % 2 === 1 && <div className="ad-slot ad-native">SPONSORED</div>}

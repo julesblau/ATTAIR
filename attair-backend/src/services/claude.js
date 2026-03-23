@@ -129,6 +129,48 @@ export async function refineItem(originalItem, userMessage, chatHistory = []) {
   }
 }
 
+/**
+ * Suggest complementary items to complete an outfit based on what was identified.
+ * Returns { pairings: [{ name, category, why, search_query }] }
+ */
+export async function suggestPairings(identifiedItems, gender, budget) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  const itemSummary = identifiedItems.map(it => `- ${it.name} (${it.category})`).join("\n");
+  const genderLabel = gender === "female" ? "women's" : "men's";
+  const budgetStr = budget ? `Budget: $${budget} per item.` : "";
+
+  const prompt = `A person is wearing the following items:\n${itemSummary}\n\nSuggest 2-3 complementary pieces that would complete this ${genderLabel} outfit. Focus on items that are MISSING from the look (e.g. if there are no shoes, suggest shoes; if no bag, suggest a bag). ${budgetStr}\n\nReturn ONLY valid JSON (no markdown, no backticks):\n{\n  "pairings": [\n    {\n      "name": "White leather sneakers",\n      "category": "shoes",\n      "why": "Clean, versatile — pairs perfectly with the relaxed vibe",\n      "search_query": "${genderLabel} white leather sneakers casual"\n    }\n  ]\n}`;
+
+  try {
+    const res = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 600,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+    const data = await res.json();
+    const text = data.content?.map(c => c.text || "").join("") || "";
+    return parseJSON(text);
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === "AbortError") throw new Error("Pairing suggestion timed out");
+    throw err;
+  }
+}
+
 export async function identifyClothing(base64Image, mimeType, userPrefs) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);

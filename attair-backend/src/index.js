@@ -13,6 +13,7 @@ import authRouter from "./routes/auth.js";
 import adEventsRouter from "./routes/adEvents.js";
 import eventsRouter from "./routes/events.js";
 import refineItemRouter from "./routes/refineItem.js";
+import suggestPairingsRouter from "./routes/suggestPairings.js";
 
 // ─── Validate required env vars ─────────────────────────────
 const REQUIRED_ENV = [
@@ -85,6 +86,7 @@ app.use("/api/go", affiliateRouter);
 app.use("/api/ad-events", adEventsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/refine-item", refineItemRouter);
+app.use("/api/suggest-pairings", suggestPairingsRouter);
 
 // Health check
 app.get("/", (req, res) => {
