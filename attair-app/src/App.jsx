@@ -575,6 +575,10 @@ export default function App() {
   // ─── Occasion filter ──────────────────────────────────────
   const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
 
+  // ─── Theme (dark / light) ─────────────────────────────────
+  const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
+  const toggleTheme = () => setTheme(t => { const n = t === "dark" ? "light" : "dark"; localStorage.setItem("attair_theme", n); return n; });
+
   // ─── Loading message rotation ─────────────────────────────
   const [loadMsgIdx, setLoadMsgIdx] = useState(0);
   const [loadMsgVisible, setLoadMsgVisible] = useState(true);
@@ -1213,9 +1217,43 @@ export default function App() {
       .refine-input::placeholder{color:rgba(255,255,255,.18)}
       .refine-send{width:38px;height:38px;border-radius:10px;background:#C9A96E;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
       .refine-send:disabled{opacity:.4;cursor:not-allowed}
+
+      /* ─── Light mode overrides ──────────────────────── */
+      .app[data-theme='light']{background:#F6F4F0;color:#1A1816}
+      .app[data-theme='light'] .hdr{background:rgba(246,244,240,.92);border-bottom-color:rgba(0,0,0,.06)}
+      .app[data-theme='light'] .logo{color:#1A1816}
+      .app[data-theme='light'] .free-badge{background:rgba(0,0,0,.04);color:rgba(0,0,0,.3)}
+      .app[data-theme='light'] .tb{background:rgba(246,244,240,.95);border-top-color:rgba(0,0,0,.06)}
+      .app[data-theme='light'] .tab{color:rgba(0,0,0,.2)}
+      .app[data-theme='light'] .tab.on{color:#C9A96E}
+      .app[data-theme='light'] .res-grad{background:linear-gradient(transparent,#F6F4F0)}
+      .app[data-theme='light'] .ob-bar{background:rgba(0,0,0,.06)}
+      .app[data-theme='light'] .ob-title{color:#1A1816}
+      .app[data-theme='light'] .ob-sub{color:rgba(0,0,0,.4)}
+      .app[data-theme='light'] .ob-opt{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.07);color:rgba(0,0,0,.7)}
+      .app[data-theme='light'] .ob-chip{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.07);color:rgba(0,0,0,.5)}
+      .app[data-theme='light'] .ob-chip.on{background:rgba(201,169,110,.1);border-color:rgba(201,169,110,.4);color:#C9A96E}
+      .app[data-theme='light'] .ob-skip{color:rgba(0,0,0,.2)}
+      .app[data-theme='light'] .auth input{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.08);color:#1A1816}
+      .app[data-theme='light'] .auth input::placeholder{color:rgba(0,0,0,.2)}
+      .app[data-theme='light'] .auth-err{background:rgba(200,0,0,.04);border-color:rgba(200,0,0,.12);color:rgba(160,0,0,.8)}
+      .app[data-theme='light'] .pick-item{background:rgba(0,0,0,.02)!important;border-color:rgba(0,0,0,.05)!important}
+      .app[data-theme='light'] .pick-item.picked{background:rgba(201,169,110,.06)!important;border-color:rgba(201,169,110,.25)!important}
+      .app[data-theme='light'] .pick-check{border-color:rgba(0,0,0,.12)}
+      .app[data-theme='light'] .hist-card{background:rgba(0,0,0,.02)!important;border-color:rgba(0,0,0,.04)!important}
+      .app[data-theme='light'] .saved-row{background:rgba(0,0,0,.02)!important;border-color:rgba(0,0,0,.04)!important}
+      .app[data-theme='light'] .item-opts-sheet{background:#EDEBE6}
+      .app[data-theme='light'] .budget-input-wrap{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.08)}
+      .app[data-theme='light'] .budget-input-wrap input{color:#1A1816}
+      .app[data-theme='light'] .err{background:rgba(200,0,0,.04);border-color:rgba(200,0,0,.1);color:rgba(140,0,0,.7)}
+      .app[data-theme='light'] .view-toggle{background:rgba(0,0,0,.05)}
+      .app[data-theme='light'] .view-tab.off{color:rgba(0,0,0,.25)}
+      .app[data-theme='light'] .refine-msg.ai{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.06);color:rgba(0,0,0,.6)}
+      .app[data-theme='light'] .refine-input{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.08);color:#1A1816}
+      .app[data-theme='light'] .sitem{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.04);color:rgba(0,0,0,.5)}
     `}</style>
 
-    <div className="app">
+    <div className="app" data-theme={theme}>
       {/* ─── ONBOARDING ──────────────────────────────────── */}
       {screen === "onboarding" && (
         <div className={`ob ${fade}`}>
@@ -2105,6 +2143,10 @@ export default function App() {
                 <button className="btn gold" style={{width:"100%"}}>Share invite link</button>
               </div>
               <div className="sec-t">Settings</div>
+              <div className="sitem" onClick={toggleTheme}>
+                <span>{theme === "dark" ? "☀️ Switch to Light Mode" : "🌙 Switch to Dark Mode"}</span>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)", background: "rgba(255,255,255,.04)", padding: "3px 8px", borderRadius: 5 }}>{theme === "dark" ? "DARK" : "LIGHT"}</span>
+              </div>
               <div className="sitem" onClick={handleLogout} style={{color:"rgba(255,100,100,.5)",justifyContent:"center"}}>Log out</div>
             </div>
           )}
