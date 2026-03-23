@@ -40,20 +40,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ─── Middleware ──────────────────────────────────────────────
-app.use(helmet());
 
-// CORS
-const allowedOrigins = (process.env.CORS_ORIGINS || "")
-  .split(",")
-  .map((o) => o.trim())
-  .filter(Boolean);
-
+// CORS — must run before helmet so preflight responses include the header
 app.use(
   cors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+    origin: (origin, callback) => callback(null, origin || true),
     credentials: true,
   })
 );
+
+app.use(helmet());
 
 // Body parsing — 10MB limit for base64 images
 app.use(express.json({ limit: "10mb" }));
