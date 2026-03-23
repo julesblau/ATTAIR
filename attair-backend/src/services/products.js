@@ -79,6 +79,37 @@ const RESALE_SOURCE_NAMES = [
   "fashionphile", "rebag", "swap.com", "kidizen", "curtsy",
 ];
 
+// ─── Quality retailer signals ────────────────────────────────
+// Domains whose results reliably land on real, in-stock product pages.
+// These get a scoring bonus because they have clean data, correct attribution,
+// and a high probability of being a genuine first-hand listing.
+const TRUSTED_RETAILER_DOMAINS = new Set([
+  "nordstrom.com", "farfetch.com", "ssense.com", "net-a-porter.com",
+  "mytheresa.com", "shopbop.com", "revolve.com", "matchesfashion.com",
+  "bloomingdales.com", "saksfifthavenue.com", "neimanmarcus.com",
+  "bergdorfgoodman.com", "harrods.com", "selfridges.com",
+  "luisaviaroma.com", "24s.com", "brownsfashion.com", "cettire.com",
+  "madewell.com", "anthropologie.com", "zappos.com", "dsw.com",
+  "lululemon.com", "patagonia.com", "thenorthface.com", "rei.com",
+  "aritzia.com", "cos.com", "arket.com", "reiss.com",
+  "asos.com", "urban outfitters.com", "urbanoutfitters.com",
+]);
+
+// Domains with a high incidence of counterfeit goods, extreme knockoffs,
+// or misleading product descriptions. Results from these get heavily penalised.
+const KNOCKOFF_DOMAINS = [
+  "dhgate.com", "aliexpress.com", "alibaba.com", "wish.com",
+  "temu.com", "banggood.com", "gearbest.com", "lightinthebox.com",
+  "rosegal.com", "dresslily.com", "floryday.com", "jollychic.com",
+  "zaful.com",
+];
+
+// Title keywords that signal replica / counterfeit listings.
+const KNOCKOFF_TITLE_KEYWORDS = [
+  "replica", "knockoff", "knock off", "counterfeit", "fake",
+  "inspired by", "dupe for", "looks like",
+];
+
 /**
  * Classify a product as "resale" (secondary market) or "retail" (first-hand).
  * Uses three signals: URL domain, source name, and title keywords.
@@ -737,6 +768,16 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   // Material match
   const material = (item.material || "").toLowerCase();
   if (material && material.length > 3 && title.includes(material)) score += 5;
+
+  // ── Trusted retailer bonus ───────────────────────────────────
+  // Established retailers with clean product data and high fulfillment confidence.
+  const domain = link.replace(/^https?:\/\/(?:www\.)?/, "").split("/")[0];
+  if ([...TRUSTED_RETAILER_DOMAINS].some(d => domain.includes(d))) score += 20;
+
+  // ── Knockoff / counterfeit penalties ────────────────────────
+  // Hard penalise known knockoff platforms and replica-signalling title keywords.
+  if (KNOCKOFF_DOMAINS.some(d => link.includes(d))) score -= 50;
+  if (KNOCKOFF_TITLE_KEYWORDS.some(kw => title.includes(kw))) score -= 50;
 
   // Penalties
   const isMale = (item.gender || "male") === "male";
