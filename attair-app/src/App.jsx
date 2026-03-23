@@ -131,7 +131,12 @@ const API = {
       const data = await res.json();
       throw new Error(data.message || "Daily scan limit reached");
     }
-    if (!res.ok) { const data = await res.json(); throw new Error(data.message || `API error ${res.status}`); }
+    if (!res.ok) {
+      let data = {};
+      try { data = await res.json(); } catch { data = { message: `HTTP ${res.status} (non-JSON body)` }; }
+      console.error("[ATTAIR] /api/identify response:", res.status, data);
+      throw new Error(data.message || data.error || `API error ${res.status}`);
+    }
     return await res.json();
   },
 
@@ -1009,8 +1014,8 @@ export default function App() {
       } else if (err.message.includes("fetch") || err.message.includes("network") || err.message.includes("Failed")) {
         setError("Couldn't connect to the server. Check your internet connection and try again.");
       } else {
-        console.error("Identify error:", err.message);
-        setError("Something went wrong analyzing the photo. Please try again.");
+        console.error("[ATTAIR] Identify error:", err.message);
+        setError(`Error: ${err.message}`);
       }
     }
   };
