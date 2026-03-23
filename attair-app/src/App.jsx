@@ -210,6 +210,15 @@ const API = {
     const res = await authFetch(`${API_BASE}/api/user/profile`, { method: "PATCH", body: JSON.stringify(updates) });
     return res.ok ? await res.json() : null;
   },
+
+  async refineItem(scanId, itemIndex, originalItem, userMessage, chatHistory, gender) {
+    const res = await authFetch(`${API_BASE}/api/refine-item`, {
+      method: "POST",
+      body: JSON.stringify({ scan_id: scanId, item_index: itemIndex, original_item: originalItem, user_message: userMessage, chat_history: chatHistory, gender }),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.message || "Refinement failed"); }
+    return await res.json();
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -466,6 +475,12 @@ export default function App() {
   // ─── Per-item overrides (reset each new scan) ─────────────
   const [itemOverrides, setItemOverrides] = useState({}); // { [itemIdx]: { budget, sizePrefs } }
   const [itemSettingsIdx, setItemSettingsIdx] = useState(null); // which item's popup is open
+
+  // ─── AI refinement (ID/Shop toggle + chat per item) ───────
+  const [itemViewModes, setItemViewModes] = useState({}); // { [idx]: "id" | "shop" }
+  const [itemChats, setItemChats] = useState({});          // { [idx]: [{role, content}] }
+  const [refineInputs, setRefineInputs] = useState({});    // { [idx]: string }
+  const [refineLoadings, setRefineLoadings] = useState({}); // { [idx]: bool }
 
   // ─── Crop ─────────────────────────────────────────────────
   const [cropPending, setCropPending] = useState(null); // { src, base64, mime, source }
@@ -821,13 +836,46 @@ export default function App() {
       setResults(prev => prev ? { ...prev, items: prev.items.map(it => it.status === "searching" ? { ...it, status: "failed" } : it) } : prev);
     }
     setPhase("done");
+    // Auto-switch picked items to "shop" view once search completes
+    setItemViewModes(prev => {
+      const next = { ...prev };
+      [...pickedItems].forEach(idx => { next[idx] = "shop"; });
+      return next;
+    });
 
     // Refresh history + saved so those tabs are up to date
     API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); };
+
+  // ─── AI item refinement ────────────────────────────────────
+  const handleRefine = async (itemIdx) => {
+    const msg = (refineInputs[itemIdx] || "").trim();
+    if (!msg || refineLoadings[itemIdx]) return;
+    const item = results.items[itemIdx];
+    const chat = itemChats[itemIdx] || [];
+    setRefineLoadings(l => ({ ...l, [itemIdx]: true }));
+    setRefineInputs(i => ({ ...i, [itemIdx]: "" }));
+    try {
+      const res = await API.refineItem(scanId, itemIdx, item, msg, chat, results.gender);
+      const newChat = [...chat, { role: "user", content: msg }, { role: "assistant", content: res.ai_message || "Updated." }];
+      setItemChats(c => ({ ...c, [itemIdx]: newChat }));
+      // Merge updated_item fields, preserving status/tiers
+      setResults(prev => {
+        if (!prev) return prev;
+        const items = prev.items.map((it, i) => i === itemIdx ? { ...it, ...res.updated_item, status: it.status, tiers: res.new_tiers || it.tiers } : it);
+        return { ...prev, items };
+      });
+      // Auto-switch to shop if new tiers came back
+      if (res.new_tiers) setItemViewModes(m => ({ ...m, [itemIdx]: "shop" }));
+      track("item_refined", { item_index: itemIdx }, scanId, "scan");
+    } catch (err) {
+      setItemChats(c => ({ ...c, [itemIdx]: [...(c[itemIdx] || []), { role: "user", content: msg }, { role: "assistant", content: "Sorry, I couldn't process that. Try rephrasing." }] }));
+    }
+    setRefineLoadings(l => ({ ...l, [itemIdx]: false }));
+  };
 
   // ─── Save with backend persistence ────────────────────────
   const toggleSave = async (item) => {
@@ -1037,6 +1085,21 @@ export default function App() {
       .modal-title{font-family:'Instrument Serif';font-size:24px;color:#fff;line-height:1.15;margin-bottom:8px}
       .modal-sub{font-size:13px;color:rgba(255,255,255,.35);line-height:1.6;margin-bottom:24px}
       .modal-later{background:none;border:none;color:rgba(255,255,255,.2);font-family:'Outfit';font-size:12px;cursor:pointer;width:100%;text-align:center;padding:10px;margin-top:6px}
+
+      .view-toggle{display:flex;gap:0;background:rgba(255,255,255,.04);border-radius:10px;padding:3px;margin-bottom:16px}
+      .view-tab{flex:1;padding:8px 0;border-radius:8px;border:none;font-family:'Outfit';font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+      .view-tab.on{background:rgba(201,169,110,.15);color:#C9A96E}
+      .view-tab.off{background:transparent;color:rgba(255,255,255,.3)}
+      .refine-chat{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+      .refine-msg{padding:9px 13px;border-radius:10px;font-size:12px;line-height:1.5;max-width:88%}
+      .refine-msg.user{background:rgba(201,169,110,.12);color:#E8E6E1;align-self:flex-end;border:1px solid rgba(201,169,110,.2)}
+      .refine-msg.ai{background:rgba(255,255,255,.04);color:rgba(255,255,255,.6);align-self:flex-start;border:1px solid rgba(255,255,255,.06)}
+      .refine-input-row{display:flex;gap:8px;align-items:flex-end}
+      .refine-input{flex:1;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#fff;font-family:'Outfit';font-size:13px;outline:none;resize:none;transition:border-color .2s;line-height:1.4}
+      .refine-input:focus{border-color:rgba(201,169,110,.35)}
+      .refine-input::placeholder{color:rgba(255,255,255,.18)}
+      .refine-send{width:38px;height:38px;border-radius:10px;background:#C9A96E;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+      .refine-send:disabled{opacity:.4;cursor:not-allowed}
     `}</style>
 
     <div className="app">
@@ -1424,32 +1487,105 @@ export default function App() {
                       <div style={{ fontSize: 13, color: "rgba(255,255,255,.25)", marginBottom: 14, fontStyle: "italic" }}>Typical retail: {item.price_range}</div>
                     )}
 
-                    {/* Three-tier product cards */}
-                    <div className="sec-t">
-                      <span>Shop this item</span>
-                      <StatusPill status={item.status} />
-                    </div>
+                    {/* ID / Shop toggle */}
+                    {(() => {
+                      const viewMode = itemViewModes[selIdx] || (item.tiers ? "shop" : "id");
+                      const chat = itemChats[selIdx] || [];
+                      const refineInput = refineInputs[selIdx] || "";
+                      const isRefining = refineLoadings[selIdx] || false;
+                      return (
+                        <>
+                          <div className="view-toggle">
+                            <button className={`view-tab ${viewMode === "id" ? "on" : "off"}`} onClick={() => setItemViewModes(m => ({ ...m, [selIdx]: "id" }))}>Identify</button>
+                            <button className={`view-tab ${viewMode === "shop" ? "on" : "off"}`} onClick={() => setItemViewModes(m => ({ ...m, [selIdx]: "shop" }))}>Shop</button>
+                          </div>
 
-                    {item.status === "searching" && (
-                      <div className="tier-empty" style={{ background: "rgba(201,169,110,.03)", borderColor: "rgba(201,169,110,.1)", color: "rgba(201,169,110,.5)" }}>
-                        Finding budget, mid-range, and premium options…<br />
-                        <span style={{ fontSize: 10, color: "rgba(201,169,110,.3)" }}>This takes 10-15 seconds</span>
-                      </div>
-                    )}
+                          {viewMode === "id" && (
+                            <div>
+                              {/* Identification summary */}
+                              <div style={{ padding: "12px 14px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.04)", borderRadius: 12, marginBottom: 14 }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 8 }}>AI Identification</div>
+                                {[
+                                  ["Name", item.name],
+                                  ["Brand", item.brand && item.brand !== "Unidentified" ? item.brand : null],
+                                  ["Color", item.color],
+                                  ["Material", item.material],
+                                  ["Fit", item.fit],
+                                  ["Search query", item.search_query],
+                                ].filter(([,v]) => v).map(([k, v]) => (
+                                  <div key={k} style={{ display: "flex", gap: 8, marginBottom: 5, alignItems: "baseline" }}>
+                                    <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,.2)", width: 70, flexShrink: 0, textTransform: "uppercase", letterSpacing: .5 }}>{k}</span>
+                                    <span style={{ fontSize: 12, color: "rgba(255,255,255,.6)", lineHeight: 1.4 }}>{v}</span>
+                                  </div>
+                                ))}
+                              </div>
 
-                    {item.status === "failed" && !item.tiers && (
-                      <div className="tier-empty">
-                        Couldn't find products online. Try searching: "{item.search_query}"
-                      </div>
-                    )}
+                              {/* Correction chat */}
+                              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 8 }}>Correct the AI</div>
+                              {chat.length > 0 && (
+                                <div className="refine-chat">
+                                  {chat.map((m, i) => (
+                                    <div key={i} className={`refine-msg ${m.role === "user" ? "user" : "ai"}`}>{m.content}</div>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="refine-input-row">
+                                <textarea
+                                  className="refine-input"
+                                  rows={2}
+                                  placeholder={chat.length === 0 ? `e.g. "It's a navy bomber jacket, not black" or "The brand is Stone Island"` : "Correct further…"}
+                                  value={refineInput}
+                                  onChange={e => setRefineInputs(r => ({ ...r, [selIdx]: e.target.value }))}
+                                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleRefine(selIdx); } }}
+                                  disabled={isRefining}
+                                />
+                                <button className="refine-send" onClick={() => handleRefine(selIdx)} disabled={!refineInput.trim() || isRefining}>
+                                  {isRefining
+                                    ? <div className="ld-dot" style={{ width: 6, height: 6 }} />
+                                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0C0C0E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2L15 22 11 13 2 9l20-7z" /></svg>
+                                  }
+                                </button>
+                              </div>
+                              {item.tiers && (
+                                <button onClick={() => setItemViewModes(m => ({ ...m, [selIdx]: "shop" }))} style={{ width: "100%", marginTop: 12, padding: "11px 0", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                                  View shopping options →
+                                </button>
+                              )}
+                            </div>
+                          )}
 
-                    {item.tiers && (
-                      <div className="tiers-scroll">
-                        <TierCard tier="budget" data={item.tiers.budget} scanId={scanId} itemIndex={selIdx} />
-                        <TierCard tier="mid" data={item.tiers.mid} scanId={scanId} itemIndex={selIdx} />
-                        <TierCard tier="premium" data={item.tiers.premium} scanId={scanId} itemIndex={selIdx} />
-                      </div>
-                    )}
+                          {viewMode === "shop" && (<>
+                            {/* Three-tier product cards */}
+                            <div className="sec-t">
+                              <span>Shop this item</span>
+                              <StatusPill status={item.status} />
+                            </div>
+
+                            {item.status === "searching" && (
+                              <div className="tier-empty" style={{ background: "rgba(201,169,110,.03)", borderColor: "rgba(201,169,110,.1)", color: "rgba(201,169,110,.5)" }}>
+                                Finding budget, mid-range, and premium options…<br />
+                                <span style={{ fontSize: 10, color: "rgba(201,169,110,.3)" }}>This takes 10-15 seconds</span>
+                              </div>
+                            )}
+
+                            {item.status === "failed" && !item.tiers && (
+                              <div className="tier-empty">
+                                Couldn't find products online.{" "}
+                                <span style={{ color: "#C9A96E", cursor: "pointer" }} onClick={() => setItemViewModes(m => ({ ...m, [selIdx]: "id" }))}>Correct the AI →</span>
+                              </div>
+                            )}
+
+                            {item.tiers && (
+                              <div className="tiers-scroll">
+                                <TierCard tier="budget" data={item.tiers.budget} scanId={scanId} itemIndex={selIdx} />
+                                <TierCard tier="mid" data={item.tiers.mid} scanId={scanId} itemIndex={selIdx} />
+                                <TierCard tier="premium" data={item.tiers.premium} scanId={scanId} itemIndex={selIdx} />
+                              </div>
+                            )}
+                          </>)}
+                        </>
+                      );
+                    })()}
 
                     {/* Native ad slot — free users, every 2 items */}
                     {showAds && selIdx % 2 === 1 && <div className="ad-slot ad-native">SPONSORED</div>}

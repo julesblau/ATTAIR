@@ -63,6 +63,72 @@ function parseJSON(text) {
   return JSON.parse(s);
 }
 
+/**
+ * Refine an identified clothing item based on user correction/input.
+ * Returns { updated_item, ai_message }.
+ */
+export async function refineItem(originalItem, userMessage, chatHistory = []) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+
+  const systemPrompt = `You are refining a clothing identification. The user is correcting or adjusting what was initially detected in their photo. Update the item JSON to reflect the correction. Return ONLY valid JSON in this exact format (no markdown, no backticks):
+{
+  "updated_item": {
+    "name": "...",
+    "brand": "...",
+    "brand_confidence": "confirmed|high|moderate|low",
+    "brand_evidence": "...",
+    "product_line": "...",
+    "category": "outerwear|top|bottom|shoes|accessory|dress|bag",
+    "subcategory": "...",
+    "color": "...",
+    "material": "...",
+    "fit": "slim|regular|relaxed|oversized|cropped",
+    "search_query": "best Google Shopping search for this item",
+    "style_keywords": ["..."],
+    "alt_search": "brand-agnostic alternative search"
+  },
+  "ai_message": "Brief friendly confirmation of what you updated, 1-2 sentences."
+}`;
+
+  const messages = [
+    ...chatHistory.map(m => ({ role: m.role, content: m.content })),
+    {
+      role: "user",
+      content: `Original item: ${JSON.stringify(originalItem, null, 2)}\n\nUser says: "${userMessage}"\n\nPlease update the item identification accordingly.`,
+    },
+  ];
+
+  try {
+    const res = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages,
+      }),
+    });
+
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
+
+    const data = await res.json();
+    const text = data.content?.map(c => c.text || "").join("") || "";
+    return parseJSON(text);
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === "AbortError") throw new Error("Refinement timed out — please try again");
+    throw err;
+  }
+}
+
 export async function identifyClothing(base64Image, mimeType, userPrefs) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
