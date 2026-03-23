@@ -1015,7 +1015,7 @@ export default function App() {
         setError("Couldn't connect to the server. Check your internet connection and try again.");
       } else {
         console.error("[ATTAIR] Identify error:", err.message);
-        setError(`Error: ${err.message}`);
+        setError("Something went wrong analyzing the photo. Please try again.");
       }
     }
   };
