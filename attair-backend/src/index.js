@@ -41,15 +41,19 @@ const PORT = process.env.PORT || 3000;
 
 // ─── Middleware ──────────────────────────────────────────────
 
-// CORS — must run before helmet so preflight responses include the header
-app.use(
-  cors({
-    origin: (origin, callback) => callback(null, origin || true),
-    credentials: true,
-  })
-);
+// Manual CORS — runs before everything, including helmet
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With");
+  if (req.method === "OPTIONS") return res.status(204).end();
+  next();
+});
 
-app.use(helmet());
+// helmet — allow cross-origin fetches (CORP must not block our API responses)
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
 // Body parsing — 10MB limit for base64 images
 app.use(express.json({ limit: "10mb" }));
