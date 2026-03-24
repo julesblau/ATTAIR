@@ -875,7 +875,7 @@ async function main() {
           permissionMode: "bypassPermissions",
           allowDangerouslySkipPermissions: true,
           maxTurns: 300,
-          maxBudgetUsd: 10,   // Safety cap — save some credits for debugging
+          maxBudgetUsd: 30,   // Safety cap — save some credits for debugging
           agents: AGENTS,
           env: {
             ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
