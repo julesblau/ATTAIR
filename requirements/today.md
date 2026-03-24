@@ -321,7 +321,31 @@ own outfits. Every social feature multiplies our user acquisition.
 
 ---
 
-## 10. REMAINING HALF-DONE FEATURES
+## 10. STRIPE CHECKOUT — Now Live
+
+Stripe keys are configured in Railway. The backend already has webhook handling
+code. Today's job: verify it works end-to-end.
+
+- **Env vars set:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`
+- **Pricing:** $4.99/month, $29.99/year
+- **Webhook URL:** `https://attair-production.up.railway.app/api/stripe/webhook`
+- **Events:** `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+
+### Backend:
+- Verify the checkout session creation route uses `STRIPE_PRICE_MONTHLY` and `STRIPE_PRICE_YEARLY` env vars
+- Verify the webhook handler correctly processes `checkout.session.completed` → upgrades user to pro
+- Verify subscription cancellation/update events are handled
+- The webhook error handling fix from section 4c applies here — make sure errors return 500
+
+### Frontend:
+- The trial/subscription UI exists — verify the "Subscribe" buttons create checkout sessions
+- Show correct pricing: "$4.99/mo" and "$29.99/yr (save 50%)"
+- After successful checkout, user should see pro status immediately
+- Test with Stripe test card: `4242 4242 4242 4242` (any future exp, any CVC)
+
+---
+
+## 11. REMAINING HALF-DONE FEATURES (OAuth)
 
 ### Google / Apple OAuth
 - Buttons exist in the frontend. Test if they actually work.
@@ -331,20 +355,19 @@ own outfits. Every social feature multiplies our user acquisition.
 ---
 
 ## 11. OUT OF SCOPE TODAY
-- Stripe activation (Jules is setting up the account — no keys yet)
 - RevenueCat / AdMob / Capacitor (needs native app setup)
 - App.jsx full refactor (separate day)
 - Price drop alerts (future feature, but Last Seen timestamps are ready)
 
 ---
 
-## 12. AGENT NOTES
+## 13. AGENT NOTES
 
 **PM:** Today has 3 phases:
   Phase 1: Quick wins — CORS verification, security fixes, i18n audit (sections 1, 4, 5)
   Phase 2: Major build — Likes tab redesign (section 2) + light mode fix (section 3)
     + nearby stores fix (section 6) + as-seen-on upgrade (section 7) + custom occasions (section 8)
-    + social profiles with follow/privacy (section 9)
+    + social profiles with follow/privacy (section 9) + Stripe checkout (section 10)
   Phase 3: Creative agent run — after push, let the creative agent analyze and propose
   Work in order. Push only after E2E confirms. Then run creative agent.
 
@@ -362,6 +385,9 @@ own outfits. Every social feature multiplies our user acquisition.
     OCCASION_MODIFIERS, prompt Claude for search keywords, cache result (section 8)
   - Social: follows table, visibility columns on scans/saved_items/wishlists,
     bio + display_name on profiles, all follow/unfollow/profile API routes (section 9)
+  - Stripe: verify checkout session creation uses env var price IDs,
+    webhook handles checkout.session.completed → pro upgrade,
+    webhook returns 500 on error (not 200) (section 10)
 
 **UI/UX agent:** Your MAIN job today is the Likes tab redesign (section 2).
   This is the biggest change. Make it feel like Instagram saves meets Pinterest.
@@ -384,6 +410,8 @@ own outfits. Every social feature multiplies our user acquisition.
   - Follow/unfollow button on profiles (section 9)
   - Privacy toggles on scans, liked items, and collections —
     "..." menu → "Make Public" / "Private" / "Followers Only" (section 9)
+  - Stripe: verify Subscribe buttons create checkout sessions with correct
+    prices ($4.99/mo, $29.99/yr "save 50%"), test card works (section 10)
   - Ensure all new UI has i18n translations in all 8 languages
   - Test at 390px width in both dark and light mode
 
