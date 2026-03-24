@@ -848,9 +848,9 @@ function clearCheckpoint() {
 
 // ─── RATE LIMIT & ERROR HELPERS ──────────────────────────────────────────────
 
-const MAX_RETRIES = 12;         // More retries — user may top up credits mid-run
-const BASE_DELAY_MS = 30_000;   // Start with 30s (Tier 1 limits reset ~60s)
-const MAX_DELAY_MS = 600_000;   // Cap at 10 minutes between retries
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function isRetryableError(err) {
   const msg = err?.message?.toLowerCase() ?? "";
@@ -866,15 +866,79 @@ function isRetryableError(err) {
     msg.includes("out of extra usage") ||
     msg.includes("out of usage") ||
     msg.includes("insufficient") ||
-    msg.includes("billing") ||
     msg.includes("credit") ||
     msg.includes("payment required") ||
     msg.includes("resets")
   );
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Parse the reset time from an error message like:
+ *   "You're out of extra usage · resets 9am (America/New_York)"
+ *   "You're out of extra usage · resets 2pm (America/New_York)"
+ *   "You're out of extra usage · resets 12:30pm (America/New_York)"
+ * Returns ms to wait, or a fallback of 15 minutes if unparseable.
+ */
+function msUntilReset(errMessage) {
+  const FALLBACK_MS = 15 * 60 * 1000; // 15 min fallback
+
+  // Match patterns like "resets 9am", "resets 2pm", "resets 12:30pm"
+  // with optional timezone in parens
+  const match = errMessage?.match(
+    /resets\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)(?:\s*\(([^)]+)\))?/i
+  );
+  if (!match) return FALLBACK_MS;
+
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2] ? parseInt(match[2], 10) : 0;
+  const ampm = match[3].toLowerCase();
+  const tz = match[4] || "America/New_York";
+
+  // Convert to 24h
+  if (ampm === "pm" && hours !== 12) hours += 12;
+  if (ampm === "am" && hours === 12) hours = 0;
+
+  // Build the target time in the specified timezone
+  const now = new Date();
+
+  // Use Intl to get the current time in the target timezone
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(now).map(p => [p.type, p.value])
+  );
+  const nowInTz = new Date(
+    `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`
+  );
+
+  // Build the reset time in that timezone (same date)
+  const resetInTz = new Date(
+    `${parts.year}-${parts.month}-${parts.day}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`
+  );
+
+  // If reset is in the past (already passed today), it means tomorrow
+  let diffMs = resetInTz.getTime() - nowInTz.getTime();
+  if (diffMs <= 0) diffMs += 24 * 60 * 60 * 1000;
+
+  // Add 60s buffer so we don't hit the boundary exactly
+  diffMs += 60_000;
+
+  // Safety: minimum 1 min, maximum 12 hours
+  return Math.max(60_000, Math.min(diffMs, 12 * 60 * 60 * 1000));
+}
+
+function formatDuration(ms) {
+  const totalSec = Math.round(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
@@ -900,9 +964,9 @@ async function main() {
 
   console.log("\n🚀 Starting the army...\n");
 
-  let attempt = 0;
-
-  while (attempt <= MAX_RETRIES) {
+  // Infinite retry loop — only exits on success or truly fatal errors
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
     try {
       // Build query options — resume if we have a session from a previous run
       const queryOptions = {
@@ -940,7 +1004,6 @@ ${PM_PROMPT}`
         : PM_PROMPT;
 
       for await (const message of query({ prompt, options: queryOptions })) {
-        // === LIVE LOG: show everything ===
         const type = message.type ?? "unknown";
         const subtype = message.subtype ?? "";
 
@@ -952,7 +1015,7 @@ ${PM_PROMPT}`
           if (status === "rejected") {
             console.log(`\n⏸️  Rate limited — will resume at ${resetsAt}. Waiting...`);
           } else if (status === "allowed_warning") {
-            console.log(`⚠️  Approaching rate limit — slowing down (resets at ${resetsAt})`);
+            console.log(`⚠️  Approaching rate limit (resets at ${resetsAt})`);
           }
           continue;
         }
@@ -972,7 +1035,7 @@ ${PM_PROMPT}`
           console.log("╚══════════════════════════════════════════════════╝\n");
           console.log(message.result);
           clearCheckpoint();
-          continue;
+          return; // Done — exit main()
         }
 
         // Assistant messages (PM thinking, tool calls)
@@ -1004,50 +1067,43 @@ ${PM_PROMPT}`
           console.log(`[system:${subtype}]`, JSON.stringify(message.data ?? {}).slice(0, 150));
         }
 
-        // Anything else we haven't caught — log the raw type so we can see it
+        // Anything else
         else if (type !== "assistant" && type !== "system") {
           console.log(`[${type}${subtype ? ":" + subtype : ""}]`, JSON.stringify(message).slice(0, 200));
         }
       }
 
-      // Completed successfully — clean up and exit
-      clearCheckpoint();
-      break;
+      // Stream ended without a result message — may have been interrupted cleanly
+      console.log("\n⚠️  Stream ended without completion. Checking if we should resume...");
+      // Loop back to retry with resume
 
     } catch (err) {
-      // ── Retryable error (rate limit, out of usage, overloaded) ──
-      // User may top up credits while the army waits, so always retry these.
-      if (isRetryableError(err) && attempt < MAX_RETRIES) {
-        attempt++;
-        // Longer waits for credit exhaustion vs rate limits
-        const isCredits = /out of.*usage|credit|billing|insufficient/i.test(err.message ?? "");
-        const delay = isCredits
-          ? Math.min(120_000 * attempt, MAX_DELAY_MS)     // 2min, 4min, 6min... for credits
-          : Math.min(BASE_DELAY_MS * Math.pow(1.5, attempt - 1), MAX_DELAY_MS);  // 30s backoff for rate limits
-        const delaySec = Math.round(delay / 1000);
-        const reason = isCredits ? "Out of credits" : "Rate limited";
-        console.log(`\n⏸️  ${reason} (attempt ${attempt}/${MAX_RETRIES}). Waiting ${delaySec}s...`);
-        if (isCredits) {
-          console.log("   💡 Top up at: https://console.anthropic.com/settings/billing");
-          console.log("   The army will automatically resume when credits are available.");
-        }
-        await sleep(delay);
-        console.log("🔄 Retrying...\n");
+      const msg = err?.message ?? "";
+
+      // ── Retryable: rate limit, out of usage, overloaded ──
+      if (isRetryableError(err)) {
+        const waitMs = msUntilReset(msg);
+        const resumeTime = new Date(Date.now() + waitMs).toLocaleTimeString();
+        console.log(`\n⏸️  ${msg}`);
+        console.log(`   Sleeping for ${formatDuration(waitMs)} — will resume at ~${resumeTime}`);
+        console.log(`   The army will pick up where it left off automatically.\n`);
+        await sleep(waitMs);
+        console.log(`🔄 Waking up — resuming army...\n`);
         continue;
       }
 
-      // ── Fatal error ──
+      // ── Fatal error — exit ──
       console.error("\n❌ Agent army encountered a fatal error:");
-      console.error(err.message);
+      console.error(msg);
 
-      if (err.message?.includes("ANTHROPIC_API_KEY")) {
+      if (msg.includes("ANTHROPIC_API_KEY")) {
         console.error("\n💡 Fix: Set your API key: export ANTHROPIC_API_KEY=sk-ant-...");
       }
-      if (err.message?.includes("claude-agent-sdk")) {
+      if (msg.includes("claude-agent-sdk")) {
         console.error("\n💡 Fix: Run: cd agents && npm install");
       }
 
-      // Don't clear checkpoint on fatal error — allows manual resume
+      // Keep checkpoint so next manual run resumes
       process.exit(1);
     }
   }
