@@ -137,7 +137,18 @@ backend call is wired to nothing, fix the wiring. Leave nothing half-done.
 
 ---
 
-## 6. UX POLISH & NEW FEATURES (from E2E agent suggestions, user-approved)
+## 6. UX POLISH & NEW FEATURES (user-approved)
+
+### CREATIVE LICENSE FOR UI/UX AGENT
+The UI/UX agent has full creative freedom to improve anything that looks incomplete,
+ugly, or unpolished. If something looks half-done, make it look world-class. The bar
+is App Store top 10 — think GOAT, Depop, Pinterest, Nike. This includes:
+- Improving the company logo / branding if it looks amateur
+- Fixing any visual element that feels placeholder or unfinished
+- Adding micro-interactions, transitions, and polish wherever it helps
+- Making the overall design feel cohesive and premium
+
+---
 
 ### 6a. Banner Ad Placeholders — Make Them Look Real
 The `BANNER AD` / `SPONSORED` plain text ad slots look unfinished and cheap.
@@ -182,6 +193,41 @@ generate affiliate click records in the DB. Build the backend to create affiliat
 records for pairing product links, so when we onboard affiliate partners later
 (beyond the existing Amazon Associates account), we're already tracking everything.
 
+### 6i. Fix iPhone Camera Mirror/Flip Bug
+The front-facing camera on iPhone is reversing the image instead of flipping it
+correctly. When a user takes a selfie or photos using the front camera, the preview
+should match what they see (mirrored), but the captured/uploaded image should be
+correctly oriented. Find the camera/image capture code in App.jsx and fix the
+transform so it behaves like a native iPhone camera app.
+
+### 6j. Fix Light Mode — It Looks Awful
+The app has a light mode but it looks terrible. Either:
+- Fix it properly: ensure all components, text, backgrounds, borders, and cards look
+  good in light mode with proper contrast and readability
+- OR: remove the light mode toggle entirely and commit to dark mode only
+The current state where light mode exists but looks broken is worse than not having it.
+
+### 6k. Full Internationalization — 8 Languages
+The app currently has English and broken Spanish (not all buttons/text are translated).
+Expand to 8 languages with COMPLETE coverage — every string, button, label, error
+message, and placeholder must be translated:
+
+Languages: English, Spanish, French, German, Chinese (Simplified), Japanese, Korean, Portuguese
+
+Implementation:
+- Create a translation system (i18n) — can be a simple JSON object per language
+- Language selector in Settings/Profile
+- Store user's language preference in localStorage and/or profile
+- ALL UI text must go through the translation system — no hardcoded English strings
+- Spanish needs to be FIXED — audit every string and complete the missing translations
+
+### 6l. General Visual Polish Pass
+The UI/UX agent should do a full visual audit and fix anything that looks:
+- Unfinished (placeholder text, gray boxes, TODO comments visible to users)
+- Inconsistent (different button styles, mixed fonts, mismatched colors)
+- Amateur (bad spacing, misaligned elements, ugly empty states)
+- The ATTAIR logo/branding should look premium and professional
+
 ---
 
 ## 7. OUT OF SCOPE TODAY
@@ -210,15 +256,19 @@ Work in order: verify first, then tackle section 6. Push only after E2E confirms
 **Quant agent:** Verify SerpAPI caching works. Check that getCache/setCache functions
 exist and properly read/write product_cache table. If they're missing, build them.
 
-**UI/UX agent:**
+**UI/UX agent:** You have CREATIVE LICENSE. Make this app look world-class.
   - Verify Circle to Search end-to-end
   - Polish banner ad placeholders to look real (6a)
   - Remove phone field from signup form or make optional (6b)
-  - Redesign pairings as visual grid (6c)
+  - Redesign pairings as visual grid like Pinterest (6c)
   - Add scan streak counter (6d)
   - Add "Last Seen" timestamps on saved items (6e)
   - Add shadow to BEST VALUE pill (6f)
   - Add mini identification preview before product search (6g)
+  - Fix iPhone camera mirror/flip bug (6i)
+  - Fix or remove light mode — it looks awful (6j)
+  - Build full i18n for 8 languages (6k) — EN, ES, FR, DE, ZH, JA, KO, PT
+  - General visual polish pass — logo, branding, spacing, consistency (6l)
   - Finish half-done features (scan rename, wishlist ops, referral share)
   - Test everything at 390px width
 
@@ -239,3 +289,8 @@ any new code written today.
 - Saved items show "Last Seen" timestamp
 - Signup works without phone number
 - Banner ads look polished, not placeholder
+- Camera doesn't mirror/flip incorrectly
+- Light mode either looks good or is removed
+- Language switcher works, all 8 languages translate fully
+- No untranslated English strings when switching language
+- Overall visual quality matches App Store top 10 apps
