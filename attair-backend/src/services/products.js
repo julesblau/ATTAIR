@@ -466,6 +466,16 @@ async function googleLensSearch(imageUrl) {
     return [];
   }
 
+  // Cache keyed on the image URL — same URL always produces the same Lens results.
+  // Using an md5 prefix so the key stays short and DB-friendly.
+  const cacheKey = crypto.createHash("md5").update(`lens:${imageUrl}`).digest("hex");
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    console.log(`[cache] HIT: ${cacheKey}`);
+    return cached;
+  }
+  console.log(`[cache] MISS: ${cacheKey}`);
+
   console.log(`\n[Lens] Searching with image: ${imageUrl.slice(0, 80)}...`);
 
   const params = new URLSearchParams({
@@ -498,6 +508,12 @@ async function googleLensSearch(imageUrl) {
       console.log(`[Lens] Sample: "${(s.title || "").slice(0, 60)}" source=${s.source} price=${JSON.stringify(s.price)} link=${!!(s.link || s.product_link || s.url)}`);
     }
 
+    // Persist results before returning so the cache is warm for identical image URLs.
+    // Only cache non-empty results — an empty array may be a transient API failure
+    // and we do not want to lock out a valid retry for 24 hours.
+    if (visualMatches.length > 0) {
+      await setCache(cacheKey, visualMatches);
+    }
     return visualMatches;
   } catch (err) {
     clearTimeout(timeout);
@@ -568,6 +584,17 @@ function matchLensResultToItem(result, items) {
 // STEP 3: Text search fallback (for items Lens didn't cover)
 // ═════════════════════════════════════════════════════════════
 async function textSearch(query, _priceMin, priceMax) {
+  // Cache keyed on query + priceMax — the same query with the same price ceiling
+  // always hits the same Shopping results page, so this is a safe cache key.
+  // priceMax defaults to 0 in the key when unset so keys stay deterministic.
+  const cacheKey = crypto.createHash("md5").update(`text:${query}:${priceMax || 0}`).digest("hex");
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    console.log(`[cache] HIT: ${cacheKey}`);
+    return cached;
+  }
+  console.log(`[cache] MISS: ${cacheKey}`);
+
   const params = new URLSearchParams({
     engine: "google_shopping",
     q: query,
@@ -593,6 +620,13 @@ async function textSearch(query, _priceMin, priceMax) {
     const data = await res.json();
     const results = data.shopping_results || [];
     console.log(`  [Text] Got ${results.length} results`);
+
+    // Persist non-empty results before returning. Empty arrays are skipped for
+    // the same reason as in googleLensSearch — a transient API error should not
+    // poison the cache for 24 hours.
+    if (results.length > 0) {
+      await setCache(cacheKey, results);
+    }
     return results;
   } catch (err) {
     clearTimeout(timeout);
@@ -1154,3 +1188,15 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
 
   return output;
 }
+
+// ─── Test exports (only used by vitest, never in production) ─
+// These expose pure functions so the test suite can exercise them directly
+// without mocking the entire findProductsForItems pipeline.
+export const _testExports = {
+  scoreProduct,
+  isVendorPage,
+  matchLensResultToItem,
+  classifyMarket,
+  extractPrice,
+  getTierBounds,
+};

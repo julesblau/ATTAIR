@@ -17,6 +17,7 @@ import suggestPairingsRouter from "./routes/suggestPairings.js";
 import seenOnRouter from "./routes/seenOn.js";
 import nearbyStoresRouter from "./routes/nearbyStores.js";
 import wishlistsRouter from "./routes/wishlists.js";
+import paymentsRouter from "./routes/payments.js";
 
 // ─── Validate required env vars ─────────────────────────────
 const REQUIRED_ENV = [
@@ -25,6 +26,8 @@ const REQUIRED_ENV = [
   "SUPABASE_ANON_KEY",
   "ANTHROPIC_API_KEY",
   "SERPAPI_KEY",
+  "STRIPE_SECRET_KEY",
+  "STRIPE_WEBHOOK_SECRET",
 ];
 
 for (const key of REQUIRED_ENV) {
@@ -44,11 +47,23 @@ app.set("trust proxy", 1);
 
 // ─── Middleware ──────────────────────────────────────────────
 
-// Manual CORS — runs before everything, including helmet
+// Manual CORS — runs before everything, including helmet.
+// SECURITY: Only reflect origins that are explicitly in the allowlist.
+// Reflecting any origin unconditionally is equivalent to Access-Control-Allow-Origin: *
+// but still works with credentialed requests, which is overly permissive.
+const ALLOWED_ORIGINS = new Set(
+  (process.env.CORS_ORIGINS || "http://localhost:5173")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean)
+);
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin) res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Access-Control-Allow-Credentials", "true");
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+  }
   res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With");
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -57,6 +72,9 @@ app.use((req, res, next) => {
 
 // helmet — allow cross-origin fetches (CORP must not block our API responses)
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+
+// Stripe webhook requires raw body — MUST be before express.json()
+app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 
 // Body parsing — 10MB limit for base64 images
 app.use(express.json({ limit: "10mb" }));
@@ -96,6 +114,7 @@ app.use("/api/suggest-pairings", suggestPairingsRouter);
 app.use("/api/seen-on", seenOnRouter);
 app.use("/api/nearby-stores", nearbyStoresRouter);
 app.use("/api/wishlists", wishlistsRouter);
+app.use("/api/payments", paymentsRouter);
 
 // Health check
 app.get("/", (req, res) => {

@@ -102,6 +102,14 @@ ALTER TABLE scans          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE saved_items    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE affiliate_clicks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ad_events      ENABLE ROW LEVEL SECURITY;
+-- SECURITY: product_cache has no RLS policies defined here. The backend accesses it only via the
+-- service-role client (which bypasses RLS), so no anon/authenticated client can read or write it
+-- directly. If you ever enable direct client access, add restrictive policies or keep it
+-- service-role-only. Current state is safe as long as the service role key stays server-side.
+-- SECURITY: wishlists table is defined in migrations but has no RLS policies in this file.
+-- Ensure the following policies exist in Supabase or add them here:
+--   CREATE POLICY "Users can manage own wishlists" ON wishlists USING (auth.uid() = user_id);
+-- The backend enforces user_id scoping in every query, but belt-and-suspenders RLS is required.
 
 -- Profiles
 CREATE POLICY "Users can view own profile"   ON profiles FOR SELECT USING (auth.uid() = id);
@@ -131,3 +139,7 @@ CREATE POLICY "Users can insert own ad events" ON ad_events FOR INSERT WITH CHEC
 
 -- size_prefs column added for personalised search results
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS size_prefs JSONB DEFAULT '{}'::jsonb;
+
+-- stripe_customer_id: stored on checkout.session.completed so subscription.deleted
+-- and invoice.payment_failed webhooks can look up the profile and downgrade the user.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;

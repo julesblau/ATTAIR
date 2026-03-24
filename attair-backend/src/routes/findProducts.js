@@ -58,10 +58,11 @@ router.post("/", requireAuth, async (req, res) => {
 
     return res.json(results);
   } catch (err) {
+    // SECURITY: Do not forward err.message to the client — it can contain SerpAPI key details,
+    // internal URLs, or Supabase error bodies. Log server-side only.
     console.error("Find products error:", err.message);
     return res.status(500).json({
       error: "Product search failed",
-      message: err.message,
     });
   }
 });

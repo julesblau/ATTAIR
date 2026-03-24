@@ -66,7 +66,7 @@ async function uploadImage(base64, mimeType, userId) {
 }
 
 router.post("/", requireAuth, scanRateLimit, async (req, res) => {
-  const { image, mime_type, user_prefs } = req.body;
+  const { image, mime_type, user_prefs, priority_region_base64 } = req.body;
 
   if (!image) {
     return res.status(400).json({ error: "Missing image field (base64)" });
@@ -80,6 +80,14 @@ router.post("/", requireAuth, scanRateLimit, async (req, res) => {
 
   if (!/^[A-Za-z0-9+/=\s]+$/.test(cleanImage.slice(0, 200))) {
     return res.status(400).json({ error: "Invalid base64 encoding" });
+  }
+
+  // SECURITY: Enforce a size cap on the optional priority region so a client cannot send
+  // a near-10MB second image and double the Anthropic API cost / request size.
+  // 1.5 MB of base64 encodes roughly 1.1 MB of binary — sufficient for a cropped region.
+  const MAX_PRIORITY_B64_CHARS = 2_000_000; // ~1.5 MB base64
+  if (priority_region_base64 && (typeof priority_region_base64 !== "string" || priority_region_base64.length > MAX_PRIORITY_B64_CHARS)) {
+    return res.status(400).json({ error: "priority_region_base64 exceeds maximum allowed size" });
   }
 
   const mimeType = mime_type || "image/jpeg";
@@ -96,7 +104,7 @@ router.post("/", requireAuth, scanRateLimit, async (req, res) => {
     const imageUrlPromise = uploadImage(cleanImage, mimeType, req.userId);
 
     // 2. Call Claude (runs in parallel with upload)
-    const raw = await identifyClothing(cleanImage, mimeType, prefs);
+    const raw = await identifyClothing(cleanImage, mimeType, prefs, priority_region_base64);
 
     // 3. Dedup & sort
     let items = dedup(raw.items || []);
@@ -142,8 +150,10 @@ router.post("/", requireAuth, scanRateLimit, async (req, res) => {
       user_tier: tier,
     });
   } catch (err) {
+    // SECURITY: Do not forward err.message to the client — it can contain Anthropic API error
+    // bodies, internal paths, or DB details. Log server-side only.
     console.error("Identify error:", err.message);
-    return res.status(500).json({ error: "Identification failed", message: err.message });
+    return res.status(500).json({ error: "Identification failed" });
   }
 });
 

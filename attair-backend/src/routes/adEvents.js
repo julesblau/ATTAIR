@@ -25,6 +25,16 @@ router.post("/", requireAuth, async (req, res) => {
     return res.status(400).json({ error: `Invalid action. Must be: ${VALID_ACTIONS.join(", ")}` });
   }
 
+  // SECURITY: revenue_estimate is a caller-supplied DECIMAL value that is written directly to the DB.
+  // Validate that it is a finite, non-negative number within a plausible range before accepting it.
+  // Reject strings, Infinity, NaN, and negative values that could corrupt revenue analytics.
+  if (revenue_estimate != null) {
+    const n = Number(revenue_estimate);
+    if (!Number.isFinite(n) || n < 0 || n > 100_000) {
+      return res.status(400).json({ error: "revenue_estimate must be a non-negative number" });
+    }
+  }
+
   // If the user clicked upgrade from an ad, record upgrade_source
   if (action === "upgrade_clicked") {
     await supabase

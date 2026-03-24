@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomBytes } from "crypto";
 import { requireAuth } from "../middleware/auth.js";
 import supabase from "../lib/supabase.js";
 
@@ -59,6 +60,13 @@ router.get("/profile", requireAuth, async (req, res) => {
     .single();
 
   if (error) return res.status(404).json({ error: "Profile not found" });
+
+  if (!profile.referral_code) {
+    const code = randomBytes(5).toString("hex").toUpperCase();
+    await supabase.from("profiles").update({ referral_code: code }).eq("id", req.userId);
+    profile.referral_code = code;
+  }
+
   return res.json(profile);
 });
 
@@ -69,10 +77,50 @@ router.patch("/profile", requireAuth, async (req, res) => {
   const updates = {};
   if (display_name !== undefined) updates.display_name = display_name;
   if (phone !== undefined) updates.phone = phone;
-  if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+
+  // SECURITY: avatar_url is stored in the DB and later rendered in an <img src>.
+  // Reject any URL whose scheme is not http or https to prevent javascript: or data: URIs
+  // from being stored and potentially misused by the frontend.
+  if (avatar_url !== undefined) {
+    if (avatar_url !== null) {
+      try {
+        const u = new URL(avatar_url);
+        if (u.protocol !== "http:" && u.protocol !== "https:") {
+          return res.status(400).json({ error: "avatar_url must be an http or https URL" });
+        }
+      } catch {
+        return res.status(400).json({ error: "avatar_url must be a valid URL" });
+      }
+    }
+    updates.avatar_url = avatar_url;
+  }
+
   if (gender_pref !== undefined) updates.gender_pref = gender_pref;
-  if (budget_min !== undefined) updates.budget_min = budget_min;
-  if (budget_max !== undefined) updates.budget_max = budget_max;
+
+  // SECURITY: Validate budget fields — reject non-numeric values and unsafe ranges.
+  if (budget_min !== undefined) {
+    if (budget_min !== null) {
+      const n = Number(budget_min);
+      if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
+        return res.status(400).json({ error: "budget_min must be a number between 0 and 1,000,000" });
+      }
+      updates.budget_min = n;
+    } else {
+      updates.budget_min = null;
+    }
+  }
+  if (budget_max !== undefined) {
+    if (budget_max !== null) {
+      const n = Number(budget_max);
+      if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
+        return res.status(400).json({ error: "budget_max must be a number between 0 and 1,000,000" });
+      }
+      updates.budget_max = n;
+    } else {
+      updates.budget_max = null;
+    }
+  }
+
   if (size_prefs !== undefined) updates.size_prefs = size_prefs;
 
   if (Object.keys(updates).length === 0) {

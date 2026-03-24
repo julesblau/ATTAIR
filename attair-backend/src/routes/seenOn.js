@@ -38,11 +38,21 @@ router.get("/", optionalAuth, async (req, res) => {
     if (!serpRes.ok) return res.json({ appearances: [] });
 
     const data = await serpRes.json();
+    // SECURITY: Validate URLs from SerpAPI before sending to the client.
+    // Only allow http/https — a javascript: or data: URL in source_url or thumbnail
+    // could be misused when the frontend places it in an href or img src.
+    function safeUrl(url) {
+      try {
+        const u = new URL(url || "");
+        return (u.protocol === "http:" || u.protocol === "https:") ? url : "";
+      } catch { return ""; }
+    }
+
     const articles = (data.news_results || []).slice(0, 4).map(a => ({
       title: a.title || "",
       source_name: a.source?.name || a.source || "",
-      source_url: a.link || "",
-      thumbnail: a.thumbnail || "",
+      source_url: safeUrl(a.link),
+      thumbnail: safeUrl(a.thumbnail),
       date: a.date || "",
       snippet: a.snippet || "",
     }));

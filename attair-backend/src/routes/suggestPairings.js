@@ -32,8 +32,10 @@ router.post("/", requireAuth, async (req, res) => {
 
     return res.json({ pairings: result.pairings });
   } catch (err) {
+    // SECURITY: Do not forward err.message to the client — it can contain Anthropic API error
+    // bodies or internal service details. Log server-side only.
     console.error("Suggest pairings error:", err.message);
-    return res.status(500).json({ error: "Failed to suggest pairings", message: err.message });
+    return res.status(500).json({ error: "Failed to suggest pairings" });
   }
 });
 

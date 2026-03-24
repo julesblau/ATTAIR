@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { createClient } from "@supabase/supabase-js";
+import { randomBytes } from "crypto";
 import supabase from "../lib/supabase.js";
 
 const router = Router();
@@ -33,6 +34,21 @@ router.post("/signup", async (req, res) => {
     return res.status(400).json({ error: "Phone number is required" });
   }
 
+  // SECURITY: Validate budget fields — reject non-numeric values and unsafe ranges to prevent
+  // type confusion in downstream DB writes and AI prompt construction.
+  if (budget_min != null) {
+    const n = Number(budget_min);
+    if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
+      return res.status(400).json({ error: "budget_min must be a number between 0 and 1,000,000" });
+    }
+  }
+  if (budget_max != null) {
+    const n = Number(budget_max);
+    if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
+      return res.status(400).json({ error: "budget_max must be a number between 0 and 1,000,000" });
+    }
+  }
+
   try {
     // Create auth user via service role
     const { data, error } = await supabase.auth.admin.createUser({
@@ -53,6 +69,9 @@ router.post("/signup", async (req, res) => {
     if (gender_pref) profileUpdates.gender_pref = gender_pref;
     if (budget_min != null) profileUpdates.budget_min = budget_min;
     if (budget_max != null) profileUpdates.budget_max = budget_max;
+    // Use crypto.randomBytes for referral code generation to ensure cryptographically random output.
+    // 5 bytes → 10 hex characters → 40 bits of entropy. Codes are uppercased hex for readability.
+    profileUpdates.referral_code = randomBytes(5).toString("hex").toUpperCase();
 
     await supabase
       .from("profiles")

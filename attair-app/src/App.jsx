@@ -7,9 +7,14 @@ import "react-image-crop/dist/ReactCrop.css";
 // ═══════════════════════════════════════════════════════════════
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
 
-// Supabase public config for OAuth (safe to expose — anon key is public)
-const SUPABASE_URL="https://cmlgqztjkrfipzknwnfm.supabase.co"
-const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtbGdxenRqa3JmaXB6a253bmZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NzkzMzQsImV4cCI6MjA4OTQ1NTMzNH0.zQItty8IrgKmwTnpPAAtupzujYwHoLYO2KklNSr8pUg"
+// Supabase public config for OAuth (safe to expose — anon key is public by design in Supabase's model)
+// SECURITY: The anon key is intentionally public and provides no privilege beyond what RLS policies allow.
+// Keys are read from Vite env vars so that rotating them requires only an env-var change, not a code
+// change + redeploy, and so the live project ref does not appear in version control.
+// Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vercel / local .env file.
+// The service role key must NEVER appear here or in any frontend file.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
 // ═══════════════════════════════════════════════════════════════
 // AUTH HELPERS — Token management + auto-refresh
@@ -122,10 +127,10 @@ const API = {
     return data;
   },
 
-  async identifyClothing(base64, mimeType, userPrefs) {
+  async identifyClothing(base64, mimeType, userPrefs, priorityRegionBase64 = null) {
     const res = await authFetch(`${API_BASE}/api/identify`, {
       method: "POST",
-      body: JSON.stringify({ image: base64, mime_type: mimeType, user_prefs: userPrefs }),
+      body: JSON.stringify({ image: base64, mime_type: mimeType, user_prefs: userPrefs, ...(priorityRegionBase64 && { priority_region_base64: priorityRegionBase64 }) }),
     });
     if (res.status === 429) {
       const data = await res.json();
@@ -286,6 +291,29 @@ const API = {
       body: JSON.stringify({ scan_id: scanId, item_index: itemIndex, original_item: originalItem, user_message: userMessage, chat_history: chatHistory, gender }),
     });
     if (!res.ok) { const d = await res.json(); throw new Error(d.message || "Refinement failed"); }
+    return await res.json();
+  },
+
+  async createCheckoutSession(plan) {
+    const res = await authFetch(`${API_BASE}/api/payments/create-checkout-session`, {
+      method: "POST",
+      body: JSON.stringify({ plan }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to create checkout session");
+    return data;
+  },
+
+  async startTrial() {
+    const res = await authFetch(`${API_BASE}/api/payments/start-trial`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to start trial");
+    return data;
+  },
+
+  async getProfile() {
+    const res = await authFetch(`${API_BASE}/api/user/profile`);
+    if (!res.ok) return null;
     return await res.json();
   },
 };
@@ -451,19 +479,26 @@ const MiniCard = ({ tier, data, scanId, itemIndex }) => {
 };
 
 // ─── Upgrade Modal ──────────────────────────────────────────
-const UpgradeModal = ({ trigger, onClose, onUpgrade }) => {
+const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial }) => {
+  const [plan, setPlan] = useState("yearly");
+  const [loadingPlan, setLoadingPlan] = useState(false);
   const msgs = {
     scan_limit: { title: "You've used all 3 free scans today", sub: "Go Pro for unlimited scans, zero ads, and price drop alerts.", cta: "Unlock Unlimited Scans" },
     ad_fatigue: { title: "Tired of ads?", sub: "Pro members get a completely ad-free experience plus unlimited scans.", cta: "Remove Ads Forever" },
     history_expiring: { title: "Your scan history expires soon", sub: "Free accounts only keep 7 days. Pro keeps everything forever.", cta: "Keep My History" },
     save_limit: { title: "You've saved 20 items", sub: "Unlock unlimited saves, price drop alerts, and an ad-free experience.", cta: "Save Unlimited Items" },
     price_drop: { title: "A saved item dropped 30%", sub: "Pro users get instant price drop alerts. Never miss a deal.", cta: "Get Price Alerts" },
+    circle_to_search: { title: "Circle to Search is Pro only", sub: "Draw a circle around any item to prioritize it in your search — a Pro exclusive.", cta: "Unlock Circle to Search" },
     general: { title: "Unlock the full experience", sub: "Unlimited scans, zero ads, price alerts, and more.", cta: "Go Pro" },
   };
   const m = msgs[trigger] || msgs.general;
+  const handleCta = async () => {
+    setLoadingPlan(true);
+    try { await onUpgrade(plan); } finally { setLoadingPlan(false); }
+  };
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
+      <div className="modal-box" onClick={e => e.stopPropagation()} style={{ overflowY: "auto", maxHeight: "90vh" }}>
         <button className="modal-x" onClick={onClose}>✕</button>
         <div className="pw-badge">✦ ATTAIR PRO</div>
         <h2 className="modal-title">{m.title}</h2>
@@ -473,18 +508,27 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade }) => {
             <div className="pw-f" key={i}><div className="pw-ck">✓</div>{f}</div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-          <div style={{ flex: 1, textAlign: "center" }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+          <div
+            onClick={() => setPlan("yearly")}
+            style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "yearly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "yearly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s", position: "relative" }}>
+            <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", fontSize: 8, fontWeight: 800, padding: "2px 8px", borderRadius: 100, letterSpacing: 1, whiteSpace: "nowrap" }}>BEST VALUE</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$39.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/yr</span></div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$0.77/week</div>
           </div>
-          <div style={{ width: 1, background: "rgba(255,255,255,.06)" }} />
-          <div style={{ flex: 1, textAlign: "center" }}>
+          <div
+            onClick={() => setPlan("monthly")}
+            style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "monthly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "monthly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s" }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$9.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/mo</span></div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$2.50/week</div>
           </div>
         </div>
-        <button className="cta" onClick={onUpgrade}>{m.cta}</button>
+        <button className="cta" onClick={handleCta} disabled={loadingPlan} style={{ opacity: loadingPlan ? 0.7 : 1 }}>
+          {loadingPlan ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(12,12,14,.3)", borderTopColor: "#0C0C0E", borderRadius: "50%", animation: "spin .7s linear infinite" }} />Processing…</span> : m.cta}
+        </button>
+        <button className="modal-later" onClick={() => onStartTrial && onStartTrial()} style={{ color: "#C9A96E", fontSize: 12, marginTop: -4 }}>
+          Or start a 7-day free trial →
+        </button>
         <button className="modal-later" onClick={onClose}>Maybe later</button>
       </div>
     </div>
@@ -502,8 +546,24 @@ const InterstitialAd = ({ onClose }) => {
   return (
     <div className="modal-overlay" onClick={() => timer <= 3 && onClose()}>
       <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, aspectRatio: "9/16", background: "#111114", border: "1px solid rgba(255,255,255,.06)", borderRadius: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, position: "relative" }}>
-        <div className="ad-slot" style={{ width: "90%", height: "70%", borderRadius: 12, fontSize: 11 }}>INTERSTITIAL AD</div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)" }}>Ad placeholder — AdMob SDK in Phase 3</div>
+        <div className="ad-slot" style={{ width: "90%", height: "70%", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)", border: "1px solid rgba(255,255,255,.08)" }}>
+          <div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,.3)", letterSpacing: 1, textTransform: "uppercase" }}>Sponsored</span>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,.15)" }}>Ad</span>
+          </div>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>&#128247;</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 6, fontFamily: "'Outfit'" }}>New Arrivals</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginBottom: 16 }}>Discover this season's top looks</div>
+              <button onClick={() => { API.logAdEvent("interstitial", "post_scan", "click"); onClose(); }} style={{ display: "inline-block", padding: "10px 24px", background: "#C9A96E", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "#0C0C0E", fontFamily: "'Outfit'", border: "none", cursor: "pointer" }}>Shop Now</button>
+            </div>
+          </div>
+          <div style={{ padding: "8px 12px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,.06)" }}>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>Featured Partner</span>
+          </div>
+        </div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)" }}>Upgrade to Pro to remove ads</div>
         {timer > 0
           ? <div style={{ position: "absolute", top: 16, right: 16, fontSize: 12, color: "rgba(255,255,255,.25)" }}>Skip in {timer}s</div>
           : <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,.08)", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: "#fff", cursor: "pointer", fontFamily: "'Outfit'" }}>Skip →</button>
@@ -603,6 +663,121 @@ const SEARCH_MESSAGES = [
   "Almost ready…",
 ];
 
+// ─── Circle to Search canvas overlay ────────────────────────
+const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [path, setPath] = useState([]);
+  const [confirmed, setConfirmed] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !imageRef?.current) return;
+    const img = imageRef.current;
+    canvas.width = img.offsetWidth;
+    canvas.height = img.offsetHeight;
+  }, [imageRef]);
+
+  const getPos = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  };
+
+  const startDraw = (e) => {
+    e.preventDefault();
+    const pos = getPos(e);
+    setIsDrawing(true);
+    setPath([pos]);
+    setConfirmed(false);
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    setPath(prev => [...prev, pos]);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const pts = [...path, pos];
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    pts.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.strokeStyle = "rgba(255,120,80,0.9)";
+    ctx.lineWidth = 3;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    ctx.closePath();
+    ctx.fillStyle = "rgba(255,120,80,0.15)";
+    ctx.fill();
+  };
+
+  const endDraw = (e) => {
+    if (!isDrawing) return;
+    e.preventDefault();
+    setIsDrawing(false);
+    if (path.length < 3) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.beginPath();
+    ctx.moveTo(path[0].x, path[0].y);
+    path.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.closePath();
+    ctx.strokeStyle = "rgba(255,120,80,0.9)";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,120,80,0.15)";
+    ctx.fill();
+    setConfirmed(true);
+    const xs = path.map(p => p.x), ys = path.map(p => p.y);
+    const minX = Math.max(0, Math.min(...xs) - 10);
+    const minY = Math.max(0, Math.min(...ys) - 10);
+    const maxX = Math.min(canvas.width, Math.max(...xs) + 10);
+    const maxY = Math.min(canvas.height, Math.max(...ys) + 10);
+    const cropW = maxX - minX, cropH = maxY - minY;
+    if (cropW < 10 || cropH < 10) return;
+    const img = imageRef.current;
+    const cropCanvas = document.createElement("canvas");
+    const scaleX = img.naturalWidth / img.offsetWidth;
+    const scaleY = img.naturalHeight / img.offsetHeight;
+    cropCanvas.width = cropW * scaleX;
+    cropCanvas.height = cropH * scaleY;
+    const cropCtx = cropCanvas.getContext("2d");
+    cropCtx.drawImage(img, minX * scaleX, minY * scaleY, cropW * scaleX, cropH * scaleY, 0, 0, cropCanvas.width, cropCanvas.height);
+    const base64 = cropCanvas.toDataURL("image/jpeg", 0.9).split(",")[1];
+    onConfirm(base64);
+  };
+
+  const clear = () => {
+    setPath([]);
+    setConfirmed(false);
+    const canvas = canvasRef.current;
+    if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    onConfirm(null);
+  };
+
+  return (
+    <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10 }}>
+      <canvas
+        ref={canvasRef}
+        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", touchAction: "none", cursor: "crosshair" }}
+        onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw}
+        onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
+      />
+      <div style={{ position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 10, zIndex: 11 }}>
+        <button onClick={clear} style={{ padding: "8px 18px", background: "rgba(0,0,0,.7)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 100, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'" }}>Clear</button>
+        {confirmed && <button onClick={onCancel} style={{ padding: "8px 18px", background: "rgba(255,120,80,.9)", border: "none", borderRadius: 100, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'" }}>Done</button>}
+      </div>
+    </div>
+  );
+};
+
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
 export default function App() {
@@ -640,8 +815,24 @@ export default function App() {
   const [saved, setSaved] = useState([]);
   const [fade, setFade] = useState("fi");
   const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "saved"
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null); // scan id awaiting inline delete confirm
   const [upgradeModal, setUpgradeModal] = useState(null); // null | trigger string
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false);
+  const [trialStarting, setTrialStarting] = useState(false);
+  const [trialSuccess, setTrialSuccess] = useState(false);
   const [showInterstitial, setShowInterstitial] = useState(false);
+
+  // ─── Circle to Search ─────────────────────────────────────
+  const [circleSearchActive, setCircleSearchActive] = useState(false);
+  const [priorityRegionBase64, setPriorityRegionBase64] = useState(null);
+  const [circleConfirmed, setCircleConfirmed] = useState(false);
+  const imageDisplayRef = useRef(null);
+
+  // ─── Referral ─────────────────────────────────────────────
+  const [referralCode, setReferralCode] = useState(null);
+  const [referralCopied, setReferralCopied] = useState(false);
+
   const fileRef = useRef(null);
   const vidRef = useRef(null);
   const canRef = useRef(null);
@@ -672,6 +863,8 @@ export default function App() {
   const [activeWishlist, setActiveWishlist] = useState(null); // { id, name } | null
   const [wishlistInput, setWishlistInput] = useState("");
   const [wishlistCreating, setWishlistCreating] = useState(false);
+  const [addToListOpenId, setAddToListOpenId] = useState(null); // saved item id with open dropdown
+  const [addToListConfirm, setAddToListConfirm] = useState(null); // { savedItemId, wishlistName }
 
   // ─── Occasion filter ──────────────────────────────────────
   const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
@@ -742,14 +935,65 @@ export default function App() {
           if (profile.budget_min != null) setBudgetMin(profile.budget_min);
           if (profile.budget_max != null) setBudgetMax(profile.budget_max);
           if (profile.size_prefs) setSizePrefs(profile.size_prefs);
+          if (profile.referral_code) setReferralCode(profile.referral_code);
         })
         .catch(() => {});
       API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
       API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
       API.getWishlists().then(d => setWishlists(d.wishlists || [])).catch(() => {});
       if (screen === "onboarding") setScreen("app");
+
+      // Handle post-Stripe-checkout redirect
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("session_id") || params.has("upgrade-success")) {
+        setTimeout(async () => {
+          try {
+            const status = await API.getUserStatus();
+            setUserStatus(status);
+            setUpgradeSuccess(true);
+            setTimeout(() => setUpgradeSuccess(false), 5000);
+          } catch {}
+          window.history.replaceState({}, "", window.location.pathname);
+        }, 1500);
+      }
     }
   }, [authed]);
+
+  // ─── Upgrade / Trial handlers ──────────────────────────────
+  const handleUpgrade = async (plan = "yearly") => {
+    setUpgradeLoading(true);
+    try {
+      const result = await API.createCheckoutSession(plan);
+      if (result.url) {
+        window.location.href = result.url;
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      alert("Could not start checkout. Please try again.");
+    } finally {
+      setUpgradeLoading(false);
+      setUpgradeModal(null);
+    }
+  };
+
+  const handleStartTrial = async () => {
+    setTrialStarting(true);
+    try {
+      await API.startTrial();
+      const status = await API.getUserStatus();
+      setUserStatus(status);
+      setUpgradeModal(null);
+      setTrialSuccess(true);
+      setTimeout(() => setTrialSuccess(false), 4000);
+    } catch (err) {
+      const userMessage = err.message === "Failed to fetch"
+        ? "Couldn't connect. Check your connection and try again."
+        : err.message;
+      setError("Could not start trial. " + userMessage);
+    } finally {
+      setTrialStarting(false);
+    }
+  };
 
   // ─── Helpers ──────────────────────────────────────────────
   const trans = (fn) => { setFade("fo"); setTimeout(() => { fn(); setFade("fi"); }, 220); };
@@ -823,8 +1067,17 @@ export default function App() {
       }
       setAuthed(true);
       setScreen("app");
+      // If the user came from the paywall with a plan selected, trigger checkout now
+      const pendingPlan = sessionStorage.getItem("attair_pending_plan");
+      if (pendingPlan) {
+        sessionStorage.removeItem("attair_pending_plan");
+        handleUpgrade(pendingPlan);
+      }
     } catch (err) {
-      setAuthErr(err.message);
+      const userMessage = err.message === "Failed to fetch"
+        ? "Couldn't connect. Check your connection and try again."
+        : err.message;
+      setAuthErr(userMessage);
     }
     setAuthLoading(false);
   };
@@ -981,7 +1234,13 @@ export default function App() {
 
     // Phase 1: Identify (backend handles Claude + dedup + rate limit + image storage)
     try {
-      const raw = await API.identifyClothing(base64, mime, prefs);
+      const raw = await API.identifyClothing(base64, mime, prefs, priorityRegionBase64);
+      // Sort priority items first
+      if (raw.items) {
+        raw.items = [...raw.items].sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
+      }
+      setPriorityRegionBase64(null);
+      setCircleSearchActive(false);
       let items = (raw.items || []).map(item => ({ ...item, status: "identified", tiers: null }));
       const identified = { gender: raw.gender || "male", summary: raw.summary || "", items, scanId: raw.scan_id, imageUrl: raw.image_url };
       setScanId(raw.scan_id);
@@ -1072,7 +1331,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -1144,6 +1403,7 @@ export default function App() {
       @keyframes scan{0%{top:5%}50%{top:92%}100%{top:5%}}
       @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
       @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
       .fi{animation:fi .3s ease forwards}.fo{animation:fo .22s ease forwards}
       .app{width:100%;max-width:430px;min-height:100vh;margin:0 auto;background:#0C0C0E;font-family:'Outfit',sans-serif;color:#E8E6E1;display:flex;flex-direction:column;overflow-x:hidden}
       .serif{font-family:'Instrument Serif',serif}
@@ -1438,7 +1698,17 @@ export default function App() {
             <div className={`pw-p ${selPlan==="yearly"?"sel":""}`} onClick={() => setSelPlan("yearly")}><div className="pw-ptag">BEST VALUE</div><div className="pw-pp">$39.99<span className="pw-pd"> /year</span></div><div className="pw-pw">$0.77/week</div></div>
             <div className={`pw-p ${selPlan==="monthly"?"sel":""}`} onClick={() => setSelPlan("monthly")}><div className="pw-pp">$9.99<span className="pw-pd"> /mo</span></div><div className="pw-pw">$2.50/week</div></div>
           </div>
-          <button className="cta" onClick={() => trans(() => setScreen("auth"))}>Continue with free account</button>
+          <button className="cta" onClick={() => {
+            if (authed) {
+              handleUpgrade(selPlan);
+            } else {
+              // Store intent so auth flow can trigger checkout after signup
+              sessionStorage.setItem("attair_pending_plan", selPlan);
+              trans(() => setScreen("auth"));
+            }
+          }}>
+            {authed ? (upgradeLoading ? "Loading…" : `Start Pro — ${selPlan === "yearly" ? "$39.99/yr" : "$9.99/mo"}`) : "Get started"}
+          </button>
           <div className="pw-terms">3 free scans per day. Upgrade anytime.</div>
         </div>
       )}
@@ -1522,18 +1792,39 @@ export default function App() {
         <UpgradeModal
           trigger={upgradeModal}
           onClose={() => setUpgradeModal(null)}
-          onUpgrade={() => { setUpgradeModal(null); /* TODO: RevenueCat in Phase 3 */ }}
+          onUpgrade={handleUpgrade}
+          onStartTrial={handleStartTrial}
         />
+      )}
+
+      {/* ─── UPGRADE SUCCESS BANNER ──────────────────────── */}
+      {upgradeSuccess && (
+        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
+          Welcome to ATTAIR Pro!
+        </div>
+      )}
+
+      {/* ─── TRIAL SUCCESS BANNER ────────────────────────── */}
+      {trialSuccess && (
+        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)", whiteSpace: "nowrap" }}>
+          ✓ 7-day free trial started!
+        </div>
       )}
 
       {/* ─── MAIN APP ────────────────────────────────────── */}
       {screen === "app" && (<>
         <div className="hdr">
           <div className="logo"><span>ATT</span>AIR</div>
-          {isPro
-            ? <div className="pro">PRO</div>
-            : <div className="free-badge" onClick={() => setUpgradeModal("general")}>FREE · {scansLeft}/{scansLimit}</div>
-          }
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {isPro
+              ? <div className="pro">PRO</div>
+              : <div className="free-badge" onClick={() => setUpgradeModal("general")}>FREE · {scansLeft}/{scansLimit}</div>
+            }
+            {userStatus?.tier === "trial" && userStatus?.trial_ends_at && (() => {
+              const daysLeft = Math.max(0, Math.ceil((new Date(userStatus.trial_ends_at) - new Date()) / 86400000));
+              return <div style={{ fontSize: 10, color: "#C9A96E", padding: "2px 8px", background: "rgba(201,169,110,.1)", borderRadius: 100, border: "1px solid rgba(201,169,110,.3)" }}>{daysLeft}d trial</div>;
+            })()}
+          </div>
         </div>
         <div className="as">
           <input ref={fileRef} type="file" accept="image/*,.heic,.heif" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
@@ -1626,7 +1917,10 @@ export default function App() {
                         {isPicked && <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6.5L5 9L9.5 3.5" fill="none" stroke="#0C0C0E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "#fff" : "rgba(255,255,255,.5)", transition: "color .2s" }}>{item.name}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "#fff" : "rgba(255,255,255,.5)", transition: "color .2s" }}>{item.name}</span>
+                          {item.priority && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(255,120,80,.15)", border: "1px solid rgba(255,120,80,.35)", borderRadius: 100, color: "rgb(255,120,80)", letterSpacing: .5, flexShrink: 0 }}>&#11044; Circled</span>}
+                        </div>
                         <div style={{ fontSize: 11, color: isPicked ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.15)", transition: "color .2s" }}>
                           {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
                           {item.identification_confidence ? <span style={{ marginLeft: 4, color: "rgba(255,255,255,.25)" }}>· {item.identification_confidence}%</span> : null}
@@ -1778,7 +2072,10 @@ export default function App() {
                           <img src={thumb.image_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.04)" }} onError={e => e.target.style.display = "none"} />
                         ) : null;
                       })()}
-                      <h2 className="det-name" style={{ flex: 1 }}>{item.name}</h2>
+                      <h2 className="det-name" style={{ flex: 1 }}>
+                        {item.priority && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, padding: "2px 8px", background: "rgba(255,120,80,.15)", border: "1px solid rgba(255,120,80,.4)", borderRadius: 100, color: "rgb(255,120,80)", letterSpacing: .5, marginRight: 6, verticalAlign: "middle" }}>Your pick &#8857;</span>}
+                        {item.name}
+                      </h2>
                       <button className={`det-save ${isSaved(item)?"on":""}`} onClick={() => toggleSave(item)}>{isSaved(item)?"♥":"♡"}</button>
                     </div>
 
@@ -1814,6 +2111,11 @@ export default function App() {
                             <div style={{ marginTop: 6 }}>
                               {sod.loading && <div style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>Searching…</div>}
                               {!sod.loading && sod.appearances?.length === 0 && <div style={{ fontSize: 11, color: "rgba(255,255,255,.15)" }}>No recent sightings found.</div>}
+                              {/* SECURITY: a.source_url and a.thumbnail originate from SerpAPI.
+                                  The backend (seenOn.js) validates both URLs via safeUrl() and only
+                                  passes through http/https URLs, so javascript: and data: schemes are
+                                  already rejected before reaching this component. React sets this as an
+                                  href attribute value (not innerHTML), so no further sanitization is needed. */}
                               {!sod.loading && sod.appearances?.map((a, i) => (
                                 <a key={i} href={a.source_url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,.04)", textDecoration: "none", color: "inherit" }}>
                                   {a.thumbnail && <img src={a.thumbnail} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} onError={e => e.target.style.display = "none"} />}
@@ -1864,6 +2166,10 @@ export default function App() {
                               {nd.loading && <div style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>Finding stores near you…</div>}
                               {nd.error && <div style={{ fontSize: 11, color: "rgba(255,100,100,.4)" }}>{nd.error}</div>}
                               {!nd.loading && !nd.error && nd.stores?.length === 0 && <div style={{ fontSize: 11, color: "rgba(255,255,255,.15)" }}>No stores found nearby.</div>}
+                              {/* SECURITY: s.maps_url originates from SerpAPI (Google Maps engine) and is not
+                                  validated here. The fallback constructs a safe google.com URL, but the primary
+                                  maps_url is passed through from the backend unchanged.
+                                  Follow-up: filter maps_url to https?:// in nearbyStores.js before returning it. */}
                               {!nd.loading && nd.stores?.map((s, i) => (
                                 <a key={i} href={s.maps_url || `https://www.google.com/maps/search/${encodeURIComponent(s.name + " " + s.address)}`} target="_blank" rel="noopener noreferrer"
                                   style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,.04)", textDecoration: "none", color: "inherit" }}>
@@ -2042,8 +2348,9 @@ export default function App() {
                               } catch { setPairings([]); }
                               setPairingsLoading(false);
                             }}
-                            style={{ width: "100%", padding: "12px 0", background: "rgba(255,255,255,.03)", border: "1px dashed rgba(255,255,255,.1)", borderRadius: 12, color: "rgba(255,255,255,.4)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>
-                            ✦ Suggest what's missing from this outfit
+                            aria-label="Complete the Look — get AI suggestions for missing items"
+                            style={{ width: "100%", padding: "13px 0", background: "rgba(201,169,110,.07)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "all .2s", letterSpacing: 0.3 }}>
+                            Complete the Look ✦
                           </button>
                         )}
                         {pairingsLoading && (
@@ -2057,7 +2364,9 @@ export default function App() {
                             {pairings.map((p, i) => {
                               const shopUrl = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
                               return (
-                                <a key={i} href={shopUrl} target="_blank" rel="noopener noreferrer" style={{ padding: "12px 14px", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", alignItems: "center", gap: 12, transition: "all .2s" }}>
+                                <a key={i} href={shopUrl} target="_blank" rel="noopener noreferrer"
+                                  onClick={() => track("pairing_clicked", { name: p.name, search_query: p.search_query, category: p.category }, scanId, "scan")}
+                                  style={{ padding: "12px 14px", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", alignItems: "center", gap: 12, transition: "all .2s" }}>
                                   <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(201,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
                                     {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[p.category] || "✦"}
                                   </div>
@@ -2090,7 +2399,7 @@ export default function App() {
 
           {/* ─── History (merged with Saved) ─────────────── */}
           {tab === "history" && (() => {
-            const filteredHistory = historyFilter === "saved" ? history.filter(h => h.is_saved) : history;
+            const filteredHistory = history; // "all" tab shows full history; saved tab shows saved items separately
             const loadScan = (h) => {
               const items = h.items || [];
               setResults({ gender: h.detected_gender || "male", summary: h.summary || "", items: items.map(it => ({ ...it, status: h.tiers ? "verified" : "identified", tiers: null })) });
@@ -2098,11 +2407,9 @@ export default function App() {
                 setResults(prev => prev ? { ...prev, items: prev.items.map((item, idx) => { const sr = h.tiers.find(t => t.item_index === idx); return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev);
               }
               setImg(h.image_url || h.image_thumbnail || null);
-              setScanId(h.id); setSelIdx(0); setPickedItems(new Set(h.tiers.map(t => t.item_index))); setPhase("done"); setTab("scan");
+              setScanId(h.id); setSelIdx(0); setPickedItems(new Set((h.tiers || []).map(t => t.item_index))); setPhase("done"); setTab("scan");
             };
-            return filteredHistory.length === 0 && history.length === 0
-              ? <div className="empty"><div className="empty-i">◎</div><div className="empty-t">No scans yet</div><div className="empty-s">Your scan history will appear here</div></div>
-              : <div className="hist-list">
+            return <div className="hist-list">
                   {/* Filter tabs */}
                   <div style={{ display: "flex", gap: 0, marginBottom: 12, background: "rgba(255,255,255,.03)", borderRadius: 10, padding: 3 }}>
                     {["all", "saved", "lists"].map(f => (
@@ -2188,13 +2495,34 @@ export default function App() {
                               {wishlists.map(wl => {
                                 const itemCount = saved.filter(s => s.wishlist_id === wl.id).length;
                                 return (
-                                  <div key={wl.id} onClick={() => setActiveWishlist(wl)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12, cursor: "pointer", transition: "all .2s" }}>
-                                    <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(201,169,110,.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>📋</div>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", marginBottom: 2 }}>{wl.name}</div>
-                                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.25)" }}>{itemCount} item{itemCount !== 1 ? "s" : ""}</div>
+                                  <div key={wl.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12, transition: "all .2s" }}>
+                                    <div onClick={() => setActiveWishlist(wl)} style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(201,169,110,.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, cursor: "pointer" }}>&#128203;</div>
+                                    <div style={{ flex: 1, minWidth: 0 }} onClick={() => setActiveWishlist(wl)}>
+                                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                        <div
+                                          contentEditable
+                                          suppressContentEditableWarning
+                                          onClick={e => e.stopPropagation()}
+                                          onBlur={async (e) => {
+                                            const name = e.target.innerText.trim();
+                                            if (name && name !== wl.name) {
+                                              await API.renameWishlist(wl.id, name);
+                                              setWishlists(prev => prev.map(x => x.id === wl.id ? { ...x, name } : x));
+                                            } else {
+                                              e.target.innerText = wl.name;
+                                            }
+                                          }}
+                                          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
+                                          onFocus={e => { e.target.style.borderBottomColor = "rgba(201,169,110,.3)"; }}
+                                          onBlurCapture={e => { e.target.style.borderBottomColor = "transparent"; }}
+                                          style={{ fontSize: 14, fontWeight: 600, color: "#fff", outline: "none", borderBottom: "1px solid transparent", cursor: "text", transition: "border-color .2s", minWidth: 0, flex: 1 }}
+                                          aria-label="List name — tap to rename"
+                                        >{wl.name}</div>
+                                        <span style={{ fontSize: 11, color: "rgba(255,255,255,.12)", flexShrink: 0, userSelect: "none", cursor: "default" }} aria-hidden="true">&#x270E;</span>
+                                      </div>
+                                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.25)", cursor: "pointer" }}>{itemCount} item{itemCount !== 1 ? "s" : ""}</div>
                                     </div>
-                                    <span style={{ color: "rgba(255,255,255,.2)", fontSize: 14 }}>›</span>
+                                    <span onClick={() => setActiveWishlist(wl)} style={{ color: "rgba(255,255,255,.2)", fontSize: 14, cursor: "pointer" }}>&#x203A;</span>
                                   </div>
                                 );
                               })}
@@ -2204,11 +2532,101 @@ export default function App() {
                     );
                   })()}
 
-                  {/* ─── All Scans / Saved filter ───────────────── */}
-                  {historyFilter !== "lists" && <>
+                  {/* ─── Saved Items (individual items the user saved) ── */}
+                  {historyFilter === "saved" && (() => {
+                    if (saved.length === 0) {
+                      return <div className="empty" style={{padding:"40px 20px"}}><div className="empty-i">♡</div><div className="empty-t">No saved items</div><div className="empty-s">Tap the heart on any identified item to save it here</div></div>;
+                    }
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {saved.map(s => {
+                          const item = s.item_data || s;
+                          const isOpen = addToListOpenId === s.id;
+                          const confirming = addToListConfirm?.savedItemId === s.id;
+                          const assignedList = wishlists.find(wl => wl.id === s.wishlist_id);
+                          return (
+                            <div key={s.id} className="saved-row" style={{ position: "relative", flexWrap: "wrap", alignItems: "flex-start", gap: 10 }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{item.name}</div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                  {item.brand && item.brand !== "Unidentified" && <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)" }}>{item.brand}</span>}
+                                  {item.color && <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>{item.color}</span>}
+                                  {assignedList && <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: .5, padding: "2px 7px", borderRadius: 100, background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", color: "#C9A96E" }}>{assignedList.name}</span>}
+                                </div>
+                              </div>
+                              {/* Add to list button */}
+                              <div style={{ position: "relative", flexShrink: 0 }}>
+                                {confirming ? (
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: "rgb(100,200,120)", padding: "5px 0" }} aria-live="polite">Added!</span>
+                                ) : (
+                                  <button
+                                    aria-label={`Add ${item.name} to a wishlist`}
+                                    onClick={() => setAddToListOpenId(isOpen ? null : s.id)}
+                                    style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", background: isOpen ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.04)", border: `1px solid ${isOpen ? "rgba(201,169,110,.35)" : "rgba(255,255,255,.08)"}`, borderRadius: 8, color: isOpen ? "#C9A96E" : "rgba(255,255,255,.35)", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", transition: "all .15s", minHeight: 32 }}>
+                                    <span style={{ fontSize: 12, lineHeight: 1 }}>&#128203;</span>
+                                    <span>+</span>
+                                  </button>
+                                )}
+                                {isOpen && (
+                                  <>
+                                    <div onClick={() => setAddToListOpenId(null)} style={{ position: "fixed", inset: 0, zIndex: 49 }} aria-hidden="true" />
+                                    <div
+                                      role="listbox"
+                                      aria-label="Choose a wishlist"
+                                      style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", zIndex: 50, background: "#18181C", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12, minWidth: 180, padding: "6px 0", boxShadow: "0 8px 24px rgba(0,0,0,.5)", animation: "slideIn .15s ease" }}>
+                                    {wishlists.length === 0 ? (
+                                      <div style={{ padding: "12px 14px", fontSize: 12, color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>
+                                        Create a list first<br />
+                                        <span style={{ fontSize: 11, color: "rgba(255,255,255,.15)" }}>Go to the Lists tab</span>
+                                      </div>
+                                    ) : wishlists.map(wl => (
+                                      <button
+                                        key={wl.id}
+                                        role="option"
+                                        aria-selected={s.wishlist_id === wl.id}
+                                        onClick={async () => {
+                                          setAddToListOpenId(null);
+                                          const ok = await API.addToWishlist(wl.id, s.id);
+                                          if (ok) {
+                                            setSaved(prev => prev.map(x => x.id === s.id ? { ...x, wishlist_id: wl.id } : x));
+                                            setAddToListConfirm({ savedItemId: s.id, wishlistName: wl.name });
+                                            setTimeout(() => setAddToListConfirm(null), 1800);
+                                          }
+                                        }}
+                                        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "10px 14px", background: s.wishlist_id === wl.id ? "rgba(201,169,110,.08)" : "none", border: "none", color: s.wishlist_id === wl.id ? "#C9A96E" : "rgba(255,255,255,.7)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 500, cursor: "pointer", textAlign: "left", transition: "background .1s" }}>
+                                        {wl.name}
+                                        {s.wishlist_id === wl.id && <span style={{ fontSize: 11, color: "#C9A96E" }}>&#10003;</span>}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  </>
+                                )}
+                              </div>
+                              {/* Unsave / delete */}
+                              <button
+                                aria-label={`Remove ${item.name} from saved`}
+                                onClick={async () => {
+                                  await API.deleteSaved(s.id).catch(() => {});
+                                  setSaved(prev => prev.filter(x => x.id !== s.id));
+                                  refreshStatus();
+                                }}
+                                style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", color: "rgba(255,255,255,.15)", padding: "4px", minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "color .15s" }}
+                                onMouseEnter={e => e.currentTarget.style.color = "rgba(255,80,80,.5)"}
+                                onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,.15)"}>
+                                &#9825;
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ─── All Scans filter ───────────────── */}
+                  {historyFilter === "all" && <>
                   {isFree && <div style={{fontSize:9,color:"rgba(255,255,255,.12)",marginBottom:8,display:"flex",justifyContent:"space-between"}}><span>Last 7 days</span><span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("history_expiring")}>Keep all →</span></div>}
                   {filteredHistory.length === 0
-                    ? <div className="empty" style={{padding:"40px 20px"}}><div className="empty-i">♡</div><div className="empty-t">No saved scans</div><div className="empty-s">Tap the heart on any scan to save it</div></div>
+                    ? <div className="empty" style={{padding:"40px 20px"}}><div className="empty-i">&#9651;</div><div className="empty-t">No scans yet</div><div className="empty-s">Your scan history will appear here</div></div>
                     : filteredHistory.map((h,i) => {
                       const items = h.items || [];
                       const imgSrc = h.image_url || h.image_thumbnail;
@@ -2224,25 +2642,36 @@ export default function App() {
                           )}
                           {/* Info */}
                           <div style={{flex:1,minWidth:0,cursor:"pointer"}} onClick={() => loadScan(h)}>
-                            <div
-                              contentEditable
-                              suppressContentEditableWarning
-                              onClick={(e) => e.stopPropagation()}
-                              onBlur={async (e) => {
-                                const name = e.target.innerText.trim();
-                                if (name) {
-                                  await API.renameScan(h.id, name);
-                                  setHistory(prev => prev.map(s => s.id === h.id ? { ...s, scan_name: name } : s));
-                                }
-                              }}
-                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
-                              style={{fontSize:13,fontWeight:600,marginBottom:3,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",outline:"none",borderBottom:"1px solid transparent",cursor:"text",transition:"border-color .2s"}}
-                              onFocus={(e) => { e.target.style.borderBottomColor = "rgba(201,169,110,.3)"; }}
-                              onBlurCapture={(e) => { e.target.style.borderBottomColor = "transparent"; }}
-                            >{h.scan_name || items.map(it=>it.name).slice(0,2).join(", ") || h.summary || "Outfit scan"}</div>
+                            {/* Scan name — contentEditable with pencil affordance */}
+                            <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:3}} className="hist-name-row">
+                              <div
+                                contentEditable
+                                suppressContentEditableWarning
+                                onClick={(e) => e.stopPropagation()}
+                                onBlur={async (e) => {
+                                  const name = e.target.innerText.trim();
+                                  if (name) {
+                                    await API.renameScan(h.id, name);
+                                    setHistory(prev => prev.map(s => s.id === h.id ? { ...s, scan_name: name } : s));
+                                  }
+                                }}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); } }}
+                                style={{fontSize:13,fontWeight:600,lineHeight:1.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",outline:"none",borderBottom:"1px solid transparent",cursor:"text",transition:"border-color .2s",minWidth:0,flex:1}}
+                                onFocus={(e) => { e.target.style.borderBottomColor = "rgba(201,169,110,.3)"; }}
+                                onBlurCapture={(e) => { e.target.style.borderBottomColor = "transparent"; }}
+                                aria-label="Scan name — tap to rename"
+                              >{h.scan_name || items.map(it=>it.name).slice(0,2).join(", ") || h.summary || "Outfit scan"}</div>
+                              <span style={{fontSize:11,color:"rgba(255,255,255,.12)",flexShrink:0,userSelect:"none",cursor:"default"}} aria-hidden="true">✎</span>
+                            </div>
                             <div style={{display:"flex",alignItems:"center",gap:6}}>
                               <span style={{fontSize:11,color:"rgba(255,255,255,.2)"}}>{new Date(h.created_at).toLocaleDateString()}</span>
                               <span style={{fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:3,background:"rgba(255,255,255,.04)",color:"rgba(255,255,255,.2)"}}>{items.length} items</span>
+                              {/* Star rating — only shown when a rating exists */}
+                              {h.rating > 0 && (
+                                <span style={{fontSize:11,letterSpacing:1,color:"#C9A96E",lineHeight:1}} aria-label={`Rated ${h.rating} out of 5 stars`}>
+                                  {[1,2,3,4,5].map(s => s <= h.rating ? "★" : "☆").join("")}
+                                </span>
+                              )}
                             </div>
                           </div>
                           {/* Save heart */}
@@ -2254,18 +2683,29 @@ export default function App() {
                             } catch (err) {
                               if (err.message.includes("limit")) setUpgradeModal("save_limit");
                             }
-                          }} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",padding:"4px 4px",flexShrink:0,color: h.is_saved ? "#C9A96E" : "rgba(255,255,255,.12)",transition:"color .2s"}}>
+                          }} style={{background:"none",border:"none",fontSize:18,cursor:"pointer",padding:"4px 4px",flexShrink:0,color: h.is_saved ? "#C9A96E" : "rgba(255,255,255,.12)",transition:"color .2s"}} aria-label={h.is_saved ? "Unsave scan" : "Save scan"}>
                             {h.is_saved ? "♥" : "♡"}
                           </button>
-                          {/* Delete */}
-                          <button onClick={async (e) => {
-                            e.stopPropagation();
-                            if (!confirm("Delete this scan?")) return;
-                            const ok = await API.deleteScan(h.id);
-                            if (ok) setHistory(prev => prev.filter(s => s.id !== h.id));
-                          }} style={{background:"none",border:"none",fontSize:14,cursor:"pointer",padding:"4px 4px",flexShrink:0,color:"rgba(255,255,255,.08)",transition:"color .2s"}} onMouseEnter={e => e.target.style.color="rgba(255,100,100,.5)"} onMouseLeave={e => e.target.style.color="rgba(255,255,255,.08)"}>
-                            ✕
-                          </button>
+                          {/* Delete — inline confirm to avoid iOS PWA confirm() suppression */}
+                          {confirmDeleteId === h.id ? (
+                            <div onClick={e => e.stopPropagation()} style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                              <button onClick={async (e) => {
+                                e.stopPropagation();
+                                const ok = await API.deleteScan(h.id);
+                                if (ok) setHistory(prev => prev.filter(s => s.id !== h.id));
+                                setConfirmDeleteId(null);
+                              }} style={{padding:"4px 10px",background:"rgba(255,80,80,.12)",border:"1px solid rgba(255,80,80,.25)",borderRadius:6,fontSize:11,fontWeight:700,color:"rgba(255,100,100,.9)",cursor:"pointer",fontFamily:"'Outfit'",minHeight:30}} aria-label="Confirm delete">
+                                Yes
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null); }} style={{padding:"4px 10px",background:"none",border:"1px solid rgba(255,255,255,.08)",borderRadius:6,fontSize:11,fontWeight:600,color:"rgba(255,255,255,.3)",cursor:"pointer",fontFamily:"'Outfit'",minHeight:30}} aria-label="Cancel delete">
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(h.id); }} style={{background:"none",border:"none",fontSize:14,cursor:"pointer",padding:"4px 4px",flexShrink:0,color:"rgba(255,255,255,.08)",transition:"color .2s",minWidth:30,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center"}} onMouseEnter={e => e.currentTarget.style.color="rgba(255,100,100,.5)"} onMouseLeave={e => e.currentTarget.style.color="rgba(255,255,255,.08)"} aria-label="Delete scan">
+                              ✕
+                            </button>
+                          )}
                         </div>
                       );
                     })
@@ -2379,7 +2819,23 @@ export default function App() {
               <div className="rcard">
                 <div style={{fontWeight:600,fontSize:14,marginBottom:5}}>Get $5 for every friend</div>
                 <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.5,marginBottom:12}}>Share your link. Both get $5 credit.</div>
-                <button className="btn gold" style={{width:"100%"}}>Share invite link</button>
+                {referralCode && (
+                  <div style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:8,letterSpacing:1}}>
+                    Your code: <span style={{fontWeight:700,color:"#C9A96E",letterSpacing:2}}>{referralCode}</span>
+                  </div>
+                )}
+                <button className="btn gold" disabled={!referralCode} style={{width:"100%", opacity: referralCode ? 1 : 0.4, cursor: referralCode ? "pointer" : "default"}} onClick={async () => {
+                  const code = referralCode || "...";
+                  const text = `Check out ATTAIR — AI that finds the exact outfit you're looking for! Use my code ${code} at attair.vercel.app`;
+                  if (navigator.share) {
+                    try { await navigator.share({ title: "ATTAIR", text }); } catch {}
+                  } else {
+                    navigator.clipboard.writeText(text).then(() => {
+                      setReferralCopied(true);
+                      setTimeout(() => setReferralCopied(false), 2000);
+                    }).catch(() => {});
+                  }
+                }}>{referralCopied ? "Copied!" : "Share invite link"}</button>
               </div>
               <div className="sec-t">{t("settings")}</div>
               <div className="sitem" onClick={toggleTheme}>
@@ -2586,13 +3042,43 @@ export default function App() {
                 />
               </ReactCrop>
             ) : (
-              <img
-                src={cropPending.src}
-                style={{ maxWidth: "100%", maxHeight: "calc(100vh - 120px)", display: "block", borderRadius: 12 }}
-                alt=""
-              />
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <img
+                  ref={imageDisplayRef}
+                  src={cropPending.src}
+                  style={{ maxWidth: "100%", maxHeight: "calc(100vh - 220px)", display: "block", borderRadius: 12 }}
+                  alt=""
+                />
+                {circleSearchActive && (
+                  <CircleToSearchOverlay
+                    imageRef={imageDisplayRef}
+                    onConfirm={(base64) => {
+                      setPriorityRegionBase64(base64);
+                      setCircleConfirmed(!!base64);
+                      if (base64) setCircleSearchActive(false);
+                    }}
+                    onCancel={() => setCircleSearchActive(false)}
+                  />
+                )}
+              </div>
             )}
           </div>
+          {!cropMode && (
+            <div style={{ display: "flex", justifyContent: "center", padding: "8px 20px 0" }}>
+              <button
+                onClick={() => {
+                  if (!isPro) { setUpgradeModal("circle_to_search"); return; }
+                  setCircleSearchActive(prev => !prev);
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: circleSearchActive ? "rgba(255,120,80,.15)" : "rgba(255,255,255,.04)", border: `1px solid ${circleSearchActive ? "rgba(255,120,80,.5)" : "rgba(255,255,255,.08)"}`, borderRadius: 100, color: circleSearchActive ? "rgb(255,120,80)" : "rgba(255,255,255,.5)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44 }}
+                aria-label="Circle an item to prioritize in search"
+              >
+                {!isPro && <span style={{ fontSize: 10 }}>&#128274;</span>}
+                {circleSearchActive ? "Drawing — lift to confirm" : "Circle an item"}
+                {priorityRegionBase64 && !circleSearchActive && <span style={{ color: "rgb(255,120,80)", marginLeft: 2 }}>&#8226;</span>}
+              </button>
+            </div>
+          )}
           <div className="crop-bar">
             {cropMode ? (
               <>
@@ -2618,8 +3104,8 @@ export default function App() {
                 }} style={{ flex: 1, padding: "14px 0", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                   Crop
                 </button>
-                <button onClick={skipCrop} style={{ flex: 2, padding: "14px 0", background: "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                  Use photo
+                <button onClick={skipCrop} style={{ flex: 2, padding: "14px 0", background: priorityRegionBase64 ? "rgba(201,169,110,.9)" : "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                  {priorityRegionBase64 ? "Scan circled item" : "Use photo"}
                 </button>
               </>
             )}

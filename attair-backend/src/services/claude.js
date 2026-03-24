@@ -171,9 +171,37 @@ export async function suggestPairings(identifiedItems, gender, budget) {
   }
 }
 
-export async function identifyClothing(base64Image, mimeType, userPrefs) {
+export async function identifyClothing(base64Image, mimeType, userPrefs, priorityRegionBase64) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
+
+  const contentBlocks = [
+    {
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: mimeType,
+        data: base64Image,
+      },
+    },
+  ];
+
+  if (priorityRegionBase64) {
+    contentBlocks.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: mimeType,
+        data: priorityRegionBase64,
+      },
+    });
+    contentBlocks.push({
+      type: "text",
+      text: "The second image is a cropped region the user circled. Identify this specific item first and mark it with priority: true in your response.",
+    });
+  }
+
+  contentBlocks.push({ type: "text", text: buildIdentifyPrompt(userPrefs) });
 
   try {
     const res = await fetch(ANTHROPIC_URL, {
@@ -185,26 +213,16 @@ export async function identifyClothing(base64Image, mimeType, userPrefs) {
       },
       signal: controller.signal,
       body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 3000,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mimeType,
-                data: base64Image,
-              },
-            },
-            { type: "text", text: buildIdentifyPrompt(userPrefs) },
-          ],
-        },
-      ],
-    }),
-  });
+        model: "claude-sonnet-4-6",
+        max_tokens: 3000,
+        messages: [
+          {
+            role: "user",
+            content: contentBlocks,
+          },
+        ],
+      }),
+    });
 
     clearTimeout(timeout);
 
