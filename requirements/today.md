@@ -53,34 +53,39 @@ Backend generates referral_code on signup (auth.js). Verify:
 
 ---
 
-## 4. CIRCLE TO SEARCH — PARTIALLY BUILT, TEST AND POLISH
+## 4. CIRCLE TO SEARCH — REWORKED: DEFAULT BEHAVIOR, NOT PRO-GATED
 
-The canvas overlay (CircleToSearchOverlay) and backend support (priority_region_base64
-in identify.js + claude.js) were built yesterday. Today:
+Circle to Search is now a DEFAULT feature for ALL users (free and pro).
+It should be the default interaction — NOT hidden behind a button.
+
+### Key changes from yesterday's implementation:
+- ❌ REMOVE the Pro gate / lock icon — circling is available to everyone
+- ❌ REMOVE the "Circle an item" button — the canvas overlay should be ON by default
+  after the user crops/uploads a photo. The user should immediately be able to draw.
+- ✅ Drawing is the default state — canvas overlay is always active on the image
+- ✅ When the user lifts their finger after circling, play a satisfying GLOW ANIMATION
+  on the circled region — a pulsing highlight/shimmer effect that confirms "got it"
+- ✅ "Clear" button available to remove the circle and start over
+- ✅ User can proceed without circling anything (just tap Identify directly)
 
 ### Verify end-to-end:
-- Does the "Circle an item" button appear after cropping a photo?
 - Does drawing on the canvas work on touch and mouse?
 - Does the cropped region get sent to the backend?
 - Does Claude return a priority item?
 - Does the priority item appear first in results with a badge?
-- Is it properly gated as a Pro-only feature?
+- Does the glow animation look satisfying?
 
-### Fix any issues found. The backend already:
+### Backend (already built):
 - Accepts optional `priority_region_base64` in the POST /api/identify body
-- If present, send it to Claude as a second image in the vision prompt with instruction:
-  "The second image is a cropped region the user circled. Identify this specific item first
-   and mark it with priority: true in your response."
-- Claude returns the same JSON structure but the priority item has `priority: true`
+- Sends cropped region as second image to Claude with priority instruction
 - Store `priority_item_index` on the scan row if useful for analytics
 
 ### Design notes:
 - Draw stroke: bright color (coral/orange works well), 3px, semi-transparent fill
-- "Clear" and "Done" buttons while drawing
-- Keep it dead simple — one finger draws, lift to confirm
+- Glow animation after circle: pulsing shimmer/highlight effect on the circled area,
+  like a confirmation that the app "locked on" to that item. Think satisfying, premium.
+- Keep it dead simple — one finger draws, lift to confirm + glow
 - Should feel like the Samsung/Google circle-to-search gesture, not a complex editor
-- This is a PRO feature differentiator — show a "Circle to Search" lock icon for free users
-  that triggers the upgrade modal (use trigger type "general" or add "circle_to_search")
 
 ---
 
@@ -147,6 +152,17 @@ is App Store top 10 — think GOAT, Depop, Pinterest, Nike. This includes:
 - Fixing any visual element that feels placeholder or unfinished
 - Adding micro-interactions, transitions, and polish wherever it helps
 - Making the overall design feel cohesive and premium
+
+---
+
+### 6-PREREQ. Change Free Tier from 3 Scans/Day to 12 Scans/Month
+The free tier scan limit needs to change from 3 per day to 12 per month.
+- Backend: update `rateLimit.js` (or wherever the daily scan counter is enforced)
+  to track monthly usage instead of daily. Check the `scans` table for count of
+  scans in the current calendar month instead of current day.
+- Frontend: update any UI that shows "3 scans remaining today" to show
+  "X of 12 scans used this month" or similar
+- UpgradeModal scan_limit trigger message should reflect the new limit
 
 ---
 
@@ -248,6 +264,7 @@ Work in order: verify first, then tackle section 6. Push only after E2E confirms
 
 **Backend agent:**
   - Verify existing payments/caching/referral code works
+  - Change free tier from 3 scans/day to 12 scans/month in rateLimit.js (6-PREREQ)
   - Make phone number optional in auth.js signup validation (6b)
   - Build pairings affiliate tracking through /api/go system (6h)
   - Finish half-done features (seen-on, nearby-stores, trial flow)

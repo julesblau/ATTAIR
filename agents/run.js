@@ -88,7 +88,7 @@ KNOWN ISSUES (address these if relevant to today's tasks):
   - Test infrastructure was set up in the previous run (vitest, 80 tests passing)
 
 BUSINESS MODEL:
-  - Free: 3 scans/day, 20 saved items, see ads
+  - Free: 12 scans/month, 20 saved items, see ads
   - Pro: unlimited scans/saves, no ads
   - Revenue: affiliate clicks (Amazon Associates), ad events, subscriptions
 
