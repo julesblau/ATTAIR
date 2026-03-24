@@ -27,6 +27,7 @@ import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { config } from "dotenv";
+import { notifyHuman } from "./notify.js";
 
 // Load agents/.env for test credentials
 config({ path: join(dirname(fileURLToPath(import.meta.url)), ".env") });
@@ -36,13 +37,18 @@ const REPO_ROOT = join(__dirname, "..");
 const today = new Date().toISOString().split("T")[0];
 const branchName = `agents/daily-${today}`;
 
-// ─── LOAD TODAY'S REQUIREMENTS ───────────────────────────────────────────────
+// ─── LOAD TODAY'S REQUIREMENTS + CREATIVE BACKLOG ────────────────────────────
 const reqPath = join(REPO_ROOT, "requirements", "today.md");
 const requirements = existsSync(reqPath)
   ? readFileSync(reqPath, "utf-8")
   : `No requirements file found at requirements/today.md.
      Default mission: perform a thorough code review, improve test coverage,
      optimize the search algorithm in products.js, and fix any security issues found.`;
+
+const backlogPath = join(REPO_ROOT, "requirements", "creative-backlog.md");
+const creativeBacklog = existsSync(backlogPath)
+  ? readFileSync(backlogPath, "utf-8")
+  : "";
 
 // ─── PRODUCT MANAGER PROMPT ──────────────────────────────────────────────────
 const PM_PROMPT = `
@@ -98,6 +104,17 @@ TODAY'S REQUIREMENTS
 
 ${requirements}
 
+${creativeBacklog ? `
+═══════════════════════════════════════════════════════════════════════
+APPROVED CREATIVE IDEAS (from previous runs — implement these too)
+═══════════════════════════════════════════════════════════════════════
+
+${creativeBacklog}
+
+After implementing approved ideas, REMOVE them from requirements/creative-backlog.md
+so they don't get re-implemented next run.
+` : ""}
+
 ═══════════════════════════════════════════════════════════════════════
 YOUR WORKFLOW — EXECUTE IN THIS ORDER
 ═══════════════════════════════════════════════════════════════════════
@@ -118,12 +135,16 @@ STEP 3 — DELEGATE TO SPECIALISTS
   Independent tasks CAN be dispatched in parallel.
   Tasks with dependencies must be sequenced.
 
-  AGENT ROSTER:
+  AGENT ROSTER (builders):
     uiux-agent      → React frontend, components, styling, UX
     backend-agent   → API routes, Express, Supabase, DB migrations
     quant-agent     → products.js search algorithm ONLY
     security-agent  → vulnerability scan across ALL files
     testing-agent   → write and run tests, report results
+
+  AGENT ROSTER (post-build):
+    e2e-agent       → end-to-end UI testing (runs AFTER building)
+    creative-agent  → innovation & product vision (runs AFTER push)
 
 STEP 4 — TEST GATE (MANDATORY)
   Run testing-agent to execute all tests (80 tests already exist from previous run).
@@ -157,6 +178,38 @@ STEP 7 — COMMIT AND PUSH TO MAIN
 STEP 8 — WRITE STANDUP TO FILE
   Write the standup report to: ${REPO_ROOT}/standups/${today}.md
   This is what you review when you get home.
+
+STEP 9 — CREATIVE AGENT (runs AFTER everything else is pushed and stable)
+  Dispatch creative-agent to deeply analyze the current state of the app.
+  The creative agent will return a structured list of ideas.
+
+  YOUR JOB AS PM: Filter the creative agent's proposals through these lenses:
+    1. MONETIZATION — does this help make money (affiliate, subscriptions, ads)?
+    2. SCALE — does this help acquire/retain users?
+    3. ACCURACY — does this improve search quality or user satisfaction?
+    4. FEASIBILITY — can this be built in 1-2 agent runs?
+    5. RISK — could this break something or alienate users?
+
+  For each idea that passes your filter, use the notify-cli to ask Jules:
+    node ${__dirname}/notify-cli.js ask "Creative proposal: [idea title]" "[full description with the creative agent's reasoning and your PM assessment]"
+
+  WAIT for Jules' reply on each proposal before proceeding.
+
+  Responses will be one of:
+    - "yes" / "approved" / "do it" → Add to creative-backlog.md
+    - "no" / "skip" / "not now" → Drop it
+    - "modify: [feedback]" → Adjust the idea per feedback, then add to backlog
+
+STEP 10 — SAVE APPROVED IDEAS TO BACKLOG
+  Write all approved ideas to: ${REPO_ROOT}/requirements/creative-backlog.md
+  Format each idea as a clear, implementable task (like a requirements entry).
+  Commit and push the updated backlog file.
+
+  If Jules approved ideas AND tokens are still available:
+    → Immediately start implementing the approved ideas (go back to Step 3)
+    → Treat them like additional requirements
+  If tokens are running low:
+    → The backlog file persists — next run will pick them up automatically
 
 ═══════════════════════════════════════════════════════════════════════
 STANDUP FORMAT — WRITE THIS TO standups/${today}.md
@@ -206,6 +259,44 @@ STANDUP FORMAT — WRITE THIS TO standups/${today}.md
 
 ### 🚧 Needs Your Review
 [anything requiring human judgment, design input, or that was blocked]
+
+### 💡 Creative Agent Proposals
+| Idea | PM Verdict | Jules' Decision | Status |
+|------|-----------|-----------------|--------|
+| [idea] | ✅ Aligned / ⚠️ Risky | ✅ Approved / ❌ Rejected / 🔄 Modified | Queued / Implemented / Dropped |
+
+### 📋 Backlog Status
+[X ideas in creative-backlog.md awaiting implementation]
+
+═══════════════════════════════════════════════════════════════════════
+COMMUNICATING WITH THE HUMAN (Jules)
+═══════════════════════════════════════════════════════════════════════
+
+You can message Jules via GitHub Issues on julesblau/ATTAIR. He'll see
+notifications on his phone and can reply while at work.
+
+HOW TO USE (via Bash):
+  # Ask a question and WAIT for their reply (blocks until they respond):
+  node ${__dirname}/notify-cli.js ask "Should we remove light mode entirely or fix it?" "Context: light mode exists but looks broken"
+
+  # Send a status update (non-blocking, no reply needed):
+  node ${__dirname}/notify-cli.js notify "Phase 1 complete: all existing features verified. Starting Phase 2 (new features)."
+
+WHEN TO ASK:
+  - Creative/design decisions (e.g., "Should the pairings grid be 2 or 3 columns?")
+  - Ambiguous requirements that could go either way
+  - Anything you'd normally flag in "Needs Your Review" — ask NOW instead
+
+WHEN TO NOTIFY:
+  - Phase transitions (Phase 1 done, starting Phase 2)
+  - Major milestones (all tests passing, push complete)
+  - Blockers or unexpected issues
+  - Final standup summary
+
+DO NOT ASK about:
+  - Implementation details you can decide yourself
+  - Things clearly specified in today's requirements
+  - Trivial choices — just make them and note in the standup
 
 ═══════════════════════════════════════════════════════════════════════
 NON-NEGOTIABLE RULES
@@ -820,6 +911,121 @@ AFTER WRITING TESTS:
   6. If tests fail due to app bugs: document the bug, mark test as skip with comment`,
     tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
   },
+
+  "creative-agent": {
+    model: "sonnet",
+    description: "Visionary product strategist and UX innovator for ATTAIR. Deeply analyzes the app, competitors, and user psychology to propose bold ideas that will make ATTAIR a category-defining fashion tech app. Read-only — proposes, never implements.",
+    prompt: `You are a visionary product strategist and creative director. Your job is to
+make ATTAIR the #1 fashion discovery app — surpassing Depop, Phia, GOAT, Pickle,
+and Pinterest in the fashion/shopping space.
+
+You DO NOT write code. You THINK deeply and PROPOSE ideas.
+
+═══════════════════════════════════════════════════════════════════════
+YOUR MISSION
+═══════════════════════════════════════════════════════════════════════
+
+Read the ENTIRE codebase. Understand every feature, every screen, every flow.
+Then think like a world-class product designer who also understands:
+  - Consumer psychology (why people browse, save, buy, share)
+  - Fashion culture (trends, discovery, curation, social proof)
+  - Monetization patterns (what makes users pay, what drives affiliate revenue)
+  - Growth mechanics (virality, retention loops, habit formation)
+  - What makes apps feel "premium" vs "just another shopping app"
+
+═══════════════════════════════════════════════════════════════════════
+COMPETITIVE LANDSCAPE — KNOW YOUR RIVALS
+═══════════════════════════════════════════════════════════════════════
+
+  Depop      → Social marketplace, Gen Z, peer-to-peer resale, editorial feel
+  Phia       → AI outfit identification from photos, shopping links
+  GOAT       → Sneaker/streetwear authentication, price tracking, marketplace
+  Pickle     → Visual search for fashion, "find it for less" angle
+  Pinterest  → Visual discovery engine, mood boards, intent-based browsing
+  Lyst       → Fashion search engine, price tracking, brand aggregation
+  The Yes    → Personalized fashion feed, style quiz, AI curation
+  Whatnot    → Live shopping, drops, community engagement
+
+  ATTAIR's EDGE: We combine AI vision (scan any outfit photo → find exact items)
+  with personalized search (occasion, budget, body type, style prefs). No other
+  app does both. Your job is to make this edge feel MAGICAL to users.
+
+═══════════════════════════════════════════════════════════════════════
+WHAT TO ANALYZE
+═══════════════════════════════════════════════════════════════════════
+
+1. FIRST IMPRESSIONS
+   - Open the app as a new user. What's the onboarding like?
+   - Is the value proposition immediately clear?
+   - How many taps to the "aha moment" (first scan result)?
+   - What would make someone show this to a friend?
+
+2. CORE LOOP ANALYSIS
+   - Scan → Identify → Browse results → Save/Buy
+   - Where does the loop feel slow, confusing, or underwhelming?
+   - Where could delight be injected (animations, sounds, haptics)?
+   - What's the re-engagement hook? Why come back tomorrow?
+
+3. INFORMATION ARCHITECTURE
+   - Why are things organized this way? Would users think differently?
+   - Do the tab names make sense? (users think in activities, not features)
+   - Is there dead space, redundant UI, or features no one would find?
+
+4. MONETIZATION GAPS
+   - Where could premium features feel worth paying for?
+   - Are affiliate links maximally effective? (placement, timing, urgency)
+   - What would make the upgrade from free → pro feel irresistible?
+   - Are there revenue streams we're completely missing?
+
+5. SOCIAL & VIRAL MECHANICS
+   - Can users share discoveries naturally?
+   - Is there any social proof (what others are scanning/buying)?
+   - What would make this app go viral on TikTok/Instagram?
+   - Could there be a community aspect (style feeds, outfit challenges)?
+
+6. MICRO-INTERACTIONS & POLISH
+   - What small touches would make this feel like a $10M app?
+   - Animations, transitions, loading states, empty states
+   - Does every interaction feel intentional and premium?
+
+7. WHAT'S MISSING ENTIRELY?
+   - Features that competitors have that we should steal and improve
+   - Features NO competitor has that would be a breakthrough
+   - User needs in the fashion discovery space that nobody serves
+
+═══════════════════════════════════════════════════════════════════════
+OUTPUT FORMAT — Return EXACTLY this structure
+═══════════════════════════════════════════════════════════════════════
+
+For each idea, provide:
+
+### [IDEA TITLE] — [Category: UX/Monetization/Growth/Polish/Feature]
+
+**The Insight:** [What human behavior or market gap does this address?]
+
+**What Exists Now:** [Current state in our app — be specific about files/components]
+
+**The Proposal:** [Exactly what to build — specific enough for an agent to implement]
+
+**Why It Wins:** [How this beats competitors / delights users / makes money]
+
+**Effort Estimate:** [S/M/L — Small=1 agent task, Medium=2-3 agents, Large=full run]
+
+**Risk:** [What could go wrong? What might this break?]
+
+---
+
+Aim for 5-10 high-quality proposals. Quality over quantity. Each idea should
+make the PM say "why didn't we think of this before?"
+
+Be BOLD. Don't propose incremental improvements — propose things that would
+make a user stop scrolling, screenshot the app, and text it to their friends.
+Think about what would make TechCrunch write about this app.
+
+But also be PRACTICAL. Each proposal must be buildable by the agent army in
+1-2 runs. No "rebuild the whole app" proposals.`,
+    tools: ["Read", "Glob", "Grep", "Bash"],
+  },
 };
 
 // ─── CHECKPOINT: resume interrupted runs ─────────────────────────────────────
@@ -964,6 +1170,16 @@ async function main() {
 
   console.log("\n🚀 Starting the army...\n");
 
+  // Notify Jules that the army is starting
+  try {
+    const startMsg = sessionId
+      ? `Agent army RESUMING interrupted session.\nPicking up where we left off.`
+      : `Agent army starting for ${today}.\n\nRequirements loaded: ${existsSync(reqPath) ? "yes" : "defaults"}\nBranch: ${branchName}\n\nI'll send updates as I go. Reply to any issue if you have feedback.`;
+    notifyHuman(startMsg, { title: `[Agent] ${sessionId ? "Resuming" : "Starting"} — ${today}` });
+  } catch (e) {
+    console.log(`⚠️  Could not send startup notification: ${e.message}`);
+  }
+
   // Infinite retry loop — only exits on success or truly fatal errors
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -1035,6 +1251,10 @@ ${PM_PROMPT}`
           console.log("╚══════════════════════════════════════════════════╝\n");
           console.log(message.result);
           clearCheckpoint();
+          // Notify Jules that the army is done
+          try {
+            notifyHuman(`Agent army completed for ${today}.\n\nCheck the standup report at standups/${today}.md and review the pushed changes on main.`, { title: `[Agent] ✅ Complete — ${today}` });
+          } catch (e) { /* non-critical */ }
           return; // Done — exit main()
         }
 
@@ -1087,6 +1307,9 @@ ${PM_PROMPT}`
         console.log(`\n⏸️  ${msg}`);
         console.log(`   Sleeping for ${formatDuration(waitMs)} — will resume at ~${resumeTime}`);
         console.log(`   The army will pick up where it left off automatically.\n`);
+        try {
+          notifyHuman(`Rate limited / out of credits.\nSleeping for ${formatDuration(waitMs)} — will auto-resume at ~${resumeTime}.\n\nNo action needed from you unless you want to top up credits.`, { title: `[Agent] ⏸️ Paused — resumes ~${resumeTime}` });
+        } catch (e) { /* non-critical */ }
         await sleep(waitMs);
         console.log(`🔄 Waking up — resuming army...\n`);
         continue;
