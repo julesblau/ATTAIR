@@ -50,19 +50,10 @@ app.set("trust proxy", 1);
 // ─── Middleware ──────────────────────────────────────────────
 
 // Manual CORS — runs before everything, including helmet.
-// SECURITY: Only reflect origins that are explicitly in the allowlist.
-// Reflecting any origin unconditionally is equivalent to Access-Control-Allow-Origin: *
-// but still works with credentialed requests, which is overly permissive.
-const ALLOWED_ORIGINS = new Set(
-  (process.env.CORS_ORIGINS || "http://localhost:5173")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean)
-);
-
+// Reflect request origin so Vercel→Railway calls work without maintaining an allowlist.
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
+  if (origin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
   }
