@@ -26,9 +26,11 @@ const REQUIRED_ENV = [
   "SUPABASE_ANON_KEY",
   "ANTHROPIC_API_KEY",
   "SERPAPI_KEY",
-  "STRIPE_SECRET_KEY",
-  "STRIPE_WEBHOOK_SECRET",
 ];
+
+// Stripe keys are optional — payments routes will fail gracefully without them
+if (!process.env.STRIPE_SECRET_KEY) console.warn("⚠️  STRIPE_SECRET_KEY not set — payment routes will be unavailable");
+if (!process.env.STRIPE_WEBHOOK_SECRET) console.warn("⚠️  STRIPE_WEBHOOK_SECRET not set — webhook verification disabled");
 
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
