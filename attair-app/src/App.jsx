@@ -13,8 +13,8 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
 // change + redeploy, and so the live project ref does not appear in version control.
 // Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Vercel / local .env file.
 // The service role key must NEVER appear here or in any frontend file.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://cmlgqztjkrfipzknwnfm.supabase.co";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtbGdxenRqa3JmaXB6a253bmZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NzkzMzQsImV4cCI6MjA4OTQ1NTMzNH0.zQItty8IrgKmwTnpPAAtupzujYwHoLYO2KklNSr8pUg";
 
 // ═══════════════════════════════════════════════════════════════
 // AUTH HELPERS — Token management + auto-refresh
