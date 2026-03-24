@@ -1,110 +1,73 @@
-# Requirements — March 23, 2026
+# Requirements — March 24, 2026
+
+## Context from yesterday's run
+The agent army ran on March 23 and committed 4056 lines across 27 files. However,
+3 bugs were shipped that had to be manually fixed:
+1. Supabase credentials moved to env vars with empty fallbacks (broke OAuth + all API calls)
+2. STRIPE_SECRET_KEY added to REQUIRED_ENV (crashed entire backend)
+3. CORS changed to strict allowlist defaulting to localhost (blocked Vercel→Railway)
+
+These are now fixed. The code from yesterday IS deployed and includes:
+- Stripe payments route (payments.js) — needs Stripe keys to activate
+- SerpAPI caching in products.js — working
+- Referral code generation on signup — working
+- Circle to Search canvas overlay — built but untested end-to-end
+- Upgrade modal wired to Stripe — needs keys
+- 80 tests across 6 test files — passing
+- Ad interstitial polished
 
 ## Priority (what matters most today)
-The app is live at https://attair.vercel.app and in beta but makes zero money.
-The entire upgrade funnel is already built — modals, triggers, pricing UI, tier logic —
-it just has no payment plumbing. Today's #1 job is to make the app collect real money.
+The app is live at https://attair.vercel.app. Yesterday's run built the payment
+plumbing but we can't test Stripe without keys yet. Today's focus: make everything
+that IS built actually work perfectly, and finish the half-done features.
 
 ---
 
-## 1. STRIPE WEB PAYMENTS — HIGHEST PRIORITY
+## 1. STRIPE WEB PAYMENTS — ALREADY BUILT, VERIFY ONLY
 
-The app needs to collect payments before the native app (Capacitor/RevenueCat) is ready.
-Use Stripe Checkout as the interim web payment solution.
+✅ DONE in yesterday's run. payments.js route exists with checkout + webhook.
+The raw body parser is in index.js before express.json().
 
-### Backend (attair-backend):
-- Install `stripe` npm package
-- Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` to .env.example (not .env)
-- New route: `POST /api/payments/create-checkout-session`
-  - Auth required
-  - Accepts `{ plan: "yearly" | "monthly" }`
-  - Creates a Stripe Checkout session:
-    - Yearly: $39.99/yr, Monthly: $9.99/mo
-    - success_url: `${CORS_ORIGINS}/upgrade-success?session_id={CHECKOUT_SESSION_ID}`
-    - cancel_url: `${CORS_ORIGINS}`
-    - customer_email from user profile
-    - metadata: `{ user_id: req.userId }`
-  - Returns `{ url: checkoutSession.url }`
-- New route: `POST /api/payments/webhook`
-  - NO auth middleware — Stripe signs its own requests
-  - Verify Stripe signature using `stripe.webhooks.constructEvent`
-  - On `checkout.session.completed`: set `profiles.tier = 'pro'`, set `upgrade_source`
-  - On `customer.subscription.deleted` or `invoice.payment_failed`: set `profiles.tier = 'expired'`
-  - Always return 200 to Stripe (prevents retries)
-- IMPORTANT: The webhook endpoint needs `express.raw()` body parser, not `express.json()`.
-  Add this special case in index.js BEFORE the global express.json() middleware.
-- Use `price_data` inline (not Stripe price IDs) so it works without dashboard setup.
-
-### Frontend (attair-app/src/App.jsx):
-- Add `createCheckoutSession(plan)` to the API service layer
-- Find the UpgradeModal `onUpgrade` handler (has a RevenueCat TODO comment)
-- Replace TODO with: call API, on success redirect to `result.url`, show loading spinner
-- Handle `?upgrade-success` in the URL on return — refresh user status, show welcome message
+### Today's task:
+- Review payments.js for correctness — does the webhook handler work?
+- Verify the upgrade modal in App.jsx actually calls createCheckoutSession
+- Make sure the success URL redirect handler works (?upgrade-success in URL)
+- DO NOT add Stripe keys to REQUIRED_ENV — they should remain optional
 
 ---
 
-## 2. SERPAPI CACHING — SECOND PRIORITY
+## 2. SERPAPI CACHING — ✅ ALREADY BUILT, VERIFY ONLY
 
-SerpAPI is $50+/mo and is the biggest cost driver. The `product_cache` table already
-exists in Supabase with `cache_key`, `results (JSONB)`, `cached_at`, `expires_at`.
-
-What to build in `attair-backend/src/services/products.js`:
-- Before each SerpAPI call (Lens + text search), check product_cache table
-- Cache key: MD5 hash of the search query string (use Node's built-in `crypto`)
-- Cache hit (expires_at > now()): return cached results, skip SerpAPI
-- Cache miss: call SerpAPI, store results with `expires_at = now() + 24 hours`
-- Log hits/misses: `console.log('[cache] HIT:', cacheKey)` / `'[cache] MISS:', cacheKey`
-- Garbage collect expired rows at the start of `findProductsForItems`
+Caching was added to both googleLensSearch() and textSearch() in products.js.
+- Verify getCache/setCache helpers exist and work with the product_cache table
+- Verify garbage collection of expired rows runs
+- If getCache/setCache don't exist, build them (check products.js first)
 
 ---
 
-## 3. REFERRAL CODE DISPLAY — QUICK WIN
+## 3. REFERRAL CODE — ✅ BACKEND DONE, VERIFY FRONTEND
 
-The "Share invite link" button on the Profile tab is dead. `referral_code` column exists
-in profiles but is never generated or displayed.
-
-### Backend:
-- In `POST /api/auth/signup`: generate 8-char code on profile creation
-  (`Math.random().toString(36).substring(2, 10).toUpperCase()`)
-- In `GET /api/user/profile`: if `referral_code` is null, generate + save one, then return it
-
-### Frontend:
-- In Profile tab, find the dead share button and make it:
-  - Display the user's code: "Your code: ATTX7K2M"
-  - On click: `navigator.share()` if available, else copy to clipboard
-  - Show "Copied!" confirmation
-  - Share text: "Check out ATTAIR — AI that finds the exact outfit you're looking for! Use my code [CODE] at attair.vercel.app"
+Backend generates referral_code on signup (auth.js). Verify:
+- GET /api/user/profile returns referral_code
+- Profile tab in App.jsx shows the code and copy/share works
 
 ---
 
-## 4. CIRCLE TO SEARCH — DRAW TO PRIORITIZE
+## 4. CIRCLE TO SEARCH — PARTIALLY BUILT, TEST AND POLISH
 
-Inspired by Samsung's Circle to Search: after the user takes/uploads a photo, they can
-draw a circle or freehand lasso around a specific item in the outfit. That circled item
-becomes the #1 priority in the search — the app focuses on finding that exact piece first.
+The canvas overlay (CircleToSearchOverlay) and backend support (priority_region_base64
+in identify.js + claude.js) were built yesterday. Today:
 
-### How it should work (user flow):
-1. User scans/uploads a photo as normal
-2. Before hitting "Identify", a "Circle an item" button appears below the image
-3. Tapping it overlays a transparent canvas on top of the photo
-4. User draws a freehand circle/loop around the item they care most about
-5. When they lift their finger, the drawn shape highlights that region (semi-transparent colored overlay)
-6. They can clear and redraw, or confirm
-7. The circled region is extracted as a cropped sub-image
-8. That sub-image is sent to Claude Vision alongside the full image, marked as the priority item
-9. In results, that item appears first and gets a "Your pick" or "Circled" badge
+### Verify end-to-end:
+- Does the "Circle an item" button appear after cropping a photo?
+- Does drawing on the canvas work on touch and mouse?
+- Does the cropped region get sent to the backend?
+- Does Claude return a priority item?
+- Does the priority item appear first in results with a badge?
+- Is it properly gated as a Pro-only feature?
 
-### Frontend (App.jsx):
-- Add a canvas drawing overlay component that sits on top of the cropped photo
-- Use pointer events (works for both touch and mouse) to capture freehand path
-- When the path closes (finger lifts), calculate the bounding box of the drawn shape
-- Crop that region from the image using a hidden canvas + `drawImage()` + `toDataURL()`
-- Store the cropped region as `priorityImageBase64` in state
-- Pass it to the identify API call as a new optional field `priority_region_base64`
-- In results, sort/pin the priority item to the top with a visual badge
-
-### Backend (identify.js + claude.js):
-- Accept optional `priority_region_base64` in the POST /api/identify body
+### Fix any issues found. The backend already:
+- Accepts optional `priority_region_base64` in the POST /api/identify body
 - If present, send it to Claude as a second image in the vision prompt with instruction:
   "The second image is a cropped region the user circled. Identify this specific item first
    and mark it with priority: true in your response."
@@ -183,32 +146,30 @@ backend call is wired to nothing, fix the wiring. Leave nothing half-done.
 
 ---
 
-## 6. AGENT NOTES
+## 7. AGENT NOTES
 
-**PM:** Work in order: Stripe → Caching → Referral. All three are independent — Backend
-and Quant can work in parallel after PM reviews the plan.
+**PM:** Today is about VERIFICATION and POLISH, not new features. Most code was
+written yesterday. Read the codebase first, verify what works, fix what doesn't.
+DO NOT push until E2E confirms the app works.
 
-**Backend agent:** Own Stripe payments, referral backend, and the identify.js changes
-for priority_region_base64. Read index.js carefully before adding the raw body parser —
-it must go BEFORE the global express.json() call.
+**Backend agent:** Verify existing code works. Focus on half-done features (seen-on,
+nearby-stores, trial flow). DO NOT change CORS, REQUIRED_ENV, or move credentials.
 
-**Quant agent:** Own the SerpAPI caching in products.js only.
+**Quant agent:** Verify SerpAPI caching works. Check that getCache/setCache functions
+exist and properly read/write product_cache table. If they're missing, build them.
 
-**UI/UX agent:** Own the Stripe redirect flow, referral UI, and the circle-to-search
-canvas drawing overlay. The canvas drawing is the most complex UI task today — read the
-existing image crop flow in App.jsx carefully before building on top of it.
+**UI/UX agent:** Verify Circle to Search works end-to-end. Polish half-done features
+(scan rename UI, wishlist operations, referral share button). Test at 390px width.
 
-**Security agent:** After Stripe is wired up, specifically check:
-- Webhook signature verification (CRITICAL — without this anyone can fake a payment)
-- Checkout session requires valid auth
-- Referral code not enumerable
+**Security agent:** REPORT ONLY. Do not modify code. Document findings for PM review.
 
-**Testing agent:** Write tests for:
-- Stripe webhook handler with mock events
-- Cache hit/miss logic
-- Referral code generation
+**Testing agent:** Run existing 80 tests first. Fix any failures. Then add tests for
+any new code written today.
 
-**E2E agent:** Test:
-- Clicking upgrade shows loading state (even without live Stripe keys)
-- Referral code appears on Profile tab and copy works
+**E2E agent:** Test EVERYTHING before push. Critical checks:
+- Photo upload + identify works
+- Google login works
+- All navigation tabs work
 - No console errors on any screen
+- Upgrade modal appears and shows loading state
+- Referral code visible on Profile tab

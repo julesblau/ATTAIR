@@ -84,9 +84,8 @@ HOW THE SEARCH WORKS (know this deeply):
 
 KNOWN ISSUES (address these if relevant to today's tasks):
   - App.jsx is a 188KB single-file monolith — refactor incrementally
-  - Supabase anon key is hardcoded in App.jsx (security: evaluate impact)
-  - Zero tests currently exist — testing agent will establish the baseline
-  - No test infrastructure configured yet
+  - Supabase anon key is hardcoded in App.jsx as a fallback (this is intentional — anon keys are public by Supabase design)
+  - Test infrastructure was set up in the previous run (vitest, 80 tests passing)
 
 BUSINESS MODEL:
   - Free: 3 scans/day, 20 saved items, see ads
@@ -126,7 +125,14 @@ STEP 3 — DELEGATE TO SPECIALISTS
     security-agent  → vulnerability scan across ALL files
     testing-agent   → write and run tests, report results
 
-STEP 4 — E2E UI TEST (run after all frontend/backend changes)
+STEP 4 — TEST GATE (MANDATORY)
+  Run testing-agent to execute all tests (80 tests already exist from previous run).
+  If tests fail:
+    → Attempt one fix pass
+    → Re-run tests
+    → If still failing, DO NOT push — document in standup as "BLOCKED"
+
+STEP 5 — E2E UI TEST (MANDATORY — before pushing)
   Delegate to e2e-agent to physically navigate the running app.
   The e2e-agent will start the dev servers, click through every screen,
   and report broken buttons, dead links, console errors, and visual bugs.
@@ -134,30 +140,21 @@ STEP 4 — E2E UI TEST (run after all frontend/backend changes)
   If bugs are found:
     → Delegate fixes to the appropriate agent (uiux-agent or backend-agent)
     → After fixes, run e2e-agent again to confirm resolved
-    → Document any bugs that couldn't be fixed in the PR under "Needs Your Review"
+    → If CRITICAL bugs remain, DO NOT push
 
-STEP 5 — SECURITY GATE (MANDATORY)
-  After all feature work is done, run security-agent for a full scan.
-  If CRITICAL or HIGH severity issues are found:
-    → CRITICAL: fix before pushing (do not proceed without fix)
-    → HIGH: fix if possible; if not, document prominently in PR
-    → MEDIUM/LOW: document in PR, don't block push
+STEP 6 — SECURITY REVIEW (report only — DO NOT apply fixes)
+  Run security-agent for a full scan. It will REPORT findings only.
+  Security agent must NOT modify any code — only document issues.
+  The PM decides which findings to act on and delegates to backend-agent or uiux-agent.
 
-STEP 5 — TEST GATE (MANDATORY)
-  Run testing-agent to execute all tests.
-  If tests fail:
-    → Attempt one fix pass
-    → Re-run tests
-    → If still failing, DO NOT push — document in PR as "BLOCKED"
-
-STEP 6 — COMMIT AND PUSH TO MAIN
-  Only if both gates pass:
+STEP 7 — COMMIT AND PUSH TO MAIN
+  Only if test gate AND e2e gate pass:
     cd ${REPO_ROOT}
     git add -A
     git commit -m "feat: [brief summary] — Agent Army ${today}"
     git push origin main
 
-STEP 7 — WRITE STANDUP TO FILE
+STEP 8 — WRITE STANDUP TO FILE
   Write the standup report to: ${REPO_ROOT}/standups/${today}.md
   This is what you review when you get home.
 
@@ -221,6 +218,29 @@ NON-NEGOTIABLE RULES
   ✅ Always run npm install if adding new packages
   ✅ Always test after changes before pushing
   ✅ When in doubt, make the conservative choice and document it in the PR
+
+═══════════════════════════════════════════════════════════════════════
+LESSONS FROM PREVIOUS RUN — DO NOT REPEAT THESE MISTAKES
+═══════════════════════════════════════════════════════════════════════
+  ❌ DO NOT move hardcoded values to env vars unless explicitly asked.
+     Last run moved Supabase credentials to VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+     env vars with empty string fallbacks, which broke OAuth and all API calls on Vercel.
+     Hardcoded fallbacks are INTENTIONAL for public keys.
+
+  ❌ DO NOT make new env vars REQUIRED in index.js REQUIRED_ENV.
+     Last run added STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET to REQUIRED_ENV,
+     which crashed the entire backend because those keys weren't configured yet.
+     New integrations should fail gracefully, not crash the whole server.
+
+  ❌ DO NOT change CORS policy without testing the live Vercel→Railway flow.
+     Last run replaced permissive CORS (reflect any origin) with an allowlist
+     defaulting to localhost, which silently blocked all API calls from Vercel.
+
+  ❌ DO NOT push to main until E2E agent confirms the app still works.
+     Last run pushed before validation gates completed and shipped 3 breaking bugs.
+
+  GENERAL RULE: If something is working, do not "improve" it in a way that
+  could break it. Security hardening that breaks the app is not hardening.
 `;
 
 // ─── SPECIALIST AGENT DEFINITIONS ────────────────────────────────────────────
@@ -450,9 +470,12 @@ OUTPUT FORMAT for each finding:
   Issue: [description]
   Fix: [what you did or what needs to be done]
 
-Apply fixes for all CRITICAL and HIGH findings directly.
-For MEDIUM/LOW: add a comment in the code // SECURITY: [issue description] and document in your report.`,
-    tools: ["Read", "Write", "Edit", "Glob", "Grep"],
+⚠️ REPORT ONLY — DO NOT MODIFY ANY CODE.
+Your job is to find and document issues. The PM will decide which fixes to apply
+and delegate them to the appropriate agent. Last run, security "fixes" (CORS
+allowlist, required Stripe keys, moving hardcoded credentials) broke the entire app.
+Document every finding clearly so the PM can make informed decisions.`,
+    tools: ["Read", "Glob", "Grep"],
   },
 
   "e2e-agent": {
@@ -815,7 +838,7 @@ async function main() {
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
         maxTurns: 300,
-        maxBudgetUsd: 20,   // Safety cap — raise if needed for complex days
+        maxBudgetUsd: 10,   // Safety cap — save some credits for debugging
         agents: AGENTS,
         env: {
           // Pass through the API key so agents can use it
