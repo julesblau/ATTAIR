@@ -816,6 +816,40 @@ AFTER WRITING TESTS:
   },
 };
 
+// ─── RATE LIMIT HELPERS ──────────────────────────────────────────────────────
+
+const MAX_RETRIES = 8;          // Up to 8 retries for rate limits
+const BASE_DELAY_MS = 30_000;   // Start with 30s (Tier 1 limits reset ~60s)
+const MAX_DELAY_MS = 300_000;   // Cap at 5 minutes between retries
+
+function isRateLimitError(err) {
+  const msg = err?.message?.toLowerCase() ?? "";
+  const status = err?.status ?? err?.statusCode ?? 0;
+  return (
+    status === 429 ||
+    status === 529 ||
+    msg.includes("rate_limit") ||
+    msg.includes("rate limit") ||
+    msg.includes("overloaded") ||
+    msg.includes("too many requests") ||
+    msg.includes("capacity")
+  );
+}
+
+function isOutOfCredits(err) {
+  const msg = err?.message?.toLowerCase() ?? "";
+  return (
+    msg.includes("insufficient") ||
+    msg.includes("billing") ||
+    msg.includes("credit") ||
+    msg.includes("payment required")
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -829,88 +863,127 @@ async function main() {
   console.log(`📁 Repo root:    ${REPO_ROOT}`);
   console.log("\n🚀 Starting the army...\n");
 
-  try {
-    for await (const message of query({
-      prompt: PM_PROMPT,
-      options: {
-        cwd: REPO_ROOT,
-        allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"],
-        permissionMode: "bypassPermissions",
-        allowDangerouslySkipPermissions: true,
-        maxTurns: 300,
-        maxBudgetUsd: 10,   // Safety cap — save some credits for debugging
-        agents: AGENTS,
-        env: {
-          // Pass through the API key so agents can use it
-          ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
+  let attempt = 0;
+
+  while (attempt <= MAX_RETRIES) {
+    try {
+      for await (const message of query({
+        prompt: PM_PROMPT,
+        options: {
+          cwd: REPO_ROOT,
+          allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"],
+          permissionMode: "bypassPermissions",
+          allowDangerouslySkipPermissions: true,
+          maxTurns: 300,
+          maxBudgetUsd: 10,   // Safety cap — save some credits for debugging
+          agents: AGENTS,
+          env: {
+            ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
+          },
         },
-      },
-    })) {
-      // === LIVE LOG: show everything ===
-      const type = message.type ?? "unknown";
-      const subtype = message.subtype ?? "";
+      })) {
+        // === LIVE LOG: show everything ===
+        const type = message.type ?? "unknown";
+        const subtype = message.subtype ?? "";
 
-      // Session init
-      if (type === "system" && subtype === "init") {
-        const sid = message.session_id ?? message.data?.session_id ?? "unknown";
-        console.log(`✅ Session started: ${sid}\n`);
-      }
-
-      // Result message (final output)
-      if ("result" in message) {
-        console.log("\n╔══════════════════════════════════════════════════╗");
-        console.log("║           ✅ AGENT ARMY COMPLETE                 ║");
-        console.log("╚══════════════════════════════════════════════════╝\n");
-        console.log(message.result);
-        continue;
-      }
-
-      // Assistant messages (PM thinking, tool calls)
-      if (type === "assistant" && message.content) {
-        for (const block of message.content) {
-          if (block.type === "text" && block.text?.trim()) {
-            console.log("\n🧠 PM:", block.text.trim().slice(0, 300));
-          } else if (block.type === "tool_use") {
-            const input = block.input ?? {};
-            const detail = input.command ?? input.prompt?.slice(0, 100) ?? input.pattern ?? input.file_path ?? "";
-            console.log(`🔧 [${block.name}]${detail ? " → " + detail : ""}`);
+        // Rate limit events — log and continue (SDK handles internally)
+        if (type === "rate_limit_event" || subtype === "rate_limit") {
+          const info = message.rate_limit_info ?? message.data ?? {};
+          const status = info.status ?? "unknown";
+          const resetsAt = info.resets_at ? new Date(info.resets_at).toLocaleTimeString() : "soon";
+          if (status === "rejected") {
+            console.log(`\n⏸️  Rate limited — will resume at ${resetsAt}. Waiting...`);
+          } else if (status === "allowed_warning") {
+            console.log(`⚠️  Approaching rate limit — slowing down (resets at ${resetsAt})`);
           }
+          continue;
         }
+
+        // Session init
+        if (type === "system" && subtype === "init") {
+          const sid = message.session_id ?? message.data?.session_id ?? "unknown";
+          console.log(`✅ Session started: ${sid}\n`);
+        }
+
+        // Result message (final output)
+        if ("result" in message) {
+          console.log("\n╔══════════════════════════════════════════════════╗");
+          console.log("║           ✅ AGENT ARMY COMPLETE                 ║");
+          console.log("╚══════════════════════════════════════════════════╝\n");
+          console.log(message.result);
+          continue;
+        }
+
+        // Assistant messages (PM thinking, tool calls)
+        if (type === "assistant" && message.content) {
+          for (const block of message.content) {
+            if (block.type === "text" && block.text?.trim()) {
+              console.log("\n🧠 PM:", block.text.trim().slice(0, 300));
+            } else if (block.type === "tool_use") {
+              const input = block.input ?? {};
+              const detail = input.command ?? input.prompt?.slice(0, 100) ?? input.pattern ?? input.file_path ?? "";
+              console.log(`🔧 [${block.name}]${detail ? " → " + detail : ""}`);
+            }
+          }
+          continue;
+        }
+
+        // Task events (subagent activity)
+        if (subtype === "task_started") {
+          console.log(`\n🚀 Subagent started: ${message.data?.agent_name ?? message.data?.description ?? "agent"}`);
+        } else if (subtype === "task_progress") {
+          const d = message.data ?? {};
+          console.log(`⏳ Progress: ${d.summary ?? d.agent_name ?? "working..."}`);
+        } else if (subtype === "task_notification") {
+          console.log(`📋 Task done: ${message.data?.summary ?? message.data?.result ?? "completed"}`);
+        }
+
+        // System messages (catch-all)
+        else if (type === "system" && subtype && subtype !== "init") {
+          console.log(`[system:${subtype}]`, JSON.stringify(message.data ?? {}).slice(0, 150));
+        }
+
+        // Anything else we haven't caught — log the raw type so we can see it
+        else if (type !== "assistant" && type !== "system") {
+          console.log(`[${type}${subtype ? ":" + subtype : ""}]`, JSON.stringify(message).slice(0, 200));
+        }
+      }
+
+      // If we get here, the query completed successfully — exit the retry loop
+      break;
+
+    } catch (err) {
+      // ── Out of credits: no amount of retrying will help ──
+      if (isOutOfCredits(err)) {
+        console.error("\n💸 Out of credits — cannot continue.");
+        console.error("   Top up at: https://console.anthropic.com/settings/billing");
+        process.exit(1);
+      }
+
+      // ── Rate limit / overloaded: wait and retry ──
+      if (isRateLimitError(err) && attempt < MAX_RETRIES) {
+        attempt++;
+        const delay = Math.min(BASE_DELAY_MS * Math.pow(1.5, attempt - 1), MAX_DELAY_MS);
+        const delaySec = Math.round(delay / 1000);
+        console.log(`\n⏸️  Rate limited (attempt ${attempt}/${MAX_RETRIES}). Waiting ${delaySec}s before retry...`);
+        await sleep(delay);
+        console.log("🔄 Retrying...\n");
         continue;
       }
 
-      // Task events (subagent activity)
-      if (subtype === "task_started") {
-        console.log(`\n🚀 Subagent started: ${message.data?.agent_name ?? message.data?.description ?? "agent"}`);
-      } else if (subtype === "task_progress") {
-        const d = message.data ?? {};
-        console.log(`⏳ Progress: ${d.summary ?? d.agent_name ?? "working..."}`);
-      } else if (subtype === "task_notification") {
-        console.log(`📋 Task done: ${message.data?.summary ?? message.data?.result ?? "completed"}`);
+      // ── Fatal error ──
+      console.error("\n❌ Agent army encountered a fatal error:");
+      console.error(err.message);
+
+      if (err.message?.includes("ANTHROPIC_API_KEY")) {
+        console.error("\n💡 Fix: Set your API key: export ANTHROPIC_API_KEY=sk-ant-...");
+      }
+      if (err.message?.includes("claude-agent-sdk")) {
+        console.error("\n💡 Fix: Run: cd agents && npm install");
       }
 
-      // System messages (catch-all)
-      else if (type === "system" && subtype && subtype !== "init") {
-        console.log(`[system:${subtype}]`, JSON.stringify(message.data ?? {}).slice(0, 150));
-      }
-
-      // Anything else we haven't caught — log the raw type so we can see it
-      else if (type !== "assistant" && type !== "system") {
-        console.log(`[${type}${subtype ? ":" + subtype : ""}]`, JSON.stringify(message).slice(0, 200));
-      }
+      process.exit(1);
     }
-  } catch (err) {
-    console.error("\n❌ Agent army encountered a fatal error:");
-    console.error(err.message);
-
-    if (err.message?.includes("ANTHROPIC_API_KEY")) {
-      console.error("\n💡 Fix: Set your API key: export ANTHROPIC_API_KEY=sk-ant-...");
-    }
-    if (err.message?.includes("claude-agent-sdk")) {
-      console.error("\n💡 Fix: Run: cd agents && npm install");
-    }
-
-    process.exit(1);
   }
 }
 
