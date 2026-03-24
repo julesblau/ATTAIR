@@ -22,6 +22,9 @@ router.post("/", requireAuth, async (req, res) => {
   if (!name || typeof name !== "string" || !name.trim()) {
     return res.status(400).json({ error: "name is required" });
   }
+  if (name.trim().length > 100) {
+    return res.status(400).json({ error: "Wishlist name must be 100 characters or less" });
+  }
 
   const { data, error } = await supabase
     .from("wishlists")
@@ -59,6 +62,9 @@ router.patch("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: "name is required" });
+  if (name.trim().length > 100) {
+    return res.status(400).json({ error: "Wishlist name must be 100 characters or less" });
+  }
 
   const { data, error } = await supabase
     .from("wishlists")

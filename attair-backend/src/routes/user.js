@@ -75,6 +75,9 @@ router.patch("/profile", requireAuth, async (req, res) => {
   const { display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs } = req.body;
 
   const updates = {};
+  if (display_name !== undefined && display_name.length > 100) {
+    return res.status(400).json({ error: "Display name must be 100 characters or less" });
+  }
   if (display_name !== undefined) updates.display_name = display_name;
   if (phone !== undefined) updates.phone = phone;
 
@@ -193,6 +196,10 @@ router.patch("/scan/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const { scan_name } = req.body;
 
+  if (scan_name && scan_name.length > 200) {
+    return res.status(400).json({ error: "Scan name must be 200 characters or less" });
+  }
+
   const { data, error } = await supabase
     .from("scans")
     .update({ scan_name: scan_name || null })
@@ -202,6 +209,7 @@ router.patch("/scan/:id", requireAuth, async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: "Failed to rename scan" });
+  if (!data) return res.status(404).json({ error: "Scan not found" });
   return res.json(data);
 });
 
@@ -373,6 +381,61 @@ router.delete("/saved/:id", requireAuth, async (req, res) => {
   await supabase.from("profiles").update({ saved_count: Math.max(0, (profile?.saved_count || 1) - 1) }).eq("id", req.userId);
 
   return res.json({ message: "Removed" });
+});
+
+// ─── GET /api/user/streak ───────────────────────────────────
+router.get("/streak", requireAuth, async (req, res) => {
+  try {
+    const { data: scans, error } = await supabase
+      .from("scans")
+      .select("created_at")
+      .eq("user_id", req.userId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    if (!scans || scans.length === 0) {
+      return res.json({ streak: 0, last_scan_date: null });
+    }
+
+    // Deduplicate to unique YYYY-MM-DD dates (all in UTC to avoid timezone drift)
+    const uniqueDates = [...new Set(
+      scans.map(s => s.created_at.slice(0, 10))
+    )].sort((a, b) => b.localeCompare(a)); // descending
+
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    const yesterdayUtc = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+    const lastScanDate = uniqueDates[0];
+
+    // Streak only continues if the user scanned today or yesterday
+    if (lastScanDate !== todayUtc && lastScanDate !== yesterdayUtc) {
+      return res.json({ streak: 0, last_scan_date: lastScanDate });
+    }
+
+    // Walk backwards through consecutive days counting the streak
+    let streak = 0;
+    // Start from today if they scanned today, otherwise start from yesterday
+    let cursor = new Date(lastScanDate === todayUtc ? todayUtc : yesterdayUtc);
+
+    for (const date of uniqueDates) {
+      const cursorStr = cursor.toISOString().slice(0, 10);
+      if (date === cursorStr) {
+        streak++;
+        // Move cursor back one day for the next iteration
+        cursor = new Date(cursor.getTime() - 86400000);
+      } else if (date < cursorStr) {
+        // Gap in dates — streak is broken
+        break;
+      }
+      // date > cursorStr means we haven't reached the cursor date yet — skip
+    }
+
+    return res.json({ streak, last_scan_date: lastScanDate });
+  } catch (err) {
+    console.error("Streak error:", err.message);
+    return res.status(500).json({ error: "Failed to fetch streak" });
+  }
 });
 
 // ─── GET /api/user/saved ────────────────────────────────────

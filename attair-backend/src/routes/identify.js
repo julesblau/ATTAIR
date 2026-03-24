@@ -76,6 +76,11 @@ router.post("/", requireAuth, scanRateLimit, async (req, res) => {
     return res.status(400).json({ error: "Invalid image data" });
   }
 
+  const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  if (mime_type && !ALLOWED_MIME_TYPES.includes(mime_type)) {
+    return res.status(400).json({ error: "Invalid image type. Allowed: jpeg, png, webp, gif" });
+  }
+
   const cleanImage = image.startsWith("data:") ? image.split(",")[1] || image : image;
 
   if (!/^[A-Za-z0-9+/=\s]+$/.test(cleanImage.slice(0, 200))) {

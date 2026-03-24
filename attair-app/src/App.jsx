@@ -316,6 +316,12 @@ const API = {
     if (!res.ok) return null;
     return await res.json();
   },
+
+  async getStreak() {
+    const res = await authFetch(`${API_BASE}/api/user/streak`);
+    if (!res.ok) return { streak: 0 };
+    return await res.json();
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -479,7 +485,7 @@ const MiniCard = ({ tier, data, scanId, itemIndex }) => {
 };
 
 // ─── Upgrade Modal ──────────────────────────────────────────
-const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial }) => {
+const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus }) => {
   const [plan, setPlan] = useState("yearly");
   const [loadingPlan, setLoadingPlan] = useState(false);
   const msgs = {
@@ -488,7 +494,6 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial }) => {
     history_expiring: { title: "Your scan history expires soon", sub: "Free accounts only keep 7 days. Pro keeps everything forever.", cta: "Keep My History" },
     save_limit: { title: "You've saved 20 items", sub: "Unlock unlimited saves, price drop alerts, and an ad-free experience.", cta: "Save Unlimited Items" },
     price_drop: { title: "A saved item dropped 30%", sub: "Pro users get instant price drop alerts. Never miss a deal.", cta: "Get Price Alerts" },
-    circle_to_search: { title: "Circle to Search is Pro only", sub: "Draw a circle around any item to prioritize it in your search — a Pro exclusive.", cta: "Unlock Circle to Search" },
     general: { title: "Unlock the full experience", sub: "Unlimited scans, zero ads, price alerts, and more.", cta: "Go Pro" },
   };
   const m = msgs[trigger] || msgs.general;
@@ -512,7 +517,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial }) => {
           <div
             onClick={() => setPlan("yearly")}
             style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "yearly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "yearly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s", position: "relative" }}>
-            <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", fontSize: 8, fontWeight: 800, padding: "2px 8px", borderRadius: 100, letterSpacing: 1, whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(201,169,110,.5)" }}>BEST VALUE</div>
+            <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", fontSize: 8, fontWeight: 800, padding: "2px 8px", borderRadius: 100, letterSpacing: 1, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(255,107,53,0.5), 0 0 16px rgba(255,107,53,0.2), 0 4px 16px rgba(201,169,110,.5)" }}>BEST VALUE</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$39.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/yr</span></div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$0.77/week</div>
           </div>
@@ -530,6 +535,13 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial }) => {
           Or start a 7-day free trial →
         </button>
         <button className="modal-later" onClick={onClose}>Maybe later</button>
+        {userStatus?.tier === "free" && !userStatus?.trial_ends_at && (
+          <div style={{ textAlign: "center", marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.06)" }}>
+            <button onClick={() => onStartTrial && onStartTrial()} style={{ background: "transparent", border: "1px solid rgba(255,107,53,.35)", color: "#FF6B35", padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", width: "100%" }}>
+              Start 7-day free trial — no card required
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -881,6 +893,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [path, setPath] = useState([]);
   const [confirmed, setConfirmed] = useState(false);
+  const [glowing, setGlowing] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -947,6 +960,9 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     ctx.fillStyle = "rgba(255,120,80,0.15)";
     ctx.fill();
     setConfirmed(true);
+    // Trigger glow animation to confirm "locked on" — lasts ~2 seconds
+    setGlowing(true);
+    setTimeout(() => setGlowing(false), 2000);
     const xs = path.map(p => p.x), ys = path.map(p => p.y);
     const minX = Math.max(0, Math.min(...xs) - 10);
     const minY = Math.max(0, Math.min(...ys) - 10);
@@ -978,7 +994,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10 }}>
       <canvas
         ref={canvasRef}
-        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", touchAction: "none", cursor: "crosshair", animation: confirmed ? 'glowPulse .6s ease 3' : 'none' }}
+        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", touchAction: "none", cursor: "crosshair", animation: glowing ? 'circleGlow 0.5s ease-in-out 4' : 'none', borderRadius: glowing ? "inherit" : undefined }}
         onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw}
         onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
       />
@@ -1203,6 +1219,7 @@ export default function App() {
       }).catch(() => {});
       API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
       API.getWishlists().then(d => setWishlists(d.wishlists || [])).catch(() => {});
+      API.getStreak().then(s => { if (s?.streak > 0) setScanStreak(s.streak); }).catch(() => {});
       if (screen === "onboarding") setScreen("app");
 
       // Handle post-Stripe-checkout redirect
@@ -1372,7 +1389,14 @@ export default function App() {
     if (!vidRef.current || !canRef.current) return;
     const v = vidRef.current, c = canRef.current;
     c.width = v.videoWidth; c.height = v.videoHeight;
-    c.getContext("2d").drawImage(v, 0, 0);
+    const ctx = c.getContext("2d");
+    // For front-facing camera: the video preview is CSS-mirrored but the captured
+    // image should NOT be mirrored — flip the canvas context before drawing
+    if (camFacing === "user") {
+      ctx.translate(c.width, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(v, 0, 0);
     camStop();
     const r = await resizeImage(c.toDataURL("image/jpeg", 0.85));
     openCrop(r, "camera");
@@ -1668,6 +1692,7 @@ export default function App() {
       @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
       @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
       @keyframes glowPulse{0%,100%{opacity:1;filter:brightness(1.5)}50%{opacity:.6;filter:brightness(2)}}
+      @keyframes circleGlow{0%,100%{opacity:0.6;filter:drop-shadow(0 0 10px rgba(255,107,53,0.4)) drop-shadow(0 0 3px rgba(255,107,53,0.6))}50%{opacity:1;filter:drop-shadow(0 0 25px rgba(255,107,53,0.8)) drop-shadow(0 0 8px rgba(255,107,53,1))}}
       .fi{animation:fi .3s ease forwards}.fo{animation:fo .22s ease forwards}
       .app{width:100%;max-width:430px;min-height:100vh;margin:0 auto;background:#0C0C0E;font-family:'Outfit',sans-serif;color:#E8E6E1;display:flex;flex-direction:column;overflow-x:hidden}
       .serif{font-family:'Instrument Serif',serif}
@@ -1714,7 +1739,7 @@ export default function App() {
 
       .as{flex:1;display:flex;flex-direction:column;padding-bottom:80px}
       .hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;position:sticky;top:0;z-index:50;background:rgba(12,12,14,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.04)}
-      .logo{font-family:'Instrument Serif';font-size:22px;color:#fff;font-style:italic}.logo span{color:#C9A96E}
+      .logo{font-family:'Instrument Serif';font-size:22px;color:#fff;font-style:italic;letter-spacing:0.04em}.logo span{color:#C9A96E}
       .pro{font-size:9px;font-weight:800;letter-spacing:1.5px;color:#C9A96E;background:rgba(201,169,110,.1);padding:3px 8px;border-radius:4px;cursor:pointer}
       .free-badge{font-size:9px;font-weight:700;letter-spacing:1.5px;color:rgba(255,255,255,.3);background:rgba(255,255,255,.04);padding:3px 8px;border-radius:4px;cursor:pointer}
       .scan-counter{font-size:11px;color:rgba(255,255,255,.25);text-align:center;margin-top:-8px;margin-bottom:8px}
@@ -2019,7 +2044,7 @@ export default function App() {
           {/* Name + phone (signup only) */}
           {authScreen === "signup" && (<>
             <input type="text" placeholder="Full name" value={authName} onChange={e => setAuthName(e.target.value)} autoComplete="name" />
-            <input type="tel" placeholder="Phone number" value={authPhone} onChange={e => setAuthPhone(e.target.value)} autoComplete="tel" />
+            <input type="tel" placeholder="Phone number (optional)" value={authPhone} onChange={e => setAuthPhone(e.target.value)} autoComplete="tel" style={{ opacity: 0.7 }} />
           </>)}
 
           <input type="email" placeholder="Email address" value={authEmail} onChange={e => setAuthEmail(e.target.value)} autoComplete="email" />
@@ -2067,6 +2092,7 @@ export default function App() {
           onClose={() => setUpgradeModal(null)}
           onUpgrade={handleUpgrade}
           onStartTrial={handleStartTrial}
+          userStatus={userStatus}
         />
       )}
 
@@ -2109,7 +2135,7 @@ export default function App() {
               <h2 className="serif" style={{fontSize:28,color:"#fff"}}>Scan an outfit</h2>
               <p style={{fontSize:13,color:"rgba(255,255,255,.3)",marginTop:-14,lineHeight:1.5}}>Get a budget, mid-range, and premium option for every item</p>
               {isFree && (
-                <div className="scan-counter">{scansLeft > 0 ? <><strong>{scansLeft}</strong> of {scansLimit} free scans remaining this month</> : <>No scans left this month · <span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
+                <div className="scan-counter">{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong> of {scansLimit} scans used this month</> : <>No scans left this month · <span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
               )}
               {scanStreak >= 2 && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "6px 14px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#C9A96E", alignSelf: "center" }}>
@@ -2387,7 +2413,7 @@ export default function App() {
                     <div className="det-top">
                       {/* Product thumbnail pulled from best tier image */}
                       {item.tiers && (() => {
-                        const thumb = ["mid","budget","premium"].map(t => asTierArray(item.tiers[t])[0]).find(p => p?.image_url);
+                        const thumb = ["mid","budget","premium"].map(tierKey => asTierArray(item.tiers[tierKey])[0]).find(p => p?.image_url);
                         return thumb ? (
                           <img src={thumb.image_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.04)" }} onError={e => e.target.style.display = "none"} />
                         ) : null;
@@ -2618,17 +2644,17 @@ export default function App() {
                               const resaleProducts = asTierArray(item.tiers.resale);
                               return (
                                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                                  {["budget", "mid", "premium"].map(t => {
-                                    const products = asTierArray(item.tiers[t]);
-                                    const cfg = TIER_LABELS[t];
+                                  {["budget", "mid", "premium"].map(tierKey => {
+                                    const products = asTierArray(item.tiers[tierKey]);
+                                    const cfg = TIER_LABELS[tierKey];
                                     if (!products.length) return null;
                                     return (
-                                      <div key={t}>
+                                      <div key={tierKey}>
                                         <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
                                           <span>{cfg.icon}</span><span>{cfg.label}</span>
                                         </div>
                                         <div style={{ display: "grid", gridTemplateColumns: products.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
-                                          {products.map((p, j) => <MiniCard key={j} tier={t} data={p} scanId={scanId} itemIndex={selIdx} />)}
+                                          {products.map((p, j) => <MiniCard key={j} tier={tierKey} data={p} scanId={scanId} itemIndex={selIdx} />)}
                                         </div>
                                       </div>
                                     );
@@ -2694,9 +2720,11 @@ export default function App() {
                                     <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
                                       {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[p.category] || "✦"}
                                     </div>
-                                    <div>
-                                      <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", marginBottom: 3, lineHeight: 1.3 }}>{p.name}</div>
-                                      <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", lineHeight: 1.4 }}>{p.why}</div>
+                                    <div style={{ width: "100%" }}>
+                                      <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", marginBottom: 2, lineHeight: 1.3 }}>{p.name || p.title || "Item"}</div>
+                                      {(p.brand || p.retailer) && <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginBottom: 2 }}>{p.brand || p.retailer}</div>}
+                                      {p.price && <div style={{ fontSize: 12, color: "#FF6B35", fontWeight: 700, marginBottom: 2 }}>{p.price}</div>}
+                                      {!p.brand && !p.price && p.why && <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", lineHeight: 1.4 }}>{p.why}</div>}
                                     </div>
                                     <div style={{ fontSize: 11, color: "#C9A96E", fontWeight: 600 }}>Shop →</div>
                                   </a>
@@ -2714,13 +2742,14 @@ export default function App() {
 
                     {/* Native ad slot — free users, every 2 items */}
                     {showAds && selIdx % 2 === 1 && (
-                      <div style={{ padding: "10px 14px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.04)", borderRadius: 10, display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ fontSize: 14 }}>🛍</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.5)" }}>Featured Brands</div>
-                          <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>Style picks for you</div>
+                      <div style={{ background: "linear-gradient(135deg, rgba(255,107,53,.07) 0%, rgba(255,107,53,.02) 100%)", border: "1px solid rgba(255,107,53,.18)", borderRadius: 12, padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 8, flexShrink: 0, background: "linear-gradient(135deg, rgba(255,107,53,.5), rgba(255,140,90,.6))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>✨</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 9, color: "rgba(255,255,255,.25)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>Sponsored</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 2 }}>Featured Brand</div>
+                          <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)" }}>Discover this season's essentials</div>
                         </div>
-                        <div style={{ fontSize: 9, color: "rgba(255,255,255,.1)", letterSpacing: .5, textTransform: "uppercase" }}>Ad</div>
+                        <div style={{ fontSize: 11, color: "#FF6B35", fontWeight: 600, padding: "5px 10px", border: "1px solid rgba(255,107,53,.35)", borderRadius: 6, whiteSpace: "nowrap", flexShrink: 0 }}>Shop →</div>
                       </div>
                     )}
 
@@ -3079,6 +3108,14 @@ export default function App() {
                 <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.6}}>
                   Scans this month: {isFree ? `${(scansLimit - scansLeft)}/${scansLimit}` : "Unlimited"} · Saved: {userStatus?.saved_count || saved.length}{isFree ? `/${userStatus?.saved_limit || 20}` : ""}
                 </div>
+                {userStatus?.tier === "trial" && userStatus?.trial_ends_at && (() => {
+                  const daysLeft = Math.ceil((new Date(userStatus.trial_ends_at) - Date.now()) / 86400000);
+                  return daysLeft > 0 ? (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, fontSize: 11, padding: "4px 12px", borderRadius: 10, background: "rgba(255,107,53,.1)", border: "1px solid rgba(255,107,53,.25)", color: "#FF6B35", fontWeight: 600 }}>
+                      {daysLeft} day{daysLeft !== 1 ? "s" : ""} left in trial
+                    </div>
+                  ) : null;
+                })()}
               </div>
 
               {isFree && (<>
@@ -3165,11 +3202,26 @@ export default function App() {
               <div className="sec-t">Refer & earn</div>
               <div className="rcard">
                 <div style={{fontWeight:600,fontSize:14,marginBottom:5}}>Get $5 for every friend</div>
-                <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.5,marginBottom:12}}>Share your link. Both get $5 credit.</div>
-                {referralCode && (
-                  <div style={{fontSize:12,color:"rgba(255,255,255,.5)",marginBottom:8,letterSpacing:1}}>
-                    Your code: <span style={{fontWeight:700,color:"#C9A96E",letterSpacing:2}}>{referralCode}</span>
+                <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.5,marginBottom:12}}>Share your code. Both of you get $5 credit.</div>
+                {referralCode ? (
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"10px 14px",background:"rgba(201,169,110,.06)",border:"1px solid rgba(201,169,110,.2)",borderRadius:10}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:"rgba(201,169,110,.5)",textTransform:"uppercase",marginBottom:2}}>Your referral code</div>
+                      <div style={{fontWeight:800,color:"#C9A96E",letterSpacing:3,fontSize:16,fontFamily:"'Outfit'"}}>{referralCode}</div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(referralCode).then(() => {
+                          setReferralCopied(true);
+                          setTimeout(() => setReferralCopied(false), 2000);
+                        }).catch(() => {});
+                      }}
+                      style={{padding:"8px 14px",background:referralCopied?"rgba(100,200,120,.15)":"rgba(201,169,110,.12)",border:`1px solid ${referralCopied?"rgba(100,200,120,.4)":"rgba(201,169,110,.3)"}`,borderRadius:8,color:referralCopied?"rgb(100,200,120)":"#C9A96E",fontFamily:"'Outfit'",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all .2s",minHeight:44,minWidth:60}}
+                      aria-label="Copy referral code"
+                    >{referralCopied ? "✓ Copied" : t("copy")}</button>
                   </div>
+                ) : (
+                  <div style={{fontSize:12,color:"rgba(255,255,255,.2)",marginBottom:12}}>Loading your code…</div>
                 )}
                 <button className="btn gold" disabled={!referralCode} style={{width:"100%", opacity: referralCode ? 1 : 0.4, cursor: referralCode ? "pointer" : "default"}} onClick={async () => {
                   const code = referralCode || "...";
@@ -3182,7 +3234,7 @@ export default function App() {
                       setTimeout(() => setReferralCopied(false), 2000);
                     }).catch(() => {});
                   }
-                }}>{referralCopied ? "Copied!" : "Share invite link"}</button>
+                }}>{t("share")} invite link</button>
               </div>
               <div className="sec-t">{t("settings")}</div>
               <div className="sitem" onClick={toggleTheme}>
@@ -3411,22 +3463,26 @@ export default function App() {
             )}
           </div>
           {!cropMode && (
-            <div style={{ display: "flex", justifyContent: "center", padding: "8px 20px 0" }}>
-              <button
-                onClick={() => {
-                  if (priorityRegionBase64) {
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "8px 20px 0", gap: 8 }}>
+              {priorityRegionBase64 ? (
+                <button
+                  onClick={() => {
                     setPriorityRegionBase64(null);
                     setCircleConfirmed(false);
                     setCircleSearchActive(true);
-                  } else {
-                    setCircleSearchActive(prev => !prev);
-                  }
-                }}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: priorityRegionBase64 ? "rgba(255,120,80,.15)" : circleSearchActive ? "rgba(255,120,80,.08)" : "rgba(255,255,255,.04)", border: `1px solid ${priorityRegionBase64 ? "rgba(255,120,80,.5)" : circleSearchActive ? "rgba(255,120,80,.3)" : "rgba(255,255,255,.08)"}`, borderRadius: 100, color: priorityRegionBase64 ? "rgb(255,120,80)" : circleSearchActive ? "rgba(255,120,80,.8)" : "rgba(255,255,255,.5)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44 }}
-                aria-label="Circle an item to prioritize in search"
-              >
-                {priorityRegionBase64 ? "✓ Item circled — Clear" : circleSearchActive ? "Drawing… lift to confirm" : "✏ Draw to circle an item"}
-              </button>
+                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "rgba(255,120,80,.15)", border: "1px solid rgba(255,120,80,.5)", borderRadius: 100, color: "rgb(255,120,80)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44 }}
+                  aria-label="Clear circled item"
+                >
+                  ✓ Item circled — Clear
+                </button>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "rgba(255,120,80,.06)", border: "1px solid rgba(255,120,80,.2)", borderRadius: 100 }}>
+                  <span style={{ fontSize: 11, color: "rgba(255,120,80,.7)", fontFamily: "'Outfit'", fontWeight: 600 }}>
+                    ✏ Draw a circle around any item to prioritize it
+                  </span>
+                </div>
+              )}
             </div>
           )}
           <div className="crop-bar">

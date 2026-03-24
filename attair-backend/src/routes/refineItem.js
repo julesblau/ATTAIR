@@ -30,7 +30,40 @@ router.post("/", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Missing original_item or user_message" });
   }
 
+  // Cap user_message length to prevent prompt injection and cost abuse
+  if (user_message && user_message.length > 500) {
+    return res.status(400).json({ error: "Message too long (max 500 characters)" });
+  }
+
+  // Validate chat_history entries
+  if (Array.isArray(chat_history)) {
+    if (chat_history.length > 20) {
+      return res.status(400).json({ error: "Chat history too long (max 20 turns)" });
+    }
+    for (const msg of chat_history) {
+      if (!["user", "assistant"].includes(msg.role)) {
+        return res.status(400).json({ error: "Invalid chat history role" });
+      }
+      if (typeof msg.content !== "string" || msg.content.length > 2000) {
+        return res.status(400).json({ error: "Invalid chat history content" });
+      }
+    }
+  }
+
   try {
+    // Verify scan_id belongs to this user (if provided)
+    if (scan_id) {
+      const { data: scanRow } = await supabase
+        .from("scans")
+        .select("id")
+        .eq("id", scan_id)
+        .eq("user_id", req.userId)
+        .single();
+      if (!scanRow) {
+        return res.status(404).json({ error: "Scan not found" });
+      }
+    }
+
     // 1. Refine the item via Claude
     const refined = await refineItem(original_item, user_message, chat_history);
     if (!refined || !refined.updated_item) {

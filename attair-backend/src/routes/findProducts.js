@@ -15,7 +15,12 @@ const router = Router();
  * Profile values are used as defaults for items without overrides.
  */
 router.post("/", requireAuth, async (req, res) => {
-  const { items, gender, scan_id, occasion, search_notes: rawSearchNotes } = req.body;
+  const { items, gender, scan_id, occasion: occasionRaw, search_notes: rawSearchNotes } = req.body;
+
+  const VALID_OCCASIONS = ["casual", "work", "night_out", "athletic", "formal", "outdoor",
+                            "wedding", "date", "beach", "smart_casual", "festival"];
+  // Silently null out unrecognised occasion values — frontend may have stale data
+  let occasion = (occasionRaw && VALID_OCCASIONS.includes(occasionRaw)) ? occasionRaw : null;
 
   // Sanitize search_notes: trim, cap at 200 chars, keep only safe characters
   const search_notes = rawSearchNotes

@@ -55,43 +55,54 @@ router.post("/", requireAuth, async (req, res) => {
 /**
  * POST /api/suggest-pairings/track-click
  *
- * Records an affiliate click for a pairing product link.
- * Body: { pairing_product_url, item_name }
+ * Records an affiliate click for a pairing product link and returns a
+ * tracked redirect URL via /api/go/:clickId.
+ *
+ * Body: { scan_id, pairing_url, product_name, retailer }
+ * Response: { click_id, tracked_url }
  * Auth required.
  */
 router.post("/track-click", requireAuth, async (req, res) => {
-  const { pairing_product_url, item_name } = req.body;
+  const { scan_id, pairing_url, product_name, retailer } = req.body;
 
-  if (!pairing_product_url) {
-    return res.status(400).json({ error: "Missing pairing_product_url" });
+  if (!pairing_url) {
+    return res.status(400).json({ error: "Missing pairing_url" });
   }
 
   // SECURITY: Only allow http/https URLs to prevent open redirect or XSS vectors.
-  if (!isSafeUrl(pairing_product_url)) {
-    return res.status(400).json({ error: "pairing_product_url must be an http or https URL" });
+  if (!isSafeUrl(pairing_url)) {
+    return res.status(400).json({ error: "pairing_url must be an http or https URL" });
   }
 
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("affiliate_clicks")
       .insert({
         user_id: req.userId,
-        scan_id: null,
+        scan_id: scan_id || null,
         item_index: null,
         tier: null,
-        retailer: null,
-        product_url: pairing_product_url,
-        affiliate_url: pairing_product_url,
-        click_type: "pairing",
-        item_name: item_name || null,
-      });
+        retailer: retailer || null,
+        product_url: pairing_url,
+        affiliate_url: pairing_url,
+        source: "pairing",
+        item_name: product_name || null,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       console.error("Pairing click log error:", error.message);
       return res.status(500).json({ error: "Failed to record click" });
     }
 
-    return res.json({ success: true });
+    const clickId = data.id;
+    // Build the tracked redirect URL using the existing /api/go/:click_id GET handler.
+    // Derive the API base from the incoming request so this works in all environments.
+    const apiBase = `${req.protocol}://${req.get("host")}`;
+    const trackedUrl = `${apiBase}/api/go/${clickId}?url=${encodeURIComponent(pairing_url)}&retailer=${encodeURIComponent(retailer || "")}`;
+
+    return res.json({ success: true, click_id: clickId, tracked_url: trackedUrl });
   } catch (err) {
     console.error("Pairing track-click error:", err.message);
     return res.status(500).json({ error: "Failed to record click" });

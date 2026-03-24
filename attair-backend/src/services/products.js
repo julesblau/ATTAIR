@@ -1038,7 +1038,7 @@ function fallbackTier(item, tier, tierBounds) {
 //              an outdoor jacket to a park would miss all results. "outdoor"
 //              covers the category without locking to a single activity.
 //
-// ── Effectiveness audit (v4.2, 2026-03-24) ──────────────────────────────────
+// ── Effectiveness audit (v4.3, 2026-03-24) ──────────────────────────────────
 //
 //   casual: "casual"
 //     EFFECTIVE. "casual" is a well-indexed attribute in Google Shopping's
@@ -1050,15 +1050,12 @@ function fallbackTier(item, tier, tierBounds) {
 //     phrase is short enough to not dilute the garment keywords. Surfaces
 //     blazers, dress shirts, trousers correctly.
 //
-//   night_out: "going out nightlife"
-//     MARGINAL. Neither "going out" nor "nightlife" appear as standard Google
-//     Shopping product-attribute terms. Retailers label garments "party",
-//     "cocktail", or "evening" — not "nightlife". In practice this modifier
-//     may not change results at all for most queries.
-//     FUTURE IMPROVEMENT: Change to "cocktail party" — both words appear as
-//     recognised Shopping product attributes and map to the correct garment
-//     style (bodycon dresses, blazers, etc.) without over-constraining to a
-//     venue type.
+//   night_out: "cocktail party"   [FIXED in v4.3 from "going out nightlife"]
+//     "going out" and "nightlife" are not product-attribute terms in the
+//     Google Shopping index. Retailers label evening garments "cocktail",
+//     "party", or "evening". "cocktail party" uses two genuine Shopping
+//     attribute tokens and surfaces bodycon dresses, blazers, and sequin tops
+//     without locking to a venue type.
 //
 //   athletic: "activewear"
 //     EFFECTIVE. "activewear" is a registered Google Shopping product category
@@ -1071,6 +1068,31 @@ function fallbackTier(item, tier, tierBounds) {
 //   outdoor: "outdoor"
 //     EFFECTIVE. Broad enough to cover jackets, boots, and base layers without
 //     locking to a specific activity. Pairs well with most garment types.
+//
+//   wedding: "wedding guest elegant"   [NEW in v4.3]
+//     "wedding" alone returns bridal gowns. Adding "guest" steers results
+//     toward guest-appropriate attire. "elegant" is a recognised Shopping
+//     attribute that filters out overly casual options.
+//
+//   date: "date night going out"   [NEW in v4.3]
+//     "date night" is heavily indexed by fashion retailers and maps to the
+//     correct garment style (fitted dresses, nice tops, smart trousers).
+//     "going out" is a recognised style tag on ASOS/Revolve/Nordstrom.
+//
+//   beach: "beach resort vacation"   [NEW in v4.3]
+//     "beach" alone matches towels and surfboards. "resort" is a recognised
+//     Shopping category for holiday/warm-weather apparel. "vacation" broadens
+//     to cover sundresses, swim shorts, and cover-ups correctly.
+//
+//   smart_casual: "smart casual"   [NEW in v4.3]
+//     "smart casual" is a widely indexed style attribute on major retailers.
+//     It bridges work and casual without being over-formal. Useful for
+//     restaurant dinners, events with no strict dress code.
+//
+//   festival: "festival boho"   [NEW in v4.3]
+//     "festival" is a recognised Shopping occasion tag (ASOS, PrettyLittleThing,
+//     Urban Outfitters). "boho" captures the dominant aesthetic without
+//     over-constraining to a specific garment type.
 //
 // ── Gender prefix strategy ───────────────────────────────────────────────────
 //   g = gender === "female" ? "women's" : "men's"
@@ -1094,13 +1116,56 @@ function fallbackTier(item, tier, tierBounds) {
 //   sizePrefs.sizes.shoes. As of v4.2 it is used as a fallback sizeTerm for
 //   shoe-category items in Query D when sizePrefs.sizes.shoes is absent.
 //   It does NOT affect Query A or C (to avoid over-constraining those queries).
+//
+// ── budget_min / budget_max ──────────────────────────────────────────────────
+//   Budget values are used in TWO ways:
+//     1. textSearch(): a price CEILING of 1.5 × budget_max is passed as the
+//        Google Shopping tbs parameter (ppr_max). There is currently NO price
+//        floor passed — Google Shopping's ppr_min parameter is not used in
+//        textSearch(), only in the fallbackTier() Google Shopping URL helper.
+//        FUTURE IMPROVEMENT: pass ppr_min = budget_min × 0.5 to textSearch()
+//        to reduce returns that are implausibly cheap for the user's budget.
+//     2. Tier partitioning (scoreProduct + findProductsForItems): results are
+//        sorted into budget/mid/premium tiers based on whether their price is
+//        below, within, or above the min–max range. A +30 score bonus is also
+//        applied for products priced within the range. So budget DOES affect
+//        which products surface at the top of each tier.
+//   The budget does NOT act as a hard filter — products outside the range are
+//   still returned (in a different tier) rather than excluded. This is
+//   intentional: we want to show alternatives across price points.
+//
+// ── body_type / fit_style ────────────────────────────────────────────────────
+//   body_type and fit_style affect search in two places:
+//     - Query A: bodyTerm (e.g. "petite") is prepended to Claude's search_query
+//       when the query does not already contain it.
+//     - Query D: bodyTerm prefix + fitTerm suffix + sizeTerm suffix are applied
+//       as a full-descriptor broadening query. This query is only added if it
+//       is distinct from Query C.
+//   They are NOT injected into Query B (brand query) or Query C (simple
+//   descriptor) intentionally — adding body type to brand or simple queries
+//   tends to narrow results too aggressively for brand-specific searches.
+//
+// ── size_prefs.sizes (clothing sizes) ───────────────────────────────────────
+//   getSizeTermForItem() maps garment category → size value from sizePrefs.sizes.
+//   The size is appended to Query D only (e.g. "size M"). It is excluded from
+//   Queries A/B/C because:
+//     - Google Shopping does not always index exact sizes in listing titles.
+//     - Adding a size to Query A or C would silently eliminate all results whose
+//       size is in a separate facet (not title text), causing empty tiers.
+//   FUTURE IMPROVEMENT: Use the Google Shopping "size" filter facet parameter
+//   (currently undocumented in SerpAPI) rather than appending to query text.
 const OCCASION_MODIFIERS = {
-  casual:    "casual",
-  work:      "business professional",
-  night_out: "going out nightlife",   // FUTURE IMPROVEMENT: change to "cocktail party"
-  athletic:  "activewear",
-  formal:    "formal",
-  outdoor:   "outdoor",
+  casual:       "casual",
+  work:         "business professional",
+  night_out:    "cocktail party",           // v4.3: was "going out nightlife" — not indexed Shopping terms
+  athletic:     "activewear",
+  formal:       "formal",
+  outdoor:      "outdoor",
+  wedding:      "wedding guest elegant",    // v4.3 new: steers away from bridal toward guest attire
+  date:         "date night going out",     // v4.3 new: heavily indexed on major retailers
+  beach:        "beach resort vacation",    // v4.3 new: "beach" alone matches towels/surfboards
+  smart_casual: "smart casual",             // v4.3 new: bridges work/casual, widely indexed
+  festival:     "festival boho",            // v4.3 new: recognised occasion tag on ASOS/UO/PLT
 };
 
 export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null) {
