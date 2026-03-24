@@ -124,7 +124,22 @@ router.patch("/profile", requireAuth, async (req, res) => {
     }
   }
 
-  if (size_prefs !== undefined) updates.size_prefs = size_prefs;
+  if (size_prefs !== undefined) {
+    if (typeof size_prefs !== "object" || size_prefs === null || Array.isArray(size_prefs)) {
+      return res.status(400).json({ error: "size_prefs must be an object" });
+    }
+    const ALLOWED_SIZE_KEYS = ["body_type", "fit_style", "shoe_size", "top_size", "bottom_size", "dress_size"];
+    const cleaned = {};
+    for (const key of ALLOWED_SIZE_KEYS) {
+      if (key in size_prefs) {
+        const val = size_prefs[key];
+        if (typeof val === "string" && val.length <= 50) {
+          cleaned[key] = val;
+        }
+      }
+    }
+    updates.size_prefs = cleaned;
+  }
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "No fields to update" });

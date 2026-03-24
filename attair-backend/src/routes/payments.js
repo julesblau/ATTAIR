@@ -129,12 +129,12 @@ router.post("/webhook", async (req, res) => {
         break;
       }
     }
-  } catch (err) {
-    console.error("[Webhook] Handler error:", err.message);
-    // Still return 200 to prevent Stripe retries
-  }
 
-  return res.status(200).json({ received: true });
+    return res.status(200).json({ received: true });
+  } catch (err) {
+    console.error(`[Webhook] Handler error for event ${event?.id || "unknown"} (type: ${event?.type || "unknown"}):`, err);
+    return res.status(500).json({ error: "Webhook handler failed" });
+  }
 });
 
 /**

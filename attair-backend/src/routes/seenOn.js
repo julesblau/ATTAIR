@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { optionalAuth } from "../middleware/auth.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 
@@ -13,7 +13,7 @@ const SERPAPI_URL = "https://serpapi.com/search.json";
  *
  * Uses optionalAuth — works for anonymous users but logs user_id if available.
  */
-router.get("/", optionalAuth, async (req, res) => {
+router.get("/", requireAuth, async (req, res) => {
   const { brand, name } = req.query;
   if (!name && !brand) return res.status(400).json({ error: "Missing name or brand" });
 

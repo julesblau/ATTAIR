@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { optionalAuth } from "../middleware/auth.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
 const SERPAPI_URL = "https://serpapi.com/search.json";
@@ -13,7 +13,7 @@ const SERPAPI_URL = "https://serpapi.com/search.json";
  *
  * Works for anonymous users (no purchase needed to discover stores).
  */
-router.get("/", optionalAuth, async (req, res) => {
+router.get("/", requireAuth, async (req, res) => {
   const { brand, category, lat, lng } = req.query;
 
   if (!lat || !lng) return res.status(400).json({ error: "lat and lng are required" });

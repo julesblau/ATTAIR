@@ -50,12 +50,19 @@ app.set("trust proxy", 1);
 // ─── Middleware ──────────────────────────────────────────────
 
 // Manual CORS — runs before everything, including helmet.
-// Reflect request origin so Vercel→Railway calls work without maintaining an allowlist.
+// If CORS_ORIGINS is set, only allow listed origins (plus localhost for dev).
+// If unset, reflect any origin (permissive local-dev mode).
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(",").map(o => o.trim())
+  : null; // null = permissive mode
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
+    if (!allowedOrigins || allowedOrigins.includes(origin) || origin.startsWith("http://localhost")) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
   }
   res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With");

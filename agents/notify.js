@@ -215,6 +215,36 @@ export function notifyHuman(message, opts = {}) {
   return issueNum;
 }
 
+// ─── Inbox (Human → Agent) ───────────────────────────────────────────────────
+
+/**
+ * Check for new issues created by the human (labeled "from-jules").
+ * Returns an array of { issueNum, title, body } for each open issue.
+ * The PM should call this between phases to pick up new input.
+ */
+export function checkInbox() {
+  const cmd = `${GH} issue list --repo ${REPO} --label from-jules --state open --json number,title,body`;
+  const output = execSync(cmd, { encoding: "utf-8", timeout: 30_000 });
+  const issues = JSON.parse(output);
+  return issues.map(i => ({
+    issueNum: i.number,
+    title: i.title,
+    body: i.body,
+  }));
+}
+
+/**
+ * Acknowledge a human-created issue — comment that it's been received and close it.
+ */
+export function acknowledgeInbox(issueNum, response = "") {
+  const msg = response
+    ? `_Agent received this. ${response}_`
+    : `_Agent received this and will incorporate it into the current run._`;
+  commentOnIssue(issueNum, msg);
+  closeIssue(issueNum);
+  console.log(`📥 Acknowledged inbox issue #${issueNum}`);
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function esc(str) {

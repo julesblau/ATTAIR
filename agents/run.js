@@ -296,6 +296,22 @@ CHAT-STYLE CONVERSATIONS:
   3. Use "close <issue-num>" when the conversation is done
   Jules gets @tagged and assigned on every message so he gets push notifications.
 
+CHECKING JULES' INBOX (human → agent):
+  Jules can create issues labeled "from-jules" at any time with ideas, feedback,
+  or new tasks. CHECK FOR THESE between every phase and between agents:
+    node ${__dirname}/notify-cli.js inbox
+
+  If the inbox has items:
+  1. Read each one carefully
+  2. Acknowledge it: node ${__dirname}/notify-cli.js ack <issue-number> "Got it, adding to the plan."
+  3. Incorporate the feedback/idea into your current work:
+     - If it's a new feature request → add it to the current run if feasible,
+       otherwise note it for the next run in the standup
+     - If it's a bug report → prioritize fixing it
+     - If it's feedback on something already built → adjust accordingly
+     - If it says "STOP" or "PAUSE" → halt the current phase and ask for clarification
+  DO NOT ignore inbox items. Check frequently — Jules may be sending ideas from his phone.
+
 WHEN TO NOTIFY (green label — no reply needed):
   - 🚀 Army START — "Agent army starting March 25 run. Sections 1-9, 7 agents."
   - ✅ Phase transitions — "Phase 1 done (CORS, security, i18n). Starting Phase 2."

@@ -10,7 +10,7 @@
  *   node notify-cli.js reply 5    — poll issue #5 for a human reply
  */
 
-import { askHuman, notifyHuman, pollForReply, followUp, closeThread } from "./notify.js";
+import { askHuman, notifyHuman, pollForReply, followUp, closeThread, checkInbox, acknowledgeInbox } from "./notify.js";
 
 const [,, command, ...args] = process.argv;
 
@@ -67,8 +67,28 @@ try {
       }
       break;
     }
+    case "inbox": {
+      const issues = checkInbox();
+      if (issues.length === 0) {
+        console.log("INBOX: empty");
+      } else {
+        for (const issue of issues) {
+          console.log(`INBOX_ISSUE: #${issue.issueNum} | ${issue.title}`);
+          console.log(`INBOX_BODY: ${issue.body}`);
+          console.log("---");
+        }
+      }
+      break;
+    }
+    case "ack": {
+      const issueNum = parseInt(args[0], 10);
+      if (!issueNum) { console.error("Usage: notify-cli.js ack <issue-number> [response]"); process.exit(1); }
+      acknowledgeInbox(issueNum, args[1] || "");
+      console.log(`ACKNOWLEDGED: issue #${issueNum}`);
+      break;
+    }
     default:
-      console.error("Unknown command. Use: ask, notify, followup, close, or reply");
+      console.error("Unknown command. Use: ask, notify, followup, close, inbox, ack, or reply");
       process.exit(1);
   }
 } catch (err) {
