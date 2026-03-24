@@ -19,7 +19,7 @@ These are now fixed. The code from yesterday IS deployed and includes:
 ## Priority (what matters most today)
 The app is live at https://attair.vercel.app. Yesterday's run built the payment
 plumbing but we can't test Stripe without keys yet. Today's focus: make everything
-that IS built actually work perfectly, and finish the half-done features.
+that IS built actually work perfectly, and finish the half-done features. We have staged changes that were built before running out of tokens on main branch, please make sure you examine from there before building.
 
 ---
 
