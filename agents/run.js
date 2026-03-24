@@ -23,7 +23,7 @@
  */
 
 import { query } from "@anthropic-ai/claude-agent-sdk";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { config } from "dotenv";
@@ -248,6 +248,7 @@ LESSONS FROM PREVIOUS RUN — DO NOT REPEAT THESE MISTAKES
 const AGENTS = {
 
   "uiux-agent": {
+    model: "sonnet",  // Use Sonnet for subagents — saves tokens, Opus only for PM
     description: "Expert React UI/UX developer who builds world-class mobile-first interfaces for ATTAIR. Specializes in React 19, modern CSS, shopping app UX patterns, and accessibility. Works in attair-app/src/.",
     prompt: `You are a world-class UI/UX developer working on ATTAIR, an AI-powered fashion
 shopping app. The app is currently web-based React but is moving to iPhone — design mobile-first.
@@ -285,6 +286,7 @@ CONSTRAINTS:
   },
 
   "backend-agent": {
+    model: "sonnet",
     description: "Expert Node.js/Express/Supabase backend engineer managing ATTAIR's API, database, and infrastructure. Works in attair-backend/src/.",
     prompt: `You are a senior backend engineer working on ATTAIR's Node.js/Express backend.
 
@@ -329,6 +331,7 @@ RESPONSE FORMAT STANDARD:
   },
 
   "quant-agent": {
+    model: "sonnet",
     description: "Expert quantitative developer specializing exclusively in ATTAIR's product search and matching algorithm (products.js). Focuses on improving accuracy of exact and near-match product discovery.",
     prompt: `You are a senior quantitative developer. Your entire world is one file:
   attair-backend/src/services/products.js
@@ -399,6 +402,7 @@ HOW TO WORK:
   },
 
   "security-agent": {
+    model: "sonnet",
     description: "Expert application security engineer who audits ATTAIR's full codebase for vulnerabilities. Finds and fixes critical security flaws across frontend and backend.",
     prompt: `You are a senior application security engineer performing a thorough security audit of ATTAIR.
 This app handles user authentication, financial affiliate data, and personal style/shopping data.
@@ -479,6 +483,7 @@ Document every finding clearly so the PM can make informed decisions.`,
   },
 
   "e2e-agent": {
+    model: "sonnet",
     description: "A professional app super user and product critic who physically tests ATTAIR like a power user, finds bugs AND half-finished features, evaluates quality against world-class apps, and works with the PM to prioritize what needs fixing.",
     prompt: `You are two things at once: a meticulous QA engineer AND a world-class product critic.
 
@@ -730,6 +735,7 @@ IMPORTANT:
   },
 
   "testing-agent": {
+    model: "sonnet",
     description: "Expert QA engineer who sets up test infrastructure and writes comprehensive tests for ATTAIR. Covers the search algorithm, API routes, auth middleware, and React components. Runs all tests and reports results.",
     prompt: `You are a senior QA engineer building test coverage for ATTAIR from scratch.
 There are currently ZERO tests in this codebase. You are establishing the baseline.
@@ -816,13 +822,37 @@ AFTER WRITING TESTS:
   },
 };
 
-// ─── RATE LIMIT HELPERS ──────────────────────────────────────────────────────
+// ─── CHECKPOINT: resume interrupted runs ─────────────────────────────────────
 
-const MAX_RETRIES = 8;          // Up to 8 retries for rate limits
+const CHECKPOINT_PATH = join(__dirname, ".checkpoint.json");
+
+function saveCheckpoint(sessionId) {
+  writeFileSync(CHECKPOINT_PATH, JSON.stringify({ sessionId, date: today, savedAt: new Date().toISOString() }));
+}
+
+function loadCheckpoint() {
+  if (!existsSync(CHECKPOINT_PATH)) return null;
+  try {
+    const data = JSON.parse(readFileSync(CHECKPOINT_PATH, "utf-8"));
+    // Only resume checkpoints from today
+    if (data.date === today && data.sessionId) return data;
+    // Stale checkpoint — delete it
+    unlinkSync(CHECKPOINT_PATH);
+  } catch { /* corrupt file */ }
+  return null;
+}
+
+function clearCheckpoint() {
+  if (existsSync(CHECKPOINT_PATH)) unlinkSync(CHECKPOINT_PATH);
+}
+
+// ─── RATE LIMIT & ERROR HELPERS ──────────────────────────────────────────────
+
+const MAX_RETRIES = 12;         // More retries — user may top up credits mid-run
 const BASE_DELAY_MS = 30_000;   // Start with 30s (Tier 1 limits reset ~60s)
-const MAX_DELAY_MS = 300_000;   // Cap at 5 minutes between retries
+const MAX_DELAY_MS = 600_000;   // Cap at 10 minutes between retries
 
-function isRateLimitError(err) {
+function isRetryableError(err) {
   const msg = err?.message?.toLowerCase() ?? "";
   const status = err?.status ?? err?.statusCode ?? 0;
   return (
@@ -832,17 +862,14 @@ function isRateLimitError(err) {
     msg.includes("rate limit") ||
     msg.includes("overloaded") ||
     msg.includes("too many requests") ||
-    msg.includes("capacity")
-  );
-}
-
-function isOutOfCredits(err) {
-  const msg = err?.message?.toLowerCase() ?? "";
-  return (
+    msg.includes("capacity") ||
+    msg.includes("out of extra usage") ||
+    msg.includes("out of usage") ||
     msg.includes("insufficient") ||
     msg.includes("billing") ||
     msg.includes("credit") ||
-    msg.includes("payment required")
+    msg.includes("payment required") ||
+    msg.includes("resets")
   );
 }
 
@@ -861,27 +888,58 @@ async function main() {
   console.log(`📋 Requirements: ${existsSync(reqPath) ? "✅ Loaded from requirements/today.md" : "⚠️  No requirements file — using defaults"}`);
   console.log(`🌿 Branch:       ${branchName}`);
   console.log(`📁 Repo root:    ${REPO_ROOT}`);
+
+  // ── Check for interrupted session to resume ──
+  const checkpoint = loadCheckpoint();
+  let sessionId = checkpoint?.sessionId ?? null;
+
+  if (sessionId) {
+    console.log(`\n🔄 Resuming interrupted session: ${sessionId}`);
+    console.log(`   (checkpoint saved at ${checkpoint.savedAt})`);
+  }
+
   console.log("\n🚀 Starting the army...\n");
 
   let attempt = 0;
 
   while (attempt <= MAX_RETRIES) {
     try {
-      for await (const message of query({
-        prompt: PM_PROMPT,
-        options: {
-          cwd: REPO_ROOT,
-          allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"],
-          permissionMode: "bypassPermissions",
-          allowDangerouslySkipPermissions: true,
-          maxTurns: 300,
-          maxBudgetUsd: 30,   // Safety cap — save some credits for debugging
-          agents: AGENTS,
-          env: {
-            ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
-          },
+      // Build query options — resume if we have a session from a previous run
+      const queryOptions = {
+        cwd: REPO_ROOT,
+        allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"],
+        permissionMode: "bypassPermissions",
+        allowDangerouslySkipPermissions: true,
+        maxTurns: 300,
+        maxBudgetUsd: 30,
+        agents: AGENTS,
+        model: "opus",
+        env: {
+          ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
         },
-      })) {
+      };
+
+      // If resuming, tell the SDK to continue the previous session
+      if (sessionId) {
+        queryOptions.resume = sessionId;
+      }
+
+      // Build the prompt — if resuming, tell PM to check what's already done
+      const prompt = sessionId
+        ? `You were interrupted mid-run (credits ran out). You are being RESUMED.
+
+CRITICAL: Do NOT start over. Check what work has already been done:
+1. Run: git log --oneline -20   — to see what's already committed
+2. Run: git diff HEAD~1         — to see recent changes
+3. Check which agents already completed their work
+4. SKIP any tasks that are already done
+5. Continue with the REMAINING tasks only
+
+Your original mission:
+${PM_PROMPT}`
+        : PM_PROMPT;
+
+      for await (const message of query({ prompt, options: queryOptions })) {
         // === LIVE LOG: show everything ===
         const type = message.type ?? "unknown";
         const subtype = message.subtype ?? "";
@@ -899,10 +957,12 @@ async function main() {
           continue;
         }
 
-        // Session init
+        // Session init — save checkpoint for resume
         if (type === "system" && subtype === "init") {
           const sid = message.session_id ?? message.data?.session_id ?? "unknown";
-          console.log(`✅ Session started: ${sid}\n`);
+          sessionId = sid;
+          saveCheckpoint(sid);
+          console.log(`✅ Session started: ${sid} (checkpoint saved)\n`);
         }
 
         // Result message (final output)
@@ -911,6 +971,7 @@ async function main() {
           console.log("║           ✅ AGENT ARMY COMPLETE                 ║");
           console.log("╚══════════════════════════════════════════════════╝\n");
           console.log(message.result);
+          clearCheckpoint();
           continue;
         }
 
@@ -949,23 +1010,27 @@ async function main() {
         }
       }
 
-      // If we get here, the query completed successfully — exit the retry loop
+      // Completed successfully — clean up and exit
+      clearCheckpoint();
       break;
 
     } catch (err) {
-      // ── Out of credits: no amount of retrying will help ──
-      if (isOutOfCredits(err)) {
-        console.error("\n💸 Out of credits — cannot continue.");
-        console.error("   Top up at: https://console.anthropic.com/settings/billing");
-        process.exit(1);
-      }
-
-      // ── Rate limit / overloaded: wait and retry ──
-      if (isRateLimitError(err) && attempt < MAX_RETRIES) {
+      // ── Retryable error (rate limit, out of usage, overloaded) ──
+      // User may top up credits while the army waits, so always retry these.
+      if (isRetryableError(err) && attempt < MAX_RETRIES) {
         attempt++;
-        const delay = Math.min(BASE_DELAY_MS * Math.pow(1.5, attempt - 1), MAX_DELAY_MS);
+        // Longer waits for credit exhaustion vs rate limits
+        const isCredits = /out of.*usage|credit|billing|insufficient/i.test(err.message ?? "");
+        const delay = isCredits
+          ? Math.min(120_000 * attempt, MAX_DELAY_MS)     // 2min, 4min, 6min... for credits
+          : Math.min(BASE_DELAY_MS * Math.pow(1.5, attempt - 1), MAX_DELAY_MS);  // 30s backoff for rate limits
         const delaySec = Math.round(delay / 1000);
-        console.log(`\n⏸️  Rate limited (attempt ${attempt}/${MAX_RETRIES}). Waiting ${delaySec}s before retry...`);
+        const reason = isCredits ? "Out of credits" : "Rate limited";
+        console.log(`\n⏸️  ${reason} (attempt ${attempt}/${MAX_RETRIES}). Waiting ${delaySec}s...`);
+        if (isCredits) {
+          console.log("   💡 Top up at: https://console.anthropic.com/settings/billing");
+          console.log("   The army will automatically resume when credits are available.");
+        }
         await sleep(delay);
         console.log("🔄 Retrying...\n");
         continue;
@@ -982,6 +1047,7 @@ async function main() {
         console.error("\n💡 Fix: Run: cd agents && npm install");
       }
 
+      // Don't clear checkpoint on fatal error — allows manual resume
       process.exit(1);
     }
   }
