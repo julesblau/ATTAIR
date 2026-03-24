@@ -265,7 +265,63 @@ the vibe you're going for.
 
 ---
 
-## 9. REMAINING HALF-DONE FEATURES
+## 9. SOCIAL PROFILES — Follow, Share, Discover
+
+Users should be able to follow each other and see what people they follow have
+scanned, liked, and collected. Everything is public/private toggleable.
+
+### The Vision
+ATTAIR becomes a social fashion discovery platform, not just a personal tool.
+When someone finds a great outfit match, their friends see it. When someone
+curates a killer collection, others can browse it. This is the viral loop.
+
+### Backend (database + API):
+- **follows table:** `follower_id, following_id, created_at` with unique constraint
+- **Privacy column on scans:** Add `visibility` to scans table: `'public'` | `'private'` | `'followers'` (default: `'private'`)
+- **Privacy column on saved_items:** Add `visibility` to saved_items: `'public'` | `'private'` (default: `'private'`)
+- **Privacy column on wishlists (collections):** Add `visibility`: `'public'` | `'private'` (default: `'private'`)
+- **Public profile data on profiles:** Add `bio` (text, max 200 chars), `display_name` (text, max 50 chars)
+- **API routes:**
+  - `POST /api/follow/:userId` — follow a user (requireAuth)
+  - `DELETE /api/follow/:userId` — unfollow (requireAuth)
+  - `GET /api/followers/:userId` — list followers
+  - `GET /api/following/:userId` — list who a user follows
+  - `GET /api/profile/:userId` — public profile (scans, likes, collections filtered by visibility)
+  - `PATCH /api/scans/:scanId/visibility` — toggle scan visibility
+  - `PATCH /api/saved-items/:itemId/visibility` — toggle item visibility
+  - `PATCH /api/collections/:collectionId/visibility` — toggle collection visibility
+
+### Frontend:
+- **Profile page:** Display name, bio, follower/following counts, grid of public scans
+  - Each scan shows the outfit photo as a card; tap to see the results
+  - Public likes shown in a separate tab on the profile
+  - Public collections shown as browsable boards
+- **Follow button** on any user's profile (follow/unfollow toggle)
+- **Privacy toggles:**
+  - On each scan card: tap "..." → "Make Public" / "Make Private" / "Followers Only"
+  - On each liked item: long-press → visibility toggle
+  - On each collection: settings icon → visibility toggle
+  - Default for everything is PRIVATE — users opt-in to sharing
+- **Feed / Discovery:**
+  - In the Likes tab or a new "Discover" section: show public scans/collections
+    from people you follow
+  - This is NOT a priority for today — just build the data model and basic
+    profile page. Feed can come next run.
+
+### What NOT to build today:
+- Full social feed / timeline (just the data model + profile page)
+- Direct messaging
+- Notifications for new followers (future)
+- Search/discover users (future — for now, share profile links)
+
+### Why This Matters:
+Fashion is inherently social. The viral loop is: scan outfit → get results →
+share your scan → friends follow you → they discover ATTAIR → they scan their
+own outfits. Every social feature multiplies our user acquisition.
+
+---
+
+## 10. REMAINING HALF-DONE FEATURES
 
 ### Google / Apple OAuth
 - Buttons exist in the frontend. Test if they actually work.
@@ -274,7 +330,7 @@ the vibe you're going for.
 
 ---
 
-## 10. OUT OF SCOPE TODAY
+## 11. OUT OF SCOPE TODAY
 - Stripe activation (Jules is setting up the account — no keys yet)
 - RevenueCat / AdMob / Capacitor (needs native app setup)
 - App.jsx full refactor (separate day)
@@ -282,12 +338,13 @@ the vibe you're going for.
 
 ---
 
-## 11. AGENT NOTES
+## 12. AGENT NOTES
 
 **PM:** Today has 3 phases:
   Phase 1: Quick wins — CORS verification, security fixes, i18n audit (sections 1, 4, 5)
   Phase 2: Major build — Likes tab redesign (section 2) + light mode fix (section 3)
     + nearby stores fix (section 6) + as-seen-on upgrade (section 7) + custom occasions (section 8)
+    + social profiles with follow/privacy (section 9)
   Phase 3: Creative agent run — after push, let the creative agent analyze and propose
   Work in order. Push only after E2E confirms. Then run creative agent.
 
@@ -303,6 +360,8 @@ the vibe you're going for.
   - Add style_interests column to profiles table (text[] or JSONB) (section 7)
   - Custom occasion Claude interpretation in findProducts — if occasion not in
     OCCASION_MODIFIERS, prompt Claude for search keywords, cache result (section 8)
+  - Social: follows table, visibility columns on scans/saved_items/wishlists,
+    bio + display_name on profiles, all follow/unfollow/profile API routes (section 9)
 
 **UI/UX agent:** Your MAIN job today is the Likes tab redesign (section 2).
   This is the biggest change. Make it feel like Instagram saves meets Pinterest.
@@ -320,6 +379,11 @@ the vibe you're going for.
     source link; consider horizontal carousel on product cards (section 7)
   - "+ Custom" chip in occasion picker with text input, save recent custom
     occasions to localStorage (max 5) (section 8)
+  - Social profile page — display name, bio, follower/following counts,
+    public scans grid, public likes tab, public collections (section 9)
+  - Follow/unfollow button on profiles (section 9)
+  - Privacy toggles on scans, liked items, and collections —
+    "..." menu → "Make Public" / "Private" / "Followers Only" (section 9)
   - Ensure all new UI has i18n translations in all 8 languages
   - Test at 390px width in both dark and light mode
 
@@ -334,7 +398,9 @@ the vibe you're going for.
 **Security agent:** REPORT ONLY. Verify yesterday's 5 fixes are still in place.
   Check for any new issues introduced by today's changes.
   Pay special attention to: custom occasion prompt injection risk (section 8),
-  nearby-stores auth now requiring token (section 6).
+  nearby-stores auth now requiring token (section 6),
+  follow/profile routes require auth (section 9),
+  visibility checks — private content must NOT leak to non-followers (section 9).
 
 **Testing agent:** Run all 133 tests first. Then add tests for:
   - Likes/collections CRUD operations
@@ -345,6 +411,9 @@ the vibe you're going for.
   - As-seen-on with style_interests filtering (section 7)
   - Custom occasion → Claude modifier generation (section 8)
   - style_interests profile CRUD (section 7)
+  - Follow/unfollow CRUD (section 9)
+  - Profile visibility filtering — private items hidden from non-followers (section 9)
+  - Visibility toggle on scans, saved items, collections (section 9)
 
 **E2E agent:** Critical checks:
   - Likes tab exists in bottom nav and works
@@ -361,6 +430,10 @@ the vibe you're going for.
   - As-seen-on returns visual cards with platform badges (section 7)
   - Interest picker appears at signup and persists to profile (section 7)
   - Custom occasion input works and produces relevant search results (section 8)
+  - Profile page renders with public scans, likes, collections (section 9)
+  - Follow/unfollow works, follower counts update (section 9)
+  - Privacy toggles work — private items invisible to others (section 9)
+  - Cannot see private scans/items of users you don't follow (section 9)
 
 **Creative agent:** After everything is pushed, analyze the app fresh.
   Focus especially on:
@@ -368,4 +441,7 @@ the vibe you're going for.
   - What's the viral loop? How does someone discover ATTAIR and tell a friend?
   - What monetization angles are we missing?
   - How does the interest-based as-seen-on feel? Is it compelling enough to share?
+  - How does the social layer feel? What would make people WANT to share their scans?
+  - What's the onboarding funnel? How does someone go from "I just found this app"
+    to "I've scanned 5 outfits and followed 3 friends" in under 10 minutes?
   - What would make this app #1 in the fashion category on the App Store?

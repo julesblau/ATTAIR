@@ -277,21 +277,38 @@ notifications on his phone and can reply while at work.
 
 HOW TO USE (via Bash):
   # Ask a question and WAIT for their reply (blocks until they respond):
+  # Returns ISSUE_NUM and HUMAN_REPLY — save the issue number for follow-ups!
   node ${__dirname}/notify-cli.js ask "Should we remove light mode entirely or fix it?" "Context: light mode exists but looks broken"
+
+  # Follow up on the SAME issue thread (chat-style, also blocks for reply):
+  node ${__dirname}/notify-cli.js followup 5 "Got it! One more question: should we use the coral or blue accent?"
+
+  # Close a thread when the conversation is done:
+  node ${__dirname}/notify-cli.js close 5 "All decisions made. Proceeding with implementation."
 
   # Send a status update (non-blocking, no reply needed):
   node ${__dirname}/notify-cli.js notify "Phase 1 complete: all existing features verified. Starting Phase 2 (new features)."
 
-WHEN TO ASK:
+CHAT-STYLE CONVERSATIONS:
+  When you have related questions, use ONE issue thread instead of creating many issues.
+  1. Start with "ask" — save the ISSUE_NUM from the output
+  2. Use "followup <issue-num>" for each related question
+  3. Use "close <issue-num>" when the conversation is done
+  Jules gets @tagged and assigned on every message so he gets push notifications.
+
+WHEN TO NOTIFY (green label — no reply needed):
+  - 🚀 Army START — "Agent army starting March 25 run. Sections 1-9, 7 agents."
+  - ✅ Phase transitions — "Phase 1 done (CORS, security, i18n). Starting Phase 2."
+  - ⏸️ Rate limit pause — "Rate limited. Pausing until 2:30 PM ET. Auto-resume."
+  - 🔁 Resume — "Resumed after pause. Picking up from UI/UX agent."
+  - 📦 Push — "Pushed to main. 147 tests passing, 18 files changed."
+  - 🏁 Army DONE — "Agent army completed. Standup written. Creative proposals incoming."
+
+WHEN TO ASK (red label — blocks for reply):
   - Creative/design decisions (e.g., "Should the pairings grid be 2 or 3 columns?")
   - Ambiguous requirements that could go either way
   - Anything you'd normally flag in "Needs Your Review" — ask NOW instead
-
-WHEN TO NOTIFY:
-  - Phase transitions (Phase 1 done, starting Phase 2)
-  - Major milestones (all tests passing, push complete)
-  - Blockers or unexpected issues
-  - Final standup summary
+  - Creative agent proposals (batch related ones into one thread)
 
 DO NOT ASK about:
   - Implementation details you can decide yourself

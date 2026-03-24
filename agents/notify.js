@@ -22,6 +22,7 @@ import { execSync } from "child_process";
 
 const GH = '"C:\\Program Files\\GitHub CLI\\gh.exe"';
 const REPO = "julesblau/ATTAIR";
+const HUMAN = "julesblau";
 const POLL_INTERVAL_MS = 30_000;  // Check every 30 seconds
 const MAX_WAIT_MS = 4 * 60 * 60 * 1000; // Give up after 4 hours
 
@@ -30,9 +31,11 @@ const MAX_WAIT_MS = 4 * 60 * 60 * 1000; // Give up after 4 hours
 /**
  * Create a GitHub issue and return its number.
  */
-export function createIssue(title, body, labels = []) {
-  const labelArgs = labels.map(l => `--label "${l}"`).join(" ");
-  const cmd = `${GH} issue create --repo ${REPO} --title "${esc(title)}" --body "${esc(body)}" ${labelArgs}`;
+export function createIssue(title, body, labels = [], assignee = "") {
+  const labelArgs = labels.map(l => `--label ${l}`).join(" ");
+  const assigneeArg = assignee ? `--assignee ${assignee}` : "";
+  // Flags MUST come before --body to avoid being swallowed by shell escaping
+  const cmd = `${GH} issue create --repo ${REPO} ${labelArgs} ${assigneeArg} --title "${esc(title)}" --body "${esc(body)}"`;
   const output = execSync(cmd, { encoding: "utf-8", timeout: 30_000 }).trim();
   // gh issue create returns the issue URL, extract the number
   const match = output.match(/\/issues\/(\d+)/);
@@ -76,6 +79,8 @@ export function getComments(issueNum) {
  */
 export async function pollForReply(issueNum, timeoutMs = MAX_WAIT_MS) {
   const start = Date.now();
+  // Brief delay to let GitHub propagate the issue before first poll
+  await sleep(3_000);
   const knownComments = new Set(getComments(issueNum).map(c => c.createdAt));
 
   while (Date.now() - start < timeoutMs) {
@@ -110,6 +115,8 @@ export async function askHuman(question, opts = {}) {
 
   const title = `[Agent] ${question.slice(0, 60)}${question.length > 60 ? "..." : ""}`;
   const body = [
+    `@${HUMAN}`,
+    ``,
     `## Agent Question`,
     ``,
     question,
@@ -121,7 +128,7 @@ export async function askHuman(question, opts = {}) {
     `_Sent at ${now} ET_`,
   ].filter(Boolean).join("\n");
 
-  const issueNum = createIssue(title, body, ["agent-question"]);
+  const issueNum = createIssue(title, body, ["agent-question"], HUMAN);
   console.log(`📩 Question posted: https://github.com/${REPO}/issues/${issueNum}`);
   console.log(`   Waiting for your reply...`);
 
@@ -129,15 +136,54 @@ export async function askHuman(question, opts = {}) {
 
   if (reply) {
     console.log(`✅ Got reply on issue #${issueNum}`);
-    // Close the issue since it's been answered
-    commentOnIssue(issueNum, `_Agent received your reply and is continuing._`);
-    closeIssue(issueNum);
   } else {
     console.log(`⏰ Timed out waiting for reply on issue #${issueNum}`);
     commentOnIssue(issueNum, `_Agent timed out waiting for a reply after ${Math.round(timeoutMs / 60000)} minutes._`);
   }
 
+  return { reply, issueNum };
+}
+
+/**
+ * Follow up on an existing issue — post a comment and wait for a reply.
+ * Use this to have a back-and-forth chat on the same GitHub issue thread.
+ *
+ * @param {number} issueNum - The issue to comment on
+ * @param {string} message - The follow-up message
+ * @param {object} opts
+ * @param {number} opts.timeoutMs - How long to wait (default 4 hours)
+ * @returns {Promise<string|null>} The human's reply, or null if timed out
+ */
+export async function followUp(issueNum, message, opts = {}) {
+  const { timeoutMs = MAX_WAIT_MS } = opts;
+
+  commentOnIssue(issueNum, `@${HUMAN}\n\n${message}`);
+  console.log(`💬 Follow-up posted on issue #${issueNum}`);
+
+  const reply = await pollForReply(issueNum, timeoutMs);
+
+  if (reply) {
+    console.log(`✅ Got reply on issue #${issueNum}`);
+  } else {
+    console.log(`⏰ Timed out waiting for reply on issue #${issueNum}`);
+  }
+
   return reply;
+}
+
+/**
+ * Close a conversation thread when done.
+ *
+ * @param {number} issueNum - The issue to close
+ * @param {string} summary - Optional closing summary
+ */
+export function closeThread(issueNum, summary = "") {
+  const msg = summary
+    ? `_Thread closed. ${summary}_`
+    : `_Agent received your reply and is continuing. Thread closed._`;
+  commentOnIssue(issueNum, msg);
+  closeIssue(issueNum);
+  console.log(`🔒 Closed issue #${issueNum}`);
 }
 
 /**
@@ -152,6 +198,8 @@ export function notifyHuman(message, opts = {}) {
   const title = opts.title || `[Agent Update] ${now}`;
 
   const body = [
+    `@${HUMAN}`,
+    ``,
     `## Status Update`,
     ``,
     message,
@@ -162,7 +210,7 @@ export function notifyHuman(message, opts = {}) {
     `_Sent at ${now} ET_`,
   ].join("\n");
 
-  const issueNum = createIssue(title, body, ["agent-update"]);
+  const issueNum = createIssue(title, body, ["agent-update"], HUMAN);
   console.log(`📤 Update posted: https://github.com/${REPO}/issues/${issueNum}`);
   return issueNum;
 }
