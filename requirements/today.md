@@ -137,29 +137,90 @@ backend call is wired to nothing, fix the wiring. Leave nothing half-done.
 
 ---
 
-## 6. OUT OF SCOPE TODAY
+## 6. UX POLISH & NEW FEATURES (from E2E agent suggestions, user-approved)
+
+### 6a. Banner Ad Placeholders — Make Them Look Real
+The `BANNER AD` / `SPONSORED` plain text ad slots look unfinished and cheap.
+Make them look like real, polished ad units — similar to what was done for the
+interstitial ad. Use styled "Featured" / "Trending" cards with product imagery,
+brand labels, and proper layout. They should feel intentional, not placeholder.
+
+### 6b. Remove Phone Number Requirement from Signup
+Phone number is currently required in both backend validation (auth.js) and the
+signup form. Make it optional in both places. Instagram/Depop/GOAT don't require
+it — it's a conversion killer for a beta app.
+
+### 6c. "Complete the Look" Pairings — Visual Grid Layout
+The pairings section currently shows as text rows. Redesign it as a visual grid
+like Pinterest — product image cards in a grid/masonry layout. Should feel editorial
+and browsable, not like a data table.
+
+### 6d. Scan Streak Counter
+Add a streak counter: "You've scanned 3 days in a row!" Show it somewhere visible
+(home screen or after a scan completes). Builds habit and engagement. Track in the
+profiles table or derive from scan history timestamps.
+
+### 6e. "Last Seen" Timestamp on Saved Items
+Add a "Saved 2 days ago" or "Last seen: March 22" timestamp to each saved item card.
+Creates urgency and primes users for price drop alerts (future feature). Derive from
+the saved_items.created_at column.
+
+### 6f. "BEST VALUE" Pill Shadow in Upgrade Modal
+Add a subtle drop shadow to the "BEST VALUE" pill on the yearly plan toggle in the
+UpgradeModal. Small touch, high polish. Should make it pop more.
+
+### 6g. Mini Identification Preview Before Product Search
+After Claude identifies the items but BEFORE product search runs, show a quick preview
+of what was identified (item name + brand + color). This gives the user immediate
+feedback during the 5-10 second product search wait. Currently the user stares at a
+spinner with no info about what was found.
+
+### 6h. Pairings Affiliate Tracking
+Wire "Complete the Look" pairing clicks through the existing affiliate system
+(`/api/go/:clickId`). Currently pairing clicks are tracked via analytics but don't
+generate affiliate click records in the DB. Build the backend to create affiliate
+records for pairing product links, so when we onboard affiliate partners later
+(beyond the existing Amazon Associates account), we're already tracking everything.
+
+---
+
+## 7. OUT OF SCOPE TODAY
 - RevenueCat (needs App Store/Play Store product setup)
 - AdMob / real ads (needs Capacitor)
 - Capacitor wrapper (separate day)
-- Price drop alerts (needs background jobs)
+- Price drop alerts (needs background jobs, but "Last Seen" timestamps prepare for it)
 - App.jsx full refactor (separate day)
 
 ---
 
-## 7. AGENT NOTES
+## 8. AGENT NOTES
 
-**PM:** Today is about VERIFICATION and POLISH, not new features. Most code was
-written yesterday. Read the codebase first, verify what works, fix what doesn't.
-DO NOT push until E2E confirms the app works.
+**PM:** Today has two phases:
+  Phase 1: VERIFY yesterday's work (Stripe, caching, Circle to Search, referral)
+  Phase 2: BUILD the 8 user-approved improvements from section 6
+Work in order: verify first, then tackle section 6. Push only after E2E confirms.
 
-**Backend agent:** Verify existing code works. Focus on half-done features (seen-on,
-nearby-stores, trial flow). DO NOT change CORS, REQUIRED_ENV, or move credentials.
+**Backend agent:**
+  - Verify existing payments/caching/referral code works
+  - Make phone number optional in auth.js signup validation (6b)
+  - Build pairings affiliate tracking through /api/go system (6h)
+  - Finish half-done features (seen-on, nearby-stores, trial flow)
+  - DO NOT change CORS, REQUIRED_ENV, or move credentials
 
 **Quant agent:** Verify SerpAPI caching works. Check that getCache/setCache functions
 exist and properly read/write product_cache table. If they're missing, build them.
 
-**UI/UX agent:** Verify Circle to Search works end-to-end. Polish half-done features
-(scan rename UI, wishlist operations, referral share button). Test at 390px width.
+**UI/UX agent:**
+  - Verify Circle to Search end-to-end
+  - Polish banner ad placeholders to look real (6a)
+  - Remove phone field from signup form or make optional (6b)
+  - Redesign pairings as visual grid (6c)
+  - Add scan streak counter (6d)
+  - Add "Last Seen" timestamps on saved items (6e)
+  - Add shadow to BEST VALUE pill (6f)
+  - Add mini identification preview before product search (6g)
+  - Finish half-done features (scan rename, wishlist ops, referral share)
+  - Test everything at 390px width
 
 **Security agent:** REPORT ONLY. Do not modify code. Document findings for PM review.
 
@@ -173,3 +234,8 @@ any new code written today.
 - No console errors on any screen
 - Upgrade modal appears and shows loading state
 - Referral code visible on Profile tab
+- Pairings show as visual grid, not text list
+- Scan streak counter appears
+- Saved items show "Last Seen" timestamp
+- Signup works without phone number
+- Banner ads look polished, not placeholder
