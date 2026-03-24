@@ -19,7 +19,13 @@ These are now fixed. The code from yesterday IS deployed and includes:
 ## Priority (what matters most today)
 The app is live at https://attair.vercel.app. Yesterday's run built the payment
 plumbing but we can't test Stripe without keys yet. Today's focus: make everything
-that IS built actually work perfectly, and finish the half-done features. We have staged changes that were built before running out of tokens on main branch, please make sure you examine from there before building.
+that IS built actually work perfectly, and finish the half-done features.
+
+Important execution context:
+
+Previous runs were interrupted due to token limits.
+There are staged and partially completed changes on the main branch—you must pick up from these and continue, not rebuild from scratch.
+The task runner will automatically restart this process at 9am, 2pm, and 6:30pm if interrupted.
 
 ---
 
