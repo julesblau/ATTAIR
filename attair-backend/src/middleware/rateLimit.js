@@ -1,11 +1,11 @@
 import supabase from "../lib/supabase.js";
 
-const FREE_SCAN_LIMIT = 3;
+const FREE_SCAN_LIMIT = 12;
 
 /**
- * Checks and enforces the daily scan limit.
- * - Resets scans_today if the stored reset date is before today (UTC).
- * - Free/expired users: 3 scans/day.
+ * Checks and enforces the monthly scan limit.
+ * - Resets scans_today if the stored reset month is before the current month (UTC).
+ * - Free/expired users: 12 scans/month.
  * - Trial/pro users: unlimited.
  * Attaches req.profile with the user's profile row.
  */
@@ -45,23 +45,23 @@ export async function scanRateLimit(req, res, next) {
       return next();
     }
 
-    // Reset counter if the stored reset date is before today
-    const todayUTC = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    // Reset counter if the stored reset month is before the current month
+    const thisMonthUTC = new Date().toISOString().slice(0, 7); // YYYY-MM
     let scansToday = profile.scans_today || 0;
 
-    if (profile.scans_today_reset !== todayUTC) {
+    if (profile.scans_today_reset !== thisMonthUTC) {
       scansToday = 0;
       await supabase
         .from("profiles")
-        .update({ scans_today: 0, scans_today_reset: todayUTC })
+        .update({ scans_today: 0, scans_today_reset: thisMonthUTC })
         .eq("id", userId);
     }
 
     // Enforce limit
     if (scansToday >= FREE_SCAN_LIMIT) {
       return res.status(429).json({
-        error: "Daily scan limit reached",
-        message: "You've used 3/3 free scans today. Go Pro for unlimited.",
+        error: "Monthly scan limit reached",
+        message: "You've used all 12 free scans this month. Go Pro for unlimited.",
         scans_remaining: 0,
         scans_limit: FREE_SCAN_LIMIT,
         upgrade_url: "/subscribe",
@@ -82,13 +82,13 @@ export async function scanRateLimit(req, res, next) {
  * Falls back to non-atomic increment if the function doesn't exist yet.
  */
 export async function incrementScanCount(userId) {
-  const todayUTC = new Date().toISOString().slice(0, 10);
+  const thisMonthUTC = new Date().toISOString().slice(0, 7); // YYYY-MM
 
   try {
     // Atomic: reset date + increment in one transaction
     const { data, error } = await supabase.rpc("try_increment_scan", {
       p_user_id: userId,
-      p_today: todayUTC,
+      p_today: thisMonthUTC,
       p_limit: FREE_SCAN_LIMIT,
     });
 
@@ -105,13 +105,13 @@ export async function incrementScanCount(userId) {
     .single();
 
   const currentCount =
-    profile?.scans_today_reset === todayUTC ? (profile.scans_today || 0) : 0;
+    profile?.scans_today_reset === thisMonthUTC ? (profile.scans_today || 0) : 0;
 
   await supabase
     .from("profiles")
     .update({
       scans_today: currentCount + 1,
-      scans_today_reset: todayUTC,
+      scans_today_reset: thisMonthUTC,
     })
     .eq("id", userId);
 

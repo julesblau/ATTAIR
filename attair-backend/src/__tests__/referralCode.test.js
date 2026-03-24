@@ -202,15 +202,6 @@ describe("POST /api/auth/signup — referral code generation", () => {
     expect(body.error).toMatch(/required/i);
   });
 
-  it("returns 400 when phone is missing", async () => {
-    const { status, body } = await postJson(port, "/api/auth/signup", {
-      email: "test@example.com",
-      password: "password123",
-      // no phone
-    });
-    expect(status).toBe(400);
-    expect(body.error).toMatch(/phone/i);
-  });
 });
 
 describe("GET /api/user/profile — referral code lazy generation", () => {

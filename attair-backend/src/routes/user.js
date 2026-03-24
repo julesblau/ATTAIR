@@ -5,7 +5,7 @@ import supabase from "../lib/supabase.js";
 
 const router = Router();
 
-const FREE_SCAN_LIMIT = 3;
+const FREE_SCAN_LIMIT = 12;
 const FREE_SAVE_LIMIT = 20;
 const FREE_HISTORY_DAYS = 7;
 
@@ -29,9 +29,9 @@ router.get("/status", requireAuth, async (req, res) => {
       }
     }
 
-    const todayUTC = new Date().toISOString().slice(0, 10);
+    const thisMonthUTC = new Date().toISOString().slice(0, 7); // YYYY-MM
     const scansToday =
-      profile.scans_today_reset === todayUTC ? (profile.scans_today || 0) : 0;
+      profile.scans_today_reset?.slice(0, 7) === thisMonthUTC ? (profile.scans_today || 0) : 0;
 
     const isUnlimited = tier === "pro" || tier === "trial";
 

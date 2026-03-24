@@ -206,7 +206,11 @@ const KNOWN_RETAIL_DOMAINS = [
   // ── Fast fashion / high street ──
   "hm.com", "zara.com", "uniqlo.com", "asos.com", "boohoo.com",
   "nastygal.com", "prettylittlething.com", "fashionnova.com",
-  "shein.com", "romwe.com", "zaful.com", "missguided.com",
+  "shein.com", "romwe.com", "missguided.com",
+  // NOTE: zaful.com intentionally omitted — it is listed in KNOCKOFF_DOMAINS and
+  // should not be hard-accepted as a trusted retail domain. Its knockoff penalty
+  // in scoreProduct already handles it, but accepting it in isVendorPage would
+  // allow it to bypass the non-vendor gate entirely on unpriced results.
   "primark.com", "newlook.com", "riverisland.com", "next.co.uk",
   "matalan.co.uk", "peacocks.co.uk",
   // ── Gap family ──
@@ -274,8 +278,11 @@ const KNOWN_RETAIL_DOMAINS = [
   "pendleton-usa.com", "woolrich.com", "filson.com", "orvis.com",
   "mountainhardwear.com", "marmot.com", "blackdiamondequipment.com",
   // ── Accessories ──
-  "coach.com", "katespade.com", "michaelkors.com", "tory burch.com",
+  "coach.com", "katespade.com", "michaelkors.com",
   "toryburch.com", "furla.com", "mulberry.com", "longchamp.com",
+  // NOTE: "tory burch.com" (with a space) was previously listed here — it can never
+  // match a URL because URLs do not contain spaces. Removed; "toryburch.com" above
+  // is the correct entry and provides full coverage.
   "samsonite.com", "tumi.com", "herschel.com", "fjallraven.com",
   "sunglasshut.com", "lenscrafters.com", "warbyparker.com",
   // ── Men's focused ──
@@ -423,8 +430,23 @@ function makeCacheKey(scanId, bMin, bMax) {
   return crypto.createHash("md5").update(`v4:${scanId}:${bMin}:${bMax}`).digest("hex");
 }
 
-function makeTextCacheKey(item, gender, bMin, bMax) {
-  return crypto.createHash("md5").update(`v4t:${gender}:${bMin}:${bMax}:${item.search_query || item.name}`).digest("hex");
+/**
+ * Build a deterministic cache key for a text-search result set.
+ *
+ * searchNotes is included in the hash so that different caller-supplied notes
+ * never collide on the same cache entry ("cache poisoning across notes").
+ * When searchNotes is absent the key is identical to the pre-v4.1 key, so
+ * existing warm cache entries remain valid.
+ *
+ * @param {object} item        - Identified clothing item (needs .search_query or .name)
+ * @param {string} gender      - "male" | "female"
+ * @param {number} bMin        - Budget minimum
+ * @param {number} bMax        - Budget maximum
+ * @param {string} [searchNotes] - Optional free-text search refinement
+ */
+function makeTextCacheKey(item, gender, bMin, bMax, searchNotes = "") {
+  const notesSeg = searchNotes ? `:${searchNotes.trim().toLowerCase()}` : "";
+  return crypto.createHash("md5").update(`v4t:${gender}:${bMin}:${bMax}:${item.search_query || item.name}${notesSeg}`).digest("hex");
 }
 
 async function getCache(key) {
@@ -670,27 +692,75 @@ function cleanForSearch(q) {
     .trim();
 }
 
-async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occasion = null) {
+/**
+ * Run text-based Shopping searches for a single identified item.
+ *
+ * Constructs up to 3 distinct queries (A, B, C/D) and runs them concurrently:
+ *   A — Claude's search_query, cleaned, gender-prefixed; searchNotes appended when
+ *       it fits within the 150-char Shopping query cap and is not already present.
+ *   B — Brand + product line (only for high-confidence brand matches)
+ *   C — Simple gender + color + subcategory descriptor (safety-net broadening query);
+ *       searchNotes also appended here when it fits within the 150-char cap.
+ *   D — Full descriptor with fit/body/size (only if distinct from C)
+ *
+ * @param {object} item          - Identified clothing item
+ * @param {string} gender        - "male" | "female"
+ * @param {object} tierBounds    - { min, max } price tier
+ * @param {object} [sizePrefs]   - Size preferences ({ body_type, fit, sizes })
+ * @param {string} [occasion]    - Occasion key (maps to OCCASION_MODIFIERS)
+ * @param {string} [searchNotes] - Free-text caller refinement (e.g. "navy blue only").
+ *                                 Injected into Query A and Query C when the combined
+ *                                 length stays under MAX_QUERY_LEN characters.
+ *                                 Baked into the cache key via makeTextCacheKey so
+ *                                 different notes never collide on the same cache entry.
+ */
+async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occasion = null, searchNotes = null) {
   const g = gender === "female" ? "women's" : "men's";
+  // Normalise: guard against non-string values, collapse whitespace.
+  const notes = typeof searchNotes === "string" ? searchNotes.trim() : "";
+
+  // Maximum total query length for Google Shopping API.
+  // Tokens beyond ~150 chars are ignored or degrade relevance ranking.
+  const MAX_QUERY_LEN = 150;
 
   const bodyTypes = Array.isArray(sizePrefs.body_type) ? sizePrefs.body_type : (sizePrefs.body_type ? [sizePrefs.body_type] : []);
   const fitStyles = Array.isArray(sizePrefs.fit) ? sizePrefs.fit : (sizePrefs.fit ? [sizePrefs.fit] : []);
   const bodyTerm = BODY_TYPE_TERMS[bodyTypes[0]] || null;
   const fitTerm = FIT_TERMS[fitStyles[0]] || null;
-  const sizeTerm = getSizeTermForItem(item, sizePrefs);
+
+  // sizeTerm is drawn from sizePrefs.sizes (the per-garment-type size map).
+  // For footwear items, also check sizePrefs.shoe_size — a separate top-level field
+  // that the profile UI collects independently from the general clothing sizes map.
+  // If the general sizes map has a shoe entry it takes precedence; shoe_size fills
+  // the gap when only the dedicated shoe size field was filled in.
+  let sizeTerm = getSizeTermForItem(item, sizePrefs);
+  if (!sizeTerm && sizePrefs.shoe_size != null) {
+    const combined = ((item.category || "") + " " + (item.subcategory || "")).toLowerCase();
+    const isShoeItem = ["shoe", "sneaker", "boot", "sandal", "loafer", "heel", "flat", "trainer"].some(k => combined.includes(k));
+    if (isShoeItem) sizeTerm = String(sizePrefs.shoe_size).trim();
+  }
+
   const occasionTerm = occasion ? OCCASION_MODIFIERS[occasion] || null : null;
 
   const queries = [];
 
   // ── Query A: Claude's search_query, cleaned and correctly gender-prefixed ──
   // Fixes: (1) Unicode apostrophe → double prefix bug, (2) "no tie" style noise
+  // searchNotes is appended here as the most specific refinement signal —
+  // but only when: (a) it fits within MAX_QUERY_LEN, and (b) it is not already
+  // present in the query (case-insensitive duplicate guard).
   if (item.search_query) {
     const cleaned = cleanForSearch(item.search_query);
     let q = hasGenderPrefix(cleaned) ? cleaned : `${g} ${cleaned}`;
     if (bodyTerm && !q.toLowerCase().includes(bodyTerm)) q = `${bodyTerm} ${q}`;
     // Append occasion modifier when set (only if not already present in query)
     if (occasionTerm && !q.toLowerCase().includes(occasionTerm.split(" ")[0])) q = `${q} ${occasionTerm}`;
-    queries.push(q.replace(/\s{2,}/g, " ").trim());
+    q = q.replace(/\s{2,}/g, " ").trim();
+    if (notes && !q.toLowerCase().includes(notes.toLowerCase())) {
+      const withNotes = `${q} ${notes}`;
+      if (withNotes.length <= MAX_QUERY_LEN) q = withNotes;
+    }
+    queries.push(q);
   }
 
   // ── Query B: Brand + product line (high-confidence brands only) ──
@@ -703,8 +773,14 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
   // Just gender + color + subcategory, no fit/body/size qualifiers.
   // This is the safety net: even if A is too specific, C always works for
   // common items like "men's white dress shirt".
+  // searchNotes are also appended here when the descriptor has room, giving
+  // the safety-net query the caller's refinement intent without truncation risk.
   const occasionSuffix = occasionTerm ? ` ${occasionTerm}` : "";
-  const simpleDesc = `${g} ${item.color || ""} ${item.subcategory || item.category}${occasionSuffix}`.replace(/\s+/g, " ").trim();
+  let simpleDesc = `${g} ${item.color || ""} ${item.subcategory || item.category}${occasionSuffix}`.replace(/\s+/g, " ").trim();
+  if (notes && !simpleDesc.toLowerCase().includes(notes.toLowerCase())) {
+    const withNotes = `${simpleDesc} ${notes}`;
+    if (withNotes.length <= MAX_QUERY_LEN) simpleDesc = withNotes;
+  }
   if (!queries.some(q => q.toLowerCase() === simpleDesc.toLowerCase())) {
     queries.push(simpleDesc);
   }
@@ -718,9 +794,9 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
     queries.push(fullDesc);
   }
 
-  // Run up to 3 unique queries concurrently (increased from 2)
+  // Run up to 3 unique queries concurrently
   const uniqueQueries = [...new Set(queries.filter(Boolean))].slice(0, 3);
-  console.log(`[TextFallback] "${item.name}" → ${uniqueQueries.map(q => `"${q}"`).join(" | ")} budget=$${tierBounds.min}-$${tierBounds.max}`);
+  console.log(`[TextFallback] "${item.name}" → ${uniqueQueries.map(q => `"${q}"`).join(" | ")} budget=$${tierBounds.min}-$${tierBounds.max}${notes ? ` notes="${notes}"` : ""}`);
 
   const priceCeil = tierBounds.max > DEFAULT_BUDGET.max ? tierBounds.max : null;
 
@@ -934,16 +1010,100 @@ function fallbackTier(item, tier, tierBounds) {
 // MAIN: Process all items for a scan
 // ═════════════════════════════════════════════════════════════
 // ─── Occasion → search modifier ─────────────────────────────
+// Each modifier is injected into Shopping text queries as a suffix or prefix
+// qualifier. Shorter, keyword-focused terms outperform compound phrases in
+// Google Shopping because the index matches on discrete tokens — redundant
+// words dilute ranking and can confuse the query parser.
+//
+// Change log (v4.1):
+//   casual:    "casual everyday"      → "casual"
+//              Reason: "everyday" is redundant; "casual" alone is the recognised
+//              Shopping category signal.
+//   work:      "office business professional" → "business professional"
+//              Reason: "office" duplicates the intent of "business professional";
+//              removing it tightens the token budget.
+//   night_out: "going out night club" → "going out nightlife"
+//              Reason: "night club" is over-specific and conflates the venue with
+//              the garment style. "nightlife" is a broader, better-indexed term.
+//   athletic:  "athletic gym workout activewear" → "activewear"
+//              Reason: "activewear" is a registered Google Shopping product
+//              category keyword. The prior compound phrase spread signal across
+//              4 tokens and occasionally matched gym equipment listings.
+//   formal:    "formal event dress code" → "formal"
+//              Reason: "dress code" caused Shopping to return men's dress-code
+//              articles and suits rather than the actual garment. "formal" alone
+//              maps cleanly to the Shopping taxonomy.
+//   outdoor:   "outdoor adventure hiking" → "outdoor"
+//              Reason: "adventure" and "hiking" over-specialise; a user wearing
+//              an outdoor jacket to a park would miss all results. "outdoor"
+//              covers the category without locking to a single activity.
+//
+// ── Effectiveness audit (v4.2, 2026-03-24) ──────────────────────────────────
+//
+//   casual: "casual"
+//     EFFECTIVE. "casual" is a well-indexed attribute in Google Shopping's
+//     product taxonomy. Appending it to a query like "men's white linen shirt"
+//     reliably surfaces casual/relaxed fits rather than formal ones.
+//
+//   work: "business professional"
+//     EFFECTIVE. Both tokens are indexed Shopping attributes; the two-word
+//     phrase is short enough to not dilute the garment keywords. Surfaces
+//     blazers, dress shirts, trousers correctly.
+//
+//   night_out: "going out nightlife"
+//     MARGINAL. Neither "going out" nor "nightlife" appear as standard Google
+//     Shopping product-attribute terms. Retailers label garments "party",
+//     "cocktail", or "evening" — not "nightlife". In practice this modifier
+//     may not change results at all for most queries.
+//     FUTURE IMPROVEMENT: Change to "cocktail party" — both words appear as
+//     recognised Shopping product attributes and map to the correct garment
+//     style (bodycon dresses, blazers, etc.) without over-constraining to a
+//     venue type.
+//
+//   athletic: "activewear"
+//     EFFECTIVE. "activewear" is a registered Google Shopping product category
+//     node. Appending it strongly filters toward performance/gym garments.
+//
+//   formal: "formal"
+//     EFFECTIVE. Single-token, clean Shopping category signal. Surfaces suits,
+//     gowns, and formal accessories as expected.
+//
+//   outdoor: "outdoor"
+//     EFFECTIVE. Broad enough to cover jackets, boots, and base layers without
+//     locking to a specific activity. Pairs well with most garment types.
+//
+// ── Gender prefix strategy ───────────────────────────────────────────────────
+//   g = gender === "female" ? "women's" : "men's"
+//   "women's" and "men's" are the standard apostrophe forms used by retailers
+//   and indexed by Google Shopping. "female"/"male" are not Shopping terms and
+//   would degrade results. The hasGenderPrefix guard (regex: \b(men'?s?|women'?s?|
+//   boys?|girls?)\b) correctly prevents double-prefixing even when Claude's output
+//   uses Unicode curly apostrophes (normalizeApostrophes handles those first).
+//
+// ── search_notes injection ───────────────────────────────────────────────────
+//   search_notes is appended to Query A and Query C when:
+//     (a) it is non-empty, (b) the combined length stays under MAX_QUERY_LEN
+//     (150 chars), and (c) the note is not already present in the query.
+//   It is baked into the text cache key (makeTextCacheKey) so different notes
+//   never collide on the same cache entry.
+//   STATUS: fully implemented.
+//
+// ── shoe_size ────────────────────────────────────────────────────────────────
+//   sizePrefs.shoe_size is a dedicated numeric field collected by the profile UI.
+//   Prior to v4.2 it was silently ignored — getSizeTermForItem only read
+//   sizePrefs.sizes.shoes. As of v4.2 it is used as a fallback sizeTerm for
+//   shoe-category items in Query D when sizePrefs.sizes.shoes is absent.
+//   It does NOT affect Query A or C (to avoid over-constraining those queries).
 const OCCASION_MODIFIERS = {
-  casual:    "casual everyday",
-  work:      "office business professional",
-  night_out: "going out night club",
-  athletic:  "athletic gym workout activewear",
-  formal:    "formal event dress code",
-  outdoor:   "outdoor adventure hiking",
+  casual:    "casual",
+  work:      "business professional",
+  night_out: "going out nightlife",   // FUTURE IMPROVEMENT: change to "cocktail party"
+  athletic:  "activewear",
+  formal:    "formal",
+  outdoor:   "outdoor",
 };
 
-export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null) {
+export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null) {
   cleanupExpiredCache();
   const defaultTierBounds = getTierBounds(budgetMin, budgetMax);
   const defaultSizePrefs = sizePrefs;
@@ -991,7 +1151,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     });
     // Text search if we have fewer than 3 priced Lens results
     if (pricedLens.length < 3) {
-      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion);
+      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes);
       itemPools[i].text = textResults;
       console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
     }

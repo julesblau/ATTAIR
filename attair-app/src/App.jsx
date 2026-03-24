@@ -145,10 +145,10 @@ const API = {
     return await res.json();
   },
 
-  async findProducts(items, gender, scanId, occasion = null) {
+  async findProducts(items, gender, scanId, occasion = null, searchNotes = null) {
     const res = await authFetch(`${API_BASE}/api/find-products`, {
       method: "POST",
-      body: JSON.stringify({ items, gender, scan_id: scanId, occasion }),
+      body: JSON.stringify({ items, gender, scan_id: scanId, occasion, ...(searchNotes ? { search_notes: searchNotes } : {}) }),
     });
     if (!res.ok) { const data = await res.json(); throw new Error(data.message || "Product search failed"); }
     return await res.json();
@@ -483,7 +483,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial }) => {
   const [plan, setPlan] = useState("yearly");
   const [loadingPlan, setLoadingPlan] = useState(false);
   const msgs = {
-    scan_limit: { title: "You've used all 3 free scans today", sub: "Go Pro for unlimited scans, zero ads, and price drop alerts.", cta: "Unlock Unlimited Scans" },
+    scan_limit: { title: "You've used all 12 free scans this month", sub: "Go Pro for unlimited scans, zero ads, and price drop alerts.", cta: "Unlock Unlimited Scans" },
     ad_fatigue: { title: "Tired of ads?", sub: "Pro members get a completely ad-free experience plus unlimited scans.", cta: "Remove Ads Forever" },
     history_expiring: { title: "Your scan history expires soon", sub: "Free accounts only keep 7 days. Pro keeps everything forever.", cta: "Keep My History" },
     save_limit: { title: "You've saved 20 items", sub: "Unlock unlimited saves, price drop alerts, and an ad-free experience.", cta: "Save Unlimited Items" },
@@ -512,7 +512,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial }) => {
           <div
             onClick={() => setPlan("yearly")}
             style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "yearly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "yearly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s", position: "relative" }}>
-            <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", fontSize: 8, fontWeight: 800, padding: "2px 8px", borderRadius: 100, letterSpacing: 1, whiteSpace: "nowrap" }}>BEST VALUE</div>
+            <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", fontSize: 8, fontWeight: 800, padding: "2px 8px", borderRadius: 100, letterSpacing: 1, whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(201,169,110,.5)" }}>BEST VALUE</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$39.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/yr</span></div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$0.77/week</div>
           </div>
@@ -583,7 +583,7 @@ function asTierArray(val) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// i18n — Minimal English / Spanish support
+// i18n — 8 language support
 // ═══════════════════════════════════════════════════════════════
 const STRINGS = {
   en: {
@@ -604,9 +604,19 @@ const STRINGS = {
     rate_outfit: "Rate this outfit",
     log_out: "Log out",
     settings: "Settings",
-    light_mode: "☀️ Switch to Light Mode",
-    dark_mode: "🌙 Switch to Dark Mode",
+    light_mode: "Switch to Light Mode",
+    dark_mode: "Switch to Dark Mode",
     language: "Language",
+    search_notes_placeholder: "Add search notes (e.g., 'sustainable brands', 'linen fabric')…",
+    select_items: "Select items to search",
+    no_scans: "No scans yet. Take your first photo!",
+    no_saves: "No saved items yet",
+    scans_remaining: "free scans this month",
+    upgrade: "Go Pro",
+    copy: "Copy",
+    copied: "Copied!",
+    share: "Share",
+    streak: "day streak!",
   },
   es: {
     scan: "Escanear",
@@ -626,9 +636,211 @@ const STRINGS = {
     rate_outfit: "Califica este outfit",
     log_out: "Cerrar sesión",
     settings: "Ajustes",
-    light_mode: "☀️ Modo Claro",
-    dark_mode: "🌙 Modo Oscuro",
+    light_mode: "Cambiar a Modo Claro",
+    dark_mode: "Cambiar a Modo Oscuro",
     language: "Idioma",
+    search_notes_placeholder: "Añadir notas (ej. 'marcas sostenibles', 'tela de lino')…",
+    select_items: "Seleccionar artículos",
+    no_scans: "Sin escaneos. ¡Toma tu primera foto!",
+    no_saves: "Sin artículos guardados",
+    scans_remaining: "escaneos gratis este mes",
+    upgrade: "Ir a Pro",
+    copy: "Copiar",
+    copied: "¡Copiado!",
+    share: "Compartir",
+    streak: "días seguidos!",
+  },
+  fr: {
+    scan: "Scanner",
+    history: "Historique",
+    saved: "Sauvegardes",
+    profile: "Profil",
+    new_scan: "Nouveau scan",
+    analyzing: "Analyse du look…",
+    searching: "Recherche en cours…",
+    shop_item: "Acheter cet article",
+    save: "Économique",
+    splurge: "Premium",
+    best_value: "Meilleur rapport",
+    complete_look: "Compléter le Look",
+    as_seen_on: "Vu Sur",
+    get_it_today: "L'Avoir Aujourd'hui",
+    rate_outfit: "Évaluer la tenue",
+    log_out: "Se déconnecter",
+    settings: "Paramètres",
+    light_mode: "Passer en Mode Clair",
+    dark_mode: "Passer en Mode Sombre",
+    language: "Langue",
+    search_notes_placeholder: "Notes de recherche (ex. 'marques durables', 'tissu lin')…",
+    select_items: "Sélectionner des articles",
+    no_scans: "Aucun scan. Prenez votre première photo!",
+    no_saves: "Aucun article sauvegardé",
+    scans_remaining: "scans gratuits ce mois",
+    upgrade: "Passer Pro",
+    copy: "Copier",
+    copied: "Copié!",
+    share: "Partager",
+    streak: "jours de suite!",
+  },
+  de: {
+    scan: "Scannen",
+    history: "Verlauf",
+    saved: "Gespeichert",
+    profile: "Profil",
+    new_scan: "Neuer Scan",
+    analyzing: "Look wird analysiert…",
+    searching: "Web wird durchsucht…",
+    shop_item: "Artikel kaufen",
+    save: "Günstig",
+    splurge: "Premium",
+    best_value: "Bestes Preis-Leistung",
+    complete_look: "Look vervollständigen",
+    as_seen_on: "Gesehen Bei",
+    get_it_today: "Heute Kaufen",
+    rate_outfit: "Outfit bewerten",
+    log_out: "Abmelden",
+    settings: "Einstellungen",
+    light_mode: "Zum hellen Modus",
+    dark_mode: "Zum dunklen Modus",
+    language: "Sprache",
+    search_notes_placeholder: "Suchnotizen (z.B. 'nachhaltige Marken', 'Leinenstoff')…",
+    select_items: "Artikel auswählen",
+    no_scans: "Noch keine Scans. Mach dein erstes Foto!",
+    no_saves: "Keine gespeicherten Artikel",
+    scans_remaining: "kostenlose Scans diesen Monat",
+    upgrade: "Pro werden",
+    copy: "Kopieren",
+    copied: "Kopiert!",
+    share: "Teilen",
+    streak: "Tage hintereinander!",
+  },
+  zh: {
+    scan: "扫描",
+    history: "历史",
+    saved: "已保存",
+    profile: "个人",
+    new_scan: "新扫描",
+    analyzing: "正在分析穿搭…",
+    searching: "正在搜索…",
+    shop_item: "购买此商品",
+    save: "经济实惠",
+    splurge: "高端奢华",
+    best_value: "最佳性价比",
+    complete_look: "完善穿搭",
+    as_seen_on: "明星同款",
+    get_it_today: "今日购买",
+    rate_outfit: "评价穿搭",
+    log_out: "退出登录",
+    settings: "设置",
+    light_mode: "切换浅色模式",
+    dark_mode: "切换深色模式",
+    language: "语言",
+    search_notes_placeholder: "添加搜索备注（如'可持续品牌'、'亚麻面料'）…",
+    select_items: "选择要搜索的商品",
+    no_scans: "暂无扫描记录，拍摄你的第一张照片吧！",
+    no_saves: "暂无保存的商品",
+    scans_remaining: "本月免费扫描次数",
+    upgrade: "升级 Pro",
+    copy: "复制",
+    copied: "已复制！",
+    share: "分享",
+    streak: "天连续打卡！",
+  },
+  ja: {
+    scan: "スキャン",
+    history: "履歴",
+    saved: "保存済み",
+    profile: "プロフィール",
+    new_scan: "新規スキャン",
+    analyzing: "コーデを分析中…",
+    searching: "検索中…",
+    shop_item: "このアイテムを購入",
+    save: "プチプラ",
+    splurge: "プレミアム",
+    best_value: "コスパ最高",
+    complete_look: "コーデを完成させる",
+    as_seen_on: "着用情報",
+    get_it_today: "今日ゲット",
+    rate_outfit: "コーデを評価",
+    log_out: "ログアウト",
+    settings: "設定",
+    light_mode: "ライトモードに切替",
+    dark_mode: "ダークモードに切替",
+    language: "言語",
+    search_notes_placeholder: "検索メモ（例：'サステナブルブランド'、'リネン素材'）…",
+    select_items: "アイテムを選択",
+    no_scans: "スキャン履歴なし。最初の写真を撮りましょう！",
+    no_saves: "保存アイテムなし",
+    scans_remaining: "今月の無料スキャン",
+    upgrade: "Proにアップグレード",
+    copy: "コピー",
+    copied: "コピーしました！",
+    share: "シェア",
+    streak: "日連続！",
+  },
+  ko: {
+    scan: "스캔",
+    history: "기록",
+    saved: "저장됨",
+    profile: "프로필",
+    new_scan: "새 스캔",
+    analyzing: "스타일 분석 중…",
+    searching: "검색 중…",
+    shop_item: "이 아이템 구매",
+    save: "저렴한",
+    splurge: "프리미엄",
+    best_value: "가성비 최고",
+    complete_look: "룩 완성하기",
+    as_seen_on: "착용 정보",
+    get_it_today: "오늘 구매",
+    rate_outfit: "스타일 평가",
+    log_out: "로그아웃",
+    settings: "설정",
+    light_mode: "라이트 모드로 전환",
+    dark_mode: "다크 모드로 전환",
+    language: "언어",
+    search_notes_placeholder: "검색 메모 추가 (예: '지속가능 브랜드', '린넨 소재')…",
+    select_items: "검색할 아이템 선택",
+    no_scans: "스캔 기록 없음. 첫 번째 사진을 찍어보세요!",
+    no_saves: "저장된 아이템 없음",
+    scans_remaining: "이번 달 무료 스캔",
+    upgrade: "Pro로 업그레이드",
+    copy: "복사",
+    copied: "복사됨!",
+    share: "공유",
+    streak: "일 연속!",
+  },
+  pt: {
+    scan: "Escanear",
+    history: "Histórico",
+    saved: "Salvos",
+    profile: "Perfil",
+    new_scan: "Novo scan",
+    analyzing: "Analisando o look…",
+    searching: "Pesquisando na web…",
+    shop_item: "Comprar este item",
+    save: "Econômico",
+    splurge: "Premium",
+    best_value: "Melhor custo-benefício",
+    complete_look: "Completar o Look",
+    as_seen_on: "Visto Em",
+    get_it_today: "Compre Hoje",
+    rate_outfit: "Avaliar o outfit",
+    log_out: "Sair",
+    settings: "Configurações",
+    light_mode: "Mudar para Modo Claro",
+    dark_mode: "Mudar para Modo Escuro",
+    language: "Idioma",
+    search_notes_placeholder: "Notas de busca (ex: 'marcas sustentáveis', 'tecido linho')…",
+    select_items: "Selecionar itens",
+    no_scans: "Sem scans. Tire sua primeira foto!",
+    no_saves: "Nenhum item salvo",
+    scans_remaining: "scans gratuitos este mês",
+    upgrade: "Ir Pro",
+    copy: "Copiar",
+    copied: "Copiado!",
+    share: "Compartilhar",
+    streak: "dias seguidos!",
   },
 };
 
@@ -766,7 +978,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10 }}>
       <canvas
         ref={canvasRef}
-        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", touchAction: "none", cursor: "crosshair" }}
+        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", touchAction: "none", cursor: "crosshair", animation: confirmed ? 'glowPulse .6s ease 3' : 'none' }}
         onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw}
         onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
       />
@@ -869,6 +1081,15 @@ export default function App() {
   // ─── Occasion filter ──────────────────────────────────────
   const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
 
+  // ─── Search notes ─────────────────────────────────────────
+  const [searchNotes, setSearchNotes] = useState("");
+
+  // ─── Scan streak ──────────────────────────────────────────
+  const [scanStreak, setScanStreak] = useState(0);
+
+  // ─── Identification preview ───────────────────────────────
+  const [identPreview, setIdentPreview] = useState(null); // array of identified items | null
+
   // ─── Theme (dark / light) ─────────────────────────────────
   const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
   const toggleTheme = () => setTheme(t => { const n = t === "dark" ? "light" : "dark"; localStorage.setItem("attair_theme", n); return n; });
@@ -876,7 +1097,16 @@ export default function App() {
   // ─── Language (i18n) ──────────────────────────────────────
   const [lang, setLang] = useState(() => localStorage.getItem("attair_lang") || "en");
   const t = (key) => STRINGS[lang]?.[key] ?? STRINGS.en[key] ?? key;
-  const toggleLang = () => setLang(l => { const n = l === "en" ? "es" : "en"; localStorage.setItem("attair_lang", n); return n; });
+  const LANG_OPTIONS = [
+    { code: "en", label: "English" },
+    { code: "es", label: "Español" },
+    { code: "fr", label: "Français" },
+    { code: "de", label: "Deutsch" },
+    { code: "zh", label: "中文" },
+    { code: "ja", label: "日本語" },
+    { code: "ko", label: "한국어" },
+    { code: "pt", label: "Português" },
+  ];
 
   // ─── Loading message rotation ─────────────────────────────
   const [loadMsgIdx, setLoadMsgIdx] = useState(0);
@@ -901,6 +1131,15 @@ export default function App() {
   // ─── Crop ─────────────────────────────────────────────────
   const [cropPending, setCropPending] = useState(null); // { src, base64, mime, source }
   const [cropMode, setCropMode] = useState(false); // true = editing handles shown
+
+  // Auto-activate circle to search when image is ready
+  useEffect(() => {
+    if (cropPending && !cropMode) {
+      setCircleSearchActive(true);
+    } else if (!cropPending) {
+      setCircleSearchActive(false);
+    }
+  }, [cropPending, cropMode]);
   const [crop, setCrop] = useState();
   const [completedCrop, setCompletedCrop] = useState();
   const cropImgRef = useRef(null);
@@ -938,7 +1177,30 @@ export default function App() {
           if (profile.referral_code) setReferralCode(profile.referral_code);
         })
         .catch(() => {});
-      API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
+      API.getHistory().then(d => {
+        const scans = d.scans || [];
+        setHistory(scans);
+        // Calculate streak: consecutive days with at least 1 scan, from most recent day back
+        if (scans.length > 0) {
+          const daySet = new Set(scans.map(s => new Date(s.created_at).toDateString()));
+          let streak = 0;
+          const today = new Date();
+          for (let i = 0; i < 365; i++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            if (daySet.has(d.toDateString())) {
+              streak++;
+            } else if (i > 0) {
+              break; // gap found
+            }
+            // if i===0 and no scan today, continue checking yesterday
+            else {
+              // no scan today yet — check if yesterday starts the streak
+            }
+          }
+          setScanStreak(streak);
+        }
+      }).catch(() => {});
       API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
       API.getWishlists().then(d => setWishlists(d.wishlists || [])).catch(() => {});
       if (screen === "onboarding") setScreen("app");
@@ -1013,8 +1275,8 @@ export default function App() {
   };
   const isFree = !userStatus || userStatus.tier === "free" || userStatus.tier === "expired";
   const isPro = userStatus?.tier === "pro" || userStatus?.tier === "trial";
-  const scansLeft = userStatus?.scans_remaining_today ?? 3;
-  const scansLimit = userStatus?.scans_limit ?? 3;
+  const scansLeft = userStatus?.scans_remaining_today ?? 12;
+  const scansLimit = userStatus?.scans_limit ?? 12;
   const showAds = userStatus?.show_ads ?? true;
 
   // ─── OAuth callback — check URL hash for tokens on mount ──
@@ -1247,11 +1509,12 @@ export default function App() {
       setResults(identified);
       setItemOverrides({});
       setItemSettingsIdx(null);
+      setIdentPreview(items);
       setPhase("picking"); // Stop here — let user choose which items to search
       track("scan_completed", { item_count: items.length, gender: raw.gender }, raw.scan_id, "scan");
 
       // Update status (scan count changed) — optimistic local update + server confirm
-      setUserStatus(prev => prev ? { ...prev, scans_remaining_today: Math.max(0, (prev.scans_remaining_today ?? 3) - 1) } : prev);
+      setUserStatus(prev => prev ? { ...prev, scans_remaining_today: Math.max(0, (prev.scans_remaining_today ?? 12) - 1) } : prev);
       refreshStatus();
 
       // Show interstitial ad for free users (skip on first-ever scan — don't be hostile)
@@ -1263,9 +1526,9 @@ export default function App() {
       }
     } catch (err) {
       setPhase("idle");
-      if (err.message.includes("scan limit") || err.message.includes("3/3")) {
+      if (err.message.includes("scan limit") || err.message.includes("12/12") || err.message.includes("3/3")) {
         setUpgradeModal("scan_limit");
-        setError("You've used all your free scans for today.");
+        setError("You've used all 12 free scans this month.");
       } else if (err.message.includes("Session expired")) {
         setError("Your session expired. Please log in again.");
         setAuthed(false);
@@ -1303,7 +1566,7 @@ export default function App() {
     setSelIdx(pickedIndices[0]); // Auto-select first picked item
 
     try {
-      const searchResults = await API.findProducts(picked, results.gender, scanId, occasion);
+      const searchResults = await API.findProducts(picked, results.gender, scanId, occasion, searchNotes || null);
       setResults(prev => {
         if (!prev) return prev;
         const updated = prev.items.map((item, idx) => {
@@ -1331,7 +1594,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -1404,6 +1667,7 @@ export default function App() {
       @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
       @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
       @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+      @keyframes glowPulse{0%,100%{opacity:1;filter:brightness(1.5)}50%{opacity:.6;filter:brightness(2)}}
       .fi{animation:fi .3s ease forwards}.fo{animation:fo .22s ease forwards}
       .app{width:100%;max-width:430px;min-height:100vh;margin:0 auto;background:#0C0C0E;font-family:'Outfit',sans-serif;color:#E8E6E1;display:flex;flex-direction:column;overflow-x:hidden}
       .serif{font-family:'Instrument Serif',serif}
@@ -1437,7 +1701,7 @@ export default function App() {
       .pw-ck{width:20px;height:20px;border-radius:50%;background:rgba(201,169,110,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#C9A96E;font-size:10px;font-weight:700}
       .pw-plans{display:flex;gap:10px;margin-bottom:28px}
       .pw-p{flex:1;padding:20px 14px;border-radius:14px;border:1.5px solid rgba(255,255,255,.06);cursor:pointer;transition:all .2s;position:relative;background:rgba(255,255,255,.01)}.pw-p.sel{border-color:rgba(201,169,110,.5);background:rgba(201,169,110,.03)}
-      .pw-ptag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#C9A96E;color:#0C0C0E;font-size:9px;font-weight:800;padding:3px 10px;border-radius:100px;letter-spacing:1px;white-space:nowrap}
+      .pw-ptag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#C9A96E;color:#0C0C0E;font-size:9px;font-weight:800;padding:3px 10px;border-radius:100px;letter-spacing:1px;white-space:nowrap;box-shadow:0 4px 16px rgba(201,169,110,.5)}
       .pw-pp{font-size:22px;font-weight:700;color:#fff}.pw-pd{font-size:12px;color:rgba(255,255,255,.3)}.pw-pw{font-size:11px;color:rgba(255,255,255,.2);margin-top:4px}
       .pw-terms{text-align:center;font-size:10px;color:rgba(255,255,255,.15);margin-top:14px}
 
@@ -1618,6 +1882,15 @@ export default function App() {
       .app[data-theme='light'] .refine-msg.ai{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.06);color:rgba(0,0,0,.6)}
       .app[data-theme='light'] .refine-input{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.08);color:#1A1816}
       .app[data-theme='light'] .sitem{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.04);color:rgba(0,0,0,.5)}
+      .app[data-theme='light'] .modal-box{background:#F6F4F0;border-color:rgba(0,0,0,.08)}
+      .app[data-theme='light'] .modal-title,.app[data-theme='light'] .modal-sub{color:#1A1816}
+      .app[data-theme='light'] .det{background:#F6F4F0;border-color:rgba(0,0,0,.06)}
+      .app[data-theme='light'] .det-name{color:#1A1816}
+      .app[data-theme='light'] .saved-row{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.05)}
+      .app[data-theme='light'] .hist-item{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.05)}
+      .app[data-theme='light'] .shome h2{color:#1A1816}
+      .app[data-theme='light'] .scan-ring{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.08)}
+      .app[data-theme='light'] .scan-inner{color:#1A1816}
     `}</style>
 
     <div className="app" data-theme={theme}>
@@ -1709,7 +1982,7 @@ export default function App() {
           }}>
             {authed ? (upgradeLoading ? "Loading…" : `Start Pro — ${selPlan === "yearly" ? "$39.99/yr" : "$9.99/mo"}`) : "Get started"}
           </button>
-          <div className="pw-terms">3 free scans per day. Upgrade anytime.</div>
+          <div className="pw-terms">12 free scans per month. Upgrade anytime.</div>
         </div>
       )}
 
@@ -1751,13 +2024,13 @@ export default function App() {
 
           <input type="email" placeholder="Email address" value={authEmail} onChange={e => setAuthEmail(e.target.value)} autoComplete="email" />
           <div style={{ position: "relative" }}>
-            <input type={showPass ? "text" : "password"} placeholder="Password" value={authPass} onChange={e => setAuthPass(e.target.value)} onKeyDown={e => e.key === "Enter" && authEmail && authPass.length >= 6 && (authScreen === "login" || authPhone) && handleAuth()} autoComplete={authScreen === "signup" ? "new-password" : "current-password"} style={{ paddingRight: 48 }} />
+            <input type={showPass ? "text" : "password"} placeholder="Password" value={authPass} onChange={e => setAuthPass(e.target.value)} onKeyDown={e => e.key === "Enter" && authEmail && authPass.length >= 6 && handleAuth()} autoComplete={authScreen === "signup" ? "new-password" : "current-password"} style={{ paddingRight: 48 }} />
             <button onClick={() => setShowPass(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "rgba(255,255,255,.2)", fontSize: 12, cursor: "pointer", fontFamily: "'Outfit'", padding: "4px" }}>{showPass ? "Hide" : "Show"}</button>
           </div>
           {authScreen === "signup" && authPass.length > 0 && authPass.length < 6 && (
             <div style={{ fontSize: 11, color: "rgba(255,150,100,.5)", marginTop: -4, marginBottom: 4 }}>Password must be at least 6 characters</div>
           )}
-          <button className="cta" style={{ marginTop: 8, opacity: (!authEmail || authPass.length < 6 || (authScreen === "signup" && !authPhone)) ? 0.4 : 1 }} onClick={handleAuth} disabled={authLoading || !authEmail || authPass.length < 6 || (authScreen === "signup" && !authPhone)}>
+          <button className="cta" style={{ marginTop: 8, opacity: (!authEmail || authPass.length < 6) ? 0.4 : 1 }} onClick={handleAuth} disabled={authLoading || !authEmail || authPass.length < 6}>
             {authLoading ? "Loading…" : authScreen === "signup" ? "Create Account" : "Log In"}
           </button>
           <button className="auth-toggle" onClick={() => { setAuthScreen(authScreen === "login" ? "signup" : "login"); setAuthErr(null); setShowPass(false); }}>
@@ -1836,7 +2109,13 @@ export default function App() {
               <h2 className="serif" style={{fontSize:28,color:"#fff"}}>Scan an outfit</h2>
               <p style={{fontSize:13,color:"rgba(255,255,255,.3)",marginTop:-14,lineHeight:1.5}}>Get a budget, mid-range, and premium option for every item</p>
               {isFree && (
-                <div className="scan-counter">{scansLeft > 0 ? <><strong>{scansLeft}</strong> of {scansLimit} free scans remaining today</> : <>No scans left today · <span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
+                <div className="scan-counter">{scansLeft > 0 ? <><strong>{scansLeft}</strong> of {scansLimit} free scans remaining this month</> : <>No scans left this month · <span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
+              )}
+              {scanStreak >= 2 && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "6px 14px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#C9A96E", alignSelf: "center" }}>
+                  <span style={{ fontSize: 14 }}>🔥</span>
+                  {scanStreak} {t("streak")}
+                </div>
               )}
               <div className="btns">
                 <button className="btn gold" onClick={camStart}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>Camera</button>
@@ -1961,6 +2240,19 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Search Notes */}
+              <div style={{ padding: "8px 20px 0" }}>
+                <textarea
+                  value={searchNotes}
+                  onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
+                  placeholder={t("search_notes_placeholder")}
+                  rows={2}
+                  style={{ width: "100%", padding: "10px 14px", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12, color: "rgba(255,255,255,.7)", fontSize: 12, fontFamily: "'Outfit'", resize: "none", outline: "none", lineHeight: 1.5, boxSizing: "border-box", transition: "border-color .2s" }}
+                  onFocus={e => e.target.style.borderColor = "rgba(201,169,110,.3)"}
+                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.06)"}
+                />
+              </div>
+
               {/* Search CTA */}
               <div className="pick-cta">
                 <button
@@ -2025,6 +2317,23 @@ export default function App() {
                 </div>
                 {results.summary && <div style={{ fontSize: 13, color: "rgba(255,255,255,.5)", fontStyle: "italic", lineHeight: 1.5 }}>{results.summary}</div>}
 
+                {/* ─── Ident preview — shown while searching ── */}
+                {phase === "searching" && identPreview && identPreview.length > 0 && (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "rgba(201,169,110,.4)", textTransform: "uppercase", marginBottom: 2 }}>Found in this photo</div>
+                    {identPreview.slice(0, 4).map((item, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,.04)" }}>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#C9A96E", flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>{item.name}</span>
+                          {item.brand && item.brand !== "Unidentified" && <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginLeft: 6 }}>{item.brand}</span>}
+                          {item.color && <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)", marginLeft: 4 }}>· {item.color}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* ─── Outfit star rating ──────────────── */}
                 {phase === "done" && scanId && (
                   <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
@@ -2056,7 +2365,18 @@ export default function App() {
               </div>
 
               {/* ─── Banner ad slot (free users) ──────── */}
-              {showAds && <div className="ad-slot ad-banner">BANNER AD</div>}
+              {showAds && (
+                <div className="ad-slot ad-banner" style={{ margin: "0 20px 8px", height: "auto", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,.05)", background: "linear-gradient(135deg, rgba(201,169,110,.06) 0%, rgba(255,255,255,.02) 100%)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 8, background: "rgba(201,169,110,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✦</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 2 }}>Trending This Week</div>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)" }}>Discover curated styles from top brands</div>
+                    </div>
+                    <div style={{ fontSize: 9, color: "rgba(255,255,255,.15)", letterSpacing: .5, textTransform: "uppercase", flexShrink: 0 }}>Sponsored</div>
+                  </div>
+                </div>
+              )}
 
               {/* Selected item detail */}
               {selIdx !== null && results.items[selIdx] && pickedItems.has(selIdx) && (() => {
@@ -2361,23 +2681,28 @@ export default function App() {
                         )}
                         {pairings && pairings.length > 0 && (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {pairings.map((p, i) => {
-                              const shopUrl = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
-                              return (
-                                <a key={i} href={shopUrl} target="_blank" rel="noopener noreferrer"
-                                  onClick={() => track("pairing_clicked", { name: p.name, search_query: p.search_query, category: p.category }, scanId, "scan")}
-                                  style={{ padding: "12px 14px", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", alignItems: "center", gap: 12, transition: "all .2s" }}>
-                                  <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(201,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
-                                    {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[p.category] || "✦"}
-                                  </div>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 2 }}>{p.name}</div>
-                                    <div style={{ fontSize: 11, color: "rgba(255,255,255,.35)", lineHeight: 1.4 }}>{p.why}</div>
-                                  </div>
-                                  <div style={{ fontSize: 11, color: "#C9A96E", fontWeight: 600, flexShrink: 0 }}>Shop →</div>
-                                </a>
-                              );
-                            })}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {pairings.map((p, i) => {
+                                const shopUrl = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
+                                return (
+                                  <a key={i} href={shopUrl} target="_blank" rel="noopener noreferrer"
+                                    onClick={async () => {
+                                      track("pairing_clicked", { name: p.name, search_query: p.search_query, category: p.category }, scanId, "scan");
+                                      authFetch(`${API_BASE}/api/suggest-pairings/track-click`, { method: "POST", body: JSON.stringify({ pairing_product_url: shopUrl, item_name: p.name }) }).catch(() => {});
+                                    }}
+                                    style={{ padding: "12px 10px", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, transition: "all .2s", textAlign: "center" }}>
+                                    <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
+                                      {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[p.category] || "✦"}
+                                    </div>
+                                    <div>
+                                      <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", marginBottom: 3, lineHeight: 1.3 }}>{p.name}</div>
+                                      <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", lineHeight: 1.4 }}>{p.why}</div>
+                                    </div>
+                                    <div style={{ fontSize: 11, color: "#C9A96E", fontWeight: 600 }}>Shop →</div>
+                                  </a>
+                                );
+                              })}
+                            </div>
                             <button onClick={() => setPairings(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.15)", fontFamily: "'Outfit'", fontSize: 11, cursor: "pointer", padding: "4px 0" }}>Dismiss</button>
                           </div>
                         )}
@@ -2388,7 +2713,16 @@ export default function App() {
                     )}
 
                     {/* Native ad slot — free users, every 2 items */}
-                    {showAds && selIdx % 2 === 1 && <div className="ad-slot ad-native">SPONSORED</div>}
+                    {showAds && selIdx % 2 === 1 && (
+                      <div style={{ padding: "10px 14px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.04)", borderRadius: 10, display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ fontSize: 14 }}>🛍</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.5)" }}>Featured Brands</div>
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>Style picks for you</div>
+                        </div>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,.1)", letterSpacing: .5, textTransform: "uppercase" }}>Ad</div>
+                      </div>
+                    )}
 
                     <div className="aff-note">Links may include affiliate partnerships</div>
                   </div>
@@ -2548,6 +2882,19 @@ export default function App() {
                             <div key={s.id} className="saved-row" style={{ position: "relative", flexWrap: "wrap", alignItems: "flex-start", gap: 10 }}>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{item.name}</div>
+                                {s.created_at && (
+                                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)", marginTop: 2 }}>
+                                    {(() => {
+                                      const diff = Date.now() - new Date(s.created_at).getTime();
+                                      const days = Math.floor(diff / 86400000);
+                                      if (days === 0) return "Saved today";
+                                      if (days === 1) return "Saved yesterday";
+                                      if (days < 7) return `Saved ${days} days ago`;
+                                      if (days < 30) return `Saved ${Math.floor(days/7)} week${Math.floor(days/7)>1?"s":""} ago`;
+                                      return `Saved ${new Date(s.created_at).toLocaleDateString()}`;
+                                    })()}
+                                  </div>
+                                )}
                                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                                   {item.brand && item.brand !== "Unidentified" && <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)" }}>{item.brand}</span>}
                                   {item.color && <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>{item.color}</span>}
@@ -2730,7 +3077,7 @@ export default function App() {
                   {isPro ? <div className="pro" style={{marginLeft:"auto"}}>PRO</div> : <div className="free-badge" style={{marginLeft:"auto"}} onClick={() => setUpgradeModal("general")}>UPGRADE</div>}
                 </div>
                 <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.6}}>
-                  Scans today: {isFree ? `${(scansLimit - scansLeft)}/${scansLimit}` : "Unlimited"} · Saved: {userStatus?.saved_count || saved.length}{isFree ? `/${userStatus?.saved_limit || 20}` : ""}
+                  Scans this month: {isFree ? `${(scansLimit - scansLeft)}/${scansLimit}` : "Unlimited"} · Saved: {userStatus?.saved_count || saved.length}{isFree ? `/${userStatus?.saved_limit || 20}` : ""}
                 </div>
               </div>
 
@@ -2842,12 +3189,12 @@ export default function App() {
                 <span>{theme === "dark" ? t("light_mode") : t("dark_mode")}</span>
                 <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)", background: "rgba(255,255,255,.04)", padding: "3px 8px", borderRadius: 5 }}>{theme === "dark" ? "DARK" : "LIGHT"}</span>
               </div>
-              <div className="sitem" onClick={toggleLang}>
+              <div className="sitem" style={{ alignItems: "flex-start", flexDirection: "column", gap: 8 }}>
                 <span>🌐 {t("language")}</span>
-                <div style={{ display: "flex", gap: 4 }}>
-                  {["en","es"].map(l => (
-                    <span key={l} onClick={e => { e.stopPropagation(); setLang(l); localStorage.setItem("attair_lang", l); }} style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, cursor: "pointer", background: lang === l ? "rgba(201,169,110,.15)" : "rgba(255,255,255,.04)", color: lang === l ? "#C9A96E" : "rgba(255,255,255,.2)", border: lang === l ? "1px solid rgba(201,169,110,.3)" : "1px solid transparent", transition: "all .15s" }}>
-                      {l === "en" ? "EN" : "ES"}
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {[["en","EN"],["es","ES"],["fr","FR"],["de","DE"],["zh","中"],["ja","日"],["ko","한"],["pt","PT"]].map(([l, label]) => (
+                    <span key={l} onClick={() => { setLang(l); localStorage.setItem("attair_lang", l); }} style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, cursor: "pointer", background: lang === l ? "rgba(201,169,110,.15)" : "rgba(255,255,255,.04)", color: lang === l ? "#C9A96E" : "rgba(255,255,255,.2)", border: lang === l ? "1px solid rgba(201,169,110,.3)" : "1px solid transparent", transition: "all .15s" }}>
+                      {label}
                     </span>
                   ))}
                 </div>
@@ -3067,15 +3414,18 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "center", padding: "8px 20px 0" }}>
               <button
                 onClick={() => {
-                  if (!isPro) { setUpgradeModal("circle_to_search"); return; }
-                  setCircleSearchActive(prev => !prev);
+                  if (priorityRegionBase64) {
+                    setPriorityRegionBase64(null);
+                    setCircleConfirmed(false);
+                    setCircleSearchActive(true);
+                  } else {
+                    setCircleSearchActive(prev => !prev);
+                  }
                 }}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: circleSearchActive ? "rgba(255,120,80,.15)" : "rgba(255,255,255,.04)", border: `1px solid ${circleSearchActive ? "rgba(255,120,80,.5)" : "rgba(255,255,255,.08)"}`, borderRadius: 100, color: circleSearchActive ? "rgb(255,120,80)" : "rgba(255,255,255,.5)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44 }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: priorityRegionBase64 ? "rgba(255,120,80,.15)" : circleSearchActive ? "rgba(255,120,80,.08)" : "rgba(255,255,255,.04)", border: `1px solid ${priorityRegionBase64 ? "rgba(255,120,80,.5)" : circleSearchActive ? "rgba(255,120,80,.3)" : "rgba(255,255,255,.08)"}`, borderRadius: 100, color: priorityRegionBase64 ? "rgb(255,120,80)" : circleSearchActive ? "rgba(255,120,80,.8)" : "rgba(255,255,255,.5)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44 }}
                 aria-label="Circle an item to prioritize in search"
               >
-                {!isPro && <span style={{ fontSize: 10 }}>&#128274;</span>}
-                {circleSearchActive ? "Drawing — lift to confirm" : "Circle an item"}
-                {priorityRegionBase64 && !circleSearchActive && <span style={{ color: "rgb(255,120,80)", marginLeft: 2 }}>&#8226;</span>}
+                {priorityRegionBase64 ? "✓ Item circled — Clear" : circleSearchActive ? "Drawing… lift to confirm" : "✏ Draw to circle an item"}
               </button>
             </div>
           )}

@@ -5,8 +5,8 @@
  *   1. Requires req.userId (set by requireAuth before it runs)
  *   2. Fetches the profile from supabase
  *   3. Pro/trial users bypass the limit → calls next()
- *   4. Free/expired users with scansToday < 3 → calls next()
- *   5. Free/expired users with scansToday >= 3 → returns 429
+ *   4. Free/expired users with scansToday < 12 → calls next()
+ *   5. Free/expired users with scansToday >= 12 → returns 429
  *
  * We mock ../lib/supabase.js to control what the profile query returns.
  */
@@ -30,7 +30,7 @@ const { scanRateLimit } = await import("../middleware/rateLimit.js");
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-const TODAY_UTC = new Date().toISOString().slice(0, 10);
+const TODAY_UTC = new Date().toISOString().slice(0, 7); // YYYY-MM (monthly reset)
 
 function makeReqRes(userId = "user-123") {
   const req = { userId };
@@ -143,10 +143,10 @@ describe("scanRateLimit", () => {
     expect(res._status).toBeNull();
   });
 
-  it("calls next() for a free user with scans_today = 2 (one scan remaining)", async () => {
+  it("calls next() for a free user with scans_today = 11 (one scan remaining)", async () => {
     setupFromMock({
       tier: "free",
-      scans_today: 2,
+      scans_today: 11,
       scans_today_reset: TODAY_UTC,
       trial_ends_at: null,
     });
@@ -157,10 +157,10 @@ describe("scanRateLimit", () => {
     expect(res._status).toBeNull();
   });
 
-  it("returns 429 for a free user who has used all 3 scans", async () => {
+  it("returns 429 for a free user who has used all 12 scans this month", async () => {
     setupFromMock({
       tier: "free",
-      scans_today: 3,
+      scans_today: 12,
       scans_today_reset: TODAY_UTC,
       trial_ends_at: null,
     });
@@ -171,15 +171,15 @@ describe("scanRateLimit", () => {
     expect(res._jsonCalls[0]).toMatchObject({
       error: expect.stringMatching(/limit/i),
       scans_remaining: 0,
-      scans_limit: 3,
+      scans_limit: 12,
     });
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("returns 429 for an expired user who has used all 3 scans", async () => {
+  it("returns 429 for an expired user who has used all 12 scans this month", async () => {
     setupFromMock({
       tier: "expired",
-      scans_today: 3,
+      scans_today: 12,
       scans_today_reset: TODAY_UTC,
       trial_ends_at: null,
     });
@@ -190,11 +190,11 @@ describe("scanRateLimit", () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("resets scans_today to 0 when reset date is in the past and calls next()", async () => {
+  it("resets scans_today to 0 when reset month is in the past and calls next()", async () => {
     setupFromMock({
       tier: "free",
-      scans_today: 3,
-      scans_today_reset: "2020-01-01", // old reset date
+      scans_today: 12,
+      scans_today_reset: "2020-01", // old reset month
       trial_ends_at: null,
     });
 

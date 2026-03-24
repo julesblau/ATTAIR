@@ -30,10 +30,6 @@ router.post("/signup", async (req, res) => {
   if (password.length < 6) {
     return res.status(400).json({ error: "Password must be at least 6 characters" });
   }
-  if (!phone) {
-    return res.status(400).json({ error: "Phone number is required" });
-  }
-
   // SECURITY: Validate budget fields — reject non-numeric values and unsafe ranges to prevent
   // type confusion in downstream DB writes and AI prompt construction.
   if (budget_min != null) {
@@ -64,7 +60,8 @@ router.post("/signup", async (req, res) => {
     const userId = data.user.id;
 
     // Update profile with preferences + name/phone
-    const profileUpdates = { phone };
+    const profileUpdates = {};
+    if (phone) profileUpdates.phone = phone;
     if (display_name) profileUpdates.display_name = display_name;
     if (gender_pref) profileUpdates.gender_pref = gender_pref;
     if (budget_min != null) profileUpdates.budget_min = budget_min;

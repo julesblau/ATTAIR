@@ -15,7 +15,12 @@ const router = Router();
  * Profile values are used as defaults for items without overrides.
  */
 router.post("/", requireAuth, async (req, res) => {
-  const { items, gender, scan_id, occasion } = req.body;
+  const { items, gender, scan_id, occasion, search_notes: rawSearchNotes } = req.body;
+
+  // Sanitize search_notes: trim, cap at 200 chars, keep only safe characters
+  const search_notes = rawSearchNotes
+    ? rawSearchNotes.trim().slice(0, 200).replace(/[^a-zA-Z0-9 ,.\-'\/]/g, "").trim() || null
+    : null;
 
   if (!items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Missing or empty items array" });
@@ -45,7 +50,7 @@ router.post("/", requireAuth, async (req, res) => {
       imageUrl = scan?.image_url || null;
     }
 
-    const results = await findProductsForItems(items, gender, profile?.budget_min, profile?.budget_max, imageUrl, profile?.size_prefs || {}, occasion || null);
+    const results = await findProductsForItems(items, gender, profile?.budget_min, profile?.budget_max, imageUrl, profile?.size_prefs || {}, occasion || null, search_notes);
 
     // Persist tier results back to the scan row
     if (scan_id) {

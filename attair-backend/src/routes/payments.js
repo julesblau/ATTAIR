@@ -5,10 +5,9 @@ import supabase from "../lib/supabase.js";
 
 const router = Router();
 
-// SECURITY: Do not fall back to a placeholder — a missing key should be a hard startup error.
-// STRIPE_SECRET_KEY is validated in index.js REQUIRED_ENV list (add it there if not present).
-// Lazy initialisation so a missing key crashes at first *use* rather than at module import time,
-// giving index.js REQUIRED_ENV validation a chance to surface the helpful error first.
+// SECURITY: Do not fall back to a placeholder — a missing key should be detectable.
+// Stripe keys are intentionally NOT in REQUIRED_ENV (payments are optional; server still starts).
+// Lazy initialisation so a missing key throws at first *use* rather than at module import time.
 let _stripe = null;
 function getStripe() {
   if (!_stripe) {
@@ -18,8 +17,10 @@ function getStripe() {
   return _stripe;
 }
 
-const CORS_ORIGINS = process.env.CORS_ORIGINS || "http://localhost:5173";
-const getSuccessUrl = () => CORS_ORIGINS.split(",")[0].trim();
+const getSuccessUrl = () =>
+  process.env.FRONTEND_URL ||
+  process.env.CORS_ORIGINS?.split(",")[0]?.trim() ||
+  "https://attair.vercel.app";
 
 /**
  * POST /api/payments/create-checkout-session
