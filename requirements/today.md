@@ -53,6 +53,41 @@ Backend generates referral_code on signup (auth.js). Verify:
 
 ---
 
+## 3b. SEARCH QUALITY — AUDIT PARAMETERS & ADD CUSTOM SEARCH INPUT
+
+### Quant agent: Audit all search parameters
+The search algorithm in products.js accepts occasion, gender, budget, size prefs.
+VERIFY that ALL of these are actually being used effectively:
+- Is `occasion` actually changing the search results? The OCCASION_MODIFIERS map
+  only has 6 entries — are the modifier strings good? (e.g., "office business professional"
+  for work — does that actually help Google Shopping find better results?)
+- Is gender correctly prefixed on all queries?
+- Are budget_min/budget_max actually filtering results or just used for tier partitioning?
+- Are size_prefs (body_type, fit_style, shoe_size, etc.) making a measurable difference?
+- Document any parameter that exists but isn't being used effectively
+
+### NEW: Custom Search Notes (free-text input)
+Add a text input field where the user can type custom search criteria to guide
+their search. Examples: "looking for sustainable brands only", "needs to be
+machine washable", "prefer linen or cotton", "for a beach wedding in Mexico".
+
+**Frontend:**
+- Add a text input below the occasion picker (before the Search button)
+- Placeholder: "Add search notes (e.g., 'sustainable brands', 'linen fabric')..."
+- Store as `searchNotes` state
+- Pass to findProducts API call as a new `search_notes` field
+
+**Backend (findProducts.js → products.js):**
+- Accept `search_notes` string in the findProducts route
+- Pass through to `findProductsForItems` as a new parameter
+- In `textSearchForItem`: append the user's custom notes to the search query
+  (after cleaning for safety — no injection, reasonable length cap ~200 chars)
+- Also pass search_notes to Claude in the identify prompt so it can factor them
+  into item identification (e.g., if user says "formal event", Claude should
+  identify items with that context)
+
+---
+
 ## 4. CIRCLE TO SEARCH — REWORKED: DEFAULT BEHAVIOR, NOT PRO-GATED
 
 Circle to Search is now a DEFAULT feature for ALL users (free and pro).
@@ -270,8 +305,11 @@ Work in order: verify first, then tackle section 6. Push only after E2E confirms
   - Finish half-done features (seen-on, nearby-stores, trial flow)
   - DO NOT change CORS, REQUIRED_ENV, or move credentials
 
-**Quant agent:** Verify SerpAPI caching works. Check that getCache/setCache functions
-exist and properly read/write product_cache table. If they're missing, build them.
+**Quant agent:** Three jobs today:
+  1. Verify SerpAPI caching works (getCache/setCache with product_cache table)
+  2. Audit ALL search parameters — are occasion, gender, budget, size prefs actually
+     improving results? Document findings and fix any that aren't working (3b)
+  3. Wire up the new `search_notes` custom text input into the search queries (3b)
 
 **UI/UX agent:** You have CREATIVE LICENSE. Make this app look world-class.
   - Verify Circle to Search end-to-end
