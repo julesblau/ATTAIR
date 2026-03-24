@@ -1,0 +1,18 @@
+{
+  "name": "attair-agent-army",
+  "version": "1.0.0",
+  "description": "Autonomous agent army for ATTAIR development",
+  "type": "module",
+  "scripts": {
+    "start": "node run.js",
+    "army": "node run.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "latest",
+    "dotenv": "latest",
+    "playwright": "^1.58.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
