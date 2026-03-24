@@ -1,357 +1,371 @@
-# Requirements — March 24, 2026
+# Requirements — March 25, 2026
 
-## Context from yesterday's run
-The agent army ran on March 23 and committed 4056 lines across 27 files. However,
-3 bugs were shipped that had to be manually fixed:
-1. Supabase credentials moved to env vars with empty fallbacks (broke OAuth + all API calls)
-2. STRIPE_SECRET_KEY added to REQUIRED_ENV (crashed entire backend)
-3. CORS changed to strict allowlist defaulting to localhost (blocked Vercel→Railway)
+## Context from yesterday's run (March 24)
+The agent army completed a full run: 133 tests passing, 13 files changed/created,
+5 security fixes applied, all core features verified working. See standups/2026-03-24.md
+for the full report.
 
-These are now fixed. The code from yesterday IS deployed and includes:
-- Stripe payments route (payments.js) — needs Stripe keys to activate
-- SerpAPI caching in products.js — working
-- Referral code generation on signup — working
-- Circle to Search canvas overlay — built but untested end-to-end
-- Upgrade modal wired to Stripe — needs keys
-- 80 tests across 6 test files — passing
-- Ad interstitial polished
+ALREADY DONE — do NOT redo:
+- Circle to Search (default ON, glow animation, canvas overlay) ✅
+- Pairings visual grid (Pinterest-style 2-column) ✅
+- Scan streak counter + GET /api/user/streak ✅
+- Identification preview chips during search wait ✅
+- Trial flow (start trial button + countdown badge) ✅
+- Banner ad polish (Featured card with gradient border) ✅
+- iPhone camera mirror fix ✅
+- Referral code card with copy/share ✅
+- BEST VALUE pill shadow ✅
+- Search notes input wired end-to-end ✅
+- Last-seen timestamps on saved items ✅
+- Scan rename inline edit ✅
+- OCCASION_MODIFIERS expanded (wedding, date, beach, smart_casual, festival) ✅
+- MIME validation on uploads ✅
+- Prompt injection caps on refineItem ✅
+- Scan ownership check ✅
+- Field length caps ✅
+- Occasion allowlist ✅
+- Pairings affiliate tracking through /api/go ✅
 
-## Priority (what matters most today)
-The app is live at https://attair.vercel.app. Yesterday's run built the payment
-plumbing but we can't test Stripe without keys yet. Today's focus: make everything
-that IS built actually work perfectly, and finish the half-done features.
-
-Important execution context:
-
-Previous runs were interrupted due to token limits.
-There are staged and partially completed changes on the main branch—you must pick up from these and continue, not rebuild from scratch.
-The task runner will automatically restart this process at 9am, 2pm, and 6:30pm if interrupted.
-
----
-
-## 1. STRIPE WEB PAYMENTS — ALREADY BUILT, VERIFY ONLY
-
-✅ DONE in yesterday's run. payments.js route exists with checkout + webhook.
-The raw body parser is in index.js before express.json().
-
-### Today's task:
-- Review payments.js for correctness — does the webhook handler work?
-- Verify the upgrade modal in App.jsx actually calls createCheckoutSession
-- Make sure the success URL redirect handler works (?upgrade-success in URL)
-- DO NOT add Stripe keys to REQUIRED_ENV — they should remain optional
+IMPORTANT: Read standups/2026-03-24.md and run `git log --oneline -30` before
+starting. Do NOT rebuild anything listed above.
 
 ---
 
-## 2. SERPAPI CACHING — ✅ ALREADY BUILT, VERIFY ONLY
+## 1. CORS VERIFICATION — Test the Live Flow
 
-Caching was added to both googleLensSearch() and textSearch() in products.js.
-- Verify getCache/setCache helpers exist and work with the product_cache table
-- Verify garbage collection of expired rows runs
-- If getCache/setCache don't exist, build them (check products.js first)
+CORS_ORIGINS is already set to https://attair.vercel.app in Railway.
+The code has a CORS_ORIGINS env var mechanism. Today's job:
 
----
-
-## 3. REFERRAL CODE — ✅ BACKEND DONE, VERIFY FRONTEND
-
-Backend generates referral_code on signup (auth.js). Verify:
-- GET /api/user/profile returns referral_code
-- Profile tab in App.jsx shows the code and copy/share works
+- Read the CORS config in index.js — understand exactly how CORS_ORIGINS is used
+- Verify the current deployed code on Railway respects CORS_ORIGINS when set
+- If the code still reflects any origin regardless of CORS_ORIGINS: fix the logic
+  so it uses the allowlist when the env var is present, falls back to permissive
+  only when CORS_ORIGINS is not set (local dev)
+- DO NOT break local development — localhost must still work
+- DO NOT break the live app — test carefully
 
 ---
 
-## 3b. SEARCH QUALITY — AUDIT PARAMETERS & ADD CUSTOM SEARCH INPUT
+## 2. REDESIGN SAVED ITEMS + WISHLIST — New "Likes" System
 
-### Quant agent: Audit all search parameters
-The search algorithm in products.js accepts occasion, gender, budget, size prefs.
-VERIFY that ALL of these are actually being used effectively:
-- Is `occasion` actually changing the search results? The OCCASION_MODIFIERS map
-  only has 6 entries — are the modifier strings good? (e.g., "office business professional"
-  for work — does that actually help Google Shopping find better results?)
-- Is gender correctly prefixed on all queries?
-- Are budget_min/budget_max actually filtering results or just used for tier partitioning?
-- Are size_prefs (body_type, fit_style, shoe_size, etc.) making a measurable difference?
-- Document any parameter that exists but isn't being used effectively
+The current Saved → Wishlist flow is confusing and buried. Rethink it entirely.
 
-### NEW: Custom Search Notes (free-text input)
-Add a text input field where the user can type custom search criteria to guide
-their search. Examples: "looking for sustainable brands only", "needs to be
-machine washable", "prefer linen or cotton", "for a beach wedding in Mexico".
+### The Problem
+- Saved items are buried 2 taps deep inside the History tab
+- "Wishlist" is a second concept layered on top of "Saved" — users don't think this way
+- When you see something you like, your brain just says "want" — not "save to general
+  pool, then organize into named list." That's filing cabinet logic, not shopping logic.
+- Every top fashion app (GOAT, Depop, Pinterest) gives saves a primary nav slot
 
-**Frontend:**
-- Add a text input below the occasion picker (before the Search button)
-- Placeholder: "Add search notes (e.g., 'sustainable brands', 'linen fabric')..."
-- Store as `searchNotes` state
-- Pass to findProducts API call as a new `search_notes` field
+### The New Design: "Likes" Tab
 
-**Backend (findProducts.js → products.js):**
-- Accept `search_notes` string in the findProducts route
-- Pass through to `findProductsForItems` as a new parameter
-- In `textSearchForItem`: append the user's custom notes to the search query
-  (after cleaning for safety — no injection, reasonable length cap ~200 chars)
-- Also pass search_notes to Claude in the identify prompt so it can factor them
-  into item identification (e.g., if user says "formal event", Claude should
-  identify items with that context)
+**Bottom navigation:** Add a 4th tab — a heart icon labeled "Likes"
+(replaces the current buried saved items flow)
 
----
+**One-tap save:** Every product card gets a heart icon. One tap = saved.
+No modal, no "which wishlist?", no friction. Just ❤️.
 
-## 4. CIRCLE TO SEARCH — REWORKED: DEFAULT BEHAVIOR, NOT PRO-GATED
+**Smart auto-organization inside Likes tab:**
+- Items auto-group by the scan they came from ("From your March 22 scan")
+- Show the original outfit photo as the group header
+- Within each group, product cards in a clean grid
+- Price drop indicators on items create urgency (prep for future price tracking)
+- "Saved 2 days ago" relative timestamps on each item
 
-Circle to Search is now a DEFAULT feature for ALL users (free and pro).
-It should be the default interaction — NOT hidden behind a button.
+**Optional collections (replaces "Wishlist"):**
+- Long-press or swipe on any liked item → "Add to collection"
+- Create named collections: "Summer wedding", "Gift ideas for Mom", etc.
+- Collections are OPTIONAL — the default Likes feed works perfectly without them
+- Collections appear as horizontal scrollable chips at the top of the Likes tab
 
-### Key changes from yesterday's implementation:
-- ❌ REMOVE the Pro gate / lock icon — circling is available to everyone
-- ❌ REMOVE the "Circle an item" button — the canvas overlay should be ON by default
-  after the user crops/uploads a photo. The user should immediately be able to draw.
-- ✅ Drawing is the default state — canvas overlay is always active on the image
-- ✅ When the user lifts their finger after circling, play a satisfying GLOW ANIMATION
-  on the circled region — a pulsing highlight/shimmer effect that confirms "got it"
-- ✅ "Clear" button available to remove the circle and start over
-- ✅ User can proceed without circling anything (just tap Identify directly)
+**What to remove:**
+- Remove the old "Wishlist" terminology everywhere — it's now "Collections"
+- Remove any UI that forces users to pick a wishlist before saving
+- Remove saved items from inside the History tab (they live in Likes now)
 
-### Verify end-to-end:
-- Does drawing on the canvas work on touch and mouse?
-- Does the cropped region get sent to the backend?
-- Does Claude return a priority item?
-- Does the priority item appear first in results with a badge?
-- Does the glow animation look satisfying?
+**Backend:**
+- The existing wishlist CRUD routes can be reused — just rename the concept
+- saved_items table stays as-is, it's the backend for "Likes"
+- Wishlists become "Collections" — same table, new name in the UI
 
-### Backend (already built):
-- Accepts optional `priority_region_base64` in the POST /api/identify body
-- Sends cropped region as second image to Claude with priority instruction
-- Store `priority_item_index` on the scan row if useful for analytics
-
-### Design notes:
-- Draw stroke: bright color (coral/orange works well), 3px, semi-transparent fill
-- Glow animation after circle: pulsing shimmer/highlight effect on the circled area,
-  like a confirmation that the app "locked on" to that item. Think satisfying, premium.
-- Keep it dead simple — one finger draws, lift to confirm + glow
-- Should feel like the Samsung/Google circle-to-search gesture, not a complex editor
+**The feel:** Instagram saves meets Pinterest boards, but the app organizes for you.
 
 ---
 
-## 5. FINISH ALL HALF-DONE FEATURES
+## 3. FIX LIGHT MODE — Make It Beautiful
 
-The app has a graveyard of features that exist in the backend but are dead, broken, or
-barely wired up in the frontend. Today, finish all of them. Read the codebase thoroughly
-and find every half-built thing. Here are the known ones — there may be more:
+Light mode exists but looks broken. We are COMMITTING to fixing it properly.
+Do NOT remove it. Make it look great.
 
-### Scan Rename
-- Backend: `PATCH /api/user/scan/:id` exists and works
-- Frontend: `API.renameScan()` exists in the API layer
-- Problem: unclear if there's any UI to trigger it. Add an inline edit on the scan name
-  in the History tab — tap the name, it becomes an editable input, tap done to save.
+### Approach:
+- Audit every component, card, modal, button, input, and text element in light mode
+- Create a proper light mode color palette:
+  - Backgrounds: clean whites and light grays (not pure #fff everywhere)
+  - Text: dark grays (#1a1a1a for primary, #666 for secondary)
+  - Cards: white with subtle shadows (not borders)
+  - Accent colors: keep the same coral/orange brand colors
+  - Inputs: light gray backgrounds with subtle borders
+- Fix contrast issues — every text element must pass WCAG AA contrast ratio
+- Light mode should feel as polished as dark mode — same attention to detail
+- Test at 390px width in both modes
+- The toggle should be in Settings/Profile and persist via localStorage
 
-### Wishlist UI
-- Backend: full wishlist CRUD routes exist (create, list, rename, delete, add item, remove item)
-- Problem: unclear how much of this is wired in the frontend. Find the wishlist UI and
-  make sure every operation (create list, add item, remove item, rename, delete) actually works.
-  If any operation is missing a UI, build it.
+---
 
-### "Seen On" Feature
-- Backend: `GET /api/seen-on` route exists (finds celebrities wearing similar items)
-- Problem: is there a UI for this? If not, add a "Seen On" button to product result cards
-  that fetches and shows celebrity sightings for that item.
+## 4. SECURITY QUICK WINS
 
-### "Nearby Stores" Feature
-- Backend: `GET /api/nearby-stores` route exists (finds local stores selling the item)
-- Problem: is there a UI for this? If not, add a "Find Near Me" button on product cards
-  that requests location permission and shows nearby stores on a simple list.
+These are code-level fixes from yesterday's security audit:
 
-### Trial Flow
-- Backend: `trial_ends_at` column exists and expiry is checked, but no way to start a trial
-- Add a "Start free trial" option in the UpgradeModal — 7 days free, no card required
-- Backend: new route or extend signup to set `tier = 'trial'` and `trial_ends_at = now() + 7 days`
-- Frontend: show a trial countdown badge somewhere visible (e.g., "6 days left in trial")
+### 4a. Add requireAuth to seenOn and nearbyStores
+Both routes are callable without authentication, meaning anyone can burn our
+SerpAPI credits anonymously.
+- Add `requireAuth` middleware to `GET /api/seen-on` and `GET /api/nearby-stores`
+- These routes should require a logged-in user
+
+### 4b. Validate size_prefs JSONB schema
+The `size_prefs` field is written to the DB without validation. Add a simple
+schema check before writing:
+- Must be an object (not array, not string)
+- Only allow known keys: body_type, fit_style, shoe_size, top_size, bottom_size, dress_size
+- Values must be strings, max 50 chars each
+- Silently strip unknown keys (don't reject — old app versions may send different shapes)
+
+### 4c. Stripe webhook error handling
+The webhook handler swallows errors — if a checkout.session.completed event fails
+to upgrade the user, it's permanently lost. Add:
+- Log the full error (console.error with the session ID)
+- Return 500 (not 200) so Stripe retries the webhook
+- Consider writing failed events to a dead-letter table if one exists
+
+---
+
+## 5. i18n AUDIT — Verify Full Coverage
+
+The i18n system was built in a previous run. Today:
+- Switch to each of the 8 languages (EN, ES, FR, DE, ZH, JA, KO, PT)
+- Check EVERY screen for untranslated English strings
+- Fix any missing translations
+- The `t` variable shadowing bug was fixed yesterday — verify it stays fixed
+- Any NEW UI elements added today (Likes tab, collections, etc.) must have
+  full translations in all 8 languages from the start
+
+---
+
+## 6. FIX & UPGRADE "NEARBY STORES"
+
+The "Find Near Me" / nearby stores feature exists but is broken — sometimes returns
+nothing, sometimes says "not authorized."
+
+### Debug & Fix:
+- Read the GET /api/nearby-stores route end-to-end
+- Identify WHY it fails (likely: missing auth since requireAuth wasn't on it,
+  or SerpAPI query isn't constructed well, or location isn't being passed correctly)
+- After adding requireAuth (section 4a), make sure the frontend passes the auth token
+- Make sure the frontend properly requests location permission (navigator.geolocation)
+  and passes lat/lng to the API
+- Test with a real location — it should return actual stores (not empty)
+
+### UI:
+- "Find Near Me" button on product result cards
+- On tap: request location if not already granted, show a loading state,
+  then display a clean list of stores with name, distance, and address
+- If no stores found: show a helpful empty state ("No stores nearby carry this item.
+  Try shopping online →" with a link to the product)
+- If location denied: explain why location is needed, don't just silently fail
+
+---
+
+## 7. UPGRADE "AS SEEN ON" — Influencer & Celebrity Discovery
+
+The current "Seen On" feature does a basic celebrity search but it's underwhelming.
+This should be a KILLER feature — fashion is driven by who's wearing what.
+
+### The Vision:
+Users want to know: "Who's worn something like this?" — and not just A-list celebs.
+They want TikTokers, Instagram influencers, athletes, YouTubers, K-pop stars, actors.
+The results should feel like a curated style feed, not a dry list.
+
+### Onboarding: User Interest Profiles
+Add an optional interests step during signup (or first scan) — a quick, fun picker:
+
+**Frontend (signup flow or first-scan prompt):**
+- After sign-up (or as a skippable card on first app open), show:
+  "Who inspires your style?" with a grid of tappable category chips:
+  - 🎬 Actors & Actresses
+  - 🎵 Musicians & K-Pop
+  - 🏀 Athletes
+  - 📱 TikTok Creators
+  - 📸 Instagram Influencers
+  - 🎮 Streamers & YouTubers
+  - 👗 Fashion Icons & Models
+  - 🌍 Street Style
+- User taps 1-5 categories they care about
+- Store as `style_interests` array on the profiles table (text[] or JSONB)
+- This is SKIPPABLE — if they skip, default to all categories
+- They can change it later in Profile/Settings
+
+**Backend (upgrade GET /api/seen-on):**
+- Accept the user's `style_interests` from their profile
+- Use interests to tailor the search query — e.g., if user selected "Athletes"
+  and "TikTok Creators", search for athletes and TikTokers wearing the item,
+  not just generic "celebrity wearing [item]"
+- The quant agent should optimize the SerpAPI query construction:
+  - Current: probably just "celebrity wearing [item name]"
+  - Better: "[interest category] wearing [item] [brand]" with multiple queries
+    for each interest, merged and deduplicated
+  - Even better: for each result, try to identify WHO the person is and WHAT
+    platform they're known on (TikTok, Instagram, NBA, etc.)
+- Return structured results: { name, platform, image_url, context, source_url }
+
+**Frontend (results display):**
+- Don't just show a text list. Show a visual card for each sighting:
+  - Person's photo or the photo of them wearing the item
+  - Their name and platform badge (🎵 TikTok, 📸 Instagram, 🏀 NBA, etc.)
+  - Brief context ("Spotted at Coachella 2026", "Wore this on her latest TikTok")
+  - Link to the source
+- This should feel like browsing a style magazine, not reading a database
+- Consider making this a swipeable horizontal carousel on product cards
+
+---
+
+## 8. CUSTOM OCCASION TYPES — Let Users Define Their Own
+
+The occasion picker currently has a fixed set (work, date, wedding, beach, etc.).
+Users should be able to ADD THEIR OWN occasions and let the AI figure out how
+to search for them.
+
+### Frontend:
+- Add a "+ Custom" chip at the end of the occasion picker
+- Tapping it opens a small input: "What's the occasion?" with placeholder
+  "e.g., 'job interview at a tech startup', 'rooftop brunch', 'ski trip'"
+- User types their custom occasion and it becomes the selected occasion
+- Save custom occasions to localStorage so they appear as recent/quick picks
+  next time (max 5 recent custom occasions)
+
+### Backend:
+- The findProducts route already accepts an `occasion` string
+- If the occasion doesn't match a known key in OCCASION_MODIFIERS, instead of
+  silently nulling it out (current behavior), send it to Claude:
+  - Quick prompt: "The user is shopping for an outfit for: '[custom occasion]'.
+    Generate 3-5 search modifier keywords that would help find appropriate
+    clothing on Google Shopping. Return only the keywords, comma-separated."
+  - Use Claude's response as the occasion modifier for the search query
+  - Cache the result (custom_occasion_string → modifier_keywords) in memory
+    or product_cache so we don't re-prompt Claude for the same occasion
+- This means ANY occasion works: "cousin's quinceañera", "first day at Goldman Sachs",
+  "Burning Man", "parent-teacher conference" — Claude figures out the right
+  search terms automatically
+
+### Why This Matters:
+The fixed occasion list is limiting. Fashion is contextual and personal. A user
+shopping for "rooftop brunch in Miami" needs very different results than "rooftop
+brunch in London." Letting Claude interpret the occasion makes the search feel
+magical and personalized — like having a personal stylist who actually understands
+the vibe you're going for.
+
+---
+
+## 9. REMAINING HALF-DONE FEATURES
 
 ### Google / Apple OAuth
-- Frontend: `API.oauthLogin('google')` and `API.oauthLogin('apple')` exist
-- Supabase handles the OAuth flow
-- Test if these actually work end-to-end. If the buttons exist but OAuth is broken or
-  redirects incorrectly, fix the redirect URL configuration.
-
-### Ad Interstitial Polish
-- The InterstitialAd component shows a gray placeholder box
-- Can't add real AdMob yet (needs Capacitor) but make the placeholder look intentional:
-  a polished "Featured" content card with a real-looking ad layout, sponsor label,
-  and proper dismiss/skip behavior. It should feel like a real ad unit, not a gray box.
-
-### General Rule for Half-Done Features
-Read ALL route files and ALL frontend state/API calls. If a backend route exists but has
-no frontend UI, build a minimal but complete UI for it. If a UI element exists but the
-backend call is wired to nothing, fix the wiring. Leave nothing half-done.
+- Buttons exist in the frontend. Test if they actually work.
+- If broken: fix redirect URL configuration in Supabase dashboard settings
+- Document any Supabase config changes needed (don't guess — note what needs manual setup)
 
 ---
 
-## 6. UX POLISH & NEW FEATURES (user-approved)
-
-### CREATIVE LICENSE FOR UI/UX AGENT
-The UI/UX agent has full creative freedom to improve anything that looks incomplete,
-ugly, or unpolished. If something looks half-done, make it look world-class. The bar
-is App Store top 10 — think GOAT, Depop, Pinterest, Nike. This includes:
-- Improving the company logo / branding if it looks amateur
-- Fixing any visual element that feels placeholder or unfinished
-- Adding micro-interactions, transitions, and polish wherever it helps
-- Making the overall design feel cohesive and premium
-
----
-
-### 6-PREREQ. Change Free Tier from 3 Scans/Day to 12 Scans/Month
-The free tier scan limit needs to change from 3 per day to 12 per month.
-- Backend: update `rateLimit.js` (or wherever the daily scan counter is enforced)
-  to track monthly usage instead of daily. Check the `scans` table for count of
-  scans in the current calendar month instead of current day.
-- Frontend: update any UI that shows "3 scans remaining today" to show
-  "X of 12 scans used this month" or similar
-- UpgradeModal scan_limit trigger message should reflect the new limit
-
----
-
-### 6a. Banner Ad Placeholders — Make Them Look Real
-The `BANNER AD` / `SPONSORED` plain text ad slots look unfinished and cheap.
-Make them look like real, polished ad units — similar to what was done for the
-interstitial ad. Use styled "Featured" / "Trending" cards with product imagery,
-brand labels, and proper layout. They should feel intentional, not placeholder.
-
-### 6b. Remove Phone Number Requirement from Signup
-Phone number is currently required in both backend validation (auth.js) and the
-signup form. Make it optional in both places. Instagram/Depop/GOAT don't require
-it — it's a conversion killer for a beta app.
-
-### 6c. "Complete the Look" Pairings — Visual Grid Layout
-The pairings section currently shows as text rows. Redesign it as a visual grid
-like Pinterest — product image cards in a grid/masonry layout. Should feel editorial
-and browsable, not like a data table.
-
-### 6d. Scan Streak Counter
-Add a streak counter: "You've scanned 3 days in a row!" Show it somewhere visible
-(home screen or after a scan completes). Builds habit and engagement. Track in the
-profiles table or derive from scan history timestamps.
-
-### 6e. "Last Seen" Timestamp on Saved Items
-Add a "Saved 2 days ago" or "Last seen: March 22" timestamp to each saved item card.
-Creates urgency and primes users for price drop alerts (future feature). Derive from
-the saved_items.created_at column.
-
-### 6f. "BEST VALUE" Pill Shadow in Upgrade Modal
-Add a subtle drop shadow to the "BEST VALUE" pill on the yearly plan toggle in the
-UpgradeModal. Small touch, high polish. Should make it pop more.
-
-### 6g. Mini Identification Preview Before Product Search
-After Claude identifies the items but BEFORE product search runs, show a quick preview
-of what was identified (item name + brand + color). This gives the user immediate
-feedback during the 5-10 second product search wait. Currently the user stares at a
-spinner with no info about what was found.
-
-### 6h. Pairings Affiliate Tracking
-Wire "Complete the Look" pairing clicks through the existing affiliate system
-(`/api/go/:clickId`). Currently pairing clicks are tracked via analytics but don't
-generate affiliate click records in the DB. Build the backend to create affiliate
-records for pairing product links, so when we onboard affiliate partners later
-(beyond the existing Amazon Associates account), we're already tracking everything.
-
-### 6i. Fix iPhone Camera Mirror/Flip Bug
-The front-facing camera on iPhone is reversing the image instead of flipping it
-correctly. When a user takes a selfie or photos using the front camera, the preview
-should match what they see (mirrored), but the captured/uploaded image should be
-correctly oriented. Find the camera/image capture code in App.jsx and fix the
-transform so it behaves like a native iPhone camera app.
-
-### 6j. Fix Light Mode — It Looks Awful
-The app has a light mode but it looks terrible. Either:
-- Fix it properly: ensure all components, text, backgrounds, borders, and cards look
-  good in light mode with proper contrast and readability
-- OR: remove the light mode toggle entirely and commit to dark mode only
-The current state where light mode exists but looks broken is worse than not having it.
-
-### 6k. Full Internationalization — 8 Languages
-The app currently has English and broken Spanish (not all buttons/text are translated).
-Expand to 8 languages with COMPLETE coverage — every string, button, label, error
-message, and placeholder must be translated:
-
-Languages: English, Spanish, French, German, Chinese (Simplified), Japanese, Korean, Portuguese
-
-Implementation:
-- Create a translation system (i18n) — can be a simple JSON object per language
-- Language selector in Settings/Profile
-- Store user's language preference in localStorage and/or profile
-- ALL UI text must go through the translation system — no hardcoded English strings
-- Spanish needs to be FIXED — audit every string and complete the missing translations
-
-### 6l. General Visual Polish Pass
-The UI/UX agent should do a full visual audit and fix anything that looks:
-- Unfinished (placeholder text, gray boxes, TODO comments visible to users)
-- Inconsistent (different button styles, mixed fonts, mismatched colors)
-- Amateur (bad spacing, misaligned elements, ugly empty states)
-- The ATTAIR logo/branding should look premium and professional
-
----
-
-## 7. OUT OF SCOPE TODAY
-- RevenueCat (needs App Store/Play Store product setup)
-- AdMob / real ads (needs Capacitor)
-- Capacitor wrapper (separate day)
-- Price drop alerts (needs background jobs, but "Last Seen" timestamps prepare for it)
+## 10. OUT OF SCOPE TODAY
+- Stripe activation (Jules is setting up the account — no keys yet)
+- RevenueCat / AdMob / Capacitor (needs native app setup)
 - App.jsx full refactor (separate day)
+- Price drop alerts (future feature, but Last Seen timestamps are ready)
 
 ---
 
-## 8. AGENT NOTES
+## 11. AGENT NOTES
 
-**PM:** Today has two phases:
-  Phase 1: VERIFY yesterday's work (Stripe, caching, Circle to Search, referral)
-  Phase 2: BUILD the 8 user-approved improvements from section 6
-Work in order: verify first, then tackle section 6. Push only after E2E confirms.
+**PM:** Today has 3 phases:
+  Phase 1: Quick wins — CORS verification, security fixes, i18n audit (sections 1, 4, 5)
+  Phase 2: Major build — Likes tab redesign (section 2) + light mode fix (section 3)
+    + nearby stores fix (section 6) + as-seen-on upgrade (section 7) + custom occasions (section 8)
+  Phase 3: Creative agent run — after push, let the creative agent analyze and propose
+  Work in order. Push only after E2E confirms. Then run creative agent.
 
 **Backend agent:**
-  - Verify existing payments/caching/referral code works
-  - Change free tier from 3 scans/day to 12 scans/month in rateLimit.js (6-PREREQ)
-  - Make phone number optional in auth.js signup validation (6b)
-  - Build pairings affiliate tracking through /api/go system (6h)
-  - Finish half-done features (seen-on, nearby-stores, trial flow)
-  - DO NOT change CORS, REQUIRED_ENV, or move credentials
+  - CORS logic fix if needed (section 1)
+  - requireAuth on seenOn/nearbyStores (4a)
+  - size_prefs validation (4b)
+  - Stripe webhook error handling (4c)
+  - Support any new backend needs for the Likes redesign (section 2)
+  - Debug & fix GET /api/nearby-stores — auth, SerpAPI query, location passing (section 6)
+  - Upgrade GET /api/seen-on — accept style_interests, tailor SerpAPI queries per
+    interest category, return structured results with name/platform/image/context (section 7)
+  - Add style_interests column to profiles table (text[] or JSONB) (section 7)
+  - Custom occasion Claude interpretation in findProducts — if occasion not in
+    OCCASION_MODIFIERS, prompt Claude for search keywords, cache result (section 8)
 
-**Quant agent:** Three jobs today:
-  1. Verify SerpAPI caching works (getCache/setCache with product_cache table)
-  2. Audit ALL search parameters — are occasion, gender, budget, size prefs actually
-     improving results? Document findings and fix any that aren't working (3b)
-  3. Wire up the new `search_notes` custom text input into the search queries (3b)
+**UI/UX agent:** Your MAIN job today is the Likes tab redesign (section 2).
+  This is the biggest change. Make it feel like Instagram saves meets Pinterest.
+  - Build the new Likes bottom nav tab
+  - One-tap heart on all product cards
+  - Auto-grouping by scan
+  - Optional collections (long-press to organize)
+  - Remove old Wishlist terminology
+  - Fix light mode comprehensively (section 3)
+  - "Find Near Me" button on product cards with location permission flow,
+    loading state, store list, and empty/denied states (section 6)
+  - User interest picker at signup/first-scan — "Who inspires your style?"
+    grid of tappable category chips, store as style_interests (section 7)
+  - As-seen-on visual cards — person photo, name, platform badge, context,
+    source link; consider horizontal carousel on product cards (section 7)
+  - "+ Custom" chip in occasion picker with text input, save recent custom
+    occasions to localStorage (max 5) (section 8)
+  - Ensure all new UI has i18n translations in all 8 languages
+  - Test at 390px width in both dark and light mode
 
-**UI/UX agent:** You have CREATIVE LICENSE. Make this app look world-class.
-  - Verify Circle to Search end-to-end
-  - Polish banner ad placeholders to look real (6a)
-  - Remove phone field from signup form or make optional (6b)
-  - Redesign pairings as visual grid like Pinterest (6c)
-  - Add scan streak counter (6d)
-  - Add "Last Seen" timestamps on saved items (6e)
-  - Add shadow to BEST VALUE pill (6f)
-  - Add mini identification preview before product search (6g)
-  - Fix iPhone camera mirror/flip bug (6i)
-  - Fix or remove light mode — it looks awful (6j)
-  - Build full i18n for 8 languages (6k) — EN, ES, FR, DE, ZH, JA, KO, PT
-  - General visual polish pass — logo, branding, spacing, consistency (6l)
-  - Finish half-done features (scan rename, wishlist ops, referral share)
-  - Test everything at 390px width
+**Quant agent:** Busy day:
+  - Verify search quality hasn't regressed from yesterday's OCCASION_MODIFIERS changes
+  - Optimize SerpAPI query construction for as-seen-on (section 7):
+    multiple queries per interest category, merge & deduplicate, identify
+    person name and platform from results
+  - Validate that custom occasion → Claude → search keywords produces good
+    Google Shopping results (section 8) — test 3-4 custom occasions
 
-**Security agent:** REPORT ONLY. Do not modify code. Document findings for PM review.
+**Security agent:** REPORT ONLY. Verify yesterday's 5 fixes are still in place.
+  Check for any new issues introduced by today's changes.
+  Pay special attention to: custom occasion prompt injection risk (section 8),
+  nearby-stores auth now requiring token (section 6).
 
-**Testing agent:** Run existing 80 tests first. Fix any failures. Then add tests for
-any new code written today.
+**Testing agent:** Run all 133 tests first. Then add tests for:
+  - Likes/collections CRUD operations
+  - size_prefs validation
+  - requireAuth on seenOn/nearbyStores
+  - Light mode CSS custom properties (if testable)
+  - Nearby stores with/without auth token (section 6)
+  - As-seen-on with style_interests filtering (section 7)
+  - Custom occasion → Claude modifier generation (section 8)
+  - style_interests profile CRUD (section 7)
 
-**E2E agent:** Test EVERYTHING before push. Critical checks:
-- Photo upload + identify works
-- Google login works
-- All navigation tabs work
-- No console errors on any screen
-- Upgrade modal appears and shows loading state
-- Referral code visible on Profile tab
-- Pairings show as visual grid, not text list
-- Scan streak counter appears
-- Saved items show "Last Seen" timestamp
-- Signup works without phone number
-- Banner ads look polished, not placeholder
-- Camera doesn't mirror/flip incorrectly
-- Light mode either looks good or is removed
-- Language switcher works, all 8 languages translate fully
-- No untranslated English strings when switching language
-- Overall visual quality matches App Store top 10 apps
+**E2E agent:** Critical checks:
+  - Likes tab exists in bottom nav and works
+  - One-tap heart saves items
+  - Collections can be created, items added/removed
+  - Old wishlist references are gone
+  - Light mode looks polished on every screen
+  - Dark mode hasn't regressed
+  - CORS works on live Vercel → Railway
+  - All 8 languages have no untranslated strings
+  - 133+ tests still passing
+  - No console errors on any screen
+  - "Find Near Me" shows stores or proper empty/denied state (section 6)
+  - As-seen-on returns visual cards with platform badges (section 7)
+  - Interest picker appears at signup and persists to profile (section 7)
+  - Custom occasion input works and produces relevant search results (section 8)
+
+**Creative agent:** After everything is pushed, analyze the app fresh.
+  Focus especially on:
+  - How does the new Likes tab FEEL? What would make it addictive?
+  - What's the viral loop? How does someone discover ATTAIR and tell a friend?
+  - What monetization angles are we missing?
+  - How does the interest-based as-seen-on feel? Is it compelling enough to share?
+  - What would make this app #1 in the fashion category on the App Store?
