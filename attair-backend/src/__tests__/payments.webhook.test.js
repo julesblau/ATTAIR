@@ -18,11 +18,16 @@ import { createServer } from "http";
 
 // ─── Mocks must be declared before importing the router ───────────────────
 
-// Mock supabase
+// Mock supabase — supports both update chains (checkout.session.completed)
+// and select → eq → single chains (subscription.deleted, payment_failed)
 const mockSupabaseUpdate = vi.fn().mockReturnThis();
 const mockSupabaseEq = vi.fn().mockResolvedValue({ error: null });
+const mockSupabaseSingle = vi.fn().mockResolvedValue({ data: { id: "user-uuid-from-customer" }, error: null });
+const mockSupabaseSelectEq = vi.fn().mockReturnValue({ single: mockSupabaseSingle });
+const mockSupabaseSelect = vi.fn().mockReturnValue({ eq: mockSupabaseSelectEq });
 const mockSupabaseFrom = vi.fn().mockReturnValue({
   update: mockSupabaseUpdate,
+  select: mockSupabaseSelect,
   eq: mockSupabaseEq,
 });
 mockSupabaseUpdate.mockReturnValue({ eq: mockSupabaseEq });
@@ -102,8 +107,11 @@ describe("POST /api/payments/webhook", () => {
     vi.resetAllMocks();
     // Re-apply mock chain defaults after reset
     mockSupabaseEq.mockResolvedValue({ error: null });
+    mockSupabaseSingle.mockResolvedValue({ data: { id: "user-uuid-from-customer" }, error: null });
+    mockSupabaseSelectEq.mockReturnValue({ single: mockSupabaseSingle });
+    mockSupabaseSelect.mockReturnValue({ eq: mockSupabaseSelectEq });
     mockSupabaseUpdate.mockReturnValue({ eq: mockSupabaseEq });
-    mockSupabaseFrom.mockReturnValue({ update: mockSupabaseUpdate, eq: mockSupabaseEq });
+    mockSupabaseFrom.mockReturnValue({ update: mockSupabaseUpdate, select: mockSupabaseSelect, eq: mockSupabaseEq });
 
     // STRIPE_SECRET_KEY must be set so getStripe() inside payments.js doesn't
     // throw before it can reach webhooks.constructEvent (which we mock).

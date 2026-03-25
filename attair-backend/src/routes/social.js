@@ -4,10 +4,12 @@ import supabase from "../lib/supabase.js";
 
 const router = Router();
 
-const VALID_VISIBILITY = ["public", "private", "followers"];
+// Scans support 'followers' visibility; saved_items and collections only public/private
+const VALID_SCAN_VISIBILITY = ["public", "private", "followers"];
+const VALID_ITEM_VISIBILITY = ["public", "private"];
 
-// ─── POST /api/follow/:userId ────────────────────────────────
-router.post("/follow/:userId", requireAuth, async (req, res) => {
+// ─── POST /api/social/follow/:userId ────────────────────────
+router.post("/social/follow/:userId", requireAuth, async (req, res) => {
   const { userId: targetId } = req.params;
 
   if (targetId === req.userId) {
@@ -20,9 +22,9 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
       .insert({ follower_id: req.userId, following_id: targetId });
 
     if (error) {
-      // Postgres unique constraint violation = already following
+      // Unique constraint violation = already following — treat as success
       if (error.code === "23505") {
-        return res.status(409).json({ error: "Already following this user" });
+        return res.json({ following: true });
       }
       throw error;
     }
@@ -34,8 +36,8 @@ router.post("/follow/:userId", requireAuth, async (req, res) => {
   }
 });
 
-// ─── DELETE /api/follow/:userId ──────────────────────────────
-router.delete("/follow/:userId", requireAuth, async (req, res) => {
+// ─── DELETE /api/social/follow/:userId ──────────────────────
+router.delete("/social/follow/:userId", requireAuth, async (req, res) => {
   const { userId: targetId } = req.params;
 
   try {
@@ -54,8 +56,8 @@ router.delete("/follow/:userId", requireAuth, async (req, res) => {
   }
 });
 
-// ─── GET /api/followers/:userId ──────────────────────────────
-router.get("/followers/:userId", requireAuth, async (req, res) => {
+// ─── GET /api/social/followers/:userId ──────────────────────
+router.get("/social/followers/:userId", requireAuth, async (req, res) => {
   const { userId: targetId } = req.params;
 
   try {
@@ -79,8 +81,8 @@ router.get("/followers/:userId", requireAuth, async (req, res) => {
   }
 });
 
-// ─── GET /api/following/:userId ──────────────────────────────
-router.get("/following/:userId", requireAuth, async (req, res) => {
+// ─── GET /api/social/following/:userId ──────────────────────
+router.get("/social/following/:userId", requireAuth, async (req, res) => {
   const { userId: targetId } = req.params;
 
   try {
@@ -104,13 +106,12 @@ router.get("/following/:userId", requireAuth, async (req, res) => {
   }
 });
 
-// ─── GET /api/profile/:userId ────────────────────────────────
-router.get("/profile/:userId", requireAuth, async (req, res) => {
+// ─── GET /api/social/profile/:userId ────────────────────────
+router.get("/social/profile/:userId", requireAuth, async (req, res) => {
   const { userId: targetId } = req.params;
   const isSelf = req.userId === targetId;
 
   try {
-    // Fetch profile basics
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("id, display_name, bio, avatar_url, style_interests, created_at")
@@ -127,7 +128,7 @@ router.get("/profile/:userId", requireAuth, async (req, res) => {
       supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", targetId),
     ]);
 
-    // Check whether req.userId follows targetId (for 'followers' visibility)
+    // Check whether the authenticated user follows the target
     let isFollowing = false;
     if (!isSelf) {
       const { data: followRow } = await supabase
@@ -139,7 +140,7 @@ router.get("/profile/:userId", requireAuth, async (req, res) => {
       isFollowing = !!followRow;
     }
 
-    // Determine which visibility levels are readable
+    // Determine which visibility levels the requester may read
     // Self: all. Follower: public + followers. Others: public only.
     const allowedVisibilities = isSelf
       ? ["public", "private", "followers"]
@@ -147,33 +148,29 @@ router.get("/profile/:userId", requireAuth, async (req, res) => {
         ? ["public", "followers"]
         : ["public"];
 
-    // Public scans
-    let scansQuery = supabase
-      .from("scans")
-      .select("id, scan_name, image_thumbnail, created_at, visibility")
-      .eq("user_id", targetId)
-      .in("visibility", allowedVisibilities)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    const { data: scans } = await scansQuery;
-
-    // Public saved items
-    const { data: savedItems } = await supabase
-      .from("saved_items")
-      .select("id, item_data, selected_tier, created_at, visibility")
-      .eq("user_id", targetId)
-      .in("visibility", allowedVisibilities)
-      .order("created_at", { ascending: false })
-      .limit(20);
-
-    // Public wishlists / collections
-    const { data: wishlists } = await supabase
-      .from("wishlists")
-      .select("id, name, visibility, created_at")
-      .eq("user_id", targetId)
-      .in("visibility", allowedVisibilities)
-      .order("created_at", { ascending: false });
+    // Fetch scans, saved items, and wishlists in parallel
+    const [scansResult, savedResult, wishlistsResult] = await Promise.all([
+      supabase
+        .from("scans")
+        .select("id, scan_name, image_thumbnail, created_at, visibility")
+        .eq("user_id", targetId)
+        .in("visibility", allowedVisibilities)
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("saved_items")
+        .select("id, item_data, selected_tier, created_at, visibility")
+        .eq("user_id", targetId)
+        .in("visibility", ["public"])
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("wishlists")
+        .select("id, name, visibility, created_at")
+        .eq("user_id", targetId)
+        .in("visibility", ["public"])
+        .order("created_at", { ascending: false }),
+    ]);
 
     return res.json({
       profile: {
@@ -187,9 +184,9 @@ router.get("/profile/:userId", requireAuth, async (req, res) => {
       follower_count: followerCount || 0,
       following_count: followingCount || 0,
       is_following: isFollowing,
-      scans: scans || [],
-      saved_items: savedItems || [],
-      collections: wishlists || [],
+      scans: scansResult.data || [],
+      saved_items: savedResult.data || [],
+      collections: wishlistsResult.data || [],
     });
   } catch (err) {
     console.error("Public profile error:", err.message);
@@ -197,12 +194,12 @@ router.get("/profile/:userId", requireAuth, async (req, res) => {
   }
 });
 
-// ─── PATCH /api/scans/:scanId/visibility ─────────────────────
-router.patch("/scans/:scanId/visibility", requireAuth, async (req, res) => {
+// ─── PATCH /api/social/scans/:scanId/visibility ──────────────
+router.patch("/social/scans/:scanId/visibility", requireAuth, async (req, res) => {
   const { scanId } = req.params;
   const { visibility } = req.body;
 
-  if (!VALID_VISIBILITY.includes(visibility)) {
+  if (!VALID_SCAN_VISIBILITY.includes(visibility)) {
     return res.status(400).json({ error: "visibility must be 'public', 'private', or 'followers'" });
   }
 
@@ -225,13 +222,13 @@ router.patch("/scans/:scanId/visibility", requireAuth, async (req, res) => {
   }
 });
 
-// ─── PATCH /api/saved-items/:itemId/visibility ───────────────
-router.patch("/saved-items/:itemId/visibility", requireAuth, async (req, res) => {
+// ─── PATCH /api/social/saved-items/:itemId/visibility ────────
+router.patch("/social/saved-items/:itemId/visibility", requireAuth, async (req, res) => {
   const { itemId } = req.params;
   const { visibility } = req.body;
 
-  if (!VALID_VISIBILITY.includes(visibility)) {
-    return res.status(400).json({ error: "visibility must be 'public', 'private', or 'followers'" });
+  if (!VALID_ITEM_VISIBILITY.includes(visibility)) {
+    return res.status(400).json({ error: "visibility must be 'public' or 'private'" });
   }
 
   try {
@@ -253,13 +250,13 @@ router.patch("/saved-items/:itemId/visibility", requireAuth, async (req, res) =>
   }
 });
 
-// ─── PATCH /api/collections/:collectionId/visibility ─────────
-router.patch("/collections/:collectionId/visibility", requireAuth, async (req, res) => {
+// ─── PATCH /api/social/collections/:collectionId/visibility ──
+router.patch("/social/collections/:collectionId/visibility", requireAuth, async (req, res) => {
   const { collectionId } = req.params;
   const { visibility } = req.body;
 
-  if (!VALID_VISIBILITY.includes(visibility)) {
-    return res.status(400).json({ error: "visibility must be 'public', 'private', or 'followers'" });
+  if (!VALID_ITEM_VISIBILITY.includes(visibility)) {
+    return res.status(400).json({ error: "visibility must be 'public' or 'private'" });
   }
 
   try {
@@ -278,6 +275,57 @@ router.patch("/collections/:collectionId/visibility", requireAuth, async (req, r
   } catch (err) {
     console.error("Collection visibility error:", err.message);
     return res.status(500).json({ error: "Failed to update collection visibility" });
+  }
+});
+
+// ─── PATCH /api/social/profile ───────────────────────────────
+router.patch("/social/profile", requireAuth, async (req, res) => {
+  const { bio, display_name } = req.body;
+
+  const updates = {};
+
+  if (display_name !== undefined) {
+    if (typeof display_name !== "string") {
+      return res.status(400).json({ error: "display_name must be a string" });
+    }
+    if (display_name.length > 50) {
+      return res.status(400).json({ error: "display_name must be 50 characters or less" });
+    }
+    updates.display_name = display_name;
+  }
+
+  if (bio !== undefined) {
+    if (bio !== null) {
+      if (typeof bio !== "string") {
+        return res.status(400).json({ error: "bio must be a string" });
+      }
+      if (bio.length > 200) {
+        return res.status(400).json({ error: "bio must be 200 characters or less" });
+      }
+      updates.bio = bio;
+    } else {
+      updates.bio = null;
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "No fields to update" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", req.userId)
+      .select("id, display_name, bio, avatar_url, created_at")
+      .single();
+
+    if (error) throw error;
+
+    return res.json(data);
+  } catch (err) {
+    console.error("Social profile update error:", err.message);
+    return res.status(500).json({ error: "Failed to update profile" });
   }
 });
 

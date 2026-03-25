@@ -51,6 +51,18 @@ vi.mock("../services/products.js", () => ({
   findProductsForItems: mockFindProducts,
 }));
 
+// Mock Anthropic SDK so custom occasion handling doesn't make real API calls
+vi.mock("@anthropic-ai/sdk", () => ({
+  default: class MockAnthropic {
+    constructor() {}
+    messages = {
+      create: vi.fn().mockResolvedValue({
+        content: [{ text: "custom, occasion, keywords" }],
+      }),
+    };
+  },
+}));
+
 // ─── Server helpers ───────────────────────────────────────────────────────
 
 async function makeApp() {
@@ -137,24 +149,29 @@ describe("POST /api/find-products — occasion allowlist", () => {
     expect(status).not.toBe(400);
   });
 
-  it("nulls out invalid occasion 'party' before calling findProductsForItems", async () => {
+  it("sends unknown occasion 'party' to Claude for custom modifiers", async () => {
     await post(port, {
       items: VALID_ITEMS,
       gender: "male",
       occasion: "party",
     });
     expect(mockFindProducts).toHaveBeenCalledOnce();
+    // Unknown occasions set occasion to null but pass customOccasionModifiers as 9th arg
     expect(mockFindProducts.mock.calls[0][6]).toBeNull();
+    // The 9th argument (index 8) should contain custom occasion modifiers from Claude
+    expect(mockFindProducts.mock.calls[0][8]).toBeTruthy();
   });
 
-  it("nulls out unknown occasion 'underground_rave'", async () => {
+  it("sends unknown occasion 'undergroundrave' to Claude for custom modifiers", async () => {
     const { status } = await post(port, {
       items: VALID_ITEMS,
       gender: "female",
       occasion: "underground_rave",
     });
     expect(status).not.toBe(400);
+    // occasion is null (not in allowlist), but customOccasionModifiers is set
     expect(mockFindProducts.mock.calls[0][6]).toBeNull();
+    expect(mockFindProducts.mock.calls[0][8]).toBeTruthy();
   });
 
   it("passes null when no occasion is provided", async () => {

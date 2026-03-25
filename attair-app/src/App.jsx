@@ -322,6 +322,22 @@ const API = {
     if (!res.ok) return { streak: 0 };
     return await res.json();
   },
+
+  async getPublicProfile(userId) {
+    return authFetch(`${API_BASE}/api/social/profile/${userId}`).then(r => r.json());
+  },
+
+  async followUser(userId) {
+    return authFetch(`${API_BASE}/api/social/follow/${userId}`, { method: "POST" }).then(r => r.json());
+  },
+
+  async unfollowUser(userId) {
+    return authFetch(`${API_BASE}/api/social/follow/${userId}`, { method: "DELETE" }).then(r => r.json());
+  },
+
+  async updateScanVisibility(scanId, visibility) {
+    return authFetch(`${API_BASE}/api/social/scans/${scanId}/visibility`, { method: "PATCH", body: JSON.stringify({ visibility }) }).then(r => r.json());
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -452,7 +468,7 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
 };
 
 // ─── Mini product card (compact, for 2-col grid) ────────────
-const MiniCard = ({ tier, data, scanId, itemIndex }) => {
+const MiniCard = ({ tier, data, scanId, itemIndex, onSave, isSavedItem }) => {
   if (!data) return null;
   const tierCfg = {
     budget: { accent: "#5AC8FF" },
@@ -464,23 +480,35 @@ const MiniCard = ({ tier, data, scanId, itemIndex }) => {
   const href = data.url ? API.affiliateUrl(clickId, data.url, scanId, itemIndex, tier, data.brand) : "#";
   const isFallback = !data.is_product_page && data.brand === "Google Shopping";
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer"
-      onClick={() => track("product_clicked", { tier, brand: data.brand, price: data.price, is_fallback: isFallback }, scanId, "scan")}
-      style={{ padding: 12, background: isFallback ? "rgba(255,255,255,.01)" : "rgba(255,255,255,.02)", border: `1px solid ${data.is_identified_brand ? "rgba(201,169,110,0.25)" : "rgba(255,255,255,.05)"}`, borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 6, transition: "all 0.2s", minWidth: 0 }}>
-      {data.image_url && (
-        <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "rgba(255,255,255,.04)", marginBottom: 2 }}>
-          <img src={data.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+    <div style={{ position: "relative" }}>
+      <a href={href} target="_blank" rel="noopener noreferrer"
+        onClick={() => track("product_clicked", { tier, brand: data.brand, price: data.price, is_fallback: isFallback }, scanId, "scan")}
+        style={{ padding: 12, background: isFallback ? "rgba(255,255,255,.01)" : "rgba(255,255,255,.02)", border: `1px solid ${data.is_identified_brand ? "rgba(201,169,110,0.25)" : "rgba(255,255,255,.05)"}`, borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 6, transition: "all 0.2s", minWidth: 0 }}>
+        {data.image_url && (
+          <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "rgba(255,255,255,.04)", marginBottom: 2 }}>
+            <img src={data.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {data.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "#C9A96E" }}>ORIG</span>}
+          {data.is_resale && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(123,196,127,.12)", color: "#7BC47F" }}>RESALE</span>}
+          {!data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 7, color: "rgba(255,255,255,.15)" }}>{data.brand?.slice(0, 14)}</span>}
+          <span style={{ fontSize: 13, fontWeight: 700, color: tierCfg.accent }}>{isFallback ? "Search →" : data.price}</span>
         </div>
+        {!isFallback && <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,.7)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{data.product_name}</div>}
+        {isFallback && <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)", lineHeight: 1.3 }}>No match — tap to search</div>}
+      </a>
+      {onSave && (
+        <button
+          aria-label={isSavedItem ? "Remove from Likes" : "Save to Likes"}
+          onClick={e => { e.preventDefault(); e.stopPropagation(); onSave(); }}
+          style={{ position: "absolute", top: 6, right: 6, width: 30, height: 30, borderRadius: "50%", background: isSavedItem ? "rgba(255,60,80,.9)" : "rgba(0,0,0,.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", transition: "all .2s", zIndex: 2 }}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill={isSavedItem ? "#fff" : "none"} stroke={isSavedItem ? "#fff" : "rgba(255,255,255,.8)"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
       )}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        {data.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "#C9A96E" }}>ORIG</span>}
-        {data.is_resale && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(123,196,127,.12)", color: "#7BC47F" }}>RESALE</span>}
-        {!data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 7, color: "rgba(255,255,255,.15)" }}>{data.brand?.slice(0, 14)}</span>}
-        <span style={{ fontSize: 13, fontWeight: 700, color: tierCfg.accent }}>{isFallback ? "Search →" : data.price}</span>
-      </div>
-      {!isFallback && <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,.7)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{data.product_name}</div>}
-      {isFallback && <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)", lineHeight: 1.3 }}>No match — tap to search</div>}
-    </a>
+    </div>
   );
 };
 
@@ -517,15 +545,15 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
           <div
             onClick={() => setPlan("yearly")}
             style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "yearly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "yearly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s", position: "relative" }}>
-            <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", fontSize: 8, fontWeight: 800, padding: "2px 8px", borderRadius: 100, letterSpacing: 1, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(255,107,53,0.5), 0 0 16px rgba(255,107,53,0.2), 0 4px 16px rgba(201,169,110,.5)" }}>BEST VALUE</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$39.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/yr</span></div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$0.77/week</div>
+            <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", fontSize: 8, fontWeight: 800, padding: "2px 8px", borderRadius: 100, letterSpacing: 1, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(255,107,53,0.5), 0 0 16px rgba(255,107,53,0.2), 0 4px 16px rgba(201,169,110,.5)" }}>SAVE 50%</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$29.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/yr</span></div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$2.50/mo</div>
           </div>
           <div
             onClick={() => setPlan("monthly")}
             style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "monthly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "monthly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s" }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$9.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/mo</span></div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$2.50/week</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$4.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/mo</span></div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$1.25/week</div>
           </div>
         </div>
         <button className="cta" onClick={handleCta} disabled={loadingPlan} style={{ opacity: loadingPlan ? 0.7 : 1 }}>
@@ -629,6 +657,23 @@ const STRINGS = {
     copied: "Copied!",
     share: "Share",
     streak: "day streak!",
+    likes: "Likes",
+    collections: "Collections",
+    add_to_collection: "Add to collection",
+    create_collection: "Create collection",
+    no_likes: "No liked items yet",
+    find_nearby: "Find Near Me",
+    no_stores_nearby: "No stores nearby",
+    location_denied: "Location access needed",
+    who_inspires: "Who inspires your style?",
+    custom_occasion: "Custom",
+    follow: "Follow",
+    unfollow: "Unfollow",
+    followers: "Followers",
+    following: "Following",
+    public_profile: "Public",
+    private_profile: "Private",
+    followers_only: "Followers Only",
   },
   es: {
     scan: "Escanear",
@@ -661,6 +706,23 @@ const STRINGS = {
     copied: "¡Copiado!",
     share: "Compartir",
     streak: "días seguidos!",
+    likes: "Me gusta",
+    collections: "Colecciones",
+    add_to_collection: "Añadir a colección",
+    create_collection: "Crear colección",
+    no_likes: "Sin artículos guardados",
+    find_nearby: "Buscar cerca",
+    no_stores_nearby: "Sin tiendas cercanas",
+    location_denied: "Se necesita acceso a ubicación",
+    who_inspires: "¿Quién inspira tu estilo?",
+    custom_occasion: "Personalizar",
+    follow: "Seguir",
+    unfollow: "Dejar de seguir",
+    followers: "Seguidores",
+    following: "Siguiendo",
+    public_profile: "Público",
+    private_profile: "Privado",
+    followers_only: "Solo seguidores",
   },
   fr: {
     scan: "Scanner",
@@ -693,6 +755,23 @@ const STRINGS = {
     copied: "Copié!",
     share: "Partager",
     streak: "jours de suite!",
+    likes: "J'aime",
+    collections: "Collections",
+    add_to_collection: "Ajouter à une collection",
+    create_collection: "Créer une collection",
+    no_likes: "Aucun article aimé",
+    find_nearby: "Trouver près de moi",
+    no_stores_nearby: "Aucun magasin à proximité",
+    location_denied: "Accès à la localisation requis",
+    who_inspires: "Qui inspire votre style?",
+    custom_occasion: "Personnalisé",
+    follow: "Suivre",
+    unfollow: "Ne plus suivre",
+    followers: "Abonnés",
+    following: "Abonnements",
+    public_profile: "Public",
+    private_profile: "Privé",
+    followers_only: "Abonnés uniquement",
   },
   de: {
     scan: "Scannen",
@@ -725,6 +804,23 @@ const STRINGS = {
     copied: "Kopiert!",
     share: "Teilen",
     streak: "Tage hintereinander!",
+    likes: "Gefällt mir",
+    collections: "Sammlungen",
+    add_to_collection: "Zur Sammlung hinzufügen",
+    create_collection: "Sammlung erstellen",
+    no_likes: "Noch keine Favoriten",
+    find_nearby: "In der Nähe suchen",
+    no_stores_nearby: "Keine Geschäfte in der Nähe",
+    location_denied: "Standortzugriff benötigt",
+    who_inspires: "Wer inspiriert deinen Stil?",
+    custom_occasion: "Benutzerdefiniert",
+    follow: "Folgen",
+    unfollow: "Entfolgen",
+    followers: "Follower",
+    following: "Folge ich",
+    public_profile: "Öffentlich",
+    private_profile: "Privat",
+    followers_only: "Nur Follower",
   },
   zh: {
     scan: "扫描",
@@ -757,6 +853,23 @@ const STRINGS = {
     copied: "已复制！",
     share: "分享",
     streak: "天连续打卡！",
+    likes: "喜欢",
+    collections: "收藏夹",
+    add_to_collection: "添加到收藏夹",
+    create_collection: "创建收藏夹",
+    no_likes: "还没有喜欢的商品",
+    find_nearby: "附近门店",
+    no_stores_nearby: "附近没有门店",
+    location_denied: "需要位置权限",
+    who_inspires: "谁启发了你的穿搭风格？",
+    custom_occasion: "自定义",
+    follow: "关注",
+    unfollow: "取消关注",
+    followers: "粉丝",
+    following: "关注中",
+    public_profile: "公开",
+    private_profile: "私密",
+    followers_only: "仅粉丝可见",
   },
   ja: {
     scan: "スキャン",
@@ -789,6 +902,23 @@ const STRINGS = {
     copied: "コピーしました！",
     share: "シェア",
     streak: "日連続！",
+    likes: "いいね",
+    collections: "コレクション",
+    add_to_collection: "コレクションに追加",
+    create_collection: "コレクションを作成",
+    no_likes: "まだいいねしたアイテムがありません",
+    find_nearby: "近くで探す",
+    no_stores_nearby: "近くに店舗なし",
+    location_denied: "位置情報へのアクセスが必要",
+    who_inspires: "あなたのスタイルに影響を与える人は？",
+    custom_occasion: "カスタム",
+    follow: "フォロー",
+    unfollow: "フォロー解除",
+    followers: "フォロワー",
+    following: "フォロー中",
+    public_profile: "公開",
+    private_profile: "非公開",
+    followers_only: "フォロワーのみ",
   },
   ko: {
     scan: "스캔",
@@ -821,6 +951,23 @@ const STRINGS = {
     copied: "복사됨!",
     share: "공유",
     streak: "일 연속!",
+    likes: "좋아요",
+    collections: "컬렉션",
+    add_to_collection: "컬렉션에 추가",
+    create_collection: "컬렉션 만들기",
+    no_likes: "좋아요한 아이템이 없습니다",
+    find_nearby: "주변 찾기",
+    no_stores_nearby: "주변 매장 없음",
+    location_denied: "위치 접근 권한 필요",
+    who_inspires: "누가 당신의 스타일에 영감을 주나요?",
+    custom_occasion: "직접 입력",
+    follow: "팔로우",
+    unfollow: "언팔로우",
+    followers: "팔로워",
+    following: "팔로잉",
+    public_profile: "공개",
+    private_profile: "비공개",
+    followers_only: "팔로워만",
   },
   pt: {
     scan: "Escanear",
@@ -853,6 +1000,23 @@ const STRINGS = {
     copied: "Copiado!",
     share: "Compartilhar",
     streak: "dias seguidos!",
+    likes: "Curtidas",
+    collections: "Coleções",
+    add_to_collection: "Adicionar à coleção",
+    create_collection: "Criar coleção",
+    no_likes: "Nenhum item curtido ainda",
+    find_nearby: "Encontrar perto de mim",
+    no_stores_nearby: "Nenhuma loja próxima",
+    location_denied: "Acesso à localização necessário",
+    who_inspires: "Quem inspira o seu estilo?",
+    custom_occasion: "Personalizado",
+    follow: "Seguir",
+    unfollow: "Deixar de seguir",
+    followers: "Seguidores",
+    following: "Seguindo",
+    public_profile: "Público",
+    private_profile: "Privado",
+    followers_only: "Apenas seguidores",
   },
 };
 
@@ -1094,6 +1258,23 @@ export default function App() {
   const [addToListOpenId, setAddToListOpenId] = useState(null); // saved item id with open dropdown
   const [addToListConfirm, setAddToListConfirm] = useState(null); // { savedItemId, wishlistName }
 
+  // ─── Likes / Collections tab ──────────────────────────────
+  const [likesCollectionFilter, setLikesCollectionFilter] = useState("all");
+  const [likesLongPressItem, setLikesLongPressItem] = useState(null); // { savedItem } for collection sheet
+  const [likesCollectionInput, setLikesCollectionInput] = useState("");
+  const [likesCollectionCreating, setLikesCollectionCreating] = useState(false);
+
+  // ─── Interest Picker (style inspirations) ─────────────────
+  const [showInterestPicker, setShowInterestPicker] = useState(false);
+  const [selectedInterests, setSelectedInterests] = useState([]);
+
+  // ─── Custom occasion ──────────────────────────────────────
+  const [customOccasionInput, setCustomOccasionInput] = useState("");
+  const [showCustomOccasion, setShowCustomOccasion] = useState(false);
+  const [recentOccasions, setRecentOccasions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("attair_recent_occasions") || "[]"); } catch { return []; }
+  });
+
   // ─── Occasion filter ──────────────────────────────────────
   const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
 
@@ -1237,6 +1418,16 @@ export default function App() {
       }
     }
   }, [authed]);
+
+  // ─── Interest picker — show once after first login ─────────
+  useEffect(() => {
+    if (authed && screen === "app") {
+      const picked = localStorage.getItem("attair_interests_picked");
+      if (!picked) {
+        setTimeout(() => setShowInterestPicker(true), 1500);
+      }
+    }
+  }, [authed, screen]);
 
   // ─── Upgrade / Trial handlers ──────────────────────────────
   const handleUpgrade = async (plan = "yearly") => {
@@ -1674,6 +1865,30 @@ export default function App() {
   };
   const isSaved = (item) => saved.some(i => (i.item_data || i).name === item.name);
 
+  // ─── One-tap heart save from product cards ─────────────────
+  const quickSaveItem = async (item, scanIdOverride) => {
+    const sid = scanIdOverride || scanId;
+    const existing = saved.find(i => (i.item_data || i).name === item.name);
+    if (existing) {
+      await API.deleteSaved(existing.id).catch(() => {});
+      setSaved(s => s.filter(i => i.id !== existing.id));
+      refreshStatus();
+    } else {
+      if (isFree && (userStatus?.saved_count || 0) >= (userStatus?.saved_limit || 20)) {
+        setUpgradeModal("save_limit");
+        return;
+      }
+      try {
+        const res = await API.saveItem(sid, item);
+        setSaved(s => [...s, { id: res.id, item_data: item, scan_id: sid, created_at: new Date().toISOString() }]);
+        refreshStatus();
+        track("item_saved", { item_name: item.name }, sid, "scan");
+      } catch (err) {
+        if (err.message?.includes("limit")) setUpgradeModal("save_limit");
+      }
+    }
+  };
+
   const brandConfLabel = (c) => ({ confirmed: { t: "Confirmed", c: "#C9A96E" }, high: { t: "High confidence", c: "rgba(201,169,110,0.7)" }, moderate: { t: "Moderate", c: "rgba(255,255,255,0.4)" }, low: { t: "Estimated", c: "rgba(255,255,255,0.25)" } }[c] || { t: "Unknown", c: "rgba(255,255,255,0.2)" });
 
   const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); setAuthed(false); setAuthEmail(""); setAuthName(""); setUserStatus(null); setScreen("onboarding"); setObIdx(0); };
@@ -1916,6 +2131,62 @@ export default function App() {
       .app[data-theme='light'] .shome h2{color:#1A1816}
       .app[data-theme='light'] .scan-ring{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.08)}
       .app[data-theme='light'] .scan-inner{color:#1A1816}
+
+      /* ─── Comprehensive light mode ───────────────────── */
+      /* Cards */
+      .app[data-theme='light'] .pcard{background:#FFFFFF;border-color:rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+      .app[data-theme='light'] .rcard{background:#FFF9F0;border-color:rgba(201,169,110,.2);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+      .app[data-theme='light'] .hist-card{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+      .app[data-theme='light'] .saved-row{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+      .app[data-theme='light'] .likes-card{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+      /* Text contrast */
+      .app[data-theme='light'] .sec-t{color:#1A1816}
+      .app[data-theme='light'] .det-tags .det-tag{background:rgba(0,0,0,.04);color:#666666;border-color:rgba(0,0,0,.07)}
+      .app[data-theme='light'] .aff-note{color:rgba(0,0,0,.25)}
+      /* Search/results area */
+      .app[data-theme='light'] .res{background:#F6F4F0}
+      .app[data-theme='light'] .v-banner{background:rgba(0,0,0,.03);border-bottom-color:rgba(0,0,0,.06)}
+      .app[data-theme='light'] .v-step-bar{background:rgba(0,0,0,.06)}
+      .app[data-theme='light'] .pick-list{background:#F6F4F0}
+      .app[data-theme='light'] .pick-cta{background:linear-gradient(transparent,#F6F4F0 60%)}
+      /* Inputs and textareas */
+      .app[data-theme='light'] textarea{background:#F5F5F5;border-color:#E0E0E0;color:#1A1816}
+      .app[data-theme='light'] textarea::placeholder{color:#999999}
+      .app[data-theme='light'] input[type="number"]{color:#1A1816}
+      .app[data-theme='light'] select{background:#F5F5F5;border-color:#E0E0E0;color:#1A1816}
+      /* Tier selector pills */
+      .app[data-theme='light'] .view-tab.on{background:rgba(201,169,110,.12);color:#8B6914}
+      /* Profile section */
+      .app[data-theme='light'] .pcard *{color:#1A1816}
+      .app[data-theme='light'] .pcard .pro{color:#FFFFFF}
+      .app[data-theme='light'] .pcard .free-badge{color:rgba(0,0,0,.4)}
+      /* Modals and bottom sheets */
+      .app[data-theme='light'] .modal-box{background:#FFFFFF;border-color:rgba(0,0,0,.08);box-shadow:0 24px 80px rgba(0,0,0,.18)}
+      .app[data-theme='light'] .modal-title{color:#1A1816}
+      .app[data-theme='light'] .modal-sub{color:#666666}
+      .app[data-theme='light'] .modal-x{color:rgba(0,0,0,.3)}
+      .app[data-theme='light'] .modal-later{color:rgba(0,0,0,.3)}
+      .app[data-theme='light'] .item-opts-sheet{background:#FFFFFF;box-shadow:0 -4px 32px rgba(0,0,0,.12)}
+      .app[data-theme='light'] .item-opts-label{color:rgba(0,0,0,.4)}
+      /* Occasion chips */
+      .app[data-theme='light'] .det{background:#FFFFFF;border-color:rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+      /* Pairings grid */
+      .app[data-theme='light'] .hist-list{background:#F6F4F0}
+      .app[data-theme='light'] .empty-t{color:#1A1816}
+      .app[data-theme='light'] .empty-s{color:#666666}
+      /* Upgrade modal specific */
+      .app[data-theme='light'] .pw-f{color:#1A1816}
+      .app[data-theme='light'] .pw-ck{color:#C9A96E}
+      /* Refine chat in light mode */
+      .app[data-theme='light'] .refine-msg.user{color:#1A1816}
+      /* History name text */
+      .app[data-theme='light'] .hist-name-row div{color:#1A1816}
+      /* Bottom sheet overlays */
+      .app[data-theme='light'] .likes-card *:not(button):not(img){color:#1A1816}
+
+      /* ─── Likes tab card styles ──────────────────────── */
+      .likes-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:12px;overflow:hidden;cursor:default;-webkit-user-select:none;user-select:none}
+      @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
     `}</style>
 
     <div className="app" data-theme={theme}>
@@ -2096,6 +2367,48 @@ export default function App() {
         />
       )}
 
+      {/* ─── INTEREST PICKER ─────────────────────────────── */}
+      {showInterestPicker && (
+        <div className="modal-overlay" onClick={() => { setShowInterestPicker(false); localStorage.setItem("attair_interests_picked", "1"); }}>
+          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxHeight: "85vh", overflowY: "auto" }}>
+            <button className="modal-x" onClick={() => { setShowInterestPicker(false); localStorage.setItem("attair_interests_picked", "1"); }}>✕</button>
+            <h2 className="modal-title" style={{ fontSize: 20, marginBottom: 6 }}>{t("who_inspires")}</h2>
+            <p className="modal-sub" style={{ marginBottom: 20 }}>Pick up to 5. We'll personalize your results.</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+              {[
+                { v: "actors", l: "Actors & Actresses", icon: "🎬" },
+                { v: "musicians", l: "Musicians & K-Pop", icon: "🎵" },
+                { v: "athletes", l: "Athletes", icon: "🏀" },
+                { v: "tiktok", l: "TikTok Creators", icon: "📱" },
+                { v: "instagram", l: "Instagram Influencers", icon: "📸" },
+                { v: "streamers", l: "Streamers & YouTubers", icon: "🎮" },
+                { v: "fashion", l: "Fashion Icons & Models", icon: "👗" },
+                { v: "street", l: "Street Style", icon: "🌍" },
+              ].map(({ v, l, icon }) => {
+                const on = selectedInterests.includes(v);
+                return (
+                  <button key={v}
+                    onClick={() => setSelectedInterests(prev => on ? prev.filter(x => x !== v) : prev.length < 5 ? [...prev, v] : prev)}
+                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 100, border: `1px solid ${on ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.02)", color: on ? "#C9A96E" : "rgba(255,255,255,.5)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .2s", minHeight: 44 }}>
+                    <span style={{ fontSize: 16 }}>{icon}</span>{l}
+                  </button>
+                );
+              })}
+            </div>
+            <button className="cta" onClick={async () => {
+              try {
+                await API.updateProfile({ style_interests: selectedInterests });
+              } catch {}
+              setShowInterestPicker(false);
+              localStorage.setItem("attair_interests_picked", "1");
+              track("interests_picked", { interests: selectedInterests });
+            }}>
+              {selectedInterests.length === 0 ? "Skip for now" : `Save ${selectedInterests.length} interest${selectedInterests.length !== 1 ? "s" : ""}`}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── UPGRADE SUCCESS BANNER ──────────────────────── */}
       {upgradeSuccess && (
         <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
@@ -2258,12 +2571,58 @@ export default function App() {
                     { v: "formal",    l: "Formal",    icon: "✨" },
                     { v: "outdoor",   l: "Outdoor",   icon: "🌲" },
                   ].map(({ v, l, icon }) => (
-                    <button key={v} onClick={() => setOccasion(o => o === v ? null : v)}
+                    <button key={v} onClick={() => { setOccasion(o => o === v ? null : v); setShowCustomOccasion(false); }}
                       style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${occasion === v ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: occasion === v ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.02)", color: occasion === v ? "#C9A96E" : "rgba(255,255,255,.4)", fontSize: 11, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s", display: "flex", alignItems: "center", gap: 4 }}>
                       <span style={{ fontSize: 13 }}>{icon}</span>{l}
                     </button>
                   ))}
+                  {/* Recent custom occasions */}
+                  {recentOccasions.map((ro, i) => (
+                    <button key={`recent-${i}`} onClick={() => { setOccasion(o => o === ro ? null : ro); setShowCustomOccasion(false); }}
+                      style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${occasion === ro ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: occasion === ro ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.02)", color: occasion === ro ? "#C9A96E" : "rgba(255,255,255,.4)", fontSize: 11, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s" }}>
+                      {ro}
+                    </button>
+                  ))}
+                  {/* Custom occasion chip */}
+                  <button onClick={() => setShowCustomOccasion(v => !v)}
+                    style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${showCustomOccasion ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: showCustomOccasion ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.02)", color: showCustomOccasion ? "#C9A96E" : "rgba(255,255,255,.4)", fontSize: 11, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s", display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 13 }}>+</span>{t("custom_occasion")}
+                  </button>
                 </div>
+                {showCustomOccasion && (
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    <input
+                      autoFocus
+                      value={customOccasionInput}
+                      onChange={e => setCustomOccasionInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && customOccasionInput.trim()) {
+                          const val = customOccasionInput.trim();
+                          setOccasion(val);
+                          setShowCustomOccasion(false);
+                          setCustomOccasionInput("");
+                          const updated = [val, ...recentOccasions.filter(x => x !== val)].slice(0, 5);
+                          setRecentOccasions(updated);
+                          localStorage.setItem("attair_recent_occasions", JSON.stringify(updated));
+                        }
+                      }}
+                      placeholder="e.g. rooftop brunch, job interview"
+                      style={{ flex: 1, padding: "8px 12px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(201,169,110,.3)", borderRadius: 10, color: "#fff", fontFamily: "'Outfit'", fontSize: 12, outline: "none" }}
+                    />
+                    <button onClick={() => {
+                      const val = customOccasionInput.trim();
+                      if (!val) return;
+                      setOccasion(val);
+                      setShowCustomOccasion(false);
+                      setCustomOccasionInput("");
+                      const updated = [val, ...recentOccasions.filter(x => x !== val)].slice(0, 5);
+                      setRecentOccasions(updated);
+                      localStorage.setItem("attair_recent_occasions", JSON.stringify(updated));
+                    }} style={{ padding: "8px 14px", background: "#C9A96E", border: "none", borderRadius: 10, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      Set
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Search Notes */}
@@ -2654,7 +3013,7 @@ export default function App() {
                                           <span>{cfg.icon}</span><span>{cfg.label}</span>
                                         </div>
                                         <div style={{ display: "grid", gridTemplateColumns: products.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
-                                          {products.map((p, j) => <MiniCard key={j} tier={tierKey} data={p} scanId={scanId} itemIndex={selIdx} />)}
+                                          {products.map((p, j) => <MiniCard key={j} tier={tierKey} data={p} scanId={scanId} itemIndex={selIdx} onSave={() => quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId)} isSavedItem={saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name))} />)}
                                         </div>
                                       </div>
                                     );
@@ -2665,7 +3024,7 @@ export default function App() {
                                         <span>↺</span><span>Pre-Owned &amp; Resale</span>
                                       </div>
                                       <div style={{ display: "grid", gridTemplateColumns: resaleProducts.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
-                                        {resaleProducts.map((p, j) => <MiniCard key={j} tier="resale" data={p} scanId={scanId} itemIndex={selIdx} />)}
+                                        {resaleProducts.map((p, j) => <MiniCard key={j} tier="resale" data={p} scanId={scanId} itemIndex={selIdx} onSave={() => quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId)} isSavedItem={saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name))} />)}
                                       </div>
                                     </div>
                                   )}
@@ -2773,11 +3132,11 @@ export default function App() {
               setScanId(h.id); setSelIdx(0); setPickedItems(new Set((h.tiers || []).map(t => t.item_index))); setPhase("done"); setTab("scan");
             };
             return <div className="hist-list">
-                  {/* Filter tabs */}
+                  {/* Filter tabs — saved items and lists moved to Likes tab */}
                   <div style={{ display: "flex", gap: 0, marginBottom: 12, background: "rgba(255,255,255,.03)", borderRadius: 10, padding: 3 }}>
-                    {["all", "saved", "lists"].map(f => (
+                    {["all"].map(f => (
                       <button key={f} onClick={() => { setHistoryFilter(f); setActiveWishlist(null); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: historyFilter === f ? "rgba(201,169,110,.12)" : "transparent", color: historyFilter === f ? "#C9A96E" : "rgba(255,255,255,.3)", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .2s", letterSpacing: 0.5 }}>
-                        {f === "all" ? "All Scans" : f === "saved" ? "♥ Saved" : "📋 Lists"}
+                        All Scans
                       </button>
                     ))}
                   </div>
@@ -3088,6 +3447,237 @@ export default function App() {
                   }
                   </>}
                 </div>;
+          })()}
+
+          {/* ─── Likes tab ─────────────────────────────── */}
+          {tab === "likes" && (() => {
+            // Group saved items by scan_id
+            const savedItemsByScan = {};
+            saved.forEach(s => {
+              const key = s.scan_id || "unsorted";
+              if (!savedItemsByScan[key]) savedItemsByScan[key] = [];
+              savedItemsByScan[key].push(s);
+            });
+
+            // Derive scan thumbnails from history
+            const scanThumbMap = {};
+            history.forEach(h => { if (h.id) scanThumbMap[h.id] = h.image_thumbnail || h.image_url; });
+
+            // Filter by collection
+            const allSavedItems = likesCollectionFilter === "all"
+              ? saved
+              : saved.filter(s => s.wishlist_id === likesCollectionFilter);
+
+            // Relative timestamp helper
+            const relTime = (dateStr) => {
+              if (!dateStr) return "";
+              const diff = Date.now() - new Date(dateStr).getTime();
+              const days = Math.floor(diff / 86400000);
+              if (days === 0) return "Saved today";
+              if (days === 1) return "Saved yesterday";
+              if (days < 7) return `Saved ${days} days ago`;
+              if (days < 30) return `Saved ${Math.floor(days / 7)}w ago`;
+              return `Saved ${new Date(dateStr).toLocaleDateString()}`;
+            };
+
+            return (
+              <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
+                {/* Collections chips */}
+                <div style={{ padding: "12px 16px 0", overflowX: "auto" }}>
+                  <div style={{ display: "flex", gap: 6, paddingBottom: 2 }}>
+                    {[{ id: "all", name: "All" }, ...wishlists].map(col => (
+                      <button key={col.id}
+                        onClick={() => setLikesCollectionFilter(col.id)}
+                        style={{ whiteSpace: "nowrap", padding: "6px 14px", borderRadius: 20, border: `1px solid ${likesCollectionFilter === col.id ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: likesCollectionFilter === col.id ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.03)", color: likesCollectionFilter === col.id ? "#C9A96E" : "rgba(255,255,255,.4)", fontSize: 12, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s", flexShrink: 0 }}>
+                        {col.name}
+                        {col.id !== "all" && <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.6 }}>{saved.filter(s => s.wishlist_id === col.id).length}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Content area */}
+                {allSavedItems.length === 0 ? (
+                  <div className="empty" style={{ padding: "60px 24px", textAlign: "center" }}>
+                    <div className="empty-i">
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.2 }}>
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                      </svg>
+                    </div>
+                    <div className="empty-t" style={{ marginTop: 12 }}>{t("no_likes")}</div>
+                    <div className="empty-s" style={{ marginTop: 6 }}>Tap the heart on any product to save it here</div>
+                  </div>
+                ) : (
+                  <div style={{ padding: "12px 16px 80px" }}>
+                    {/* Group by scan */}
+                    {Object.entries(
+                      allSavedItems.reduce((groups, s) => {
+                        const key = s.scan_id || "unsorted";
+                        if (!groups[key]) groups[key] = [];
+                        groups[key].push(s);
+                        return groups;
+                      }, {})
+                    ).map(([scanKey, items]) => {
+                      const thumb = scanThumbMap[scanKey];
+                      const scanEntry = history.find(h => h.id === scanKey);
+                      return (
+                        <div key={scanKey} style={{ marginBottom: 24 }}>
+                          {/* Scan group header */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                            {thumb ? (
+                              <img src={thumb} alt="" style={{ width: 40, height: 52, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,.06)" }} onError={e => e.target.style.display = "none"} />
+                            ) : (
+                              <div style={{ width: 40, height: 52, borderRadius: 6, background: "rgba(255,255,255,.04)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                              </div>
+                            )}
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.6)" }}>
+                                {scanEntry?.scan_name || (scanEntry?.items?.slice(0, 2).map(x => x.name).join(", ")) || "Saved items"}
+                              </div>
+                              <div style={{ fontSize: 10, color: "rgba(255,255,255,.25)" }}>
+                                {items.length} item{items.length !== 1 ? "s" : ""}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2-col product grid */}
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            {items.map(s => {
+                              const item = s.item_data || s;
+                              const assignedList = wishlists.find(wl => wl.id === s.wishlist_id);
+                              return (
+                                <div
+                                  key={s.id}
+                                  className="likes-card"
+                                  onContextMenu={e => { e.preventDefault(); setLikesLongPressItem(s); }}
+                                  style={{ position: "relative", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.05)", borderRadius: 12, overflow: "hidden" }}
+                                >
+                                  {/* Thumbnail */}
+                                  {item.image_url ? (
+                                    <div style={{ aspectRatio: "1", overflow: "hidden", background: "rgba(255,255,255,.04)" }}>
+                                      <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => e.target.style.display = "none"} />
+                                    </div>
+                                  ) : (
+                                    <div style={{ aspectRatio: "1", background: "rgba(255,255,255,.03)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+                                      {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[item.category] || "✦"}
+                                    </div>
+                                  )}
+                                  {/* Info */}
+                                  <div style={{ padding: "8px 10px 10px" }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.85)", lineHeight: 1.3, marginBottom: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{item.name}</div>
+                                    {item.brand && item.brand !== "Unidentified" && (
+                                      <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", marginBottom: 2 }}>{item.brand}</div>
+                                    )}
+                                    {item.price && <div style={{ fontSize: 12, fontWeight: 700, color: "#C9A96E", marginBottom: 2 }}>{item.price}</div>}
+                                    <div style={{ fontSize: 9, color: "rgba(255,255,255,.2)", marginTop: 4 }}>{relTime(s.created_at)}</div>
+                                    {assignedList && (
+                                      <div style={{ marginTop: 5, display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 100, background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", color: "#C9A96E" }}>
+                                        {assignedList.name}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {/* Remove heart */}
+                                  <button
+                                    aria-label={`Remove ${item.name} from Likes`}
+                                    onClick={async () => {
+                                      await API.deleteSaved(s.id).catch(() => {});
+                                      setSaved(prev => prev.filter(x => x.id !== s.id));
+                                      refreshStatus();
+                                    }}
+                                    style={{ position: "absolute", top: 6, right: 6, width: 28, height: 28, borderRadius: "50%", background: "rgba(255,60,80,.85)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)" }}>
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="#fff" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                                    </svg>
+                                  </button>
+                                  {/* Long-press / add to collection button */}
+                                  <button
+                                    aria-label={`Add ${item.name} to collection`}
+                                    onClick={() => setLikesLongPressItem(s)}
+                                    style={{ position: "absolute", bottom: 8, right: 8, width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", fontSize: 11 }}>
+                                    +
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Add-to-collection bottom sheet */}
+                {likesLongPressItem && (() => {
+                  const s = likesLongPressItem;
+                  const item = s.item_data || s;
+                  return (
+                    <>
+                      <div style={{ position: "fixed", inset: 0, zIndex: 299, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)" }} onClick={() => setLikesLongPressItem(null)} />
+                      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 300, background: "#18181C", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "16px 0 32px", animation: "slideUp .25s ease" }}>
+                        <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,.12)", margin: "0 auto 16px" }} />
+                        <div style={{ padding: "0 20px 14px", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{item.name}</div>
+                          <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)" }}>{t("add_to_collection")}</div>
+                        </div>
+                        <div style={{ maxHeight: 220, overflowY: "auto", padding: "8px 0" }}>
+                          {wishlists.map(wl => (
+                            <button key={wl.id} onClick={async () => {
+                              const ok = await API.addToWishlist(wl.id, s.id);
+                              if (ok) setSaved(prev => prev.map(x => x.id === s.id ? { ...x, wishlist_id: wl.id } : x));
+                              setLikesLongPressItem(null);
+                            }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "12px 20px", background: s.wishlist_id === wl.id ? "rgba(201,169,110,.08)" : "none", border: "none", color: s.wishlist_id === wl.id ? "#C9A96E" : "rgba(255,255,255,.7)", fontFamily: "'Outfit'", fontSize: 14, cursor: "pointer", textAlign: "left" }}>
+                              {wl.name}
+                              {s.wishlist_id === wl.id && <span style={{ color: "#C9A96E", fontSize: 14 }}>✓</span>}
+                            </button>
+                          ))}
+                        </div>
+                        {/* Create new collection */}
+                        <div style={{ padding: "8px 20px 0", borderTop: "1px solid rgba(255,255,255,.06)" }}>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <input
+                              value={likesCollectionInput}
+                              onChange={e => setLikesCollectionInput(e.target.value)}
+                              placeholder={t("create_collection")}
+                              onKeyDown={async e => {
+                                if (e.key === "Enter" && likesCollectionInput.trim()) {
+                                  setLikesCollectionCreating(true);
+                                  try {
+                                    const wl = await API.createWishlist(likesCollectionInput.trim());
+                                    setWishlists(w => [wl, ...w]);
+                                    const ok = await API.addToWishlist(wl.id, s.id);
+                                    if (ok) setSaved(prev => prev.map(x => x.id === s.id ? { ...x, wishlist_id: wl.id } : x));
+                                    setLikesCollectionInput("");
+                                    setLikesLongPressItem(null);
+                                  } catch {}
+                                  setLikesCollectionCreating(false);
+                                }
+                              }}
+                              style={{ flex: 1, padding: "10px 14px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, color: "#fff", fontFamily: "'Outfit'", fontSize: 13, outline: "none" }}
+                            />
+                            <button onClick={async () => {
+                              if (!likesCollectionInput.trim()) return;
+                              setLikesCollectionCreating(true);
+                              try {
+                                const wl = await API.createWishlist(likesCollectionInput.trim());
+                                setWishlists(w => [wl, ...w]);
+                                const ok = await API.addToWishlist(wl.id, s.id);
+                                if (ok) setSaved(prev => prev.map(x => x.id === s.id ? { ...x, wishlist_id: wl.id } : x));
+                                setLikesCollectionInput("");
+                                setLikesLongPressItem(null);
+                              } catch {}
+                              setLikesCollectionCreating(false);
+                            }} disabled={likesCollectionCreating || !likesCollectionInput.trim()} style={{ padding: "10px 16px", background: likesCollectionInput.trim() ? "#C9A96E" : "rgba(255,255,255,.06)", border: "none", borderRadius: 10, color: likesCollectionInput.trim() ? "#0C0C0E" : "rgba(255,255,255,.2)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 700, cursor: likesCollectionInput.trim() ? "pointer" : "default" }}>
+                              {likesCollectionCreating ? "…" : "+ New"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            );
           })()}
 
           {/* ─── Profile ───────────────────────────────── */}
@@ -3412,10 +4002,11 @@ export default function App() {
           );
         })()}
 
-        {/* ─── Tab bar (3 tabs) ────────────────────────── */}
+        {/* ─── Tab bar (4 tabs) ────────────────────────── */}
         <div className="tb">
           <button className={`tab ${tab==="scan"?"on":""}`} onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); }}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg><span className="tab-l">{t("scan")}</span></button>
           <button className={`tab ${tab==="history"?"on":""}`} onClick={() => { track("tab_switched", { tab: "history" }); setTab("history"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" /></svg><span className="tab-l">{t("history")}</span></button>
+          <button className={`tab ${tab==="likes"?"on":""}`} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label={t("likes")}><svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span className="tab-l">{t("likes")}</span></button>
           <button className={`tab ${tab==="profile"?"on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7" /></svg><span className="tab-l">{t("profile")}</span></button>
         </div>
       </>)}
