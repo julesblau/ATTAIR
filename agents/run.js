@@ -1229,6 +1229,7 @@ async function main() {
         model: "opus",
         env: {
           ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
+          GH_TOKEN: process.env.GH_TOKEN ?? "",
         },
       };
 
