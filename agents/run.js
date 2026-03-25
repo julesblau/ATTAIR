@@ -1252,16 +1252,19 @@ Your original mission:
 ${PM_PROMPT}`
         : PM_PROMPT;
 
+      let lastRateLimitResetAt = null; // Track if stream ended due to rate limit
+
       for await (const message of query({ prompt, options: queryOptions })) {
         const type = message.type ?? "unknown";
         const subtype = message.subtype ?? "";
 
-        // Rate limit events — log and continue (SDK handles internally)
+        // Rate limit events — track for post-stream sleep
         if (type === "rate_limit_event" || subtype === "rate_limit") {
           const info = message.rate_limit_info ?? message.data ?? {};
           const status = info.status ?? "unknown";
           const resetsAt = info.resets_at ? new Date(info.resets_at).toLocaleTimeString() : "soon";
           if (status === "rejected") {
+            lastRateLimitResetAt = info.resets_at ?? null;
             console.log(`\n⏸️  Rate limited — will resume at ${resetsAt}. Waiting...`);
           } else if (status === "allowed_warning") {
             console.log(`⚠️  Approaching rate limit (resets at ${resetsAt})`);
@@ -1326,8 +1329,23 @@ ${PM_PROMPT}`
         }
       }
 
-      // Stream ended without a result message — may have been interrupted cleanly
-      console.log("\n⚠️  Stream ended without completion. Checking if we should resume...");
+      // Stream ended without a result message — may have been rate limited
+      if (lastRateLimitResetAt) {
+        // SDK ended the stream due to rate limit — sleep until reset
+        const resetTime = new Date(lastRateLimitResetAt).getTime();
+        const waitMs = (resetTime > Date.now() ? resetTime - Date.now() : 15 * 60 * 1000) + 120_000; // +2min buffer, fallback 15min
+        const resumeTime = new Date(Date.now() + waitMs).toLocaleTimeString();
+        console.log(`\n⏸️  Stream ended due to rate limit. Sleeping until ~${resumeTime}...`);
+        try {
+          notifyHuman(`Rate limited / out of credits.\nSleeping for ${formatDuration(waitMs)} — will auto-resume at ~${resumeTime}.\n\nNo action needed.`, { title: `[Agent] ⏸️ Paused — resumes ~${resumeTime}` });
+        } catch (e) { /* non-critical */ }
+        await sleep(waitMs);
+        console.log(`🔄 Waking up — resuming army...\n`);
+        continue; // Loop back to retry
+      }
+
+      console.log("\n⚠️  Stream ended without completion. Retrying in 30s...");
+      await sleep(30_000);
       // Loop back to retry with resume
 
     } catch (err) {
