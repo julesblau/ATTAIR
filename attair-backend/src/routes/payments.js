@@ -47,14 +47,24 @@ router.post("/create-checkout-session", requireAuth, async (req, res) => {
     const successUrl = `${getSuccessUrl()}/upgrade-success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = getSuccessUrl();
 
-    const priceData = plan === "yearly"
-      ? { currency: "usd", unit_amount: 3999, recurring: { interval: "year" }, product_data: { name: "ATTAIR Pro — Yearly" } }
-      : { currency: "usd", unit_amount: 999, recurring: { interval: "month" }, product_data: { name: "ATTAIR Pro — Monthly" } };
+    // Use pre-created Stripe Price IDs if configured; otherwise fall back to inline price_data.
+    // This supports both hosted Stripe prices (recommended for production) and dynamic pricing.
+    let lineItem;
+    if (plan === "yearly" && process.env.STRIPE_PRICE_YEARLY) {
+      lineItem = { price: process.env.STRIPE_PRICE_YEARLY, quantity: 1 };
+    } else if (plan === "monthly" && process.env.STRIPE_PRICE_MONTHLY) {
+      lineItem = { price: process.env.STRIPE_PRICE_MONTHLY, quantity: 1 };
+    } else {
+      const priceData = plan === "yearly"
+        ? { currency: "usd", unit_amount: 2999, recurring: { interval: "year" }, product_data: { name: "ATTAIR Pro — Yearly" } }
+        : { currency: "usd", unit_amount: 499, recurring: { interval: "month" }, product_data: { name: "ATTAIR Pro — Monthly" } };
+      lineItem = { price_data: priceData, quantity: 1 };
+    }
 
     const session = await getStripe().checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
-      line_items: [{ price_data: priceData, quantity: 1 }],
+      line_items: [lineItem],
       success_url: successUrl,
       cancel_url: cancelUrl,
       customer_email: email,

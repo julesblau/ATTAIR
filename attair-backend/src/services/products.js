@@ -714,7 +714,7 @@ function cleanForSearch(q) {
  *                                 Baked into the cache key via makeTextCacheKey so
  *                                 different notes never collide on the same cache entry.
  */
-async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occasion = null, searchNotes = null) {
+async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null) {
   const g = gender === "female" ? "women's" : "men's";
   // Normalise: guard against non-string values, collapse whitespace.
   const notes = typeof searchNotes === "string" ? searchNotes.trim() : "";
@@ -740,7 +740,7 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
     if (isShoeItem) sizeTerm = String(sizePrefs.shoe_size).trim();
   }
 
-  const occasionTerm = occasion ? OCCASION_MODIFIERS[occasion] || null : null;
+  const occasionTerm = occasion ? OCCASION_MODIFIERS[occasion] || null : (customOccasionModifiers || null);
 
   const queries = [];
 
@@ -1168,7 +1168,7 @@ const OCCASION_MODIFIERS = {
   festival:     "festival boho",            // v4.3 new: recognised occasion tag on ASOS/UO/PLT
 };
 
-export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null) {
+export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null) {
   cleanupExpiredCache();
   const defaultTierBounds = getTierBounds(budgetMin, budgetMax);
   const defaultSizePrefs = sizePrefs;
@@ -1216,7 +1216,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     });
     // Text search if we have fewer than 3 priced Lens results
     if (pricedLens.length < 3) {
-      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes);
+      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
       itemPools[i].text = textResults;
       console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
     }

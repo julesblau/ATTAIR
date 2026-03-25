@@ -143,3 +143,37 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS size_prefs JSONB DEFAULT '{}'::jso
 -- stripe_customer_id: stored on checkout.session.completed so subscription.deleted
 -- and invoice.payment_failed webhooks can look up the profile and downgrade the user.
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+
+-- ═══════════════════════════════════════════════════════════════
+-- Social features migration (March 2026)
+-- ═══════════════════════════════════════════════════════════════
+
+-- Wishlists table (must exist before foreign keys reference it)
+CREATE TABLE IF NOT EXISTS wishlists (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  visibility TEXT DEFAULT 'private',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Social: follows table
+CREATE TABLE IF NOT EXISTS follows (
+  follower_id  UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  following_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (follower_id, following_id)
+);
+CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following_id);
+
+-- Social: visibility columns on content tables
+ALTER TABLE scans       ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'private';
+ALTER TABLE saved_items ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'private';
+ALTER TABLE wishlists   ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'private';
+
+-- Social: profile enhancements
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bio             TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS style_interests JSONB DEFAULT '[]'::jsonb;
+
+-- Link saved items to a wishlist/collection
+ALTER TABLE saved_items ADD COLUMN IF NOT EXISTS wishlist_id UUID REFERENCES wishlists(id) ON DELETE SET NULL;

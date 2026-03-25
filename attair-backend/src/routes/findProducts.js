@@ -1,9 +1,53 @@
 import { Router } from "express";
+import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth } from "../middleware/auth.js";
 import { findProductsForItems } from "../services/products.js";
 import supabase from "../lib/supabase.js";
 
 const router = Router();
+
+// ─── Custom occasion cache (in-memory, process-lifetime) ────
+// Maps sanitized occasion string → comma-separated keyword modifiers
+const occasionCache = new Map();
+
+/**
+ * Calls Claude haiku to interpret a free-text occasion into Shopping query
+ * modifier keywords. Results are cached so we don't re-prompt for the same string.
+ *
+ * @param {string} occasionStr  - Sanitized occasion description
+ * @returns {Promise<string>}   - Comma-separated keywords, e.g. "black tie, formal gown, elegant"
+ */
+async function getCustomOccasionModifiers(occasionStr) {
+  if (occasionCache.has(occasionStr)) return occasionCache.get(occasionStr);
+
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  try {
+    const message = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 60,
+      messages: [
+        {
+          role: "user",
+          content: `The user is shopping for an outfit for: '${occasionStr}'. Generate 3-5 search modifier keywords for Google Shopping. Return only the keywords, comma-separated. No explanation.`,
+        },
+      ],
+    });
+
+    const raw = message.content?.[0]?.text || "";
+    // Sanitize Claude's response: keep only alphanumeric, spaces, commas, hyphens
+    const keywords = raw.replace(/[^a-zA-Z0-9 ,\-]/g, "").trim();
+    const result = keywords || occasionStr;
+    occasionCache.set(occasionStr, result);
+    return result;
+  } catch (err) {
+    console.error("Custom occasion Claude error:", err.message);
+    // Fall back to the raw occasion string as-is
+    const fallback = occasionStr;
+    occasionCache.set(occasionStr, fallback);
+    return fallback;
+  }
+}
 
 /**
  * POST /api/find-products
@@ -19,8 +63,25 @@ router.post("/", requireAuth, async (req, res) => {
 
   const VALID_OCCASIONS = ["casual", "work", "night_out", "athletic", "formal", "outdoor",
                             "wedding", "date", "beach", "smart_casual", "festival"];
-  // Silently null out unrecognised occasion values — frontend may have stale data
-  let occasion = (occasionRaw && VALID_OCCASIONS.includes(occasionRaw)) ? occasionRaw : null;
+
+  // Sanitize the raw occasion string: trim, max 100 chars, strip dangerous characters
+  const sanitizedOccasionRaw = occasionRaw
+    ? String(occasionRaw).trim().slice(0, 100).replace(/[^a-zA-Z0-9 _\-]/g, "").trim()
+    : null;
+
+  let occasion = null;
+  let customOccasionModifiers = null;
+
+  if (sanitizedOccasionRaw) {
+    if (VALID_OCCASIONS.includes(sanitizedOccasionRaw)) {
+      // Known occasion — use the built-in OCCASION_MODIFIERS lookup in products.js
+      occasion = sanitizedOccasionRaw;
+    } else {
+      // Unknown occasion — ask Claude to interpret it into search modifiers
+      customOccasionModifiers = await getCustomOccasionModifiers(sanitizedOccasionRaw);
+      console.log(`[CustomOccasion] "${sanitizedOccasionRaw}" → "${customOccasionModifiers}"`);
+    }
+  }
 
   // Sanitize search_notes: trim, cap at 200 chars, keep only safe characters
   const search_notes = rawSearchNotes
@@ -55,7 +116,17 @@ router.post("/", requireAuth, async (req, res) => {
       imageUrl = scan?.image_url || null;
     }
 
-    const results = await findProductsForItems(items, gender, profile?.budget_min, profile?.budget_max, imageUrl, profile?.size_prefs || {}, occasion || null, search_notes);
+    const results = await findProductsForItems(
+      items,
+      gender,
+      profile?.budget_min,
+      profile?.budget_max,
+      imageUrl,
+      profile?.size_prefs || {},
+      occasion,
+      search_notes,
+      customOccasionModifiers,
+    );
 
     // Persist tier results back to the scan row
     if (scan_id) {

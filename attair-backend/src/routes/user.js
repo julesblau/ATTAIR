@@ -55,7 +55,7 @@ router.get("/status", requireAuth, async (req, res) => {
 router.get("/profile", requireAuth, async (req, res) => {
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs, tier, created_at, referral_code")
+    .select("id, display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs, tier, created_at, referral_code, bio, style_interests")
     .eq("id", req.userId)
     .single();
 
@@ -71,8 +71,19 @@ router.get("/profile", requireAuth, async (req, res) => {
 });
 
 // ─── PATCH /api/user/profile ────────────────────────────────
+const VALID_STYLE_INTERESTS = [
+  "Actors & Actresses",
+  "Musicians & K-Pop",
+  "Athletes",
+  "TikTok Creators",
+  "Instagram Influencers",
+  "Streamers & YouTubers",
+  "Fashion Icons & Models",
+  "Street Style",
+];
+
 router.patch("/profile", requireAuth, async (req, res) => {
-  const { display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs } = req.body;
+  const { display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs, bio, style_interests } = req.body;
 
   const updates = {};
   if (display_name !== undefined && display_name.length > 100) {
@@ -139,6 +150,33 @@ router.patch("/profile", requireAuth, async (req, res) => {
       }
     }
     updates.size_prefs = cleaned;
+  }
+
+  if (bio !== undefined) {
+    if (bio !== null) {
+      if (typeof bio !== "string") {
+        return res.status(400).json({ error: "bio must be a string" });
+      }
+      if (bio.length > 200) {
+        return res.status(400).json({ error: "bio must be 200 characters or less" });
+      }
+      updates.bio = bio;
+    } else {
+      updates.bio = null;
+    }
+  }
+
+  if (style_interests !== undefined) {
+    if (!Array.isArray(style_interests)) {
+      return res.status(400).json({ error: "style_interests must be an array" });
+    }
+    if (style_interests.length > 8) {
+      return res.status(400).json({ error: "style_interests can have at most 8 items" });
+    }
+    // Validate each entry is a string under 50 chars, silently strip unknown values
+    const cleaned = style_interests
+      .filter(v => typeof v === "string" && v.length <= 50 && VALID_STYLE_INTERESTS.includes(v));
+    updates.style_interests = cleaned;
   }
 
   if (Object.keys(updates).length === 0) {

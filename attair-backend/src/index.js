@@ -18,6 +18,7 @@ import seenOnRouter from "./routes/seenOn.js";
 import nearbyStoresRouter from "./routes/nearbyStores.js";
 import wishlistsRouter from "./routes/wishlists.js";
 import paymentsRouter from "./routes/payments.js";
+import socialRouter from "./routes/social.js";
 
 // ─── Validate required env vars ─────────────────────────────
 const REQUIRED_ENV = [
@@ -115,6 +116,7 @@ app.use("/api/seen-on", seenOnRouter);
 app.use("/api/nearby-stores", nearbyStoresRouter);
 app.use("/api/wishlists", wishlistsRouter);
 app.use("/api/payments", paymentsRouter);
+app.use("/api", socialRouter);
 
 // Health check
 app.get("/", (req, res) => {
