@@ -26,9 +26,11 @@ while [ $RETRY -lt $MAX_RETRIES ]; do
   node run.js
   EXIT_CODE=$?
 
-  # If run.js exited cleanly AND a standup was written, we're actually done
-  if [ $EXIT_CODE -eq 0 ] && [ -f "../standups/$(date +%Y-%m-%d).md" ]; then
+  # Only consider it truly done if the standup for THIS run's branch date exists
+  # AND run.js printed the completion banner
+  if [ $EXIT_CODE -eq 0 ] && grep -q "AGENT ARMY COMPLETE" army.log 2>/dev/null; then
     echo "✅ Agent army completed successfully."
+    notify "[Agent] ✅ Done" "Agent army finished all tasks."
     exit 0
   fi
 
