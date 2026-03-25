@@ -26,11 +26,12 @@ while [ $RETRY -lt $MAX_RETRIES ]; do
   node run.js
   EXIT_CODE=$?
 
-  # Only consider it truly done if the standup for THIS run's branch date exists
-  # AND run.js printed the completion banner
-  if [ $EXIT_CODE -eq 0 ] && grep -q "AGENT ARMY COMPLETE" army.log 2>/dev/null; then
-    echo "✅ Agent army completed successfully."
-    notify "[Agent] ✅ Done" "Agent army finished all tasks."
+  # Only truly done if run.js created new commits on the daily branch
+  DAILY_BRANCH="agents/daily-$(date +%Y-%m-%d)"
+  NEW_COMMITS=$(git log --oneline "$DAILY_BRANCH" 2>/dev/null | head -1)
+  if [ $EXIT_CODE -eq 0 ] && [ -n "$NEW_COMMITS" ]; then
+    echo "✅ Agent army completed — commits found on $DAILY_BRANCH."
+    notify "[Agent] ✅ Done" "Agent army finished. Check branch $DAILY_BRANCH."
     exit 0
   fi
 
