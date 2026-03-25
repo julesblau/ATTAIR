@@ -1252,7 +1252,8 @@ Your original mission:
 ${PM_PROMPT}`
         : PM_PROMPT;
 
-      let lastRateLimitResetAt = null; // Track if stream ended due to rate limit
+      let wasRateLimited = false;
+      let lastRateLimitResetAt = null;
 
       for await (const message of query({ prompt, options: queryOptions })) {
         const type = message.type ?? "unknown";
@@ -1264,6 +1265,7 @@ ${PM_PROMPT}`
           const status = info.status ?? "unknown";
           const resetsAt = info.resets_at ? new Date(info.resets_at).toLocaleTimeString() : "soon";
           if (status === "rejected") {
+            wasRateLimited = true;
             lastRateLimitResetAt = info.resets_at ?? null;
             console.log(`\n⏸️  Rate limited — will resume at ${resetsAt}. Waiting...`);
           } else if (status === "allowed_warning") {
@@ -1330,10 +1332,16 @@ ${PM_PROMPT}`
       }
 
       // Stream ended without a result message — may have been rate limited
-      if (lastRateLimitResetAt) {
+      if (wasRateLimited) {
         // SDK ended the stream due to rate limit — sleep until reset
-        const resetTime = new Date(lastRateLimitResetAt).getTime();
-        const waitMs = (resetTime > Date.now() ? resetTime - Date.now() : 15 * 60 * 1000) + 120_000; // +2min buffer, fallback 15min
+        let waitMs;
+        if (lastRateLimitResetAt) {
+          const resetTime = new Date(lastRateLimitResetAt).getTime();
+          waitMs = (resetTime > Date.now() ? resetTime - Date.now() : 15 * 60 * 1000) + 120_000;
+        } else {
+          // No reset time provided — default to sleeping 2 hours (covers most usage resets)
+          waitMs = 2 * 60 * 60 * 1000;
+        }
         const resumeTime = new Date(Date.now() + waitMs).toLocaleTimeString();
         console.log(`\n⏸️  Stream ended due to rate limit. Sleeping until ~${resumeTime}...`);
         try {
