@@ -17,6 +17,9 @@ router.get("/", requireAuth, async (req, res) => {
   const { brand, category, lat, lng } = req.query;
 
   if (!lat || !lng) return res.status(400).json({ error: "lat and lng are required" });
+  // SECURITY: cap query param lengths to prevent SerpAPI quota abuse
+  if (brand && brand.length > 100) return res.status(400).json({ error: "brand must be 100 characters or less" });
+  if (category && category.length > 100) return res.status(400).json({ error: "category must be 100 characters or less" });
 
   // SECURITY: lat and lng are interpolated directly into the SerpAPI query string.
   // Validate them as finite numbers within legal geographic bounds to prevent parameter

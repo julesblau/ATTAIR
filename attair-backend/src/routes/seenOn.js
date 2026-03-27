@@ -76,6 +76,9 @@ async function fetchAppearances(query, platform) {
 router.get("/", requireAuth, async (req, res) => {
   const { brand, name, interests: interestsRaw } = req.query;
   if (!name && !brand) return res.status(400).json({ error: "Missing name or brand" });
+  // SECURITY: cap query param lengths to prevent SerpAPI quota abuse
+  if (brand && brand.length > 100) return res.status(400).json({ error: "brand must be 100 characters or less" });
+  if (name && name.length > 200) return res.status(400).json({ error: "name must be 200 characters or less" });
 
   const safeBrand = (brand && brand !== "Unidentified") ? brand : null;
 

@@ -86,8 +86,8 @@ router.patch("/profile", requireAuth, async (req, res) => {
   const { display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs, bio, style_interests } = req.body;
 
   const updates = {};
-  if (display_name !== undefined && display_name !== null && String(display_name).length > 100) {
-    return res.status(400).json({ error: "Display name must be 100 characters or less" });
+  if (display_name !== undefined && display_name !== null && String(display_name).length > 50) {
+    return res.status(400).json({ error: "Display name must be 50 characters or less" });
   }
   if (display_name !== undefined) updates.display_name = display_name;
   if (phone !== undefined) updates.phone = phone;
