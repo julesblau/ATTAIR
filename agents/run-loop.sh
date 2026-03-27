@@ -4,7 +4,12 @@
 # Sends GH notifications on pause/resume.
 
 cd "$(dirname "$0")"
-GH='"C:\Program Files\GitHub CLI\gh.exe"'
+# Use gh from PATH on Linux/macOS (GitHub Actions), fall back to Windows install path
+if command -v gh &>/dev/null; then
+  GH="gh"
+else
+  GH='"C:\Program Files\GitHub CLI\gh.exe"'
+fi
 REPO="julesblau/ATTAIR"
 
 notify() {

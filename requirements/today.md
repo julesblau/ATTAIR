@@ -1,6 +1,6 @@
-# Requirements — March 25, 2026
+# Requirements — March 27, 2026
 
-## Context from yesterday's run (March 24)
+## Context from previous runs (March 24–25)
 The agent army completed a full run: 133 tests passing, 13 files changed/created,
 5 security fixes applied, all core features verified working. See standups/2026-03-24.md
 for the full report.
@@ -28,6 +28,116 @@ ALREADY DONE — do NOT redo:
 
 IMPORTANT: Read standups/2026-03-24.md and run `git log --oneline -30` before
 starting. Do NOT rebuild anything listed above.
+
+---
+
+## 0. CRITICAL — Fix Search for User-Uploaded Photos (0 Results Bug)
+
+**THIS IS THE #1 PRIORITY. The entire app is useless if search doesn't work for
+real photos. Every other feature is secondary to this.**
+
+### The Problem
+When a user takes a photo with their camera (not a Google Image), the product
+search returns 0 results every time. This is the core user flow — snap a photo,
+find the products — and it's completely broken for real-world usage.
+
+### Root Cause Analysis
+The search pipeline has a critical dependency chain that fails for user photos:
+
+1. **Google Lens path (visual search):** `findProductsForItems()` receives `imageUrl`
+   from Supabase Storage. Google Lens reverse-image-searches that URL. But:
+   - If Supabase Storage upload fails silently → `imageUrl` is null → Lens is skipped entirely
+   - If Supabase Storage URL is not publicly accessible → SerpAPI can't fetch it → 0 Lens results
+   - If the photo is a casual phone snap (not a clean product photo) → Lens returns
+     non-vendor visual matches (blog posts, social media, portfolios) that all get
+     filtered out by `isVendorPage()` → 0 usable Lens results
+
+2. **Text search fallback:** When Lens returns < 3 priced results, text search kicks in.
+   But Claude's `search_query` field is often too specific for real photos:
+   - "Men's navy blue slim fit cotton twill chino pants casual" → 0 Shopping results
+   - The query is overloaded with qualifiers that confuse Google Shopping's index
+   - The `cleanForSearch()` function strips some noise but not enough
+   - `MAX_QUERY_LEN` (150 chars) is too generous — Shopping degrades after ~80 chars
+
+3. **Scoring gate:** Even when text search returns results, `scoreProduct()` requires
+   `score > 0` to keep a result. For generic items from phone photos where Claude's
+   identification is approximate, many legitimate products score exactly 0 and get
+   discarded.
+
+### What the Quant Agent Must Fix
+
+**This is a FULL REFACTORING of the search algorithm.** The Quant agent owns this
+entirely. The goal: make `products.js` a proprietary, best-in-class search engine
+that finds relevant products for ANY photo — not just Google Images.
+
+#### A. Fix the Lens pipeline
+- **Verify Supabase Storage URLs are publicly accessible** to SerpAPI. If not,
+  either fix the storage bucket policy or provide a signed URL with sufficient TTL.
+- **Add a Lens retry with a different image strategy:** If the first Lens search
+  returns 0 vendor-page results, crop the image to the main garment area (using
+  Claude's `position_y` data) and retry. Or: use the identification data to
+  construct a Google Images URL as a Lens input instead of the raw photo.
+- **Relax `isVendorPage()` for Lens results** — Lens results from unknown domains
+  that have a price should still be accepted. The current logic rejects too
+  aggressively.
+
+#### B. Fix the text search fallback (this is the BIG one)
+- **Simplify Claude's search queries:** The `search_query` from Claude is meant
+  for a human Googling, not for Google Shopping API. Create a new query builder
+  that constructs optimal Shopping queries from the structured item data:
+  - Primary query: `{gender} {brand} {subcategory}` (e.g., "men's Nike hoodie")
+  - Secondary query: `{gender} {color} {subcategory} {material}` (e.g., "men's black cotton hoodie")
+  - Tertiary query: `{gender} {subcategory}` (broadest possible, e.g., "men's hoodie")
+  - Each query should be SHORT (under 80 chars) and use only Shopping-indexed terms
+- **Never return 0 results.** If all specific queries fail, the broadest query
+  (`{gender} {subcategory}`) MUST return results. If even that fails, fall back to
+  `{gender} {category}` (e.g., "men's outerwear"). There is ALWAYS a valid search.
+- **Reduce `MAX_QUERY_LEN` from 150 to 80** — Google Shopping degrades with long queries
+- **Add query quality validation:** Before sending a query to SerpAPI, check it
+  against known Shopping-indexed terms. Strip adjectives that aren't indexed
+  ("slim fit" is indexed, "beautifully tailored" is not).
+
+#### C. Fix the scoring system
+- **Lower the score floor for text search results.** A product from a trusted
+  retailer that matches the subcategory should never score 0. The clothing keyword
+  baseline (+3) plus subcategory match (+25) should be enough.
+- **Add a "broad match" score path:** If Claude identified "slim fit chinos" and
+  the product title says "men's khaki pants", that's still a relevant result.
+  Add fuzzy/synonym matching for common garment terms:
+  - chinos ↔ khakis ↔ pants
+  - hoodie ↔ hooded sweatshirt ↔ pullover
+  - sneakers ↔ trainers ↔ running shoes
+  - t-shirt ↔ tee ↔ tee shirt
+  - blazer ↔ sport coat ↔ suit jacket
+- **Weight text results higher when Lens failed.** Currently text results start
+  at 0 while Lens results start at +25. When Lens returned nothing useful, text
+  results ARE the primary data — give them a base bonus.
+
+#### D. Add search quality telemetry
+- Log the following for every search request:
+  - `imageUrl` present? → Lens attempted? → Lens results count → vendor-filtered count
+  - Text queries sent → results per query → scored results count → final tier counts
+  - If ALL tiers are fallback (Google Shopping links), log a WARN: "Zero real products found"
+- This telemetry is essential for diagnosing why searches fail in production.
+
+#### E. Test with real photos
+- The Quant agent MUST test the refactored search with at least 3 scenarios:
+  1. A phone photo of someone wearing a hoodie and jeans (casual, no brand visible)
+  2. A phone photo of a dress shirt and slacks (business, brand might be visible)
+  3. A screenshot from Instagram of an outfit (has UI chrome around it)
+- For each scenario, verify that budget/mid/premium tiers all have real products
+  (not fallback Google Shopping links).
+
+### What the Backend Agent Must Do
+- Support whatever schema/route changes the Quant agent needs
+- Ensure the Supabase Storage bucket for scan images has public read access
+  (or generate short-lived signed URLs for SerpAPI consumption)
+
+### What the Testing Agent Must Do
+- Add tests for the new query builder
+- Add tests for synonym/fuzzy matching
+- Add tests for the "never return 0 results" guarantee
+- Add a test that simulates a Lens failure and verifies text fallback produces real results
 
 ---
 
@@ -363,15 +473,23 @@ code. Today's job: verify it works end-to-end.
 
 ## 13. AGENT NOTES
 
-**PM:** Today has 3 phases:
+**PM:** Today has 4 phases:
+  Phase 0: CRITICAL — Fix search for user-uploaded photos (section 0). This is the
+    entire point of the app and it's broken. Quant agent owns this. Nothing else
+    matters if search doesn't work for real photos. Backend agent supports.
   Phase 1: Quick wins — CORS verification, security fixes, i18n audit (sections 1, 4, 5)
   Phase 2: Major build — Likes tab redesign (section 2) + light mode fix (section 3)
     + nearby stores fix (section 6) + as-seen-on upgrade (section 7) + custom occasions (section 8)
     + social profiles with follow/privacy (section 9) + Stripe checkout (section 10)
   Phase 3: Creative agent run — after push, let the creative agent analyze and propose
-  Work in order. Push only after E2E confirms. Then run creative agent.
+  Phase 0 runs IN PARALLEL with Phase 1. Do not gate Phase 0 on anything.
+  Push only after E2E confirms. Then run creative agent.
 
 **Backend agent:**
+  - **Section 0 support:** Verify Supabase Storage bucket "scan-images" has public read
+    access so SerpAPI can fetch image URLs for Google Lens. If not, either fix the bucket
+    policy or generate short-lived signed URLs. Support any schema/route changes the Quant
+    agent needs for the search refactor.
   - CORS logic fix if needed (section 1)
   - requireAuth on seenOn/nearbyStores (4a)
   - size_prefs validation (4b)
@@ -415,13 +533,21 @@ code. Today's job: verify it works end-to-end.
   - Ensure all new UI has i18n translations in all 8 languages
   - Test at 390px width in both dark and light mode
 
-**Quant agent:** Busy day:
-  - Verify search quality hasn't regressed from yesterday's OCCASION_MODIFIERS changes
-  - Optimize SerpAPI query construction for as-seen-on (section 7):
-    multiple queries per interest category, merge & deduplicate, identify
-    person name and platform from results
-  - Validate that custom occasion → Claude → search keywords produces good
-    Google Shopping results (section 8) — test 3-4 custom occasions
+**Quant agent:** YOUR #1 JOB TODAY IS SECTION 0. Everything else is secondary.
+  - **CRITICAL (Section 0):** Full refactoring of the search algorithm in products.js.
+    You OWN this. Read Section 0 top-to-bottom. The search pipeline returns 0 results
+    for user-uploaded photos — this makes the entire app useless. Fix:
+    (A) Lens pipeline — verify Supabase URLs work, add retry strategies
+    (B) Text search — build a new query constructor that generates SHORT, Shopping-indexed
+        queries from structured item data. NEVER return 0 results. Add broadening fallbacks.
+    (C) Scoring — add synonym/fuzzy matching, lower the score floor, boost text results
+        when Lens fails
+    (D) Telemetry — log search quality metrics for every request
+    (E) Test with 3 real-photo scenarios — verify all tiers have real products
+    Make this search engine PROPRIETARY and PERFECT. This is the core IP of ATTAIR.
+  - THEN: Verify search quality hasn't regressed from OCCASION_MODIFIERS changes
+  - THEN: Optimize SerpAPI query construction for as-seen-on (section 7)
+  - THEN: Validate custom occasion → Claude → search keywords (section 8)
 
 **Security agent:** REPORT ONLY. Verify yesterday's 5 fixes are still in place.
   Check for any new issues introduced by today's changes.
@@ -431,6 +557,12 @@ code. Today's job: verify it works end-to-end.
   visibility checks — private content must NOT leak to non-followers (section 9).
 
 **Testing agent:** Run all 133 tests first. Then add tests for:
+  - **Section 0 search refactor tests:**
+    - New query builder generates SHORT queries (< 80 chars) from item data
+    - Synonym/fuzzy matching: "chinos" matches product titled "khaki pants"
+    - "Never return 0 results" guarantee — broadest fallback always produces results
+    - Lens failure simulation → text fallback produces real products (not fallback links)
+    - Search telemetry logging fires correctly
   - Likes/collections CRUD operations
   - size_prefs validation
   - requireAuth on seenOn/nearbyStores
@@ -444,6 +576,10 @@ code. Today's job: verify it works end-to-end.
   - Visibility toggle on scans, saved items, collections (section 9)
 
 **E2E agent:** Critical checks:
+  - **Section 0: Search actually works for non-Google-Images photos.** Simulate
+    a user photo upload flow (base64 image → identify → find-products). ALL THREE
+    tiers (budget/mid/premium) must have real product results, not fallback Google
+    Shopping links. If any tier is a fallback link, this is a FAIL.
   - Likes tab exists in bottom nav and works
   - One-tap heart saves items
   - Collections can be created, items added/removed
@@ -462,6 +598,13 @@ code. Today's job: verify it works end-to-end.
   - Follow/unfollow works, follower counts update (section 9)
   - Privacy toggles work — private items invisible to others (section 9)
   - Cannot see private scans/items of users you don't follow (section 9)
+
+**PM agent (COMMUNICATION):**
+  The inbox check is now MANDATORY at 4 points: startup, after each agent,
+  between phases, and before push. Jules will drop issues labeled "from-jules"
+  with new ideas, bug reports, or priority changes throughout the day.
+  These are DIRECT INSTRUCTIONS — read, acknowledge, and act on every one.
+  This is how the work cycle continues without Jules being online.
 
 **Creative agent:** After everything is pushed, analyze the app fresh.
   Focus especially on:

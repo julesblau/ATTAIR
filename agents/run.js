@@ -24,6 +24,7 @@
 
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
+import { execSync } from "child_process";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { config } from "dotenv";
@@ -296,21 +297,34 @@ CHAT-STYLE CONVERSATIONS:
   3. Use "close <issue-num>" when the conversation is done
   Jules gets @tagged and assigned on every message so he gets push notifications.
 
-CHECKING JULES' INBOX (human → agent):
-  Jules can create issues labeled "from-jules" at any time with ideas, feedback,
-  or new tasks. CHECK FOR THESE between every phase and between agents:
+CHECKING JULES' INBOX (human → agent) — MANDATORY:
+  Jules creates issues labeled "from-jules" at any time with ideas, feedback,
+  bug reports, or new requirements. This is the LIVE COMMUNICATION CHANNEL.
+  Jules feeds in new work and priorities via these issues from his phone.
+
+  YOU MUST CHECK THE INBOX AT THESE POINTS (non-negotiable):
+    1. At startup, before doing ANY work
+    2. After EACH agent finishes (before dispatching the next one)
+    3. Between every phase transition
+    4. Before the final push/commit
+  Run this command each time:
     node ${__dirname}/notify-cli.js inbox
 
   If the inbox has items:
-  1. Read each one carefully
+  1. Read each one carefully — these are DIRECT INSTRUCTIONS from the product owner
   2. Acknowledge it: node ${__dirname}/notify-cli.js ack <issue-number> "Got it, adding to the plan."
   3. Incorporate the feedback/idea into your current work:
      - If it's a new feature request → add it to the current run if feasible,
        otherwise note it for the next run in the standup
-     - If it's a bug report → prioritize fixing it
+     - If it's a bug report → PRIORITIZE fixing it immediately
      - If it's feedback on something already built → adjust accordingly
+     - If it's a new requirement or priority change → re-sequence work accordingly
      - If it says "STOP" or "PAUSE" → halt the current phase and ask for clarification
-  DO NOT ignore inbox items. Check frequently — Jules may be sending ideas from his phone.
+  DO NOT ignore inbox items. DO NOT skip inbox checks. Jules may be sending
+  ideas from his phone throughout the day — this is how the work cycle continues.
+
+  Think of it as a message queue: every item must be read, acknowledged, and acted on.
+  The inbox is how Jules stays in the loop and steers the agents without being online.
 
 WHEN TO NOTIFY (green label — no reply needed):
   - 🚀 Army START — "Agent army starting March 25 run. Sections 1-9, 7 agents."
@@ -334,6 +348,7 @@ DO NOT ASK about:
 ═══════════════════════════════════════════════════════════════════════
 NON-NEGOTIABLE RULES
 ═══════════════════════════════════════════════════════════════════════
+  ✅ CHECK INBOX before every agent dispatch and after every agent completes
   ✅ Push directly to main (beta — no PR needed)
   ❌ NEVER commit .env files
   ❌ NEVER remove existing functionality without explicit instruction
@@ -522,7 +537,7 @@ HOW TO WORK:
   5. Add JSDoc comments to any functions that lack them
   6. Note any improvements that would require new data (new API, new DB column, etc.)
      — document these as comments starting with // FUTURE IMPROVEMENT:`,
-    tools: ["Read", "Write", "Edit", "Glob", "Grep"],
+    tools: ["Read", "Write", "Edit", "Glob", "Grep", "Bash"],
   },
 
   "security-agent": {
@@ -1180,6 +1195,24 @@ function formatDuration(ms) {
   return `${s}s`;
 }
 
+// ─── Ensure GitHub labels exist (required for agent ↔ human communication) ────
+function ensureGitHubLabels() {
+  const GH = process.platform === "win32" ? '"C:\\Program Files\\GitHub CLI\\gh.exe"' : "gh";
+  const REPO = "julesblau/ATTAIR";
+  const labels = [
+    { name: "from-jules", color: "0E8A16", description: "Human → Agent: ideas, feedback, new tasks" },
+    { name: "agent-question", color: "D93F0B", description: "Agent → Human: blocking question, needs reply" },
+    { name: "agent-update", color: "0075CA", description: "Agent → Human: status update, no reply needed" },
+  ];
+  for (const label of labels) {
+    try {
+      execSync(`${GH} label create "${label.name}" --repo ${REPO} --color "${label.color}" --description "${label.description}" --force`, { encoding: "utf-8", timeout: 15_000, stdio: "pipe" });
+    } catch {
+      // Label may already exist or gh not available — that's fine
+    }
+  }
+}
+
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -1187,6 +1220,14 @@ async function main() {
   console.log("║           🤖 ATTAIR AGENT ARMY                  ║");
   console.log(`║           ${today}                         ║`);
   console.log("╚══════════════════════════════════════════════════╝\n");
+
+  // Ensure GitHub labels exist for the communication system
+  try {
+    ensureGitHubLabels();
+    console.log("🏷️  GitHub labels verified (from-jules, agent-question, agent-update)");
+  } catch (e) {
+    console.log(`⚠️  Could not verify GitHub labels: ${e.message}`);
+  }
 
   console.log(`📋 Requirements: ${existsSync(reqPath) ? "✅ Loaded from requirements/today.md" : "⚠️  No requirements file — using defaults"}`);
   console.log(`🌿 Branch:       ${branchName}`);

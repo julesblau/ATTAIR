@@ -20,7 +20,8 @@
 
 import { execSync } from "child_process";
 
-const GH = '"C:\\Program Files\\GitHub CLI\\gh.exe"';
+// Use gh from PATH on Linux/macOS (GitHub Actions), fall back to Windows install path
+const GH = process.platform === "win32" ? '"C:\\Program Files\\GitHub CLI\\gh.exe"' : "gh";
 const REPO = "julesblau/ATTAIR";
 const HUMAN = "julesblau";
 const POLL_INTERVAL_MS = 30_000;  // Check every 30 seconds

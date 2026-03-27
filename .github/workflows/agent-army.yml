@@ -1,0 +1,108 @@
+name: Agent Army
+
+on:
+  # Manual trigger from GitHub UI or gh CLI
+  workflow_dispatch:
+    inputs:
+      max_retries:
+        description: "Max retry attempts (for rate limits)"
+        required: false
+        default: "50"
+        type: string
+
+  # Trigger via from-jules issues (optional — auto-run when you create an issue)
+  # Uncomment below to enable:
+  # issues:
+  #   types: [opened]
+
+jobs:
+  run-agents:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hour max (covers rate limit pauses)
+
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          # Full history needed for git log, branch operations
+          fetch-depth: 0
+          token: ${{ secrets.GH_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configure git
+        run: |
+          git config user.name "ATTAIR Agent Army"
+          git config user.email "agents@attair.app"
+          # Allow pushing to main
+          git config --global push.autoSetupRemote true
+
+      - name: Install agent dependencies
+        working-directory: agents
+        run: npm install
+
+      - name: Install backend dependencies (for tests)
+        working-directory: attair-backend
+        run: npm install
+
+      - name: Verify secrets are set
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY secret is not set. Add it in repo Settings > Secrets."
+            exit 1
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::GH_TOKEN secret is not set. Add it in repo Settings > Secrets."
+            exit 1
+          fi
+          echo "All required secrets are configured."
+
+      - name: Verify gh CLI auth
+        run: |
+          gh auth status
+          echo "gh CLI authenticated successfully."
+
+      - name: Run agent army
+        working-directory: agents
+        run: |
+          echo "Starting agent army at $(date)"
+          echo "Max retries: ${{ inputs.max_retries || '50' }}"
+
+          # Run with retry loop (mirrors run-loop.sh but adapted for CI)
+          MAX_RETRIES=${{ inputs.max_retries || '50' }}
+          RETRY=0
+
+          while [ $RETRY -lt $MAX_RETRIES ]; do
+            echo ""
+            echo "════════════════════════════════════════"
+            echo "  Agent Army — attempt $((RETRY + 1))/$MAX_RETRIES"
+            echo "  $(date)"
+            echo "════════════════════════════════════════"
+            echo ""
+
+            node run.js && {
+              echo "Agent army completed successfully."
+              exit 0
+            }
+
+            EXIT_CODE=$?
+            RETRY=$((RETRY + 1))
+
+            if [ $RETRY -ge $MAX_RETRIES ]; then
+              echo "Exhausted $MAX_RETRIES retries."
+              exit 1
+            fi
+
+            # Sleep before retry (rate limit backoff)
+            SLEEP_SECS=300
+            echo "Exited with code $EXIT_CODE. Sleeping ${SLEEP_SECS}s before retry $RETRY/$MAX_RETRIES..."
+            sleep $SLEEP_SECS
+          done
