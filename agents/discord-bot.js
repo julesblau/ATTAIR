@@ -13,7 +13,6 @@
  */
 
 import { Client, GatewayIntentBits, Partials, EmbedBuilder } from "discord.js";
-import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from "fs";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
@@ -43,9 +42,6 @@ const client = new Client({
   ],
   partials: [Partials.Message, Partials.Channel],
 });
-
-// ─── Claude Client (Opus for chat) ──────────────────────────────────────────
-const claude = new Anthropic();
 
 // ─── State ───────────────────────────────────────────────────────────────────
 let armyProcess = null;             // child process for run.js
@@ -112,23 +108,50 @@ async function sendToChannel(channel, text) {
   }
 }
 
-// ─── Helper: Chat with Opus ──────────────────────────────────────────────────
+// ─── Helper: Chat with Opus via Claude Code CLI (uses Max subscription) ──────
 async function chatWithOpus(userMessage) {
   conversationHistory.push({ role: "user", content: userMessage });
 
-  // Keep conversation manageable (last 40 messages)
+  // Keep conversation manageable (last 20 exchanges)
   if (conversationHistory.length > 40) {
     conversationHistory = conversationHistory.slice(-40);
   }
 
-  const response = await claude.messages.create({
-    model: "claude-opus-4-20250514",
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: conversationHistory,
+  // Build context from conversation history
+  const context = conversationHistory.slice(0, -1).map(m =>
+    `${m.role === "user" ? "Jules" : "ATTAIR"}: ${m.content}`
+  ).join("\n\n");
+
+  const fullPrompt = [
+    SYSTEM_PROMPT,
+    "",
+    context ? `Previous conversation:\n${context}\n` : "",
+    `Jules: ${userMessage}`,
+  ].filter(Boolean).join("\n");
+
+  const reply = await new Promise((resolve, reject) => {
+    const proc = spawn("claude", ["-p", "--model", "opus", "--output-format", "text"], {
+      stdio: ["pipe", "pipe", "pipe"],
+      cwd: REPO_ROOT,
+    });
+
+    let output = "";
+    let stderr = "";
+    proc.stdout.on("data", d => output += d.toString());
+    proc.stderr.on("data", d => stderr += d.toString());
+    proc.on("close", (code) => {
+      if (code !== 0 && !output.trim()) {
+        reject(new Error(stderr.trim() || `claude exited with code ${code}`));
+      } else {
+        resolve(output.trim());
+      }
+    });
+    proc.on("error", reject);
+
+    proc.stdin.write(fullPrompt);
+    proc.stdin.end();
   });
 
-  const reply = response.content[0].text;
   conversationHistory.push({ role: "assistant", content: reply });
   return reply;
 }
