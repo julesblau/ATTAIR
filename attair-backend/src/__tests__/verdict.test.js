@@ -37,10 +37,11 @@ vi.mock("../lib/supabase.js", () => {
     then: undefined,
   });
 
-  // We need the chain to eventually resolve.
-  // The verdict route does: supabase.from("scans").update({verdict}).eq().eq()
-  // It awaits the eq() result directly.
-  const mockEqTerminal = vi.fn(async () => ({ error: mockUpdateError }));
+  // The verdict route does: supabase.from("scans").update({verdict}).eq().eq().select().single()
+  let mockScanData = { id: "00000000-0000-0000-0000-000000000001" };
+  const mockSingle = vi.fn(async () => ({ data: mockUpdateError ? null : mockScanData, error: mockUpdateError }));
+  const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+  const mockEqTerminal = vi.fn().mockReturnValue({ select: mockSelect });
   const mockEq1 = vi.fn().mockReturnValue({ eq: mockEqTerminal });
   const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 });
 
@@ -111,51 +112,51 @@ describe("PATCH /api/user/scan/:scanId/verdict", () => {
   afterEach(() => server.close());
 
   it("returns 401 without auth token", async () => {
-    const { status } = await patch(port, "scan-uuid-1", { verdict: "would_wear" }, false);
+    const { status } = await patch(port, "00000000-0000-0000-0000-000000000001", { verdict: "would_wear" }, false);
     expect(status).toBe(401);
   });
 
   it("returns 400 for an invalid verdict string", async () => {
-    const { status, body } = await patch(port, "scan-uuid-1", { verdict: "love_it" });
+    const { status, body } = await patch(port, "00000000-0000-0000-0000-000000000001", { verdict: "love_it" });
     expect(status).toBe(400);
     expect(body.error).toMatch(/invalid verdict/i);
   });
 
   it("returns 400 for an undefined verdict (missing key)", async () => {
-    const { status } = await patch(port, "scan-uuid-1", {});
+    const { status } = await patch(port, "00000000-0000-0000-0000-000000000001", {});
     expect(status).toBe(400);
   });
 
   it("returns 400 for a numeric verdict value", async () => {
-    const { status } = await patch(port, "scan-uuid-1", { verdict: 5 });
+    const { status } = await patch(port, "00000000-0000-0000-0000-000000000001", { verdict: 5 });
     expect(status).toBe(400);
   });
 
   it("returns 400 for verdict 'yes'", async () => {
-    const { status } = await patch(port, "scan-uuid-1", { verdict: "yes" });
+    const { status } = await patch(port, "00000000-0000-0000-0000-000000000001", { verdict: "yes" });
     expect(status).toBe(400);
   });
 
   it("sets verdict to 'would_wear' successfully", async () => {
-    const { status, body } = await patch(port, "scan-uuid-1", { verdict: "would_wear" });
+    const { status, body } = await patch(port, "00000000-0000-0000-0000-000000000001", { verdict: "would_wear" });
     expect(status).toBe(200);
     expect(body.verdict).toBe("would_wear");
   });
 
   it("sets verdict to 'on_the_fence' successfully", async () => {
-    const { status, body } = await patch(port, "scan-uuid-1", { verdict: "on_the_fence" });
+    const { status, body } = await patch(port, "00000000-0000-0000-0000-000000000001", { verdict: "on_the_fence" });
     expect(status).toBe(200);
     expect(body.verdict).toBe("on_the_fence");
   });
 
   it("sets verdict to 'not_for_me' successfully", async () => {
-    const { status, body } = await patch(port, "scan-uuid-1", { verdict: "not_for_me" });
+    const { status, body } = await patch(port, "00000000-0000-0000-0000-000000000001", { verdict: "not_for_me" });
     expect(status).toBe(200);
     expect(body.verdict).toBe("not_for_me");
   });
 
   it("clears verdict by setting it to null", async () => {
-    const { status, body } = await patch(port, "scan-uuid-1", { verdict: null });
+    const { status, body } = await patch(port, "00000000-0000-0000-0000-000000000001", { verdict: null });
     expect(status).toBe(200);
     expect(body.verdict).toBeNull();
   });

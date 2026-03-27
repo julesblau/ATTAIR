@@ -514,22 +514,31 @@ router.patch("/scan/:scanId/verdict", requireAuth, async (req, res) => {
   const { scanId } = req.params;
   const { verdict } = req.body;
 
+  // Validate UUID format
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(scanId)) {
+    return res.status(400).json({ error: "Invalid scan ID" });
+  }
+
   const validVerdicts = ["would_wear", "on_the_fence", "not_for_me", null];
   if (!validVerdicts.includes(verdict)) {
     return res.status(400).json({ error: "Invalid verdict. Must be: would_wear, on_the_fence, not_for_me, or null" });
   }
 
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("scans")
       .update({ verdict })
       .eq("id", scanId)
-      .eq("user_id", req.userId);
+      .eq("user_id", req.userId)
+      .select("id")
+      .single();
 
     if (error) throw error;
+    if (!data) return res.status(404).json({ error: "Scan not found" });
     return res.json({ verdict });
   } catch (err) {
     console.error("Verdict error:", err.message);
+    if (err.code === "PGRST116") return res.status(404).json({ error: "Scan not found" });
     return res.status(500).json({ error: "Failed to set verdict" });
   }
 });

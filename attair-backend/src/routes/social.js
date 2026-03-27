@@ -333,9 +333,10 @@ router.patch("/social/profile", requireAuth, async (req, res) => {
 // Public scans from followed users, paginated.
 // Falls back to trending/recent public scans when following nobody.
 router.get("/feed", requireAuth, async (req, res) => {
-  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const page = Math.min(Math.max(1, parseInt(req.query.page) || 1), 1000);
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
   const offset = (page - 1) * limit;
+  const tab = req.query.tab || "foryou"; // "foryou" or "following"
 
   try {
     // Get users the current user follows
@@ -347,8 +348,8 @@ router.get("/feed", requireAuth, async (req, res) => {
     const followingIds = (following || []).map(f => f.following_id);
 
     let query;
-    if (followingIds.length > 0) {
-      // Feed from followed users — public scans only
+    if (tab === "following" && followingIds.length > 0) {
+      // Following tab: only scans from followed users
       query = supabase
         .from("scans")
         .select("id, user_id, image_url, summary, items, created_at, visibility")
@@ -356,8 +357,20 @@ router.get("/feed", requireAuth, async (req, res) => {
         .eq("visibility", "public")
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
+    } else if (tab === "following") {
+      // Following tab but no follows — empty
+      return res.json({ scans: [], page, has_more: false });
+    } else if (followingIds.length > 0) {
+      // For You tab with follows — mix of followed + trending
+      query = supabase
+        .from("scans")
+        .select("id, user_id, image_url, summary, items, created_at, visibility")
+        .eq("visibility", "public")
+        .neq("user_id", req.userId)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
     } else {
-      // No follows — show trending/recent public scans
+      // For You tab, no follows — show trending/recent public scans
       query = supabase
         .from("scans")
         .select("id, user_id, image_url, summary, items, created_at, visibility")

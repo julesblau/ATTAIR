@@ -348,8 +348,8 @@ const API = {
     return authFetch(`${API_BASE}/api/social/scans/${scanId}/visibility`, { method: "PATCH", body: JSON.stringify({ visibility }) }).then(r => r.json());
   },
 
-  async getFeed(page = 1) {
-    const res = await authFetch(`${API_BASE}/api/feed?page=${page}&limit=20`);
+  async getFeed(page = 1, feedTab = "foryou") {
+    const res = await authFetch(`${API_BASE}/api/feed?page=${page}&limit=20&tab=${feedTab}`);
     return res.json();
   },
   async searchUsers(q) {
@@ -1608,7 +1608,7 @@ export default function App() {
     if (feedLoading) return;
     setFeedLoading(true);
     try {
-      const data = await API.getFeed(page);
+      const data = await API.getFeed(page, feedTab);
       const scans = data.scans || [];
       setFeedScans(prev => append ? [...prev, ...scans] : scans);
       setFeedHasMore(data.has_more || false);
@@ -3162,8 +3162,8 @@ export default function App() {
                               {scan.item_count > 0 && <div className="feed-card-items">{scan.item_count} item{scan.item_count !== 1 ? "s" : ""}</div>}
                             </div>
                           </div>
-                          <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); }}>
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill={saved.some(s => s.scan_id === scan.id) ? "var(--accent)" : "none"} stroke={saved.some(s => s.scan_id === scan.id) ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                           </button>
                         </div>
                       </div>
@@ -4828,8 +4828,8 @@ export default function App() {
               </div>
               <div className="profile-v2-stats" role="list" aria-label="Profile statistics">
                 <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{profileScansCount}</div><div className="profile-v2-stat-label">Scans</div></div>
-                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{saved.length}</div><div className="profile-v2-stat-label">Likes</div></div>
-                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{wishlists.length}</div><div className="profile-v2-stat-label">Collections</div></div>
+                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{profileStats?.followers_count ?? 0}</div><div className="profile-v2-stat-label">Followers</div></div>
+                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{profileStats?.following_count ?? 0}</div><div className="profile-v2-stat-label">Following</div></div>
               </div>
               {userStatus?.tier === "trial" && userStatus?.trial_ends_at && (() => {
                 const daysLeft = Math.ceil((new Date(userStatus.trial_ends_at) - Date.now()) / 86400000);
