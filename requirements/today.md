@@ -1,618 +1,351 @@
-# Requirements — March 27, 2026
+# Requirements — March 27, 2026 (Run 2: Full UI/UX Overhaul)
 
-## Context from previous runs (March 24–25)
-The agent army completed a full run: 133 tests passing, 13 files changed/created,
-5 security fixes applied, all core features verified working. See standups/2026-03-24.md
-for the full report.
+## Context
+Run 1 today delivered: search algorithm refactor (synonyms, query builder, telemetry),
+light mode CSS overhaul (280+ overrides), social profile features (bio, followers,
+interests, visibility), 4 new test files (214 total passing), 5 security fixes.
 
-ALREADY DONE — do NOT redo:
-- Circle to Search (default ON, glow animation, canvas overlay) ✅
-- Pairings visual grid (Pinterest-style 2-column) ✅
-- Scan streak counter + GET /api/user/streak ✅
-- Identification preview chips during search wait ✅
-- Trial flow (start trial button + countdown badge) ✅
-- Banner ad polish (Featured card with gradient border) ✅
-- iPhone camera mirror fix ✅
-- Referral code card with copy/share ✅
-- BEST VALUE pill shadow ✅
-- Search notes input wired end-to-end ✅
-- Last-seen timestamps on saved items ✅
-- Scan rename inline edit ✅
-- OCCASION_MODIFIERS expanded (wedding, date, beach, smart_casual, festival) ✅
-- MIME validation on uploads ✅
-- Prompt injection caps on refineItem ✅
-- Scan ownership check ✅
-- Field length caps ✅
-- Occasion allowlist ✅
-- Pairings affiliate tracking through /api/go ✅
-
-IMPORTANT: Read standups/2026-03-24.md and run `git log --oneline -30` before
-starting. Do NOT rebuild anything listed above.
+ALREADY DONE — do NOT redo anything from standups/2026-03-24.md or standups/2026-03-27.md.
+Run `git log --oneline -30` before starting.
 
 ---
 
-## 0. CRITICAL — Fix Search for User-Uploaded Photos (0 Results Bug)
+## MISSION: Make ATTAIR feel like a world-class app
 
-**THIS IS THE #1 PRIORITY. The entire app is useless if search doesn't work for
-real photos. Every other feature is secondary to this.**
-
-### The Problem
-When a user takes a photo with their camera (not a Google Image), the product
-search returns 0 results every time. This is the core user flow — snap a photo,
-find the products — and it's completely broken for real-world usage.
-
-### Root Cause Analysis
-The search pipeline has a critical dependency chain that fails for user photos:
-
-1. **Google Lens path (visual search):** `findProductsForItems()` receives `imageUrl`
-   from Supabase Storage. Google Lens reverse-image-searches that URL. But:
-   - If Supabase Storage upload fails silently → `imageUrl` is null → Lens is skipped entirely
-   - If Supabase Storage URL is not publicly accessible → SerpAPI can't fetch it → 0 Lens results
-   - If the photo is a casual phone snap (not a clean product photo) → Lens returns
-     non-vendor visual matches (blog posts, social media, portfolios) that all get
-     filtered out by `isVendorPage()` → 0 usable Lens results
-
-2. **Text search fallback:** When Lens returns < 3 priced results, text search kicks in.
-   But Claude's `search_query` field is often too specific for real photos:
-   - "Men's navy blue slim fit cotton twill chino pants casual" → 0 Shopping results
-   - The query is overloaded with qualifiers that confuse Google Shopping's index
-   - The `cleanForSearch()` function strips some noise but not enough
-   - `MAX_QUERY_LEN` (150 chars) is too generous — Shopping degrades after ~80 chars
-
-3. **Scoring gate:** Even when text search returns results, `scoreProduct()` requires
-   `score > 0` to keep a result. For generic items from phone photos where Claude's
-   identification is approximate, many legitimate products score exactly 0 and get
-   discarded.
-
-### What the Quant Agent Must Fix
-
-**This is a FULL REFACTORING of the search algorithm.** The Quant agent owns this
-entirely. The goal: make `products.js` a proprietary, best-in-class search engine
-that finds relevant products for ANY photo — not just Google Images.
-
-#### A. Fix the Lens pipeline
-- **Verify Supabase Storage URLs are publicly accessible** to SerpAPI. If not,
-  either fix the storage bucket policy or provide a signed URL with sufficient TTL.
-- **Add a Lens retry with a different image strategy:** If the first Lens search
-  returns 0 vendor-page results, crop the image to the main garment area (using
-  Claude's `position_y` data) and retry. Or: use the identification data to
-  construct a Google Images URL as a Lens input instead of the raw photo.
-- **Relax `isVendorPage()` for Lens results** — Lens results from unknown domains
-  that have a price should still be accepted. The current logic rejects too
-  aggressively.
-
-#### B. Fix the text search fallback (this is the BIG one)
-- **Simplify Claude's search queries:** The `search_query` from Claude is meant
-  for a human Googling, not for Google Shopping API. Create a new query builder
-  that constructs optimal Shopping queries from the structured item data:
-  - Primary query: `{gender} {brand} {subcategory}` (e.g., "men's Nike hoodie")
-  - Secondary query: `{gender} {color} {subcategory} {material}` (e.g., "men's black cotton hoodie")
-  - Tertiary query: `{gender} {subcategory}` (broadest possible, e.g., "men's hoodie")
-  - Each query should be SHORT (under 80 chars) and use only Shopping-indexed terms
-- **Never return 0 results.** If all specific queries fail, the broadest query
-  (`{gender} {subcategory}`) MUST return results. If even that fails, fall back to
-  `{gender} {category}` (e.g., "men's outerwear"). There is ALWAYS a valid search.
-- **Reduce `MAX_QUERY_LEN` from 150 to 80** — Google Shopping degrades with long queries
-- **Add query quality validation:** Before sending a query to SerpAPI, check it
-  against known Shopping-indexed terms. Strip adjectives that aren't indexed
-  ("slim fit" is indexed, "beautifully tailored" is not).
-
-#### C. Fix the scoring system
-- **Lower the score floor for text search results.** A product from a trusted
-  retailer that matches the subcategory should never score 0. The clothing keyword
-  baseline (+3) plus subcategory match (+25) should be enough.
-- **Add a "broad match" score path:** If Claude identified "slim fit chinos" and
-  the product title says "men's khaki pants", that's still a relevant result.
-  Add fuzzy/synonym matching for common garment terms:
-  - chinos ↔ khakis ↔ pants
-  - hoodie ↔ hooded sweatshirt ↔ pullover
-  - sneakers ↔ trainers ↔ running shoes
-  - t-shirt ↔ tee ↔ tee shirt
-  - blazer ↔ sport coat ↔ suit jacket
-- **Weight text results higher when Lens failed.** Currently text results start
-  at 0 while Lens results start at +25. When Lens returned nothing useful, text
-  results ARE the primary data — give them a base bonus.
-
-#### D. Add search quality telemetry
-- Log the following for every search request:
-  - `imageUrl` present? → Lens attempted? → Lens results count → vendor-filtered count
-  - Text queries sent → results per query → scored results count → final tier counts
-  - If ALL tiers are fallback (Google Shopping links), log a WARN: "Zero real products found"
-- This telemetry is essential for diagnosing why searches fail in production.
-
-#### E. Test with real photos
-- The Quant agent MUST test the refactored search with at least 3 scenarios:
-  1. A phone photo of someone wearing a hoodie and jeans (casual, no brand visible)
-  2. A phone photo of a dress shirt and slacks (business, brand might be visible)
-  3. A screenshot from Instagram of an outfit (has UI chrome around it)
-- For each scenario, verify that budget/mid/premium tiers all have real products
-  (not fallback Google Shopping links).
-
-### What the Backend Agent Must Do
-- Support whatever schema/route changes the Quant agent needs
-- Ensure the Supabase Storage bucket for scan images has public read access
-  (or generate short-lived signed URLs for SerpAPI consumption)
-
-### What the Testing Agent Must Do
-- Add tests for the new query builder
-- Add tests for synonym/fuzzy matching
-- Add tests for the "never return 0 results" guarantee
-- Add a test that simulates a Lens failure and verifies text fallback produces real results
+The app WORKS but looks and feels clunky. The goal of this run is a FULL visual and UX
+overhaul. Think TikTok, Instagram, GOAT, Depop. Trendy, fun, dead-simple, beautiful.
+Every screen should be immediately obvious to a first-time user.
 
 ---
 
-## 1. CORS VERIFICATION — Test the Live Flow
+## 1. LIGHT MODE — Buttons and Interactive Elements Are Invisible
 
-CORS_ORIGINS is already set to https://attair.vercel.app in Railway.
-The code has a CORS_ORIGINS env var mechanism. Today's job:
+The light mode overhaul from Run 1 fixed backgrounds and text but BUTTONS ARE INVISIBLE.
+They don't change color with the theme — same dark color on a light background = can't see them.
 
-- Read the CORS config in index.js — understand exactly how CORS_ORIGINS is used
-- Verify the current deployed code on Railway respects CORS_ORIGINS when set
-- If the code still reflects any origin regardless of CORS_ORIGINS: fix the logic
-  so it uses the allowlist when the env var is present, falls back to permissive
-  only when CORS_ORIGINS is not set (local dev)
-- DO NOT break local development — localhost must still work
-- DO NOT break the live app — test carefully
-
----
-
-## 2. REDESIGN SAVED ITEMS + WISHLIST — New "Likes" System
-
-The current Saved → Wishlist flow is confusing and buried. Rethink it entirely.
-
-### The Problem
-- Saved items are buried 2 taps deep inside the History tab
-- "Wishlist" is a second concept layered on top of "Saved" — users don't think this way
-- When you see something you like, your brain just says "want" — not "save to general
-  pool, then organize into named list." That's filing cabinet logic, not shopping logic.
-- Every top fashion app (GOAT, Depop, Pinterest) gives saves a primary nav slot
-
-### The New Design: "Likes" Tab
-
-**Bottom navigation:** Add a 4th tab — a heart icon labeled "Likes"
-(replaces the current buried saved items flow)
-
-**One-tap save:** Every product card gets a heart icon. One tap = saved.
-No modal, no "which wishlist?", no friction. Just ❤️.
-
-**Smart auto-organization inside Likes tab:**
-- Items auto-group by the scan they came from ("From your March 22 scan")
-- Show the original outfit photo as the group header
-- Within each group, product cards in a clean grid
-- Price drop indicators on items create urgency (prep for future price tracking)
-- "Saved 2 days ago" relative timestamps on each item
-
-**Optional collections (replaces "Wishlist"):**
-- Long-press or swipe on any liked item → "Add to collection"
-- Create named collections: "Summer wedding", "Gift ideas for Mom", etc.
-- Collections are OPTIONAL — the default Likes feed works perfectly without them
-- Collections appear as horizontal scrollable chips at the top of the Likes tab
-
-**What to remove:**
-- Remove the old "Wishlist" terminology everywhere — it's now "Collections"
-- Remove any UI that forces users to pick a wishlist before saving
-- Remove saved items from inside the History tab (they live in Likes now)
-
-**Backend:**
-- The existing wishlist CRUD routes can be reused — just rename the concept
-- saved_items table stays as-is, it's the backend for "Likes"
-- Wishlists become "Collections" — same table, new name in the UI
-
-**The feel:** Instagram saves meets Pinterest boards, but the app organizes for you.
+### Fix:
+- Audit EVERY button, toggle, chip, tab, and interactive element in light mode
+- Buttons must have proper contrast in BOTH modes:
+  - Primary buttons: solid accent color with white text (both modes)
+  - Secondary buttons: outlined with visible border (both modes)
+  - Tab indicators, active states, selected chips must all be visible
+- Test at 390px width. Screenshot every screen in light mode and verify.
 
 ---
 
-## 3. FIX LIGHT MODE — Make It Beautiful
+## 2. FULL UI/UX REDESIGN — Make It Intuitive
 
-Light mode exists but looks broken. We are COMMITTING to fixing it properly.
-Do NOT remove it. Make it look great.
+The app is information-dense and hard to follow. A user should be able to look at any
+screen and immediately know what to do.
 
-### Approach:
-- Audit every component, card, modal, button, input, and text element in light mode
-- Create a proper light mode color palette:
-  - Backgrounds: clean whites and light grays (not pure #fff everywhere)
-  - Text: dark grays (#1a1a1a for primary, #666 for secondary)
-  - Cards: white with subtle shadows (not borders)
-  - Accent colors: keep the same coral/orange brand colors
-  - Inputs: light gray backgrounds with subtle borders
-- Fix contrast issues — every text element must pass WCAG AA contrast ratio
-- Light mode should feel as polished as dark mode — same attention to detail
-- Test at 390px width in both modes
-- The toggle should be in Settings/Profile and persist via localStorage
+### Design Principles (apply to EVERY screen):
+- **Visual hierarchy**: Most important action is the biggest, most colorful thing
+- **Breathing room**: More whitespace between sections. Don't cram everything together.
+- **Card-based layout**: Group related info into clean cards with rounded corners and subtle shadows
+- **Consistent color language**: One accent color for actions, grays for secondary, red for destructive
+- **TikTok/Instagram feel**: Dark mode should feel sleek and premium. Light mode should feel clean and airy.
+- **Icons over text** where possible — universal language
+- **Progressive disclosure**: Don't show everything at once. Expand on tap.
 
----
+### Color Palette Refresh:
+- Primary accent: Keep the gold/coral (#C9A96E) but make it pop more
+- Dark mode: True black backgrounds (#000) with elevated cards (#1a1a1a)
+- Light mode: Off-white (#F8F8FA) with white cards and soft shadows
+- Success: Green. Error: Red. Info: Blue. These should be consistent app-wide.
 
-## 4. SECURITY QUICK WINS
-
-These are code-level fixes from yesterday's security audit:
-
-### 4a. Add requireAuth to seenOn and nearbyStores
-Both routes are callable without authentication, meaning anyone can burn our
-SerpAPI credits anonymously.
-- Add `requireAuth` middleware to `GET /api/seen-on` and `GET /api/nearby-stores`
-- These routes should require a logged-in user
-
-### 4b. Validate size_prefs JSONB schema
-The `size_prefs` field is written to the DB without validation. Add a simple
-schema check before writing:
-- Must be an object (not array, not string)
-- Only allow known keys: body_type, fit_style, shoe_size, top_size, bottom_size, dress_size
-- Values must be strings, max 50 chars each
-- Silently strip unknown keys (don't reject — old app versions may send different shapes)
-
-### 4c. Stripe webhook error handling
-The webhook handler swallows errors — if a checkout.session.completed event fails
-to upgrade the user, it's permanently lost. Add:
-- Log the full error (console.error with the session ID)
-- Return 500 (not 200) so Stripe retries the webhook
-- Consider writing failed events to a dead-letter table if one exists
+### Typography:
+- Headlines: Bold, large, confident
+- Body: Clean, readable, not too small (min 14px)
+- Labels/captions: Gray, subtle, 12px
 
 ---
 
-## 5. i18n AUDIT — Verify Full Coverage
+## 3. SCAN & IDENTIFICATION UX — Guide the User
 
-The i18n system was built in a previous run. Today:
-- Switch to each of the 8 languages (EN, ES, FR, DE, ZH, JA, KO, PT)
-- Check EVERY screen for untranslated English strings
-- Fix any missing translations
-- The `t` variable shadowing bug was fixed yesterday — verify it stays fixed
-- Any NEW UI elements added today (Likes tab, collections, etc.) must have
-  full translations in all 8 languages from the start
+The scan/identify flow is confusing. Users don't know how to best use it.
 
----
-
-## 6. FIX & UPGRADE "NEARBY STORES"
-
-The "Find Near Me" / nearby stores feature exists but is broken — sometimes returns
-nothing, sometimes says "not authorized."
-
-### Debug & Fix:
-- Read the GET /api/nearby-stores route end-to-end
-- Identify WHY it fails (likely: missing auth since requireAuth wasn't on it,
-  or SerpAPI query isn't constructed well, or location isn't being passed correctly)
-- After adding requireAuth (section 4a), make sure the frontend passes the auth token
-- Make sure the frontend properly requests location permission (navigator.geolocation)
-  and passes lat/lng to the API
-- Test with a real location — it should return actual stores (not empty)
-
-### UI:
-- "Find Near Me" button on product result cards
-- On tap: request location if not already granted, show a loading state,
-  then display a clean list of stores with name, distance, and address
-- If no stores found: show a helpful empty state ("No stores nearby carry this item.
-  Try shopping online →" with a link to the product)
-- If location denied: explain why location is needed, don't just silently fail
+### Improvements:
+- **Clear CTA on home**: Big, obvious "Scan an Outfit" button with a camera icon
+- **Upload vs Camera**: Two clear options — "Take Photo" and "Upload from Gallery"
+- **Scan preview**: After selecting a photo, show it large with a "Scan This" confirmation button
+- **Loading state**: Fun, branded animation during AI identification (not just a spinner)
+- **Results preview**: Show identified items as they come in, not all at once after a long wait
+- **Gender display**: Show the detected gender (Men's/Women's) prominently on the results screen
+  so users know the search context. Allow them to toggle it if wrong.
 
 ---
 
-## 7. UPGRADE "AS SEEN ON" — Influencer & Celebrity Discovery
+## 4. CIRCLE-TO-SEARCH — Modernize the Drawing UI
 
-The current "Seen On" feature does a basic celebrity search but it's underwhelming.
-This should be a KILLER feature — fashion is driven by who's wearing what.
+The circle drawing tool looks outdated. Make it feel like iOS markup / Instagram stories.
 
-### The Vision:
-Users want to know: "Who's worn something like this?" — and not just A-list celebs.
-They want TikTokers, Instagram influencers, athletes, YouTubers, K-pop stars, actors.
-The results should feel like a curated style feed, not a dry list.
-
-### Onboarding: User Interest Profiles
-Add an optional interests step during signup (or first scan) — a quick, fun picker:
-
-**Frontend (signup flow or first-scan prompt):**
-- After sign-up (or as a skippable card on first app open), show:
-  "Who inspires your style?" with a grid of tappable category chips:
-  - 🎬 Actors & Actresses
-  - 🎵 Musicians & K-Pop
-  - 🏀 Athletes
-  - 📱 TikTok Creators
-  - 📸 Instagram Influencers
-  - 🎮 Streamers & YouTubers
-  - 👗 Fashion Icons & Models
-  - 🌍 Street Style
-- User taps 1-5 categories they care about
-- Store as `style_interests` array on the profiles table (text[] or JSONB)
-- This is SKIPPABLE — if they skip, default to all categories
-- They can change it later in Profile/Settings
-
-**Backend (upgrade GET /api/seen-on):**
-- Accept the user's `style_interests` from their profile
-- Use interests to tailor the search query — e.g., if user selected "Athletes"
-  and "TikTok Creators", search for athletes and TikTokers wearing the item,
-  not just generic "celebrity wearing [item]"
-- The quant agent should optimize the SerpAPI query construction:
-  - Current: probably just "celebrity wearing [item name]"
-  - Better: "[interest category] wearing [item] [brand]" with multiple queries
-    for each interest, merged and deduplicated
-  - Even better: for each result, try to identify WHO the person is and WHAT
-    platform they're known on (TikTok, Instagram, NBA, etc.)
-- Return structured results: { name, platform, image_url, context, source_url }
-
-**Frontend (results display):**
-- Don't just show a text list. Show a visual card for each sighting:
-  - Person's photo or the photo of them wearing the item
-  - Their name and platform badge (🎵 TikTok, 📸 Instagram, 🏀 NBA, etc.)
-  - Brief context ("Spotted at Coachella 2026", "Wore this on her latest TikTok")
-  - Link to the source
-- This should feel like browsing a style magazine, not reading a database
-- Consider making this a swipeable horizontal carousel on product cards
+### Changes:
+- **Stroke style**: Smooth, glowing neon line (not a basic solid color)
+- **Color**: Bright accent color that contrasts with any photo (white glow + colored core)
+- **Animation**: Subtle pulse/glow after completing the circle
+- **Thickness**: Thicker line (3-4px minimum) so it's visible on small screens
+- **Feel**: Should feel like you're using a highlighter pen, not MSPaint
 
 ---
 
-## 8. CUSTOM OCCASION TYPES — Let Users Define Their Own
+## 5. HISTORY — Click Into Old Scans
 
-The occasion picker currently has a fixed set (work, date, wedding, beach, etc.).
-Users should be able to ADD THEIR OWN occasions and let the AI figure out how
-to search for them.
+Users should be able to browse their scan history and tap into any old scan to see full results.
 
-### Frontend:
-- Add a "+ Custom" chip at the end of the occasion picker
-- Tapping it opens a small input: "What's the occasion?" with placeholder
-  "e.g., 'job interview at a tech startup', 'rooftop brunch', 'ski trip'"
-- User types their custom occasion and it becomes the selected occasion
-- Save custom occasions to localStorage so they appear as recent/quick picks
-  next time (max 5 recent custom occasions)
-
-### Backend:
-- The findProducts route already accepts an `occasion` string
-- If the occasion doesn't match a known key in OCCASION_MODIFIERS, instead of
-  silently nulling it out (current behavior), send it to Claude:
-  - Quick prompt: "The user is shopping for an outfit for: '[custom occasion]'.
-    Generate 3-5 search modifier keywords that would help find appropriate
-    clothing on Google Shopping. Return only the keywords, comma-separated."
-  - Use Claude's response as the occasion modifier for the search query
-  - Cache the result (custom_occasion_string → modifier_keywords) in memory
-    or product_cache so we don't re-prompt Claude for the same occasion
-- This means ANY occasion works: "cousin's quinceañera", "first day at Goldman Sachs",
-  "Burning Man", "parent-teacher conference" — Claude figures out the right
-  search terms automatically
-
-### Why This Matters:
-The fixed occasion list is limiting. Fashion is contextual and personal. A user
-shopping for "rooftop brunch in Miami" needs very different results than "rooftop
-brunch in London." Letting Claude interpret the occasion makes the search feel
-magical and personalized — like having a personal stylist who actually understands
-the vibe you're going for.
+### Requirements:
+- History list shows scan thumbnail, date, summary, item count
+- Tap a scan → opens the full results screen with all identified items and product tiers
+- Re-search button: "Search again" to re-run product search with current preferences
+- Delete scan option (swipe to delete or long-press menu)
 
 ---
 
-## 9. SOCIAL PROFILES — Follow, Share, Discover
+## 6. SETTINGS & PROFILE — TikTok-Style Layout
 
-Users should be able to follow each other and see what people they follow have
-scanned, liked, and collected. Everything is public/private toggleable.
+The settings/profile page looks terrible. Redesign it to feel like TikTok/Instagram profile.
 
-### The Vision
-ATTAIR becomes a social fashion discovery platform, not just a personal tool.
-When someone finds a great outfit match, their friends see it. When someone
-curates a killer collection, others can browse it. This is the viral loop.
-
-### Backend (database + API):
-- **follows table:** `follower_id, following_id, created_at` with unique constraint
-- **Privacy column on scans:** Add `visibility` to scans table: `'public'` | `'private'` | `'followers'` (default: `'private'`)
-- **Privacy column on saved_items:** Add `visibility` to saved_items: `'public'` | `'private'` (default: `'private'`)
-- **Privacy column on wishlists (collections):** Add `visibility`: `'public'` | `'private'` (default: `'private'`)
-- **Public profile data on profiles:** Add `bio` (text, max 200 chars), `display_name` (text, max 50 chars)
-- **API routes:**
-  - `POST /api/follow/:userId` — follow a user (requireAuth)
-  - `DELETE /api/follow/:userId` — unfollow (requireAuth)
-  - `GET /api/followers/:userId` — list followers
-  - `GET /api/following/:userId` — list who a user follows
-  - `GET /api/profile/:userId` — public profile (scans, likes, collections filtered by visibility)
-  - `PATCH /api/scans/:scanId/visibility` — toggle scan visibility
-  - `PATCH /api/saved-items/:itemId/visibility` — toggle item visibility
-  - `PATCH /api/collections/:collectionId/visibility` — toggle collection visibility
-
-### Frontend:
-- **Profile page:** Display name, bio, follower/following counts, grid of public scans
-  - Each scan shows the outfit photo as a card; tap to see the results
-  - Public likes shown in a separate tab on the profile
-  - Public collections shown as browsable boards
-- **Follow button** on any user's profile (follow/unfollow toggle)
-- **Privacy toggles:**
-  - On each scan card: tap "..." → "Make Public" / "Make Private" / "Followers Only"
-  - On each liked item: long-press → visibility toggle
-  - On each collection: settings icon → visibility toggle
-  - Default for everything is PRIVATE — users opt-in to sharing
-- **Feed / Discovery:**
-  - In the Likes tab or a new "Discover" section: show public scans/collections
-    from people you follow
-  - This is NOT a priority for today — just build the data model and basic
-    profile page. Feed can come next run.
-
-### What NOT to build today:
-- Full social feed / timeline (just the data model + profile page)
-- Direct messaging
-- Notifications for new followers (future)
-- Search/discover users (future — for now, share profile links)
-
-### Why This Matters:
-Fashion is inherently social. The viral loop is: scan outfit → get results →
-share your scan → friends follow you → they discover ATTAIR → they scan their
-own outfits. Every social feature multiplies our user acquisition.
+### Layout:
+- **Profile header**: Avatar (or initial), display name, bio, follower/following counts
+- **Stats row**: Scans count, Likes count, Collections count (like TikTok's posts/followers/likes)
+- **Grid below**: User's public scans as a photo grid (like Instagram profile grid)
+- **Settings gear icon** → slides out a clean settings panel:
+  - Theme toggle (dark/light)
+  - Language selector
+  - Budget preferences
+  - Size preferences
+  - Subscription status
+  - Sign out
 
 ---
 
-## 10. STRIPE CHECKOUT — Now Live
+## 7. LIKES PAGE — Clean Up the Clutter
 
-Stripe keys are configured in Railway. The backend already has webhook handling
-code. Today's job: verify it works end-to-end.
+The likes/saved items page is clunky. Simplify it.
 
-- **Env vars set:** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY`
-- **Pricing:** $4.99/month, $29.99/year
-- **Webhook URL:** `https://attair-production.up.railway.app/api/stripe/webhook`
-- **Events:** `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
-
-### Backend:
-- Verify the checkout session creation route uses `STRIPE_PRICE_MONTHLY` and `STRIPE_PRICE_YEARLY` env vars
-- Verify the webhook handler correctly processes `checkout.session.completed` → upgrades user to pro
-- Verify subscription cancellation/update events are handled
-- The webhook error handling fix from section 4c applies here — make sure errors return 500
-
-### Frontend:
-- The trial/subscription UI exists — verify the "Subscribe" buttons create checkout sessions
-- Show correct pricing: "$4.99/mo" and "$29.99/yr (save 50%)"
-- After successful checkout, user should see pro status immediately
-- Test with Stripe test card: `4242 4242 4242 4242` (any future exp, any CVC)
+### Changes:
+- Clean grid of saved items (2-column, Pinterest-style)
+- Each card: product image, brand, price, heart icon to unlike
+- Filter chips at top: All, by Category, by Price range
+- Empty state: Friendly illustration + "Start scanning to save items you love"
+- Remove any confusing collection/wishlist UI that adds friction
 
 ---
 
-## 11. REMAINING HALF-DONE FEATURES (OAuth)
+## 8. BUDGET SELECTION — iPhone-Friendly Slider
 
-### Google / Apple OAuth
-- Buttons exist in the frontend. Test if they actually work.
-- If broken: fix redirect URL configuration in Supabase dashboard settings
-- Document any Supabase config changes needed (don't guess — note what needs manual setup)
+Typing numbers for budget is terrible on mobile. Replace with a range slider.
 
----
-
-## 11. OUT OF SCOPE TODAY
-- RevenueCat / AdMob / Capacitor (needs native app setup)
-- App.jsx full refactor (separate day)
-- Price drop alerts (future feature, but Last Seen timestamps are ready)
+### Implementation:
+- Dual-thumb range slider for min/max budget
+- Preset chips: "$" (under $50), "$$" ($50-150), "$$$" ($150-500), "$$$$" ($500+)
+- Tapping a preset sets the slider range
+- Custom range via slider drag
+- Show selected range as "$50 - $150" below the slider
+- Apply everywhere budget is set: onboarding, settings, per-item override
 
 ---
 
-## 13. AGENT NOTES
+## 9. AI IDENTIFICATION — Focus on Clear Items Only
 
-**PM:** Today has 4 phases:
-  Phase 0: CRITICAL — Fix search for user-uploaded photos (section 0). This is the
-    entire point of the app and it's broken. Quant agent owns this. Nothing else
-    matters if search doesn't work for real photos. Backend agent supports.
-  Phase 1: Quick wins — CORS verification, security fixes, i18n audit (sections 1, 4, 5)
-  Phase 2: Major build — Likes tab redesign (section 2) + light mode fix (section 3)
-    + nearby stores fix (section 6) + as-seen-on upgrade (section 7) + custom occasions (section 8)
-    + social profiles with follow/privacy (section 9) + Stripe checkout (section 10)
-  Phase 3: Creative agent run — after push, let the creative agent analyze and propose
-  Phase 0 runs IN PARALLEL with Phase 1. Do not gate Phase 0 on anything.
-  Push only after E2E confirms. Then run creative agent.
+The identification algorithm tries too hard to find every little thing in the photo.
+It should focus on items that are CLEARLY visible unless the user specifically circles something.
 
-**Backend agent:**
-  - **Section 0 support:** Verify Supabase Storage bucket "scan-images" has public read
-    access so SerpAPI can fetch image URLs for Google Lens. If not, either fix the bucket
-    policy or generate short-lived signed URLs. Support any schema/route changes the Quant
-    agent needs for the search refactor.
-  - CORS logic fix if needed (section 1)
-  - requireAuth on seenOn/nearbyStores (4a)
-  - size_prefs validation (4b)
-  - Stripe webhook error handling (4c)
-  - Support any new backend needs for the Likes redesign (section 2)
-  - Debug & fix GET /api/nearby-stores — auth, SerpAPI query, location passing (section 6)
-  - Upgrade GET /api/seen-on — accept style_interests, tailor SerpAPI queries per
-    interest category, return structured results with name/platform/image/context (section 7)
-  - Add style_interests column to profiles table (text[] or JSONB) (section 7)
-  - Custom occasion Claude interpretation in findProducts — if occasion not in
-    OCCASION_MODIFIERS, prompt Claude for search keywords, cache result (section 8)
-  - Social: follows table, visibility columns on scans/saved_items/wishlists,
-    bio + display_name on profiles, all follow/unfollow/profile API routes (section 9)
-  - Stripe: verify checkout session creation uses env var price IDs,
-    webhook handles checkout.session.completed → pro upgrade,
-    webhook returns 500 on error (not 200) (section 10)
+### Changes to claude.js prompt:
+- Default behavior: Only identify items where 70%+ of the garment is visible (was 50%)
+- If user drew a circle: identify the circled item regardless of visibility percentage
+- Maximum 4-5 items per scan (not 8+). Quality over quantity.
+- Don't identify socks, undershirts, or barely-visible accessories unless circled
+- The prompt should say: "Focus on the 3-5 most prominent, clearly visible garments.
+  Ignore partially hidden items, undergarments, and small accessories."
 
-**UI/UX agent:** Your MAIN job today is the Likes tab redesign (section 2).
-  This is the biggest change. Make it feel like Instagram saves meets Pinterest.
-  - Build the new Likes bottom nav tab
-  - One-tap heart on all product cards
-  - Auto-grouping by scan
-  - Optional collections (long-press to organize)
-  - Remove old Wishlist terminology
-  - Fix light mode comprehensively (section 3)
-  - "Find Near Me" button on product cards with location permission flow,
-    loading state, store list, and empty/denied states (section 6)
-  - User interest picker at signup/first-scan — "Who inspires your style?"
-    grid of tappable category chips, store as style_interests (section 7)
-  - As-seen-on visual cards — person photo, name, platform badge, context,
-    source link; consider horizontal carousel on product cards (section 7)
-  - "+ Custom" chip in occasion picker with text input, save recent custom
-    occasions to localStorage (max 5) (section 8)
-  - Social profile page — display name, bio, follower/following counts,
-    public scans grid, public likes tab, public collections (section 9)
-  - Follow/unfollow button on profiles (section 9)
-  - Privacy toggles on scans, liked items, and collections —
-    "..." menu → "Make Public" / "Private" / "Followers Only" (section 9)
-  - Stripe: verify Subscribe buttons create checkout sessions with correct
-    prices ($4.99/mo, $29.99/yr "save 50%"), test card works (section 10)
-  - Ensure all new UI has i18n translations in all 8 languages
-  - Test at 390px width in both dark and light mode
+---
 
-**Quant agent:** YOUR #1 JOB TODAY IS SECTION 0. Everything else is secondary.
-  - **CRITICAL (Section 0):** Full refactoring of the search algorithm in products.js.
-    You OWN this. Read Section 0 top-to-bottom. The search pipeline returns 0 results
-    for user-uploaded photos — this makes the entire app useless. Fix:
-    (A) Lens pipeline — verify Supabase URLs work, add retry strategies
-    (B) Text search — build a new query constructor that generates SHORT, Shopping-indexed
-        queries from structured item data. NEVER return 0 results. Add broadening fallbacks.
-    (C) Scoring — add synonym/fuzzy matching, lower the score floor, boost text results
-        when Lens fails
-    (D) Telemetry — log search quality metrics for every request
-    (E) Test with 3 real-photo scenarios — verify all tiers have real products
-    Make this search engine PROPRIETARY and PERFECT. This is the core IP of ATTAIR.
-  - THEN: Verify search quality hasn't regressed from OCCASION_MODIFIERS changes
-  - THEN: Optimize SerpAPI query construction for as-seen-on (section 7)
-  - THEN: Validate custom occasion → Claude → search keywords (section 8)
+## 10. SEARCH — User Can Pass Info to AI
 
-**Security agent:** REPORT ONLY. Verify yesterday's 5 fixes are still in place.
-  Check for any new issues introduced by today's changes.
-  Pay special attention to: custom occasion prompt injection risk (section 8),
-  nearby-stores auth now requiring token (section 6),
-  follow/profile routes require auth (section 9),
-  visibility checks — private content must NOT leak to non-followers (section 9).
+Let users give the AI additional context about what they're looking for, beyond just
+style/fit/occasion. A free-text field where they can say things like:
+- "I think this is from Zara's new collection"
+- "Looking for a cheaper alternative"
+- "I want this in blue instead"
+- "This is a vintage piece, find something similar"
 
-**Testing agent:** Run all 133 tests first. Then add tests for:
-  - **Section 0 search refactor tests:**
-    - New query builder generates SHORT queries (< 80 chars) from item data
-    - Synonym/fuzzy matching: "chinos" matches product titled "khaki pants"
-    - "Never return 0 results" guarantee — broadest fallback always produces results
-    - Lens failure simulation → text fallback produces real products (not fallback links)
-    - Search telemetry logging fires correctly
-  - Likes/collections CRUD operations
-  - size_prefs validation
-  - requireAuth on seenOn/nearbyStores
-  - Light mode CSS custom properties (if testable)
-  - Nearby stores with/without auth token (section 6)
-  - As-seen-on with style_interests filtering (section 7)
-  - Custom occasion → Claude modifier generation (section 8)
-  - style_interests profile CRUD (section 7)
-  - Follow/unfollow CRUD (section 9)
-  - Profile visibility filtering — private items hidden from non-followers (section 9)
-  - Visibility toggle on scans, saved items, collections (section 9)
+### Implementation:
+- Text input field on the results screen: "Tell us more about what you're looking for..."
+- Pass this as `search_notes` to the findProducts API (already supported!)
+- Show it as an editable pill/chip so the user can modify or remove it
+- This should trigger a re-search with the updated notes
 
-**E2E agent:** Critical checks:
-  - **Section 0: Search actually works for non-Google-Images photos.** Simulate
-    a user photo upload flow (base64 image → identify → find-products). ALL THREE
-    tiers (budget/mid/premium) must have real product results, not fallback Google
-    Shopping links. If any tier is a fallback link, this is a FAIL.
-  - Likes tab exists in bottom nav and works
-  - One-tap heart saves items
-  - Collections can be created, items added/removed
-  - Old wishlist references are gone
-  - Light mode looks polished on every screen
-  - Dark mode hasn't regressed
-  - CORS works on live Vercel → Railway
-  - All 8 languages have no untranslated strings
-  - 133+ tests still passing
-  - No console errors on any screen
-  - "Find Near Me" shows stores or proper empty/denied state (section 6)
-  - As-seen-on returns visual cards with platform badges (section 7)
-  - Interest picker appears at signup and persists to profile (section 7)
-  - Custom occasion input works and produces relevant search results (section 8)
-  - Profile page renders with public scans, likes, collections (section 9)
-  - Follow/unfollow works, follower counts update (section 9)
-  - Privacy toggles work — private items invisible to others (section 9)
-  - Cannot see private scans/items of users you don't follow (section 9)
+---
 
-**PM agent (COMMUNICATION):**
-  The inbox check is now MANDATORY at 4 points: startup, after each agent,
-  between phases, and before push. Jules will drop issues labeled "from-jules"
-  with new ideas, bug reports, or priority changes throughout the day.
-  These are DIRECT INSTRUCTIONS — read, acknowledge, and act on every one.
-  This is how the work cycle continues without Jules being online.
+## 11. SIZE-AWARE SEARCH — Know What Sizes Apply to What
 
-**Creative agent:** After everything is pushed, analyze the app fresh.
-  Focus especially on:
-  - How does the new Likes tab FEEL? What would make it addictive?
-  - What's the viral loop? How does someone discover ATTAIR and tell a friend?
-  - What monetization angles are we missing?
-  - How does the interest-based as-seen-on feel? Is it compelling enough to share?
-  - How does the social layer feel? What would make people WANT to share their scans?
-  - What's the onboarding funnel? How does someone go from "I just found this app"
-    to "I've scanned 5 outfits and followed 3 friends" in under 10 minutes?
-  - What would make this app #1 in the fashion category on the App Store?
+When scanning a hat, there's no "size Large" — hats have S/M/L or fitted sizes.
+Shoes have numeric sizes. Pants have waist/length. The app needs to know this.
+
+### Implementation:
+- Category-aware size prompting on results screen:
+  - Hats: "One size" / "S/M/L" / "Fitted (7 1/4)"
+  - Shoes: Numeric size with half-sizes
+  - Tops: XS/S/M/L/XL/XXL
+  - Pants: Waist + Length (32x30)
+  - Dresses: 0-20 or XS-XXL
+- Show the appropriate size selector based on the item category
+- Pass size to search query for better results
+- Save preferred sizes per category in profile
+
+---
+
+## 12. HOME SCREEN — Social Discovery Feed
+
+Now that there's a social aspect, the home screen should engage users with content
+from people they follow. Think Instagram/TikTok home feed.
+
+### Layout:
+- **Top section**: "Scan an Outfit" CTA (always prominent)
+- **Below**: "From People You Follow" feed showing public scans
+  - Each card: outfit photo, user avatar + name, scan summary, item count
+  - Tap → view their scan results
+  - Heart/like button on each
+- **If not following anyone**: Show trending/popular public scans as discovery
+- **User search**: Search bar to find other users by display name
+- Keep it simple — this is v1 of the social feed
+
+---
+
+## 13. COMPLETE THE LOOK — Real Product Images
+
+The "Complete the Look" / pairings feature uses emojis instead of real product images.
+Replace emojis with actual product images from the search results.
+
+### Changes:
+- When suggesting pairings, also run a quick product search for each suggestion
+- Show the top result's image instead of an emoji
+- Each pairing card: product image, name, price, "Shop" button
+- If no product image found, use a clean category icon (not emoji)
+
+---
+
+## 14. MORE RESULTS — Horizontal Scroll
+
+Currently showing only 2 results per tier. Show more and let users swipe through them.
+
+### Changes:
+- Each tier (Budget/Mid/Premium) becomes a horizontal scrollable row
+- Show 4-6 results per tier (load more available)
+- Swipe left/right to browse
+- Each product card: image, brand, price, "Shop" link
+- Active card is slightly larger/elevated
+
+---
+
+## 15. PRICING CONSISTENCY
+
+The standup flagged: Upgrade Modal shows $29.99/yr ($4.99/mo), Paywall shows $39.99/yr ($9.99/mo).
+
+### Correct pricing: $4.99/month, $29.99/year. Fix everywhere.
+
+---
+
+## 16. CREATIVE BACKLOG — Implement Priority 1 Ideas
+
+From creative-backlog.md, implement ALL Priority 1 items:
+
+### [3] Scan-to-Share Deep Link
+- Public scan URLs: `attair.vercel.app/scan/:scanId`
+- Backend: `GET /api/scan/:scanId/public` returns scan data if visibility="public"
+- Frontend: Minimal public scan view, share sheet integration, "Find my version" CTA
+
+### [1] Outfit Verdict + Share Card
+- Replace 1-5 star rating with verdict system: "Would Wear" / "On the Fence" / "Not for Me"
+- Canvas API shareable image card (outfit photo + items + verdict + ATTAIR wordmark)
+- "Would Wear" auto-saves to Likes
+
+### [6] Style Fingerprint Onboarding
+- Compress onboarding from 5→2 screens (value prop + scan)
+- Post-first-scan preference collection (budget + fit only)
+- Visual "Style Fingerprint" summary card
+
+### [4] Budget Tracker + Tier Mixer
+- Outfit-level budget view in Likes tab
+- Tap scan group → expand to Budget/Mid/Premium cost bars
+- Users swap tiers per item, see running total
+- "Buy the look" CTA opens affiliate links
+- Tier mixing is PRO-ONLY gate
+
+---
+
+## AGENT NOTES
+
+**PM:** This is a DESIGN-HEAVY run. Prioritize visual quality over feature count.
+
+  Phase 1: Visual foundation — light mode buttons fix, color palette, typography,
+    card system, whitespace (Sections 1, 2)
+  Phase 2: Core UX — scan flow, circle tool, history, results with more products
+    and horizontal scroll (Sections 3, 4, 5, 14)
+  Phase 3: Feature polish — budget slider, size-aware search, AI focus tuning,
+    user search notes, gender display (Sections 8, 9, 10, 11)
+  Phase 4: Social & pages — home feed, profile redesign, likes cleanup,
+    settings, pricing fix (Sections 6, 7, 12, 15)
+  Phase 5: Creative backlog — share links, verdict cards, onboarding,
+    budget tracker (Section 16)
+  Phase 6: Complete the look real images, pairings product search (Section 13)
+
+  Commit and push after EACH agent completes. Do NOT wait until the end.
+  Check inbox between every agent dispatch.
+
+**design-system-agent (NEW):** You own Sections 1 and 2. Establish the visual foundation
+  that ALL other agents build on top of. Do this FIRST before anyone else touches UI.
+  - Fix every button/interactive element for light mode visibility
+  - Implement the color palette, typography scale, card system, spacing
+  - Create CSS custom properties that other agents can reference
+  - Document the design tokens in a comment block at the top of App.css
+
+**uiux-agent:** You own Sections 3, 4, 5, 6, 7, 8, 14.
+  WAIT for design-system-agent to finish before starting.
+  Use the design tokens the design-system-agent establishes.
+  - Scan flow UX improvements (Section 3)
+  - Circle-to-search modernization (Section 4)
+  - History click-through to old scans (Section 5)
+  - Profile/settings TikTok-style redesign (Section 6)
+  - Likes page cleanup (Section 7)
+  - Budget slider (Section 8)
+  - Horizontal scroll results with more products (Section 14)
+
+**backend-agent:** You own Sections 10, 11, 13, 16 backend work.
+  - Search notes UI integration (ensure findProducts handles search_notes — already does)
+  - Category-aware size mapping for search queries (Section 11)
+  - Public scan endpoint for share links: GET /api/scan/:scanId/public (Section 16)
+  - Pairings product search — run findProducts for each pairing suggestion (Section 13)
+  - Fix pricing to $4.99/mo, $29.99/yr everywhere in backend (Section 15)
+
+**social-feed-agent (NEW):** You own Section 12.
+  - Home screen social feed from followed users' public scans
+  - User search/discovery
+  - "Trending" fallback when not following anyone
+  - Backend: GET /api/feed (public scans from follows, paginated)
+  - Backend: GET /api/users/search?q=name
+
+**ai-prompt-agent (NEW):** You own Sections 9 and 10.
+  - Tune the Claude identification prompt to focus on 3-5 clear items (Section 9)
+  - Raise visibility threshold to 70% (unless circled)
+  - Ensure gender is returned prominently and displayed on frontend
+  - Wire up search_notes field in frontend UI (Section 10)
+  - Verdict system: add verdict column to scans, build verdict UI (Section 16 [1])
+
+**creative-build-agent (NEW):** You own Section 16 frontend work.
+  - Scan-to-Share deep link page (Section 16 [3])
+  - Style Fingerprint onboarding (Section 16 [6])
+  - Budget Tracker + Tier Mixer in Likes (Section 16 [4])
+  - Share card Canvas API generator (Section 16 [1])
+
+**Quant agent:** Light day. Verify search still works after any backend changes.
+  Help with Section 13 — pairings need product search integration.
+
+**Security agent:** REPORT ONLY. Check new social feed endpoints, public scan endpoint,
+  user search for data leaks and auth gaps.
+
+**Testing agent:** Add tests for new endpoints (feed, user search, public scan).
+  Run full suite after all agents complete.
+
+**E2E agent:** Test EVERY screen in both dark and light mode at 390px.
+  Verify buttons are visible, flows are intuitive, no dead clicks.
