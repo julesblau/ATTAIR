@@ -160,13 +160,14 @@ STEP 3 — DELEGATE TO SPECIALISTS
     e2e-agent       → end-to-end UI testing (runs AFTER building)
     creative-agent  → innovation & product vision (runs AFTER push)
 
-  EXECUTION ORDER:
-    1. design-system-agent FIRST (establishes visual foundation)
-    2. THEN in parallel: uiux-agent, backend-agent, social-feed-agent, ai-prompt-agent
-    3. THEN: creative-build-agent (depends on backend endpoints from step 2)
-    4. THEN: quant-agent verification, security-agent audit
-    5. THEN: testing-agent, e2e-agent
-    6. FINALLY: creative-agent (if budget remains)
+  EXECUTION ORDER (STRICT — do not skip ahead):
+    Phase 1: design-system-agent FIRST (establishes visual foundation — blocks Phase 3+4)
+    Phase 2: IN PARALLEL with Phase 1: ai-prompt-agent + backend-agent (no UI dependency)
+    Phase 3: AFTER Phase 1: uiux-agent (scan flow, results, budget slider, circle tool)
+    Phase 4: AFTER Phase 1, can overlap Phase 3: social-feed-agent + uiux-agent (pages)
+    Phase 5: AFTER Phase 3+4: creative-build-agent (share links, onboarding, share cards)
+    Post-build: security-agent, testing-agent, e2e-agent
+    COMMIT + PUSH after EACH agent finishes. Do NOT batch.
 
 STEP 4 — TEST GATE (MANDATORY)
   Run testing-agent to execute all tests (80 tests already exist from previous run).
