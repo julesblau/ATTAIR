@@ -8,7 +8,12 @@ Run `git log --oneline -30` before starting. Do NOT redo anything already done.
 
 ---
 
-## MISSION: Make ATTAIR feel like TikTok meets Instagram meets GOAT.
+## MISSION: This must feel like a BRAND NEW APP when Jules opens it.
+
+Not a polish pass. Not incremental improvements. A complete visual transformation.
+New colors, new screens, new buttons, new animations, ALL OF IT.
+When Jules opens the app after this run, his reaction should be "holy shit, this is
+a completely different app." Think the leap from MySpace to Instagram.
 
 Trendy. Fun. Dead-simple. Beautiful. Every screen immediately obvious to a first-time user.
 
