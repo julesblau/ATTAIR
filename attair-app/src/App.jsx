@@ -3948,6 +3948,50 @@ export default function App() {
                                       </div>
                                     </div>
                                   )}
+
+                                  {/* ─── Smart Re-Search Recovery Row ─────────── */}
+                                  {(() => {
+                                    const allProducts = ["budget", "mid", "premium"].flatMap(tk => asTierArray(item.tiers[tk]));
+                                    const hasFallback = allProducts.some(p => !p.is_product_page && p.brand === "Google Shopping");
+                                    if (!hasFallback) return null;
+                                    const googleQuery = item.search_query || `${item.brand || ""} ${item.name || ""}`.trim();
+                                    return (
+                                      <div
+                                        style={{ marginTop: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12, textAlign: "center" }}
+                                        aria-label="Alternate search options for this item"
+                                      >
+                                        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
+                                          Not what you're looking for?
+                                        </div>
+                                        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                                          {item.alt_search && (
+                                            <button
+                                              aria-label="Try alternate search terms"
+                                              onClick={() => {
+                                                setSearchNotes(item.alt_search);
+                                                setTimeout(() => runProductSearch(), 100);
+                                                track("alt_search_clicked", { item_name: item.name, alt_search: item.alt_search }, scanId, "scan");
+                                              }}
+                                              style={{ minHeight: 44, padding: "10px 18px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 10, color: "var(--accent)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}
+                                            >
+                                              Try alternate search
+                                            </button>
+                                          )}
+                                          <a
+                                            href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            aria-label="Search Google Shopping for this item"
+                                            onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
+                                            style={{ minHeight: 44, padding: "10px 18px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, transition: "all .2s" }}
+                                          >
+                                            Search Google
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                          </a>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               );
                             })()}
@@ -3988,24 +4032,41 @@ export default function App() {
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                               {pairings.map((p, i) => {
-                                const shopUrl = `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
+                                const prod = p.product;
+                                const shopUrl = prod?.url
+                                  ? API.affiliateUrl(`pairing_${scanId}_${i}`, prod.url, scanId, 0, "pairing", prod.brand)
+                                  : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
                                 return (
                                   <a key={i} href={shopUrl} target="_blank" rel="noopener noreferrer"
                                     onClick={async () => {
-                                      track("pairing_clicked", { name: p.name, search_query: p.search_query, category: p.category }, scanId, "scan");
+                                      track("pairing_clicked", { name: p.name, search_query: p.search_query, category: p.category, has_product: !!prod }, scanId, "scan");
                                       authFetch(`${API_BASE}/api/suggest-pairings/track-click`, { method: "POST", body: JSON.stringify({ pairing_product_url: shopUrl, item_name: p.name }) }).catch(() => {});
                                     }}
-                                    style={{ padding: "12px 10px", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, transition: "all .2s", textAlign: "center" }}>
-                                    <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
-                                      {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[p.category] || "✦"}
-                                    </div>
-                                    <div style={{ width: "100%" }}>
-                                      <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", marginBottom: 2, lineHeight: 1.3 }}>{p.name || p.title || "Item"}</div>
-                                      {(p.brand || p.retailer) && <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginBottom: 2 }}>{p.brand || p.retailer}</div>}
-                                      {p.price && <div style={{ fontSize: 12, color: "#FF6B35", fontWeight: 700, marginBottom: 2 }}>{p.price}</div>}
-                                      {!p.brand && !p.price && p.why && <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", lineHeight: 1.4 }}>{p.why}</div>}
-                                    </div>
-                                    <div style={{ fontSize: 11, color: "#C9A96E", fontWeight: 600 }}>Shop →</div>
+                                    style={{ padding: prod ? "10px" : "12px 10px", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: prod ? "row" : "column", alignItems: prod ? "center" : "center", gap: prod ? 10 : 8, transition: "all .2s", textAlign: prod ? "left" : "center" }}>
+                                    {prod?.image_url ? (
+                                      <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", background: "rgba(255,255,255,.04)", flexShrink: 0 }}>
+                                        <img src={prod.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                      </div>
+                                    ) : (
+                                      <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
+                                        {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[p.category] || "✦"}
+                                      </div>
+                                    )}
+                                    {prod ? (
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prod.product_name || p.name || "Item"}</div>
+                                        {prod.brand && <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 1 }}>{prod.brand}</div>}
+                                        {prod.price && <div style={{ fontSize: 13, color: "var(--accent)", fontWeight: 700, marginTop: 2 }}>{prod.price}</div>}
+                                      </div>
+                                    ) : (
+                                      <div style={{ width: "100%" }}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", marginBottom: 2, lineHeight: 1.3 }}>{p.name || p.title || "Item"}</div>
+                                        {(p.brand || p.retailer) && <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginBottom: 2 }}>{p.brand || p.retailer}</div>}
+                                        {p.price && <div style={{ fontSize: 12, color: "#FF6B35", fontWeight: 700, marginBottom: 2 }}>{p.price}</div>}
+                                        {!p.brand && !p.price && p.why && <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", lineHeight: 1.4 }}>{p.why}</div>}
+                                      </div>
+                                    )}
+                                    <div style={{ fontSize: 11, color: "#C9A96E", fontWeight: 600, flexShrink: 0, minHeight: 44, display: "flex", alignItems: "center" }}>{prod ? "Shop" : "Shop →"}</div>
                                   </a>
                                 );
                               })}
