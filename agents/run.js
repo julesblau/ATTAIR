@@ -117,7 +117,30 @@ so they don't get re-implemented next run.
 ` : ""}
 
 ═══════════════════════════════════════════════════════════════════════
-YOUR WORKFLOW — EXECUTE IN THIS ORDER
+YOUR WORKFLOW — THE BUILD→REVIEW→FIX LOOP
+═══════════════════════════════════════════════════════════════════════
+
+CRITICAL RULES — READ BEFORE DOING ANYTHING:
+
+  1. ONLY ONE AGENT TOUCHES FRONTEND FILES AT A TIME.
+     App.jsx, App.css, and index.css are SHARED. If two agents edit them
+     in parallel, the result is an inconsistent mess. NEVER run two UI
+     agents concurrently. Sequence them. Backend agents CAN run in parallel.
+
+  2. EVERY UI CHANGE GETS REVIEWED BEFORE MOVING ON.
+     After a builder agent finishes a screen, run e2e-agent to screenshot
+     and evaluate it. If it looks bad → send feedback to the builder and
+     have them fix it. Up to 3 iterations. Only then move to the next screen.
+
+  3. WORK ONE SCREEN AT A TIME.
+     Do NOT give a UI agent 5 screens at once. Give them ONE screen.
+     Review it. Fix it. Move on. This is slower but produces quality.
+
+  4. THE E2E AGENT IS YOUR QA PARTNER, NOT AN AFTERTHOUGHT.
+     Run e2e-agent after EVERY UI agent, not just at the end.
+     Its job: screenshot every screen, evaluate against design principles,
+     report anything that looks wrong, inconsistent, or broken.
+
 ═══════════════════════════════════════════════════════════════════════
 
 STEP 1 — SYNC MAIN
@@ -126,73 +149,93 @@ STEP 1 — SYNC MAIN
   git pull origin main
 
 STEP 2 — READ BEFORE DELEGATING
-  Read the relevant files for today's tasks. Do not ask agents to build
-  something without understanding what already exists.
+  Read App.jsx, App.css, index.css, and the relevant backend files.
+  Understand what already exists. Do not ask agents to rebuild anything
+  that already works.
 
-STEP 3 — DELEGATE TO SPECIALISTS
-  Use the Agent tool to dispatch work. Be specific: give each agent the
-  exact files to work on, the task, and any constraints.
+STEP 3 — BACKEND WORK (can run independently)
+  Dispatch backend-agent and ai-prompt-agent for any backend/AI changes.
+  These do NOT touch frontend files and can run in parallel with each other.
+  Commit + push when each finishes.
 
-  Independent tasks CAN be dispatched in parallel.
-  Tasks with dependencies must be sequenced.
+STEP 4 — UI WORK (sequential, one screen at a time)
 
-  IMPORTANT — COMMIT AFTER EACH AGENT:
-  After EACH builder agent completes, immediately commit and push their work:
-    cd ${REPO_ROOT}
-    git add -A
-    git commit -m "feat: [agent-name] — [brief summary] — Agent Army ${today}"
-    git push origin main
-  This ensures NO WORK IS LOST if the run is interrupted by rate limits or budget caps.
-  Do NOT wait until all agents finish to push. Push incrementally.
+  THE BUILD→REVIEW→FIX LOOP (repeat for each screen):
 
-  AGENT ROSTER (builders):
-    design-system-agent → CSS design tokens, color palette, typography, button styles (runs FIRST)
-    uiux-agent          → React frontend, components, styling, UX (runs AFTER design-system-agent)
+  4a. INTERVIEW JULES: Before building ANY screen, ask Jules what he wants.
+      Use the notify-cli to ask him:
+        node ${__dirname}/notify-cli.js ask "Starting [screen name]. What should it look like?" "I'm about to build/fix the [screen name]. Current state: [describe what exists now]. Design principles from requirements: [list relevant ones]. What's your vision? Any reference apps or specific layouts you want? What's most important to get right?"
+      WAIT for his reply. His answer IS the spec. Do not proceed without it.
+
+  4b. ASSIGN: Give uiux-agent ONE specific screen to build/fix.
+      Include Jules' exact words in the prompt. Be extremely specific:
+      "Fix the home feed screen. Jules said: '[his reply]'. Use these CSS
+      classes: [list]. Do NOT touch any other screens."
+
+  4c. REVIEW: After the builder finishes, run e2e-agent to:
+      - Start the dev servers
+      - Navigate to the screen that was just changed
+      - Screenshot it at 390px width in BOTH dark and light mode
+      - Evaluate: Are buttons visible? Is spacing consistent? Does it match
+        the design principles? Does it match what Jules asked for?
+      - Report: PASS (looks good) or FAIL (list specific issues)
+
+  4d. FIX: If e2e-agent reports FAIL:
+      - Send the specific issues back to uiux-agent
+      - Have them fix ONLY those issues (not re-do the whole screen)
+      - Run e2e-agent again to verify
+      - Maximum 3 iterations per screen. If still failing after 3, share
+        the current state with Jules via notify-cli and ask if it's acceptable.
+
+  4e. COMMIT: Once the screen passes review (or Jules approves):
+      git add -A
+      git commit -m "feat: [screen-name] — [summary] — Agent Army ${today}"
+      git push origin main
+
+  4f. NEXT: Move to the next screen. Repeat 4a-4e.
+      Check inbox before starting each new screen — Jules may have sent
+      new feedback or changed priorities.
+
+  SCREEN ORDER (work in this order):
+    1. Design system foundation (CSS tokens, button classes, card classes)
+    2. Home feed screen (For You / Following tabs, FAB, feed cards)
+    3. Scan flow (camera/upload, preview, loading, circle-to-search)
+    4. Results screen (items, tiers, horizontal scroll, verdict, search notes)
+    5. Profile page (header, stats, photo grid, settings bottom sheet)
+    6. History page (scan list, click-through to results)
+    7. Likes page (grid, filters, budget tracker)
+    8. Onboarding (compressed 2-step, post-scan preferences)
+    9. Share features (public scan view, share cards)
+
+  AGENT ROSTER (builders — use for the screen-by-screen loop):
+    design-system-agent → CSS tokens ONLY (index.css, App.css base classes)
+    uiux-agent          → React UI for individual screens (App.jsx)
+    social-feed-agent   → Home feed specifically (both backend + frontend)
+    creative-build-agent→ Share/viral features specifically
+
+  AGENT ROSTER (backend — can run in parallel with UI):
     backend-agent       → API routes, Express, Supabase, DB migrations
+    ai-prompt-agent     → Claude prompts, identification tuning
     quant-agent         → products.js search algorithm ONLY
-    social-feed-agent   → Social feed, user search, discovery features
-    ai-prompt-agent     → Claude prompts, identification tuning, verdict system
-    creative-build-agent→ Viral features: share links, onboarding, budget tracker, share cards
-    security-agent      → vulnerability scan across ALL files
-    testing-agent       → write and run tests, report results
+
+  AGENT ROSTER (quality — run after each UI change):
+    e2e-agent       → screenshot, evaluate, report PASS/FAIL
+    testing-agent   → run test suite
+    security-agent  → vulnerability scan (REPORT ONLY)
 
   AGENT ROSTER (post-build):
-    e2e-agent       → end-to-end UI testing (runs AFTER building)
-    creative-agent  → innovation & product vision (runs AFTER push)
+    creative-agent  → innovation & product vision (runs AFTER everything)
 
-  EXECUTION ORDER (STRICT — do not skip ahead):
-    Phase 1: design-system-agent FIRST (establishes visual foundation — blocks Phase 3+4)
-    Phase 2: IN PARALLEL with Phase 1: ai-prompt-agent + backend-agent (no UI dependency)
-    Phase 3: AFTER Phase 1: uiux-agent (scan flow, results, budget slider, circle tool)
-    Phase 4: AFTER Phase 1, can overlap Phase 3: social-feed-agent + uiux-agent (pages)
-    Phase 5: AFTER Phase 3+4: creative-build-agent (share links, onboarding, share cards)
-    Post-build: security-agent, testing-agent, e2e-agent
-    COMMIT + PUSH after EACH agent finishes. Do NOT batch.
+STEP 5 — FINAL GATES (after all screens are done)
+  Run testing-agent: all tests must pass.
+  Run e2e-agent one final time: full app walkthrough, all screens, both modes.
+  Run security-agent: report only.
 
-STEP 4 — TEST GATE (MANDATORY)
-  Run testing-agent to execute all tests (80 tests already exist from previous run).
-  If tests fail:
-    → Attempt one fix pass
-    → Re-run tests
-    → If still failing, DO NOT push — document in standup as "BLOCKED"
+  If tests fail → fix and re-run (max 2 attempts).
+  If E2E finds issues → fix and re-run (max 2 attempts).
 
-STEP 5 — E2E UI TEST (MANDATORY — before pushing)
-  Delegate to e2e-agent to physically navigate the running app.
-  The e2e-agent will start the dev servers, click through every screen,
-  and report broken buttons, dead links, console errors, and visual bugs.
-
-  If bugs are found:
-    → Delegate fixes to the appropriate agent (uiux-agent or backend-agent)
-    → After fixes, run e2e-agent again to confirm resolved
-    → If CRITICAL bugs remain, DO NOT push
-
-STEP 6 — SECURITY REVIEW (report only — DO NOT apply fixes)
-  Run security-agent for a full scan. It will REPORT findings only.
-  Security agent must NOT modify any code — only document issues.
-  The PM decides which findings to act on and delegates to backend-agent or uiux-agent.
-
-STEP 7 — COMMIT AND PUSH TO MAIN
-  Only if test gate AND e2e gate pass:
+STEP 6 — COMMIT AND PUSH
+  Final commit with any remaining changes:
     cd ${REPO_ROOT}
     git add -A
     git commit -m "feat: [brief summary] — Agent Army ${today}"

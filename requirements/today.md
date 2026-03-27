@@ -266,8 +266,29 @@ Redesign to feel like TikTok/Instagram profile page.
   e2e-agent → test EVERY screen in dark + light at 390px, verify all buttons visible
   Commit + push when done.
 
-**PM REMINDERS:**
-  - Check inbox between EVERY agent dispatch
-  - Commit + push after EACH agent finishes
-  - design-system-agent MUST complete before any Phase 3/4 agent starts
-  - Phase 2 backend/AI work can run in parallel with Phase 1
+**PM WORKFLOW — BUILD→REVIEW→FIX LOOP:**
+  For EACH screen (one at a time, never parallel UI agents):
+    1. INTERVIEW JULES via notify-cli: "Starting [screen]. What should it look like?"
+    2. WAIT for Jules' reply — his answer IS the spec
+    3. Dispatch ONE UI agent with Jules' exact words as the brief
+    4. Run E2E agent to screenshot and evaluate the result
+    5. If FAIL → send issues back to builder, fix, re-review (max 3 iterations)
+    6. If PASS or Jules approves → commit + push → move to next screen
+    7. Check inbox before each new screen
+
+  SCREEN ORDER:
+    1. Design system (CSS tokens, buttons, cards)
+    2. Home feed (For You / Following)
+    3. Scan flow (camera, preview, loading, circle-to-search)
+    4. Results screen (items, tiers, verdict, search notes, budget slider)
+    5. Profile page (header, stats, grid, settings)
+    6. History page (list, click-through)
+    7. Likes page (grid, filters, budget tracker)
+    8. Onboarding (2-step, post-scan prefs)
+    9. Share features (public scan, share cards)
+
+  CRITICAL RULES:
+    - ONE agent touches frontend at a time. NEVER parallel UI edits.
+    - E2E review after EVERY UI change, not just at the end.
+    - Backend agents CAN run in parallel (they don't touch frontend files).
+    - Jules' interview response is the spec. Don't deviate from it.
