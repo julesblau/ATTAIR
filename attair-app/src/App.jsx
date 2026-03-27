@@ -2675,18 +2675,11 @@ export default function App() {
 
       /* ─── Profile Redesign (TikTok/IG style) ────────── */
       .profile-v2{display:flex;flex-direction:column;min-height:100%}
-      .profile-v2-header{display:flex;flex-direction:column;align-items:center;padding:24px 20px 16px;position:relative}
-      .profile-v2-avatar{width:64px;height:64px;border-radius:50%;background:var(--accent-bg);border:2px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);font-size:24px;font-family:'Outfit';flex-shrink:0}
-      .profile-v2-name{font-size:var(--text-xl,24px);font-weight:var(--weight-bold,700);color:var(--text-primary);margin-top:12px;text-align:center}
-      .profile-v2-bio{font-size:var(--text-sm,14px);color:var(--text-secondary);margin-top:4px;text-align:center;cursor:pointer;max-width:280px;line-height:1.4}
-      .profile-v2-gear{position:absolute;top:16px;right:16px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;cursor:pointer;border-radius:50%;transition:background var(--transition-fast);-webkit-tap-highlight-color:transparent}
+      .profile-v2-gear{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;cursor:pointer;border-radius:50%;transition:background var(--transition-fast);-webkit-tap-highlight-color:transparent}
       .profile-v2-gear:hover{background:var(--accent-bg)}
       .profile-v2-gear svg{width:22px;height:22px;stroke:var(--text-secondary);fill:none;stroke-width:1.8}
 
-      .profile-v2-stats{display:flex;justify-content:center;gap:0;padding:16px 0;margin:0 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-      .profile-v2-stat{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
-      .profile-v2-stat-num{font-size:18px;font-weight:var(--weight-bold,700);color:var(--text-primary)}
-      .profile-v2-stat-label{font-size:var(--text-xs,12px);color:var(--text-tertiary);font-weight:var(--weight-medium,500)}
+      /* profile-v2-stats: now inlined in JSX for Instagram layout */
 
       .profile-v2-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px}
       .profile-v2-grid-cell{aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;background:var(--bg-card)}
@@ -4856,21 +4849,47 @@ export default function App() {
             const profileScansCount = history.length;
             return (
             <div className="profile-v2">
-              {/* Profile Header */}
-              <div className="profile-v2-header">
-                <button className="profile-v2-gear" aria-label="Open settings" onClick={() => setProfileSettingsOpen(true)}>
+              {/* Top bar: ATTAIRE left, gear icon right */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0", position: "relative", zIndex: 2 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 2, color: "var(--text-primary)", fontFamily: "'Outfit'" }}>ATTAIRE</div>
+                <button className="profile-v2-gear" style={{ position: "relative", top: 0, right: 0 }} aria-label="Open settings" onClick={() => setProfileSettingsOpen(true)}>
                   <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
-                <div className="profile-v2-avatar" aria-label="Profile avatar">
+              </div>
+
+              {/* Profile info row: avatar left, stats right (Instagram layout) */}
+              <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "20px 20px 0" }}>
+                {/* Avatar */}
+                <div style={{ width: 80, height: 80, borderRadius: "50%", background: "var(--accent-bg)", border: "3px solid var(--accent-border)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: "var(--accent)", fontSize: 30, fontFamily: "'Outfit'", flexShrink: 0 }} aria-label="Profile avatar">
                   {(authName || authEmail || "U")[0].toUpperCase()}
                 </div>
-                <div className="profile-v2-name">
-                  {authName || (isPro ? "Pro Member" : "Free Account")}
-                  {isPro && <span className="pro" style={{ marginLeft: 8, verticalAlign: "middle" }}>PRO</span>}
-                  {isFree && <span className="free-badge" style={{ marginLeft: 8, verticalAlign: "middle", cursor: "pointer" }} onClick={() => setUpgradeModal("general")}>FREE</span>}
+                {/* Stats row next to avatar */}
+                <div style={{ flex: 1, display: "flex", justifyContent: "space-around" }} role="list" aria-label="Profile statistics">
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }} role="listitem">
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{profileScansCount}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>Scans</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: "pointer" }} role="listitem" onClick={() => { /* follower list - future */ }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{profileStats?.followers_count ?? 0}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>Followers</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: "pointer" }} role="listitem" onClick={() => { /* following list - future */ }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{profileStats?.following_count ?? 0}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>Following</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Name + bio + edit button */}
+              <div style={{ padding: "12px 20px 0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
+                    {authName || (isPro ? "Pro Member" : "Free Account")}
+                  </div>
+                  {isPro && <span className="pro" style={{ verticalAlign: "middle" }}>PRO</span>}
                 </div>
                 {profileBioEditing ? (
-                  <div style={{ width: "100%", maxWidth: 320, marginTop: 8 }}>
+                  <div style={{ marginTop: 6, maxWidth: 360 }}>
                     <textarea className="profile-bio-area" rows={3} maxLength={200} autoFocus value={profileBio} onChange={e => setProfileBio(e.target.value.slice(0, 200))} placeholder="Tell people about your style..." aria-label="Edit your bio" />
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                       <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{profileBio.length}/200</span>
@@ -4881,28 +4900,31 @@ export default function App() {
                     </div>
                   </div>
                 ) : (
-                  <div className="profile-v2-bio" onClick={() => setProfileBioEditing(true)} role="button" aria-label="Tap to edit bio" tabIndex={0}>
-                    {profileBio || <span style={{ fontStyle: "italic", color: "var(--text-tertiary)" }}>Add a bio...</span>}
+                  <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 4, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                    {profileBio || <span style={{ fontStyle: "italic", color: "var(--text-tertiary)" }}>No bio yet</span>}
                   </div>
                 )}
+                {/* Edit Profile button */}
+                <button className="btn-secondary" style={{ width: "100%", marginTop: 12, padding: "8px 0", fontSize: 14, fontWeight: 600, borderRadius: "var(--radius-sm)" }} onClick={() => setProfileBioEditing(true)}>Edit Profile</button>
               </div>
-              <div className="profile-v2-stats" role="list" aria-label="Profile statistics">
-                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{profileScansCount}</div><div className="profile-v2-stat-label">Scans</div></div>
-                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{profileStats?.followers_count ?? 0}</div><div className="profile-v2-stat-label">Followers</div></div>
-                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{profileStats?.following_count ?? 0}</div><div className="profile-v2-stat-label">Following</div></div>
-              </div>
+
+              {/* Trial banner */}
               {userStatus?.tier === "trial" && userStatus?.trial_ends_at && (() => {
                 const daysLeft = Math.ceil((new Date(userStatus.trial_ends_at) - Date.now()) / 86400000);
                 return daysLeft > 0 ? <div style={{ margin: "12px 20px 0", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 14px", borderRadius: "var(--radius-sm)", background: "rgba(255,107,53,.1)", border: "1px solid rgba(255,107,53,.25)", color: "#FF6B35", fontWeight: 600 }}>{daysLeft} day{daysLeft !== 1 ? "s" : ""} left in trial</div> : null;
               })()}
-              {isFree && <div className="rcard" style={{ margin: "12px 20px 0" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Unlock the full experience</div><div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.4 }}>Unlimited scans, no ads, full history</div></div><button className="btn-primary" style={{ padding: "8px 16px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setUpgradeModal("general")}>Go Pro</button></div></div>}
-              <div style={{ padding: "16px 0 80px" }}>
+
+              {/* Grid divider */}
+              <div style={{ margin: "16px 0 0", borderTop: "1px solid var(--border)" }} />
+
+              {/* 3-column scan grid */}
+              <div style={{ paddingBottom: 80 }}>
                 {history.length === 0 ? (
-                  <div className="empty" style={{ padding: "40px 20px" }}>
-                    <div className="empty-i" style={{ fontSize: 36, opacity: 0.2 }}><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg></div>
+                  <div className="empty" style={{ padding: "48px 20px" }}>
+                    <div style={{ fontSize: 40, opacity: 0.15, marginBottom: 12 }}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg></div>
                     <div className="empty-t">No scans yet</div>
-                    <div className="empty-s">Your outfits will show up here</div>
-                    <button className="btn-primary" style={{ marginTop: 8 }} onClick={() => setTab("scan")}>Scan your first outfit</button>
+                    <div className="empty-s">Scan outfits to fill your grid</div>
+                    <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setTab("scan")}>Scan your first outfit</button>
                   </div>
                 ) : (
                   <div className="profile-v2-grid">
@@ -4919,6 +4941,8 @@ export default function App() {
                   </div>
                 )}
               </div>
+
+              {/* Scan detail overlay */}
               {profileScanOverlay && (() => {
                 const hs = profileScanOverlay, hsItems = hs.items || [], hsImg = hs.image_url || hs.image_thumbnail;
                 return (
@@ -4954,15 +4978,31 @@ export default function App() {
                   </div>
                 );
               })()}
+
+              {/* Settings bottom sheet */}
               {profileSettingsOpen && <>
                 <div className="bottom-sheet-overlay" onClick={() => setProfileSettingsOpen(false)} />
                 <div className="bottom-sheet" role="dialog" aria-label="Settings" aria-modal="true">
                   <div className="bottom-sheet-handle" />
-                  <div style={{ fontSize: "var(--text-lg,18px)", fontWeight: "var(--weight-bold,700)", color: "var(--text-primary)", marginBottom: 16 }}>Settings</div>
-                  <div className="settings-sheet-item" onClick={toggleTheme} role="button" aria-label="Toggle theme"><span className="settings-label">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span><span className="settings-value">{theme === "dark" ? "DARK" : "LIGHT"}</span></div>
-                  <div className="settings-sheet-item" style={{ cursor: "default" }}><span className="settings-label">Budget Range</span><span className="settings-value">${budgetMin} - ${budgetMax}{budgetMax >= 1000 ? "+" : ""}</span></div>
-                  <div className="settings-sheet-item" style={{ cursor: "default" }}><span className="settings-label">Size Preferences</span><span className="settings-value">{(sizePrefs.body_type || []).length > 0 ? (sizePrefs.body_type || []).join(", ") : "Not set"}</span></div>
-                  <div className="settings-sheet-item" style={{ cursor: "default" }}><span className="settings-label">Subscription</span><span className="settings-value" style={{ color: isPro ? "var(--accent)" : undefined }}>{isPro ? "Pro" : "Free"}</span></div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>Settings</div>
+                    <button onClick={() => setProfileSettingsOpen(false)} aria-label="Close settings" style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", borderRadius: "50%", color: "var(--text-secondary)" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+
+                  {/* Theme toggle */}
+                  <div className="settings-sheet-item" onClick={toggleTheme} role="button" aria-label="Toggle theme">
+                    <span className="settings-label">Appearance</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span className="settings-value">{theme === "dark" ? "Dark" : "Light"}</span>
+                      <div style={{ width: 44, height: 26, borderRadius: 13, background: theme === "dark" ? "var(--accent)" : "var(--border)", position: "relative", transition: "background 0.2s", cursor: "pointer", flexShrink: 0 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: theme === "dark" ? 21 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Language */}
                   <div className="settings-sheet-item" style={{ alignItems: "flex-start", flexDirection: "column", gap: 8, cursor: "default" }}>
                     <span className="settings-label">Language</span>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -4971,7 +5011,44 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-                  <div className="settings-sheet-item danger" onClick={() => { setProfileSettingsOpen(false); handleLogout(); }} role="button" aria-label="Sign out">{t("log_out")}</div>
+
+                  {/* Budget / Size info */}
+                  <div className="settings-sheet-item" style={{ cursor: "default" }}>
+                    <span className="settings-label">Budget Range</span>
+                    <span className="settings-value">${budgetMin} - ${budgetMax}{budgetMax >= 1000 ? "+" : ""}</span>
+                  </div>
+                  <div className="settings-sheet-item" style={{ cursor: "default" }}>
+                    <span className="settings-label">Size Preferences</span>
+                    <span className="settings-value">{(sizePrefs.body_type || []).length > 0 ? (sizePrefs.body_type || []).join(", ") : "Not set"}</span>
+                  </div>
+
+                  {/* Subscription */}
+                  <div className="settings-sheet-item" style={{ cursor: "default" }}>
+                    <span className="settings-label">Subscription</span>
+                    <span className="settings-value" style={{ color: isPro ? "var(--accent)" : undefined }}>{isPro ? "Pro" : "Free"}</span>
+                  </div>
+                  {isFree && (
+                    <button className="btn-primary" style={{ width: "100%", margin: "8px 0 12px", padding: "10px 0", fontSize: 14, fontWeight: 600 }} onClick={() => { setProfileSettingsOpen(false); setUpgradeModal("general"); }}>
+                      Upgrade to Pro
+                    </button>
+                  )}
+
+                  {/* Referral */}
+                  {referralCode && (
+                    <div style={{ padding: "14px 0", borderTop: "1px solid var(--border)" }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>Refer a friend</div>
+                      <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 10, lineHeight: 1.4 }}>Share your code. Both of you get $5 credit.</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1, padding: "8px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-sm)", fontWeight: 800, color: "var(--accent)", letterSpacing: 2, fontSize: 14, fontFamily: "'Outfit'" }}>{referralCode}</div>
+                        <button className="btn-secondary" style={{ padding: "8px 14px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => {
+                          navigator.clipboard.writeText(referralCode).then(() => { setReferralCopied(true); setTimeout(() => setReferralCopied(false), 2000); }).catch(() => {});
+                        }}>{referralCopied ? "Copied" : "Copy"}</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sign out */}
+                  <div className="settings-sheet-item danger" style={{ marginTop: 8 }} onClick={() => { setProfileSettingsOpen(false); handleLogout(); }} role="button" aria-label="Sign out">{t("log_out")}</div>
                 </div>
               </>}
             </div>
