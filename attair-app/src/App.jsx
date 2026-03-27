@@ -1306,6 +1306,13 @@ export default function App() {
   // ─── Re-search indicator ──────────────────────────────────
   const [isResearch, setIsResearch] = useState(false); // true when re-running a search (not first run)
 
+  // ─── Social profile ───────────────────────────────────────
+  const [profileBio, setProfileBio] = useState("");
+  const [profileBioEditing, setProfileBioEditing] = useState(false);
+  const [profileBioSaving, setProfileBioSaving] = useState(false);
+  const [profileStats, setProfileStats] = useState({ followers_count: 0, following_count: 0 }); // { followers_count, following_count }
+  const [scanVisibilityMap, setScanVisibilityMap] = useState({}); // { [scanId]: "public"|"private"|"followers" }
+
   // ─── Theme (dark / light) ─────────────────────────────────
   const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
   const toggleTheme = () => setTheme(t => { const n = t === "dark" ? "light" : "dark"; localStorage.setItem("attair_theme", n); return n; });
@@ -1391,6 +1398,11 @@ export default function App() {
           if (profile.budget_max != null) setBudgetMax(profile.budget_max);
           if (profile.size_prefs) setSizePrefs(profile.size_prefs);
           if (profile.referral_code) setReferralCode(profile.referral_code);
+          if (profile.bio) setProfileBio(profile.bio);
+          if (profile.style_interests) setSelectedInterests(profile.style_interests);
+          if (profile.followers_count != null || profile.following_count != null) {
+            setProfileStats({ followers_count: profile.followers_count || 0, following_count: profile.following_count || 0 });
+          }
         })
         .catch(() => {});
       API.getHistory().then(d => {
@@ -2247,6 +2259,208 @@ export default function App() {
       .app[data-theme='light'] .ob{background:#F6F4F0}
       .app[data-theme='light'] .ob-skip{color:rgba(0,0,0,.25)}
 
+      /* ─── Comprehensive light mode: scan home ─────────── */
+      .app[data-theme='light'] .shome h2{color:#1a1a1a!important}
+      .app[data-theme='light'] .shome p{color:rgba(0,0,0,.45)!important}
+      .app[data-theme='light'] .scan-counter{color:rgba(0,0,0,.35)!important}
+      .app[data-theme='light'] .shome .btn.ghost{color:rgba(0,0,0,.6)!important;background:rgba(0,0,0,.05)!important;border-color:rgba(0,0,0,.1)!important}
+
+      /* ─── Comprehensive light mode: picking / results ─── */
+      .app[data-theme='light'] .res{background:#F5F5F7}
+      .app[data-theme='light'] .pick-list [style*="rgba(255,255,255,.5)"] span[style]{color:rgba(0,0,0,.6)!important}
+      .app[data-theme='light'] .pick-list [style*="rgba(255,255,255,.15)"] span[style]{color:rgba(0,0,0,.25)!important}
+      .app[data-theme='light'] .pick-list > div > div > div:first-child{color:#1a1a1a!important}
+
+      /* Occasion section label */
+      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="letterSpacing: 1.5"][style*="textTransform"]{color:rgba(0,0,0,.35)!important}
+
+      /* Ident preview rows */
+      .app[data-theme='light'] [style*="rgba(255,255,255,.02)"][style*="borderRadius: 10"]{background:rgba(0,0,0,.03)!important;border-color:rgba(0,0,0,.06)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.04)"][style*="borderRadius: 10"]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.07)!important}
+
+      /* Loading state */
+      .app[data-theme='light'] .ld-wrap{background:#F5F5F7}
+      .app[data-theme='light'] .ld-info{background:#F5F5F7}
+      .app[data-theme='light'] .ld-info > div:nth-child(2){color:#1a1a1a!important}
+
+      /* Summary text in results */
+      .app[data-theme='light'] [style*="rgba(255,255,255,.5)"][style*="fontStyle: \"italic\""]{color:rgba(0,0,0,.55)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.35)"][style*="textTransform: \"uppercase\""][style*="pickedItems"]{color:rgba(0,0,0,.45)!important}
+
+      /* det (item detail) */
+      .app[data-theme='light'] .det-name{color:#1a1a1a!important}
+      .app[data-theme='light'] [style*="fontSize: 15"][style*="fontWeight: 700"][style*="color: \"#fff\""]{color:#1a1a1a!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.3)"][style*="marginLeft: 6"]{color:rgba(0,0,0,.35)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="marginTop: 6"][style*="fontStyle"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="textAlign: \"center\""]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.15)"][style*="No recent"]{color:rgba(0,0,0,.25)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.15)"][style*="No stores"]{color:rgba(0,0,0,.25)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.7)"][style*="lineHeight: 1.3"]{color:rgba(0,0,0,.75)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="source_name"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.7)"][style*="lineHeight: 1.3"][style*="marginBottom: 3"]{color:rgba(0,0,0,.75)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="marginTop: 1"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] .det [style*="rgba(255,255,255,.04)"][style*="display: \"flex\""][style*="justifyContent: \"center\""][style*="borderRadius: 8"]{background:rgba(0,0,0,.04)!important}
+
+      /* ID view card */
+      .app[data-theme='light'] .det [style*="rgba(255,255,255,.02)"][style*="border: \"1px solid rgba(255,255,255,.04)\""]{background:rgba(0,0,0,.03)!important;border-color:rgba(0,0,0,.06)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="AI Identification"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="width: 70"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.6)"][style*="lineHeight: 1.4"]{color:rgba(0,0,0,.65)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="Correct the AI"]{color:rgba(0,0,0,.3)!important}
+
+      /* Re-search button */
+      .app[data-theme='light'] [style*="rgba(255,255,255,.04)"][style*="borderRadius: 12"]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.5)"][style*="fontWeight: 600"][style*="borderRadius: 12"]{color:rgba(0,0,0,.5)!important}
+
+      /* Complete the Look button */
+      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="Outfit looks complete"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.15)"][style*="Dismiss"]{color:rgba(0,0,0,.2)!important}
+
+      /* Pairings cards */
+      .app[data-theme='light'] [style*="rgba(201,169,110,.04)"][style*="borderRadius: 12"]{background:rgba(201,169,110,.07)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.4)"][style*="marginBottom: 2"]{color:rgba(0,0,0,.45)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.35)"][style*="lineHeight: 1.4"]{color:rgba(0,0,0,.4)!important}
+
+      /* Rate outfit */
+      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="rate_outfit"]{color:rgba(0,0,0,.35)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.15)"][style*="fontSize: 18"]{color:rgba(0,0,0,.12)!important}
+
+      /* Native ad (free users) */
+      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="Sponsored"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.4)"][style*="fontSize: 11"]{color:rgba(0,0,0,.45)!important}
+
+      /* Banner ad slot */
+      .app[data-theme='light'] [style*="rgba(255,255,255,.05)"][style*="overflow: \"hidden\""][style*="border: \"1px solid"]{border-color:rgba(0,0,0,.07)!important}
+      .app[data-theme='light'] [style*="Trending This Week"][style*="color: \"#fff\""]{color:#1a1a1a!important}
+
+      /* ─── Comprehensive light mode: history tab ─────────── */
+      .app[data-theme='light'] .hist-list{background:#F5F5F7}
+      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.03)"][style*="borderRadius: 10"]{background:rgba(0,0,0,.05)!important}
+      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.3)"][style*="fontSize: 12"]{color:rgba(0,0,0,.4)!important}
+      .app[data-theme='light'] .hist-card [style*="color: \"#fff\""][style*="fontSize: 13"]{color:#1a1a1a!important}
+      .app[data-theme='light'] .hist-card [style*="rgba(255,255,255,.2)"][style*="fontSize: 11"]{color:rgba(0,0,0,.35)!important}
+      .app[data-theme='light'] .hist-card [style*="rgba(255,255,255,.04)"][style*="borderRadius: 3"]{background:rgba(0,0,0,.06)!important;color:rgba(0,0,0,.3)!important;border:1px solid rgba(0,0,0,.06)}
+      .app[data-theme='light'] .hist-card [style*="rgba(255,255,255,.12)"][style*="flexShrink: 0"]{color:rgba(0,0,0,.2)!important}
+      .app[data-theme='light'] .hist-card [style*="rgba(255,255,255,.08)"][style*="cursor: \"pointer\""] button{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.12)"][style*="fontSize: 9"]{color:rgba(0,0,0,.25)!important}
+      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.02)"][style*="borderRadius: 12"]{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.06)"][style*="borderRadius: 12"]{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.6)"][style*="fontSize: 14"]{color:#1a1a1a!important}
+      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.25)"][style*="fontSize: 11"]{color:rgba(0,0,0,.35)!important}
+      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.12)"][style*="userSelect"]{color:rgba(0,0,0,.2)!important}
+      .app[data-theme='light'] .hist-list input{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important;color:#1a1a1a!important}
+      .app[data-theme='light'] .hist-list input::placeholder{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.06)"][style*="borderRadius: 8"][style*="background: \"rgba(201,169,110,.06)\""]{background:rgba(201,169,110,.1)!important}
+
+      /* Visibility menu chips */
+      .app[data-theme='light'] .scan-vis-chip{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.5)!important}
+      .app[data-theme='light'] .scan-vis-chip.active{background:rgba(201,169,110,.1)!important;border-color:rgba(201,169,110,.4)!important;color:#8B6914!important}
+      .app[data-theme='light'] .profile-bio-area{background:#F0F0F2!important;color:#1a1a1a!important;border-color:rgba(0,0,0,.1)!important}
+      .app[data-theme='light'] .profile-bio-area::placeholder{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] .profile-stats-row{border-top-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] .profile-stat-val{color:#1a1a1a!important}
+      .app[data-theme='light'] .profile-stat-lbl{color:#666!important}
+      .app[data-theme='light'] .interest-chip{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.5)!important}
+      .app[data-theme='light'] .interest-chip.on{background:rgba(201,169,110,.1)!important;border-color:rgba(201,169,110,.4)!important;color:#8B6914!important}
+
+      /* ─── Comprehensive light mode: likes tab ─────────── */
+      .app[data-theme='light'] .likes-card{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.04)"]{background:rgba(0,0,0,.04)!important}
+      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.03)"]{background:rgba(0,0,0,.03)!important}
+      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.85)"]{color:#1a1a1a!important}
+      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.35)"]{color:rgba(0,0,0,.4)!important}
+      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.2)"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.6)"][style*="fontWeight: 600"]:not(button){color:rgba(0,0,0,.7)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.06)"][style*="borderRadius: 6"]{border-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.04)"][style*="display: \"flex\""][style*="justifyContent: \"center\""][style*="fontSize: 18"]{background:rgba(0,0,0,.04)!important}
+
+      /* Add-to-collection bottom sheet */
+      .app[data-theme='light'] [style*="background: \"#18181C\""][style*="borderTopLeftRadius"]{background:#FFFFFF!important}
+      .app[data-theme='light'] [style*="fontSize: 14"][style*="fontWeight: 700"][style*="color: \"#fff\""]{color:#1a1a1a!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.06)"][style*="borderBottom: \"1px solid"]{border-bottom-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.06)"][style*="borderTop: \"1px solid"]{border-top-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.12)"][style*="borderRadius: 2"]{background:rgba(0,0,0,.1)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.7)"][style*="fontFamily"][style*="fontSize: 14"]{color:#1a1a1a!important}
+
+      /* Collections chips */
+      .app[data-theme='light'] [style*="rgba(255,255,255,.08)"][style*="borderRadius: 20"]{border-color:rgba(0,0,0,.1)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.03)"][style*="borderRadius: 20"]{background:rgba(0,0,0,.03)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.4)"][style*="fontSize: 12"][style*="fontWeight: 600"]{color:rgba(0,0,0,.45)!important}
+
+      /* ─── Comprehensive light mode: profile tab ─────────── */
+      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.25)"]{color:rgba(0,0,0,.35)!important}
+      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.3)"]{color:rgba(0,0,0,.4)!important}
+      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.2)"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.45)"]{color:rgba(0,0,0,.5)!important}
+      .app[data-theme='light'] .pcard [style*="fontWeight: 600"][style*="fontSize: 15"]{color:#1a1a1a!important}
+      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.03)"][style*="borderRadius"]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] .pcard input[style*="color: \"#fff\""]{color:#1a1a1a!important}
+      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.15)"][style*="marginTop: 8"]{color:rgba(0,0,0,.25)!important}
+      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.1)"][style*="marginTop: 18"]{color:rgba(0,0,0,.15)!important}
+      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.5)"][style*="fontSize: 12"]{color:rgba(0,0,0,.5)!important}
+      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.07)"][style*="borderRadius: 100"]{border-color:rgba(0,0,0,.1)!important}
+      .app[data-theme='light'] .pcard select{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important;color:#1a1a1a!important}
+      .app[data-theme='light'] .rcard [style*="rgba(255,255,255,.3)"]{color:rgba(0,0,0,.4)!important}
+      .app[data-theme='light'] .rcard [style*="fontWeight: 600"][style*="fontSize: 14"]{color:#1a1a1a!important}
+      .app[data-theme='light'] .sitem span[style*="rgba(255,255,255,.2)"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] .sitem [style*="rgba(255,255,255,.04)"][style*="padding: \"3px 8px\""]{background:rgba(0,0,0,.06)!important;color:rgba(0,0,0,.35)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.04)"][style*="borderRadius: 5"]{background:rgba(0,0,0,.05)!important}
+      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="borderRadius: 5"]{color:rgba(0,0,0,.35)!important}
+
+      /* ─── Social profile CSS classes ──────────────────── */
+      .profile-bio-area{width:100%;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#fff;font-family:'Outfit';font-size:13px;resize:none;outline:none;line-height:1.5;box-sizing:border-box;transition:border-color .2s}
+      .profile-bio-area::placeholder{color:rgba(255,255,255,.2)}
+      .profile-bio-area:focus{border-color:rgba(201,169,110,.35)}
+      .profile-stats-row{display:flex;gap:24px;padding:12px 0;border-top:1px solid rgba(255,255,255,.06)}
+      .profile-stat-val{font-size:18px;font-weight:700;color:#fff}
+      .profile-stat-lbl{font-size:11px;color:rgba(255,255,255,.3);margin-top:1px}
+      .interest-chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:100px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:rgba(255,255,255,.5);font-family:'Outfit';font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;min-height:38px;-webkit-tap-highlight-color:transparent}
+      .interest-chip.on{background:rgba(201,169,110,.1);border-color:rgba(201,169,110,.4);color:#C9A96E}
+      .scan-vis-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);font-family:'Outfit';font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent}
+      .scan-vis-chip.active{background:rgba(201,169,110,.1);border-color:rgba(201,169,110,.35);color:#C9A96E}
+
+      /* ─── Comprehensive light mode: item-opts-sheet ────── */
+      .app[data-theme='light'] .item-opts-sheet [style*="color: \"#fff\""][style*="fontSize: 16"]{color:#1a1a1a!important}
+      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.3)"][style*="fontSize: 11"]{color:rgba(0,0,0,.4)!important}
+      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.6)"][style*="fontSize: 13"]{color:rgba(0,0,0,.6)!important}
+      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.02)"][style*="border: \"1px solid rgba(255,255,255,.06)\""]{background:rgba(0,0,0,.03)!important;border-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.03)"][style*="border: \"1px solid rgba(255,255,255,.07)\""]{background:rgba(0,0,0,.03)!important;border-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.45)"][style*="marginBottom: 2"]{color:rgba(0,0,0,.5)!important}
+      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.2)"][style*="lineHeight: 1.3"]{color:rgba(0,0,0,.25)!important}
+      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.45)"][style*="fontSize: 12"]{color:rgba(0,0,0,.5)!important}
+      .app[data-theme='light'] .item-opts-sheet select{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important;color:#1a1a1a!important}
+      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.2)"][style*="fontSize: 18"]{color:rgba(0,0,0,.2)!important}
+      .app[data-theme='light'] .budget-input-wrap{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important}
+      .app[data-theme='light'] .budget-input-wrap span{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] .budget-input-wrap input{color:#1a1a1a!important}
+
+      /* ─── Comprehensive light mode: auth ─────────────── */
+      .app[data-theme='light'] .auth{background:#F5F5F7}
+      .app[data-theme='light'] .auth [style*="rgba(255,255,255,.04)"][style*="border: \"1px solid rgba(255,255,255,.08)\""]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important;color:#1a1a1a!important}
+      .app[data-theme='light'] .auth [style*="rgba(255,255,255,.06)"][style*="height: 1"]{background:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] .auth [style*="rgba(255,255,255,.2)"][style*="fontWeight: 500"]{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] .auth button.auth-toggle{color:rgba(0,0,0,.35)!important}
+      .app[data-theme='light'] .auth [style*="right: 12"]{color:rgba(0,0,0,.3)!important}
+
+      /* ─── Comprehensive light mode: paywall ──────────── */
+      .app[data-theme='light'] .pw{background:#F5F5F7}
+      .app[data-theme='light'] .pw-t{color:#1a1a1a}
+      .app[data-theme='light'] .pw-st{color:rgba(0,0,0,.5)}
+      .app[data-theme='light'] .pw-terms{color:rgba(0,0,0,.3)}
+      .app[data-theme='light'] .pw-skip{color:rgba(0,0,0,.3)}
+      .app[data-theme='light'] .pw-f{color:#1a1a1a!important}
+      .app[data-theme='light'] .pw-p [style*="rgba(255,255,255,.35)"]{color:rgba(0,0,0,.4)!important}
+      .app[data-theme='light'] .pw-p [style*="rgba(255,255,255,.2)"]{color:rgba(0,0,0,.3)!important}
+
+      /* ─── Comprehensive light mode: crop screen ───────── */
+      .app[data-theme='light'] .crop-screen{background:#F5F5F7}
+      .app[data-theme='light'] .crop-bar [style*="rgba(255,255,255,.06)"]{background:rgba(0,0,0,.06)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.55)!important}
+
+      /* ─── Comprehensive light mode: interest modal ───── */
+      .app[data-theme='light'] .modal-box button[style*="rgba(255,255,255,.02)"]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.6)!important}
+      .app[data-theme='light'] .modal-box button[style*="rgba(255,255,255,.08)"]{border-color:rgba(0,0,0,.1)!important}
+      .app[data-theme='light'] .modal-box .modal-sub{color:#666666!important}
+
       /* ─── Likes tab card styles ──────────────────────── */
       .likes-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:12px;overflow:hidden;cursor:default;-webkit-user-select:none;user-select:none}
       @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -2439,14 +2653,14 @@ export default function App() {
             <p className="modal-sub" style={{ marginBottom: 20 }}>Pick up to 5. We'll personalize your results.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
               {[
-                { v: "actors", l: "Actors & Actresses", icon: "🎬" },
-                { v: "musicians", l: "Musicians & K-Pop", icon: "🎵" },
-                { v: "athletes", l: "Athletes", icon: "🏀" },
-                { v: "tiktok", l: "TikTok Creators", icon: "📱" },
-                { v: "instagram", l: "Instagram Influencers", icon: "📸" },
-                { v: "streamers", l: "Streamers & YouTubers", icon: "🎮" },
-                { v: "fashion", l: "Fashion Icons & Models", icon: "👗" },
-                { v: "street", l: "Street Style", icon: "🌍" },
+                { v: "Actors & Actresses", l: "Actors & Actresses", icon: "🎬" },
+                { v: "Musicians & K-Pop", l: "Musicians & K-Pop", icon: "🎵" },
+                { v: "Athletes", l: "Athletes", icon: "🏀" },
+                { v: "TikTok Creators", l: "TikTok Creators", icon: "📱" },
+                { v: "Instagram Influencers", l: "Instagram Influencers", icon: "📸" },
+                { v: "Streamers & YouTubers", l: "Streamers & YouTubers", icon: "🎮" },
+                { v: "Fashion Icons & Models", l: "Fashion Icons & Models", icon: "👗" },
+                { v: "Street Style", l: "Street Style", icon: "🌍" },
               ].map(({ v, l, icon }) => {
                 const on = selectedInterests.includes(v);
                 return (
@@ -2879,7 +3093,7 @@ export default function App() {
                         if (sod.appearances) { setSeenOnData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: true } })); return; }
                         setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: true } }));
                         try {
-                          const res = await API.seenOn(item.brand, item.name, profile?.style_interests);
+                          const res = await API.seenOn(item.brand, item.name, selectedInterests);
                           setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: res.appearances || [] } }));
                           track("seen_on_viewed", { brand: item.brand }, scanId, "scan");
                         } catch { setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: [] } })); }
@@ -3488,7 +3702,7 @@ export default function App() {
                               >{h.scan_name || items.map(it=>it.name).slice(0,2).join(", ") || h.summary || "Outfit scan"}</div>
                               <span style={{fontSize:11,color:"rgba(255,255,255,.12)",flexShrink:0,userSelect:"none",cursor:"default"}} aria-hidden="true">✎</span>
                             </div>
-                            <div style={{display:"flex",alignItems:"center",gap:6}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                               <span style={{fontSize:11,color:"rgba(255,255,255,.2)"}}>{new Date(h.created_at).toLocaleDateString()}</span>
                               <span style={{fontSize:9,fontWeight:700,padding:"1px 5px",borderRadius:3,background:"rgba(255,255,255,.04)",color:"rgba(255,255,255,.2)"}}>{items.length} items</span>
                               {/* Star rating — only shown when a rating exists */}
@@ -3497,6 +3711,30 @@ export default function App() {
                                   {[1,2,3,4,5].map(s => s <= h.rating ? "★" : "☆").join("")}
                                 </span>
                               )}
+                            </div>
+                            {/* Visibility chips */}
+                            <div onClick={e => e.stopPropagation()} style={{display:"flex",gap:4,marginTop:5,flexWrap:"wrap"}}>
+                              {[
+                                { v: "public", l: t("public_profile"), icon: "🌐" },
+                                { v: "followers", l: t("followers_only"), icon: "👥" },
+                                { v: "private", l: t("private_profile"), icon: "🔒" },
+                              ].map(({ v, l, icon }) => {
+                                const current = scanVisibilityMap[h.id] || h.visibility || "public";
+                                const active = current === v;
+                                return (
+                                  <button key={v}
+                                    className={`scan-vis-chip${active ? " active" : ""}`}
+                                    aria-pressed={active}
+                                    aria-label={`Set scan visibility to ${l}`}
+                                    onClick={async () => {
+                                      setScanVisibilityMap(m => ({ ...m, [h.id]: v }));
+                                      try { await authFetch(`${API_BASE}/api/social/scans/${h.id}/visibility`, { method: "PATCH", body: JSON.stringify({ visibility: v }) }); } catch {}
+                                      track("scan_visibility_changed", { visibility: v }, h.id, "history");
+                                    }}>
+                                    <span>{icon}</span>{l}
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
                           {/* Save heart */}
@@ -3796,6 +4034,50 @@ export default function App() {
                     </div>
                   ) : null;
                 })()}
+
+                {/* Bio field */}
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 6 }}>Bio</div>
+                  {profileBioEditing ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <textarea
+                        className="profile-bio-area"
+                        rows={3}
+                        maxLength={200}
+                        autoFocus
+                        value={profileBio}
+                        onChange={e => setProfileBio(e.target.value.slice(0, 200))}
+                        placeholder="Tell people about your style…"
+                        aria-label="Edit your bio"
+                      />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>{profileBio.length}/200</span>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => setProfileBioEditing(false)} style={{ padding: "6px 14px", background: "none", border: "1px solid rgba(255,255,255,.1)", borderRadius: 8, color: "rgba(255,255,255,.35)", fontSize: 12, fontFamily: "'Outfit'", cursor: "pointer" }}>Cancel</button>
+                          <button onClick={async () => { setProfileBioSaving(true); try { await API.updateProfile({ bio: profileBio }); } catch {} setProfileBioSaving(false); setProfileBioEditing(false); }} style={{ padding: "6px 14px", background: "#C9A96E", border: "none", borderRadius: 8, color: "#0C0C0E", fontSize: 12, fontWeight: 700, fontFamily: "'Outfit'", cursor: "pointer" }}>{profileBioSaving ? "Saving…" : "Save"}</button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div onClick={() => setProfileBioEditing(true)} style={{ fontSize: 13, color: profileBio ? "rgba(255,255,255,.6)" : "rgba(255,255,255,.2)", lineHeight: 1.5, cursor: "pointer", padding: "8px 12px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.05)", borderRadius: 10, minHeight: 40, display: "flex", alignItems: profileBio ? "flex-start" : "center" }}>
+                      {profileBio || <span style={{ fontStyle: "italic" }}>Add a bio…</span>}
+                    </div>
+                  )}
+                </div>
+
+                {/* Follower stats */}
+                {profileStats && (
+                  <div className="profile-stats-row">
+                    <div>
+                      <div className="profile-stat-val">{profileStats.followers_count ?? 0}</div>
+                      <div className="profile-stat-lbl">{t("followers")}</div>
+                    </div>
+                    <div>
+                      <div className="profile-stat-val">{profileStats.following_count ?? 0}</div>
+                      <div className="profile-stat-lbl">{t("following")}</div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {isFree && (<>
@@ -3806,6 +4088,44 @@ export default function App() {
                   <button className="btn gold" style={{width:"100%"}} onClick={() => setUpgradeModal("general")}>Go Pro — $39.99/year</button>
                 </div>
               </>)}
+
+              {/* ─── Style Interests ─────────────────────────── */}
+              <div className="sec-t">{t("who_inspires")}</div>
+              <div className="pcard">
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 14, lineHeight: 1.5 }}>Pick up to 5. We'll personalize your results.</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                  {[
+                    { v: "Actors & Actresses", l: "Actors & Actresses", icon: "🎬" },
+                    { v: "Musicians & K-Pop", l: "Musicians & K-Pop", icon: "🎵" },
+                    { v: "Athletes", l: "Athletes", icon: "🏀" },
+                    { v: "TikTok Creators", l: "TikTok Creators", icon: "📱" },
+                    { v: "Instagram Influencers", l: "Instagram Influencers", icon: "📸" },
+                    { v: "Streamers & YouTubers", l: "Streamers & YouTubers", icon: "🎮" },
+                    { v: "Fashion Icons & Models", l: "Fashion Icons & Models", icon: "👗" },
+                    { v: "Street Style", l: "Street Style", icon: "🌍" },
+                  ].map(({ v, l, icon }) => {
+                    const on = selectedInterests.includes(v);
+                    return (
+                      <button
+                        key={v}
+                        className={`interest-chip${on ? " on" : ""}`}
+                        aria-pressed={on}
+                        onClick={async () => {
+                          const next = on ? selectedInterests.filter(x => x !== v) : selectedInterests.length < 5 ? [...selectedInterests, v] : selectedInterests;
+                          setSelectedInterests(next);
+                          try { await API.updateProfile({ style_interests: next }); } catch {}
+                          track("interest_toggled", { interest: v, enabled: !on });
+                        }}
+                      >
+                        <span style={{ fontSize: 15 }}>{icon}</span>{l}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedInterests.length > 0 && (
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)", marginTop: 10 }}>{selectedInterests.length}/5 selected · Saved automatically</div>
+                )}
+              </div>
 
               <div className="sec-t">Budget per item</div>
               <div className="pcard">

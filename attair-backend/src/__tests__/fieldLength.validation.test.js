@@ -137,17 +137,17 @@ describe("PATCH /api/user/profile — display_name length cap", () => {
 
   afterEach(() => server.close());
 
-  it("rejects display_name > 100 chars with 400", async () => {
+  it("rejects display_name > 50 chars with 400", async () => {
     const { status, body } = await patch(port, "/api/user/profile", {
-      display_name: "a".repeat(101),
+      display_name: "a".repeat(51),
     });
     expect(status).toBe(400);
-    expect(body.error).toMatch(/100/i);
+    expect(body.error).toMatch(/50/i);
   });
 
-  it("accepts display_name of exactly 100 chars (no 400)", async () => {
+  it("accepts display_name of exactly 50 chars (no 400)", async () => {
     const { status } = await patch(port, "/api/user/profile", {
-      display_name: "a".repeat(100),
+      display_name: "a".repeat(50),
     });
     expect(status).not.toBe(400);
   });

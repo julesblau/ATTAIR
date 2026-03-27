@@ -10,10 +10,10 @@ const SERPAPI_URL = "https://serpapi.com/search.json";
 const INTEREST_QUERY_MAP = {
   "Actors & Actresses":       (brand, name) => `actor actress wearing ${brand ? brand + " " : ""}${name}`,
   "Musicians & K-Pop":        (brand, name) => `musician kpop idol wearing ${brand ? brand + " " : ""}${name}`,
-  "Athletes":                 (brand, name) => `athlete NBA NFL wearing ${brand ? brand + " " : ""}${name}`,
-  "TikTok Creators":          (_brand, name) => `tiktok creator influencer wearing ${name}`,
-  "Instagram Influencers":    (_brand, name) => `instagram influencer wearing ${name} style`,
-  "Streamers & YouTubers":    (_brand, name) => `youtuber streamer wearing ${name}`,
+  "Athletes":                 (brand, name) => `athlete sports star wearing ${brand ? brand + " " : ""}${name}`,
+  "TikTok Creators":          (brand, name) => `tiktok creator influencer wearing ${brand ? brand + " " : ""}${name}`,
+  "Instagram Influencers":    (brand, name) => `instagram influencer wearing ${brand ? brand + " " : ""}${name} style`,
+  "Streamers & YouTubers":    (brand, name) => `youtuber streamer wearing ${brand ? brand + " " : ""}${name}`,
   "Fashion Icons & Models":   (brand, name) => `fashion model supermodel wearing ${brand ? brand + " " : ""}${name}`,
   "Street Style":             (brand, name) => `street style ${name} ${brand || ""} spotted`.trim(),
 };
@@ -76,6 +76,9 @@ async function fetchAppearances(query, platform) {
 router.get("/", requireAuth, async (req, res) => {
   const { brand, name, interests: interestsRaw } = req.query;
   if (!name && !brand) return res.status(400).json({ error: "Missing name or brand" });
+  // SECURITY: cap query param lengths to prevent SerpAPI quota abuse
+  if (brand && brand.length > 100) return res.status(400).json({ error: "brand must be 100 characters or less" });
+  if (name && name.length > 200) return res.status(400).json({ error: "name must be 200 characters or less" });
 
   const safeBrand = (brand && brand !== "Unidentified") ? brand : null;
 

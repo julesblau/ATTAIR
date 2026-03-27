@@ -154,7 +154,7 @@ describe("POST /api/payments/webhook", () => {
     );
 
     expect(status).toBe(400);
-    expect(body.error).toMatch(/Webhook error/i);
+    expect(body.error).toMatch(/Webhook signature verification failed/i);
 
     delete process.env.STRIPE_WEBHOOK_SECRET;
   });

@@ -42,10 +42,9 @@ async function getCustomOccasionModifiers(occasionStr) {
     return result;
   } catch (err) {
     console.error("Custom occasion Claude error:", err.message);
-    // Fall back to the raw occasion string as-is
-    const fallback = occasionStr;
-    occasionCache.set(occasionStr, fallback);
-    return fallback;
+    // SECURITY: Do not cache error results — a transient failure should not lock in the
+    // raw user string as a permanent modifier. Return null so the search runs without a modifier.
+    return null;
   }
 }
 
