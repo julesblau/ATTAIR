@@ -130,9 +130,10 @@ async function chatWithOpus(userMessage) {
   ].filter(Boolean).join("\n");
 
   const reply = await new Promise((resolve, reject) => {
-    const proc = spawn("claude", ["-p", "--model", "opus", "--output-format", "text"], {
+    const proc = spawn("claude", ["-p", "--model", "opus", "--output-format", "text", "--allowedTools", "*"], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: REPO_ROOT,
+      env: { ...process.env, GH_TOKEN: process.env.GH_TOKEN ?? "" },
     });
 
     let output = "";
