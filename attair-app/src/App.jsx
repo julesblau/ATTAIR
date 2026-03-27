@@ -1321,7 +1321,7 @@ export default function App() {
   const [obIdx, setObIdx] = useState(0);
   const [prefs, setPrefs] = useState({});
   const [selPlan, setSelPlan] = useState("yearly");
-  const [tab, setTab] = useState("scan");
+  const [tab, setTab] = useState("home");
   const [img, setImg] = useState(null);
   const [results, setResults] = useState(null);
   const [scanId, setScanId] = useState(null);
@@ -1629,7 +1629,7 @@ export default function App() {
   }, [feedLoading]);
 
   useEffect(() => {
-    if (authed && screen === "app" && tab === "scan" && phase === "idle" && !img) {
+    if (authed && screen === "app" && (tab === "home" || (tab === "scan" && phase === "idle" && !img))) {
       loadFeed(1, false);
     }
   }, [authed, screen, tab, feedTab]);
@@ -1846,6 +1846,8 @@ export default function App() {
   const camStop = () => {
     if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
     setCamOn(false); setCamReady(false);
+    // Return to home feed when canceling camera (not the old scan idle state)
+    if (phase === "idle" && !img && !results) setTab("home");
   };
 
   // File upload
@@ -3111,7 +3113,7 @@ export default function App() {
       {/* ─── MAIN APP ────────────────────────────────────── */}
       {screen === "app" && (<>
         <div className="hdr">
-          <div className="logo"><span>ATT</span>AIR</div>
+          <div className="logo"><span>ATT</span>AIRE</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {isPro
               ? <div className="pro">PRO</div>
@@ -3121,7 +3123,7 @@ export default function App() {
               const daysLeft = Math.max(0, Math.ceil((new Date(userStatus.trial_ends_at) - new Date()) / 86400000));
               return <div style={{ fontSize: 10, color: "#C9A96E", padding: "2px 8px", background: "rgba(201,169,110,.1)", borderRadius: 100, border: "1px solid rgba(201,169,110,.3)" }}>{daysLeft}d trial</div>;
             })()}
-            {tab === "scan" && (
+            {(tab === "home" || tab === "scan") && (
               <button onClick={() => { setShowUserSearch(true); setUserSearchQuery(""); setUserSearchResults([]); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Search users">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
               </button>
@@ -3131,7 +3133,139 @@ export default function App() {
         <div className="as">
           <input ref={fileRef} type="file" accept="image/*,.heic,.heif" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
 
-          {/* ─── Feed Home ────────────────────────────── */}
+          {/* ─── Home Feed (TikTok/Instagram style) ────── */}
+          {tab === "home" && (
+            <div className="animate-fade-in" style={{ paddingBottom: 80 }}>
+              {/* For You / Following tabs directly under header */}
+              {/* For You / Following toggle */}
+              <div style={{ display: "flex", justifyContent: "center", gap: 0, padding: "4px 16px 12px", position: "sticky", top: 0, zIndex: 10, background: "var(--bg-primary)" }}>
+                <button onClick={() => { setFeedTab("foryou"); setFeedPage(1); }} style={{ flex: 1, maxWidth: 160, padding: "10px 0", background: "none", border: "none", borderBottom: feedTab === "foryou" ? "2px solid var(--accent)" : "2px solid transparent", color: feedTab === "foryou" ? "var(--text-primary)" : "var(--text-tertiary)", fontFamily: "'Outfit'", fontWeight: feedTab === "foryou" ? 700 : 500, fontSize: 15, cursor: "pointer", transition: "all .2s ease" }}>For You</button>
+                <button onClick={() => { setFeedTab("following"); setFeedPage(1); }} style={{ flex: 1, maxWidth: 160, padding: "10px 0", background: "none", border: "none", borderBottom: feedTab === "following" ? "2px solid var(--accent)" : "2px solid transparent", color: feedTab === "following" ? "var(--text-primary)" : "var(--text-tertiary)", fontFamily: "'Outfit'", fontWeight: feedTab === "following" ? 700 : 500, fontSize: 15, cursor: "pointer", transition: "all .2s ease" }}>Following</button>
+              </div>
+
+              {/* Skeleton loading */}
+              {feedLoading && feedScans.length === 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "0 16px" }}>
+                  {[0,1,2].map(i => (
+                    <div key={i} className="skeleton" style={{ borderRadius: 16, overflow: "hidden" }}>
+                      <div className="skeleton-image" style={{ width: "100%", aspectRatio: "4/5" }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty states */}
+              {!feedLoading && feedScans.length === 0 && (
+                <div className="animate-slide-up" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 32px", textAlign: "center" }}>
+                  <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 20, opacity: 0.5 }}><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
+                  <div style={{ fontFamily: "'Outfit'", fontWeight: 700, fontSize: 18, color: "var(--text-primary)", marginBottom: 8 }}>
+                    {feedTab === "following" ? "Follow people to see their scans here" : "Scan your first outfit to discover styles"}
+                  </div>
+                  <div style={{ fontSize: 14, color: "var(--text-tertiary)", marginBottom: 24, lineHeight: 1.5 }}>
+                    {feedTab === "following" ? "Find friends and style inspiration in the search tab." : "Point your camera at any outfit and we will identify every piece."}
+                  </div>
+                  {feedTab === "following"
+                    ? <button className="btn-primary" onClick={() => { setTab("search"); setShowUserSearch(true); }} style={{ padding: "12px 32px", borderRadius: 100, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Explore People</button>
+                    : <button className="btn-primary" onClick={() => { setTab("scan"); camStart(); }} style={{ padding: "12px 32px", borderRadius: 100, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Scan an Outfit</button>
+                  }
+                </div>
+              )}
+
+              {/* Feed cards */}
+              {feedScans.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "0 16px" }}>
+                  {feedScans.map((scan, idx) => {
+                    const u = scan.user || {};
+                    const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                    return (
+                      <div key={scan.id || idx} className="card card-enter" style={{ borderRadius: 16, overflow: "hidden", cursor: "pointer", position: "relative", animationDelay: `${idx * 0.06}s` }} onClick={() => setFeedDetailScan(scan)}>
+                        {scan.image_url
+                          ? <img src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} />
+                          : <div style={{ width: "100%", aspectRatio: "4/5", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
+                            </div>
+                        }
+                        {/* Bottom gradient overlay */}
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "48px 16px 16px", background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit'", fontWeight: 700, fontSize: 13, color: "#0C0C0E", flexShrink: 0 }}>{ini}</div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontFamily: "'Outfit'", fontWeight: 700, fontSize: 14, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.display_name || "Anonymous"}</div>
+                              {scan.summary && <div style={{ fontFamily: "'Outfit'", fontSize: 12, color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{scan.summary}</div>}
+                            </div>
+                          </div>
+                          <button style={{ background: "none", border: "none", cursor: "pointer", padding: 8, flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill={saved.some(s => s.scan_id === scan.id) ? "var(--accent)" : "none"} stroke={saved.some(s => s.scan_id === scan.id) ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {feedHasMore && (
+                    <button onClick={() => loadFeed(feedPage + 1, true)} disabled={feedLoading} className="btn-secondary" style={{ padding: "14px 0", borderRadius: 14, fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", minHeight: 44, opacity: feedLoading ? 0.5 : 1 }}>
+                      {feedLoading ? "Loading..." : "Load more"}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── Search Tab ──────────────────────────────── */}
+          {tab === "search" && (
+            <div className="animate-fade-in" style={{ paddingBottom: 80 }}>
+              <div style={{ padding: "8px 16px 0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--bg-card)", borderRadius: 12, padding: "0 14px", border: "1px solid var(--border)" }}>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                  <input
+                    value={userSearchQuery}
+                    onChange={e => { setUserSearchQuery(e.target.value); if (!showUserSearch) setShowUserSearch(true); }}
+                    onFocus={() => { if (!showUserSearch) setShowUserSearch(true); }}
+                    placeholder="Search people..."
+                    autoFocus
+                    style={{ flex: 1, background: "none", border: "none", outline: "none", padding: "12px 0", fontFamily: "'Outfit'", fontSize: 15, color: "var(--text-primary)", minHeight: 44 }}
+                  />
+                  {userSearchQuery && (
+                    <button onClick={() => { setUserSearchQuery(""); setUserSearchResults([]); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--text-tertiary)" }}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div style={{ padding: "12px 16px" }}>
+                {userSearchLoading && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Searching...</div>}
+                {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>No users found</div>}
+                {!userSearchLoading && !userSearchQuery.trim() && (
+                  <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-tertiary)" }}>
+                    <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 12, opacity: 0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <div style={{ fontFamily: "'Outfit'", fontWeight: 600, fontSize: 15 }}>Search for people to follow</div>
+                    <div style={{ fontSize: 13, marginTop: 6, opacity: 0.7 }}>Discover outfit inspiration from other users</div>
+                  </div>
+                )}
+                {userSearchResults.map(usr => {
+                  const ini = (usr.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                  const isFlw = followingSet.has(usr.id);
+                  return (
+                    <div key={usr.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--border)", cursor: "pointer" }} onClick={() => { /* future: open profile overlay */ }}>
+                      <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit'", fontWeight: 700, fontSize: 16, color: "#0C0C0E", flexShrink: 0 }}>{ini}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: "'Outfit'", fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>{usr.display_name}</div>
+                        {usr.bio && <div style={{ fontSize: 13, color: "var(--text-tertiary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{usr.bio}</div>}
+                        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>{usr.follower_count || 0} follower{(usr.follower_count || 0) !== 1 ? "s" : ""}</div>
+                      </div>
+                      <button
+                        className={isFlw ? "btn-ghost" : "btn-primary"}
+                        onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(usr.id); }}
+                        style={{ padding: "8px 20px", borderRadius: 100, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 13, cursor: "pointer", minHeight: 36, flexShrink: 0 }}
+                      >{isFlw ? "Following" : "Follow"}</button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ─── Feed Home (legacy scan tab idle state) ───── */}
           {tab === "scan" && phase === "idle" && !img && (<>
             <div className="feed-tabs">
               <button className={`feed-tab ${feedTab === "foryou" ? "active" : ""}`} onClick={() => { setFeedTab("foryou"); setFeedPage(1); }}>For You</button>
@@ -3185,7 +3319,6 @@ export default function App() {
                 {feedHasMore && <button onClick={() => loadFeed(feedPage + 1, true)} disabled={feedLoading} style={{ padding: "14px 0", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text-secondary)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", minHeight: 44, opacity: feedLoading ? 0.5 : 1 }}>{feedLoading ? "Loading..." : "Load more"}</button>}
               </div>
             )}
-            <button className="fab" onClick={camStart} aria-label="Scan outfit"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg></button>
           </>)}
 
           {/* ─── Loading ───────────────────────────────── */}
@@ -5504,12 +5637,27 @@ export default function App() {
           </div>
         )}
 
-        {/* ─── Tab bar (4 tabs) ────────────────────────── */}
-        <div className="tb">
-          <button className={`tab ${tab==="scan"?"on":""}`} onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); }} aria-label={t("home")}><svg viewBox="0 0 24 24" fill={tab==="scan"?"currentColor":"none"}><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z" strokeLinecap="round" strokeLinejoin="round"/></svg><span className="tab-l">{t("home")}</span></button>
-          <button className={`tab ${tab==="history"?"on":""}`} onClick={() => { track("tab_switched", { tab: "history" }); setTab("history"); }} aria-label={t("history")}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" strokeLinejoin="round" /></svg><span className="tab-l">{t("history")}</span></button>
-          <button className={`tab ${tab==="likes"?"on":""}`} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label={t("saved")}><svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span className="tab-l">{t("saved")}</span></button>
-          <button className={`tab ${tab==="profile"?"on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }} aria-label={t("profile")}><svg viewBox="0 0 24 24" fill={tab==="profile"?"currentColor":"none"}><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7" strokeLinecap="round" /></svg><span className="tab-l">{t("profile")}</span></button>
+        {/* ─── FAB (visible on all tabs) ─────────────────── */}
+        <button className="fab" onClick={() => { track("fab_scan", {}); setTab("scan"); camStart(); }} aria-label="Scan outfit" style={{ position: "fixed", bottom: "calc(60px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 1001, width: 56, height: 56, borderRadius: "50%", background: "var(--accent)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(201,169,110,0.4)" }}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#0C0C0E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
+        </button>
+
+        {/* ─── Tab bar (5 sections: Home, Search, [FAB gap], Saved, Profile) ── */}
+        <div className="tb" style={{ background: "var(--bg-secondary)", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0", position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000 }}>
+          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44 }} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); }} aria-label="Home">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill={tab==="home"?"currentColor":"none"} stroke={tab==="home"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
+          </button>
+          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44 }} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); }} aria-label="Search">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke={tab==="search"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          </button>
+          {/* FAB spacer */}
+          <div style={{ flex: 1 }} />
+          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44 }} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label="Saved">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill={tab==="likes"?"currentColor":"none"} stroke={tab==="likes"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44 }} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }} aria-label="Profile">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill={tab==="profile"?"currentColor":"none"} stroke={tab==="profile"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
+          </button>
         </div>
       </>)}
 
