@@ -286,6 +286,14 @@ const API = {
     return res.ok ? await res.json() : null;
   },
 
+  async setVerdict(scanId, verdict) {
+    const res = await authFetch(`${API_BASE}/api/user/scan/${scanId}/verdict`, {
+      method: "PATCH",
+      body: JSON.stringify({ verdict }),
+    });
+    return res.json();
+  },
+
   async refineItem(scanId, itemIndex, originalItem, userMessage, chatHistory, gender) {
     const res = await authFetch(`${API_BASE}/api/refine-item`, {
       method: "POST",
@@ -338,6 +346,19 @@ const API = {
 
   async updateScanVisibility(scanId, visibility) {
     return authFetch(`${API_BASE}/api/social/scans/${scanId}/visibility`, { method: "PATCH", body: JSON.stringify({ visibility }) }).then(r => r.json());
+  },
+
+  async getFeed(page = 1) {
+    const res = await authFetch(`${API_BASE}/api/feed?page=${page}&limit=20`);
+    return res.json();
+  },
+  async searchUsers(q) {
+    const res = await authFetch(`${API_BASE}/api/users/search?q=${encodeURIComponent(q)}`);
+    return res.json();
+  },
+  async getPublicScan(scanId) {
+    const res = await fetch(`${API_BASE}/api/scan/${scanId}/public`);
+    return res.json();
   },
 };
 
@@ -547,14 +568,14 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
             onClick={() => setPlan("yearly")}
             style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "yearly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "yearly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s", position: "relative" }}>
             <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", fontSize: 8, fontWeight: 800, padding: "2px 8px", borderRadius: 100, letterSpacing: 1, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(255,107,53,0.5), 0 0 16px rgba(255,107,53,0.2), 0 4px 16px rgba(201,169,110,.5)" }}>SAVE 50%</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$29.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/yr</span></div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$30<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/yr</span></div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$2.50/mo</div>
           </div>
           <div
             onClick={() => setPlan("monthly")}
             style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "monthly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "monthly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s" }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$4.99<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/mo</span></div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$1.25/week</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$5<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/mo</span></div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$1.15/week</div>
           </div>
         </div>
         <button className="cta" onClick={handleCta} disabled={loadingPlan} style={{ opacity: loadingPlan ? 0.7 : 1 }}>
@@ -1113,13 +1134,13 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     pts.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.strokeStyle = "rgba(255,120,80,0.9)";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(201,169,110,0.6)";
+    ctx.lineWidth = 5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.stroke();
     ctx.closePath();
-    ctx.fillStyle = "rgba(255,120,80,0.15)";
+    ctx.fillStyle = "rgba(201,169,110,0.08)";
     ctx.fill();
   };
 
@@ -1134,10 +1155,12 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     ctx.moveTo(path[0].x, path[0].y);
     path.forEach(p => ctx.lineTo(p.x, p.y));
     ctx.closePath();
-    ctx.strokeStyle = "rgba(255,120,80,0.9)";
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = "rgba(201,169,110,0.7)";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
     ctx.stroke();
-    ctx.fillStyle = "rgba(255,120,80,0.15)";
+    ctx.fillStyle = "rgba(201,169,110,0.1)";
     ctx.fill();
     setConfirmed(true);
     // Trigger glow animation to confirm "locked on" — lasts ~2 seconds
@@ -1179,8 +1202,8 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
         onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
       />
       <div style={{ position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 10, zIndex: 11 }}>
-        <button onClick={clear} style={{ padding: "8px 18px", background: "rgba(0,0,0,.7)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 100, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'" }}>Clear</button>
-        {confirmed && <button onClick={onCancel} style={{ padding: "8px 18px", background: "rgba(255,120,80,.9)", border: "none", borderRadius: 100, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'" }}>Done</button>}
+        <button onClick={clear} aria-label="Clear circle selection" style={{ padding: "8px 18px", background: "rgba(0,0,0,.7)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 100, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44, minWidth: 44 }}>Clear</button>
+        {confirmed && <button onClick={onCancel} aria-label="Confirm circle selection" style={{ padding: "8px 18px", background: "rgba(201,169,110,.9)", border: "none", borderRadius: 100, color: "#0C0C0E", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44, minWidth: 44 }}>Done</button>}
       </div>
     </div>
   );
@@ -1266,6 +1289,10 @@ export default function App() {
   // ─── Outfit rating ────────────────────────────────────────
   const [scanRatings, setScanRatings] = useState({});  // { [scanId]: 1-5 }
 
+  // ─── Outfit verdict ─────────────────────────────────────
+  const [scanVerdicts, setScanVerdicts] = useState({}); // { [scanId]: "would_wear"|"on_the_fence"|"not_for_me" }
+  const [verdictAnimating, setVerdictAnimating] = useState(null); // "would_wear"|"on_the_fence"|"not_for_me"|null
+
   // ─── Wishlists ────────────────────────────────────────────
   const [wishlists, setWishlists] = useState([]);       // [{ id, name, created_at }]
   const [activeWishlist, setActiveWishlist] = useState(null); // { id, name } | null
@@ -1312,6 +1339,20 @@ export default function App() {
   const [profileBioSaving, setProfileBioSaving] = useState(false);
   const [profileStats, setProfileStats] = useState({ followers_count: 0, following_count: 0 }); // { followers_count, following_count }
   const [scanVisibilityMap, setScanVisibilityMap] = useState({}); // { [scanId]: "public"|"private"|"followers" }
+
+  // ─── Social Feed ───────────────────────────────────────────
+  const [feedTab, setFeedTab] = useState("foryou"); // "foryou" | "following"
+  const [feedScans, setFeedScans] = useState([]);
+  const [feedPage, setFeedPage] = useState(1);
+  const [feedLoading, setFeedLoading] = useState(false);
+  const [feedHasMore, setFeedHasMore] = useState(false);
+  const [feedDetailScan, setFeedDetailScan] = useState(null); // scan object for overlay
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [userSearchLoading, setUserSearchLoading] = useState(false);
+  const [followingSet, setFollowingSet] = useState(new Set()); // user ids we follow
+  const userSearchTimerRef = useRef(null);
 
   // ─── Theme (dark / light) ─────────────────────────────────
   const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
@@ -1459,6 +1500,57 @@ export default function App() {
       }
     }
   }, [authed, screen]);
+
+  // ─── Feed loader ─────────────────────────────────────────────
+  const loadFeed = useCallback(async (page = 1, append = false) => {
+    if (feedLoading) return;
+    setFeedLoading(true);
+    try {
+      const data = await API.getFeed(page);
+      const scans = data.scans || [];
+      setFeedScans(prev => append ? [...prev, ...scans] : scans);
+      setFeedHasMore(data.has_more || false);
+      setFeedPage(page);
+    } catch (err) {
+      console.error("[ATTAIR] Feed load error:", err);
+    } finally {
+      setFeedLoading(false);
+    }
+  }, [feedLoading]);
+
+  useEffect(() => {
+    if (authed && screen === "app" && tab === "scan" && phase === "idle" && !img) {
+      loadFeed(1, false);
+    }
+  }, [authed, screen, tab, feedTab]);
+
+  // ─── User search (debounced) ──────────────────────────────
+  useEffect(() => {
+    if (!showUserSearch) return;
+    if (userSearchTimerRef.current) clearTimeout(userSearchTimerRef.current);
+    if (!userSearchQuery.trim()) { setUserSearchResults([]); return; }
+    setUserSearchLoading(true);
+    userSearchTimerRef.current = setTimeout(async () => {
+      try {
+        const data = await API.searchUsers(userSearchQuery.trim());
+        setUserSearchResults(data.users || []);
+      } catch { setUserSearchResults([]); }
+      finally { setUserSearchLoading(false); }
+    }, 300);
+    return () => { if (userSearchTimerRef.current) clearTimeout(userSearchTimerRef.current); };
+  }, [userSearchQuery, showUserSearch]);
+
+  const handleFollowFromSearch = async (userId) => {
+    try {
+      if (followingSet.has(userId)) {
+        await API.unfollowUser(userId);
+        setFollowingSet(prev => { const n = new Set(prev); n.delete(userId); return n; });
+      } else {
+        await API.followUser(userId);
+        setFollowingSet(prev => new Set(prev).add(userId));
+      }
+    } catch (err) { console.error("Follow error:", err); }
+  };
 
   // ─── Upgrade / Trial handlers ──────────────────────────────
   const handleUpgrade = async (plan = "yearly") => {
@@ -1943,8 +2035,12 @@ export default function App() {
       @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
       @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
       @keyframes glowPulse{0%,100%{opacity:1;filter:brightness(1.5)}50%{opacity:.6;filter:brightness(2)}}
-      @keyframes circleGlow{0%,100%{opacity:0.6;filter:drop-shadow(0 0 10px rgba(255,107,53,0.4)) drop-shadow(0 0 3px rgba(255,107,53,0.6))}50%{opacity:1;filter:drop-shadow(0 0 25px rgba(255,107,53,0.8)) drop-shadow(0 0 8px rgba(255,107,53,1))}}
+      @keyframes circleGlow{0%,100%{opacity:0.6;filter:drop-shadow(0 0 10px rgba(201,169,110,0.4)) drop-shadow(0 0 3px rgba(201,169,110,0.6))}50%{opacity:1;filter:drop-shadow(0 0 20px rgba(201,169,110,0.7)) drop-shadow(0 0 6px rgba(201,169,110,0.9))}}
       @keyframes searchPulse{0%,100%{background-position:200% center}50%{background-position:0% center}}
+      @keyframes verdictPop{0%{transform:scale(1)}30%{transform:scale(1.25)}60%{transform:scale(0.95)}100%{transform:scale(1)}}
+      @keyframes verdictShake{0%,100%{transform:translateX(0)}15%{transform:translateX(-4px)}30%{transform:translateX(4px)}45%{transform:translateX(-3px)}60%{transform:translateX(3px)}75%{transform:translateX(-1px)}90%{transform:translateX(1px)}}
+      @keyframes highlighterPulse{0%{opacity:0.6}50%{opacity:0.9}100%{opacity:0.6}}
+      @keyframes budgetSliderPulse{0%{box-shadow:0 0 0 0 rgba(201,169,110,0.3)}70%{box-shadow:0 0 0 6px rgba(201,169,110,0)}100%{box-shadow:0 0 0 0 rgba(201,169,110,0)}}
       .fi{animation:fi .3s ease forwards}.fo{animation:fo .22s ease forwards}
       .app{width:100%;max-width:430px;min-height:100vh;margin:0 auto;background:var(--bg-secondary);font-family:'Outfit',sans-serif;color:var(--text-primary);display:flex;flex-direction:column;overflow-x:hidden}
       .serif{font-family:'Instrument Serif',serif}
@@ -2023,7 +2119,8 @@ export default function App() {
       .ld-wrap{flex:1;display:flex;flex-direction:column}
       .ld-img-wrap{position:relative;width:100%;aspect-ratio:3/4;max-height:55vh;overflow:hidden}
       .ld-img{width:100%;height:100%;object-fit:cover;filter:brightness(.45) saturate(.6)}
-      .ld-scanline{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scan 3s ease-in-out infinite;box-shadow:0 0 24px rgba(201,169,110,.3)}
+      .ld-scanline{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent 0%,rgba(201,169,110,.2) 20%,var(--accent) 50%,rgba(201,169,110,.2) 80%,transparent 100%);animation:scan 3s ease-in-out infinite;box-shadow:0 0 30px rgba(201,169,110,.4),0 0 60px rgba(201,169,110,.15)}
+      .ld-img-wrap::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(201,169,110,.04) 0%,transparent 70%);animation:pulse 2.5s ease-in-out infinite;pointer-events:none}
       .ld-info{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px}
       .ld-dots{display:flex;gap:5px}.ld-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease-in-out infinite}.ld-dot:nth-child(2){animation-delay:.15s}.ld-dot:nth-child(3){animation-delay:.3s}
 
@@ -2055,6 +2152,9 @@ export default function App() {
       .budget-input-wrap input{background:none;border:none;color:var(--text-primary);font-family:'Outfit';font-size:20px;font-weight:700;width:100%;outline:none}
       .budget-input-wrap input::placeholder{color:var(--text-tertiary)}
       .budget-input-wrap span{color:var(--text-tertiary);font-size:16px;font-weight:600;flex-shrink:0}
+      .budget-range-thumb::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);border:2px solid var(--bg-primary);cursor:pointer;pointer-events:auto;box-shadow:0 2px 6px rgba(0,0,0,0.3);transition:transform var(--transition-fast)}
+      .budget-range-thumb::-webkit-slider-thumb:active{transform:scale(1.2)}
+      .budget-range-thumb::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--accent);border:2px solid var(--bg-primary);cursor:pointer;pointer-events:auto;box-shadow:0 2px 6px rgba(0,0,0,0.3)}
       .crop-screen{position:fixed;inset:0;z-index:400;background:#000;display:flex;flex-direction:column}
       .crop-stage{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:16px 16px 0}
       .crop-stage img{max-width:100%;max-height:100%;display:block}
@@ -2467,6 +2567,56 @@ export default function App() {
       /* ─── Likes tab card styles ──────────────────────── */
       .likes-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:default;-webkit-user-select:none;user-select:none;box-shadow:var(--shadow-card)}
       @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+      /* ─── Social Feed ──────────────────────────────────── */
+      .feed-tabs{display:flex;gap:0;padding:0 var(--space-md);margin-bottom:var(--space-sm)}
+      .feed-tab{flex:1;padding:12px 0;background:none;border:none;border-bottom:2.5px solid transparent;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;color:var(--text-tertiary);cursor:pointer;transition:all .15s;min-height:44px;text-align:center}
+      .feed-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+      .feed-list{display:flex;flex-direction:column;gap:16px;padding:0 16px 100px}
+      .feed-card{background:var(--bg-card);border-radius:20px;overflow:hidden;box-shadow:var(--shadow-card);cursor:pointer;transition:transform .15s;-webkit-tap-highlight-color:transparent}
+      .feed-card:active{transform:scale(0.98)}
+      .feed-card-img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:rgba(255,255,255,.04)}
+      .feed-card-overlay{position:absolute;bottom:0;left:0;right:0;padding:24px 16px 16px;background:linear-gradient(transparent,rgba(0,0,0,.7));display:flex;align-items:flex-end;justify-content:space-between}
+      .feed-card-user{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+      .feed-card-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;flex-shrink:0;border:2px solid rgba(255,255,255,.3)}
+      .feed-card-info{min-width:0}
+      .feed-card-name{font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .feed-card-summary{font-size:12px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+      .feed-card-items{font-size:10px;color:rgba(255,255,255,.5);margin-top:2px}
+      .feed-card-heart{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.3);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+      .feed-skeleton{border-radius:20px;background:var(--bg-card);overflow:hidden}
+      .feed-skeleton-img{width:100%;aspect-ratio:4/5;background:linear-gradient(110deg,var(--bg-card) 30%,rgba(255,255,255,.04) 50%,var(--bg-card) 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
+      @keyframes skeletonShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+      .feed-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 32px;gap:12px}
+      .feed-empty-icon{font-size:48px;opacity:.15;margin-bottom:8px}
+      .feed-empty-title{font-size:18px;font-weight:600;color:var(--text-primary)}
+      .feed-empty-sub{font-size:14px;color:var(--text-tertiary);line-height:1.6;max-width:280px}
+      .user-search-overlay{position:fixed;inset:0;z-index:200;background:var(--bg-secondary);display:flex;flex-direction:column;animation:slideIn .25s ease}
+      .user-search-header{display:flex;align-items:center;gap:8px;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px))}
+      .user-search-input{flex:1;height:44px;padding:0 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:9999px;color:var(--text-primary);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:border-color .15s}
+      .user-search-input:focus{border-color:rgba(201,169,110,.5)}
+      .user-search-input::placeholder{color:var(--text-tertiary)}
+      .user-search-cancel{background:none;border:none;color:var(--accent);font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;padding:8px;min-height:44px;min-width:44px}
+      .user-search-list{flex:1;overflow-y:auto;padding:0 16px}
+      .user-search-row{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);min-height:60px}
+      .user-search-avatar{width:44px;height:44px;border-radius:50%;background:rgba(201,169,110,.08);border:1px solid rgba(201,169,110,.3);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--accent);flex-shrink:0}
+      .user-search-info{flex:1;min-width:0}
+      .user-search-name{font-size:14px;font-weight:600;color:var(--text-primary)}
+      .user-search-bio{font-size:12px;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .user-search-followers{font-size:10px;color:var(--text-tertiary);margin-top:2px}
+      .user-search-follow-btn{min-height:36px;padding:0 16px;border-radius:9999px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;flex-shrink:0}
+      .user-search-follow-btn.follow{background:var(--accent);color:#000;border:none}
+      .user-search-follow-btn.following{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}
+      .feed-detail-overlay{position:fixed;inset:0;z-index:250;background:var(--bg-secondary);overflow-y:auto;animation:slideIn .25s ease}
+      .feed-detail-close{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:16px;z-index:260;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);border:none;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+      .feed-detail-img{width:100%;max-height:60vh;object-fit:cover;display:block}
+      .feed-detail-body{padding:24px 16px}
+      .feed-detail-user{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+      .feed-detail-name{font-size:16px;font-weight:600;color:var(--text-primary)}
+      .feed-detail-date{font-size:12px;color:var(--text-tertiary)}
+      .feed-detail-summary{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px}
+      .app[data-theme='light'] .feed-card-overlay{background:linear-gradient(transparent,rgba(0,0,0,.55))}
+      .app[data-theme='light'] .feed-skeleton-img{background:linear-gradient(110deg,#f0f0f0 30%,#e0e0e0 50%,#f0f0f0 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
     `}</style>
 
     <div className="app" data-theme={theme}>
@@ -2544,8 +2694,8 @@ export default function App() {
             {["Unlimited AI outfit scans","Completely ad-free experience","Web-verified product links","Price drop alerts on saved items","Full scan history forever"].map((f,i) => <div className="pw-f" key={i}><div className="pw-ck">✓</div>{f}</div>)}
           </div>
           <div className="pw-plans">
-            <div className={`pw-p ${selPlan==="yearly"?"sel":""}`} onClick={() => setSelPlan("yearly")}><div className="pw-ptag">BEST VALUE</div><div className="pw-pp">$39.99<span className="pw-pd"> /year</span></div><div className="pw-pw">$0.77/week</div></div>
-            <div className={`pw-p ${selPlan==="monthly"?"sel":""}`} onClick={() => setSelPlan("monthly")}><div className="pw-pp">$9.99<span className="pw-pd"> /mo</span></div><div className="pw-pw">$2.50/week</div></div>
+            <div className={`pw-p ${selPlan==="yearly"?"sel":""}`} onClick={() => setSelPlan("yearly")}><div className="pw-ptag">BEST VALUE</div><div className="pw-pp">$30<span className="pw-pd"> /year</span></div><div className="pw-pw">$0.58/week</div></div>
+            <div className={`pw-p ${selPlan==="monthly"?"sel":""}`} onClick={() => setSelPlan("monthly")}><div className="pw-pp">$5<span className="pw-pd"> /mo</span></div><div className="pw-pw">$1.15/week</div></div>
           </div>
           <button className="cta" onClick={() => {
             if (authed) {
@@ -2556,7 +2706,7 @@ export default function App() {
               trans(() => setScreen("auth"));
             }
           }}>
-            {authed ? (upgradeLoading ? "Loading…" : `Start Pro — ${selPlan === "yearly" ? "$39.99/yr" : "$9.99/mo"}`) : "Get started"}
+            {authed ? (upgradeLoading ? "Loading…" : `Start Pro — ${selPlan === "yearly" ? "$30/yr" : "$5/mo"}`) : "Get started"}
           </button>
           <div className="pw-terms">12 free scans per month. Upgrade anytime.</div>
         </div>
@@ -2716,32 +2866,72 @@ export default function App() {
               const daysLeft = Math.max(0, Math.ceil((new Date(userStatus.trial_ends_at) - new Date()) / 86400000));
               return <div style={{ fontSize: 10, color: "#C9A96E", padding: "2px 8px", background: "rgba(201,169,110,.1)", borderRadius: 100, border: "1px solid rgba(201,169,110,.3)" }}>{daysLeft}d trial</div>;
             })()}
+            {tab === "scan" && (
+              <button onClick={() => { setShowUserSearch(true); setUserSearchQuery(""); setUserSearchResults([]); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Search users">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              </button>
+            )}
           </div>
         </div>
         <div className="as">
           <input ref={fileRef} type="file" accept="image/*,.heic,.heif" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
 
-          {/* ─── Scan Home ─────────────────────────────── */}
-          {tab === "scan" && phase === "idle" && !img && (
-            <div className="shome">
-              <div className="scan-ring" onClick={camStart}><div className="scan-inner">◎</div></div>
-              <h2 className="serif" style={{fontSize:28,color:"#fff"}}>Scan an outfit</h2>
-              <p style={{fontSize:13,color:"rgba(255,255,255,.3)",marginTop:-14,lineHeight:1.5}}>Get a budget, mid-range, and premium option for every item</p>
-              {isFree && (
-                <div className="scan-counter">{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong> of {scansLimit} scans used this month</> : <>No scans left this month · <span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
-              )}
-              {scanStreak >= 2 && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "6px 14px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 100, fontSize: 12, fontWeight: 600, color: "#C9A96E", alignSelf: "center" }}>
-                  <span style={{ fontSize: 14 }}>🔥</span>
-                  {scanStreak} {t("streak")}
-                </div>
-              )}
-              <div className="btns">
-                <button className="btn gold" onClick={camStart}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>Camera</button>
-                <button className="btn ghost" onClick={() => fileRef.current?.click()}><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>Upload</button>
-              </div>
+          {/* ─── Feed Home ────────────────────────────── */}
+          {tab === "scan" && phase === "idle" && !img && (<>
+            <div className="feed-tabs">
+              <button className={`feed-tab ${feedTab === "foryou" ? "active" : ""}`} onClick={() => { setFeedTab("foryou"); setFeedPage(1); }}>For You</button>
+              <button className={`feed-tab ${feedTab === "following" ? "active" : ""}`} onClick={() => { setFeedTab("following"); setFeedPage(1); }}>Following</button>
             </div>
-          )}
+            {isFree && (
+              <div style={{ padding: "0 16px 8px", textAlign: "center" }}>
+                <div className="scan-counter" style={{ display: "inline-block" }}>{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong> of {scansLimit} scans used</> : <>No scans left · <span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
+              </div>
+            )}
+            {feedLoading && feedScans.length === 0 && (
+              <div className="feed-list">{[0,1,2].map(i => (<div key={i} className="feed-skeleton"><div className="feed-skeleton-img" /></div>))}</div>
+            )}
+            {!feedLoading && feedScans.length === 0 && (
+              <div className="feed-empty">
+                <div className="feed-empty-icon"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg></div>
+                <div className="feed-empty-title">{feedTab === "following" ? "No posts yet" : "No scans yet"}</div>
+                <div className="feed-empty-sub">{feedTab === "following" ? "Follow people to see their outfits here, or scan your first outfit!" : "Be the first to scan an outfit, or search for people to follow."}</div>
+                <button className="btn gold" onClick={camStart} style={{ marginTop: 16 }}><svg viewBox="0 0 24 24" width="18" height="18"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>Scan your first outfit</button>
+              </div>
+            )}
+            {feedScans.length > 0 && (
+              <div className="feed-list">
+                {feedScans.map((scan, idx) => {
+                  const u = scan.user || {};
+                  const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                  return (
+                    <div key={scan.id || idx} className="feed-card" onClick={() => setFeedDetailScan(scan)}>
+                      <div style={{ position: "relative" }}>
+                        {scan.image_url
+                          ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" />
+                          : <div className="feed-card-img" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg></div>
+                        }
+                        <div className="feed-card-overlay">
+                          <div className="feed-card-user">
+                            <div className="feed-card-avatar">{ini}</div>
+                            <div className="feed-card-info">
+                              <div className="feed-card-name">{u.display_name || "Anonymous"}</div>
+                              {scan.summary && <div className="feed-card-summary">{scan.summary}</div>}
+                              {scan.item_count > 0 && <div className="feed-card-items">{scan.item_count} item{scan.item_count !== 1 ? "s" : ""}</div>}
+                            </div>
+                          </div>
+                          <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); }}>
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {feedHasMore && <button onClick={() => loadFeed(feedPage + 1, true)} disabled={feedLoading} style={{ padding: "14px 0", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text-secondary)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", minHeight: 44, opacity: feedLoading ? 0.5 : 1 }}>{feedLoading ? "Loading..." : "Load more"}</button>}
+              </div>
+            )}
+            <button className="fab" onClick={camStart} aria-label="Scan outfit"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg></button>
+          </>)}
 
           {/* ─── Loading ───────────────────────────────── */}
           {tab === "scan" && phase === "identifying" && img && (
@@ -2817,7 +3007,7 @@ export default function App() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                           <span style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "#fff" : "rgba(255,255,255,.5)", transition: "color .2s" }}>{item.name}</span>
-                          {item.priority && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(255,120,80,.15)", border: "1px solid rgba(255,120,80,.35)", borderRadius: 100, color: "rgb(255,120,80)", letterSpacing: .5, flexShrink: 0 }}>&#11044; Circled</span>}
+                          {item.priority && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 100, color: "#C9A96E", letterSpacing: .5, flexShrink: 0 }}>&#11044; Circled</span>}
                         </div>
                         <div style={{ fontSize: 11, color: isPicked ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.15)", transition: "color .2s" }}>
                           {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
@@ -2989,11 +3179,35 @@ export default function App() {
 
               {/* Summary */}
               <div style={{ padding: "14px 20px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,.35)", textTransform: "uppercase" }}>{pickedItems.size} items</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: results.gender === "female" ? "rgba(201,110,169,.1)" : "rgba(110,169,201,.1)", color: results.gender === "female" ? "#C96EAE" : "#6EAEC9" }}>
-                    {results.gender === "female" ? "Women's" : "Men's"}
-                  </span>
+                  {/* Gender toggle — tap to switch and re-search */}
+                  <div style={{ display: "flex", background: "rgba(255,255,255,.04)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden", marginLeft: "auto" }}>
+                    <button
+                      aria-label="Switch to Men's results"
+                      onClick={() => {
+                        if (results.gender !== "male") {
+                          setResults(prev => prev ? { ...prev, gender: "male" } : prev);
+                          if (phase === "done" && pickedItems.size > 0) {
+                            setTimeout(() => runProductSearch(), 100);
+                          }
+                        }
+                      }}
+                      style={{ padding: "6px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 32, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "rgba(255,255,255,.3)", borderRight: "1px solid var(--border)" }}
+                    >Men's</button>
+                    <button
+                      aria-label="Switch to Women's results"
+                      onClick={() => {
+                        if (results.gender !== "female") {
+                          setResults(prev => prev ? { ...prev, gender: "female" } : prev);
+                          if (phase === "done" && pickedItems.size > 0) {
+                            setTimeout(() => runProductSearch(), 100);
+                          }
+                        }
+                      }}
+                      style={{ padding: "6px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 32, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "rgba(255,255,255,.3)" }}
+                    >Women's</button>
+                  </div>
                 </div>
                 {results.summary && <div style={{ fontSize: 13, color: "rgba(255,255,255,.5)", fontStyle: "italic", lineHeight: 1.5 }}>{results.summary}</div>}
 
@@ -3014,35 +3228,106 @@ export default function App() {
                   </div>
                 )}
 
-                {/* ─── Outfit star rating ──────────────── */}
+                {/* ─── Outfit verdict ──────────────────── */}
                 {phase === "done" && scanId && (
-                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase" }}>{t("rate_outfit")}</span>
-                    <div style={{ display: "flex", gap: 3 }}>
-                      {[1,2,3,4,5].map(star => {
-                        const current = scanRatings[scanId] || 0;
-                        return (
-                          <button key={star} onClick={async () => {
-                            const newRating = scanRatings[scanId] === star ? 0 : star;
-                            setScanRatings(r => ({ ...r, [scanId]: newRating }));
-                            if (newRating > 0) {
-                              await API.rateScan(scanId, newRating).catch(() => {});
-                              track("outfit_rated", { rating: newRating }, scanId, "scan");
+                  <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "center" }}>
+                    {[
+                      { key: "would_wear", label: "Would Wear", icon: "\u2713", color: "var(--success)", bg: "rgba(76,175,80,.1)", border: "rgba(76,175,80,.3)" },
+                      { key: "on_the_fence", label: "On the Fence", icon: "~", color: "var(--warning)", bg: "rgba(255,183,77,.1)", border: "rgba(255,183,77,.3)" },
+                      { key: "not_for_me", label: "Not for Me", icon: "\u2717", color: "var(--error)", bg: "rgba(255,82,82,.1)", border: "rgba(255,82,82,.3)" },
+                    ].map(v => {
+                      const isActive = scanVerdicts[scanId] === v.key;
+                      const isAnimating = verdictAnimating === v.key;
+                      return (
+                        <button
+                          key={v.key}
+                          aria-label={`Mark outfit as ${v.label}`}
+                          onClick={async () => {
+                            const newVerdict = isActive ? null : v.key;
+                            setScanVerdicts(sv => ({ ...sv, [scanId]: newVerdict }));
+                            setVerdictAnimating(v.key);
+                            setTimeout(() => setVerdictAnimating(null), 500);
+                            if (newVerdict) {
+                              API.setVerdict(scanId, newVerdict).catch(() => {});
+                              track("verdict_set", { verdict: newVerdict }, scanId, "scan");
+                              // Auto-save all items to Likes when "Would Wear"
+                              if (newVerdict === "would_wear" && results?.items) {
+                                results.items.forEach((item, idx) => {
+                                  if (pickedItems.has(idx) && item.tiers) {
+                                    const bestTier = item.tiers.find(t => t.products?.length > 0);
+                                    if (bestTier) {
+                                      API.saveItem(scanId, item, bestTier.tier, bestTier.products[0]).catch(() => {});
+                                    }
+                                  }
+                                });
+                                API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
+                              }
                             }
-                          }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: "2px 1px", lineHeight: 1, color: star <= current ? "#C9A96E" : "rgba(255,255,255,.15)", transition: "color .15s, transform .1s", transform: star <= current ? "scale(1.1)" : "scale(1)" }}>
-                            ★
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {scanRatings[scanId] > 0 && (
-                      <span style={{ fontSize: 10, color: "rgba(201,169,110,.6)", fontWeight: 600 }}>
-                        {["","Awful","Meh","Okay","Good","Fire 🔥"][scanRatings[scanId]]}
-                      </span>
-                    )}
+                          }}
+                          style={{
+                            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                            padding: "10px 8px", minHeight: 44,
+                            background: isActive ? v.bg : "rgba(255,255,255,.02)",
+                            border: `1px solid ${isActive ? v.border : "rgba(255,255,255,.06)"}`,
+                            borderRadius: "var(--radius-md)", cursor: "pointer",
+                            transition: "all var(--transition-fast)",
+                            animation: isAnimating && v.key === "not_for_me" ? "verdictShake 0.4s ease" : isAnimating ? "verdictPop 0.4s ease" : "none",
+                            fontFamily: "'Outfit'",
+                          }}
+                        >
+                          <span style={{ fontSize: 18, fontWeight: 700, color: isActive ? v.color : "rgba(255,255,255,.25)", transition: "color var(--transition-fast)" }}>{v.icon}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: isActive ? v.color : "rgba(255,255,255,.3)", letterSpacing: 0.3, transition: "color var(--transition-fast)" }}>{v.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
+
+              {/* ─── Search notes (editable chip on results) ── */}
+              {phase === "done" && (
+                <div style={{ padding: "0 20px 8px" }}>
+                  {searchNotes ? (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-full)", cursor: "pointer", transition: "all var(--transition-fast)" }}
+                      onClick={() => {
+                        const el = document.getElementById("results-search-notes");
+                        if (el) { el.style.display = "block"; el.focus(); }
+                      }}>
+                      <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 500, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{searchNotes}</span>
+                      <button
+                        aria-label="Clear search notes"
+                        onClick={(e) => { e.stopPropagation(); setSearchNotes(""); setTimeout(() => runProductSearch(), 100); }}
+                        style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1, minWidth: 20, minHeight: 20 }}
+                      >&times;</button>
+                    </div>
+                  ) : null}
+                  <input
+                    id="results-search-notes"
+                    aria-label="Search notes - tell us more about what you are looking for"
+                    value={searchNotes}
+                    onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && searchNotes.trim()) {
+                        e.target.blur();
+                        runProductSearch();
+                      }
+                    }}
+                    onBlur={(e) => {
+                      if (!searchNotes) e.target.style.display = searchNotes ? "none" : "block";
+                    }}
+                    placeholder="Tell us more... (e.g., 'I think this is Zara')"
+                    style={{
+                      display: searchNotes ? "none" : "block",
+                      width: "100%", padding: "10px 14px", marginTop: searchNotes ? 8 : 0,
+                      background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)",
+                      borderRadius: "var(--radius-md)", color: "var(--text-secondary)", fontSize: "var(--text-sm)",
+                      fontFamily: "'Outfit'", outline: "none", transition: "border-color var(--transition-fast)",
+                      boxSizing: "border-box", minHeight: 44,
+                    }}
+                    onFocus={e => e.target.style.borderColor = "rgba(201,169,110,.3)"}
+                  />
+                </div>
+              )}
 
               {/* ─── Banner ad slot (free users) ──────── */}
               {showAds && (
@@ -3073,7 +3358,7 @@ export default function App() {
                         ) : null;
                       })()}
                       <h2 className="det-name" style={{ flex: 1 }}>
-                        {item.priority && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, padding: "2px 8px", background: "rgba(255,120,80,.15)", border: "1px solid rgba(255,120,80,.4)", borderRadius: 100, color: "rgb(255,120,80)", letterSpacing: .5, marginRight: 6, verticalAlign: "middle" }}>Your pick &#8857;</span>}
+                        {item.priority && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, padding: "2px 8px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.4)", borderRadius: 100, color: "#C9A96E", letterSpacing: .5, marginRight: 6, verticalAlign: "middle" }}>Your pick &#8857;</span>}
                         {item.name}
                       </h2>
                       <button className={`det-save ${isSaved(item)?"on":""}`} onClick={() => toggleSave(item)}>{isSaved(item)?"♥":"♡"}</button>
@@ -4088,7 +4373,7 @@ export default function App() {
                 <div className="rcard">
                   <div style={{fontWeight:600,fontSize:14,marginBottom:5}}>Unlock the full experience</div>
                   <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.5,marginBottom:12}}>Unlimited scans, no ads, price alerts, full history.</div>
-                  <button className="btn gold" style={{width:"100%"}} onClick={() => setUpgradeModal("general")}>Go Pro — $39.99/year</button>
+                  <button className="btn gold" style={{width:"100%"}} onClick={() => setUpgradeModal("general")}>Go Pro — $30/year</button>
                 </div>
               </>)}
 
@@ -4133,24 +4418,61 @@ export default function App() {
               <div className="sec-t">Budget per item</div>
               <div className="pcard">
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 10 }}>Set your target spend per clothing item. We'll tailor the budget, mid, and premium tiers to match.</div>
-                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 4 }}>Min</div>
-                    <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 8, padding: "8px 10px" }}>
-                      <span style={{ color: "rgba(255,255,255,.25)", marginRight: 2 }}>$</span>
-                      <input type="number" value={budgetMin} onChange={e => setBudgetMin(Math.max(0, parseInt(e.target.value) || 0))} onBlur={() => API.updateProfile({ budget_min: budgetMin })} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 600, width: "100%", outline: "none" }} />
-                    </div>
-                  </div>
-                  <span style={{ color: "rgba(255,255,255,.1)", marginTop: 18 }}>—</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 4 }}>Max</div>
-                    <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 8, padding: "8px 10px" }}>
-                      <span style={{ color: "rgba(255,255,255,.25)", marginRight: 2 }}>$</span>
-                      <input type="number" value={budgetMax} onChange={e => setBudgetMax(Math.max(budgetMin + 1, parseInt(e.target.value) || 0))} onBlur={() => API.updateProfile({ budget_max: budgetMax })} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 600, width: "100%", outline: "none" }} />
-                    </div>
-                  </div>
+
+                {/* Dual range slider */}
+                <div style={{ position: "relative", height: 40, marginBottom: 8 }}>
+                  <div style={{ position: "absolute", top: 18, left: 0, right: 0, height: 4, background: "rgba(255,255,255,.06)", borderRadius: 2 }} />
+                  <div style={{ position: "absolute", top: 18, left: `${Math.max(0, (budgetMin / 1000) * 100)}%`, right: `${Math.max(0, 100 - (budgetMax / 1000) * 100)}%`, height: 4, background: "var(--accent)", borderRadius: 2, transition: "left var(--transition-fast), right var(--transition-fast)" }} />
+                  <input
+                    type="range" min="0" max="1000" step="10" value={budgetMin}
+                    aria-label="Minimum budget per item"
+                    onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) setBudgetMin(v); }}
+                    onPointerUp={() => API.updateProfile({ budget_min: budgetMin })}
+                    style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2, margin: 0 }}
+                    className="budget-range-thumb"
+                  />
+                  <input
+                    type="range" min="0" max="1000" step="10" value={budgetMax}
+                    aria-label="Maximum budget per item"
+                    onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) setBudgetMax(v); }}
+                    onPointerUp={() => API.updateProfile({ budget_max: budgetMax })}
+                    style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3, margin: 0 }}
+                    className="budget-range-thumb"
+                  />
                 </div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 8 }}>Budget: under ${budgetMin} · Mid: ${budgetMin}–${budgetMax} · Premium: ${budgetMax}+</div>
+
+                <div style={{ textAlign: "center", fontSize: 14, fontWeight: 600, color: "var(--accent)", marginBottom: 10 }}>
+                  ${budgetMin} – ${budgetMax}{budgetMax >= 1000 ? "+" : ""}
+                </div>
+
+                {/* Preset chips */}
+                <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                  {[
+                    { label: "$", min: 0, max: 50 },
+                    { label: "$$", min: 50, max: 150 },
+                    { label: "$$$", min: 150, max: 500 },
+                    { label: "$$$$", min: 500, max: 1000 },
+                  ].map(preset => {
+                    const active = budgetMin === preset.min && budgetMax === preset.max;
+                    return (
+                      <button
+                        key={preset.label}
+                        aria-label={`Set budget to ${preset.label} range`}
+                        onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); API.updateProfile({ budget_min: preset.min, budget_max: preset.max }); }}
+                        style={{
+                          flex: 1, padding: "8px 6px", minHeight: 44,
+                          background: active ? "var(--accent-bg)" : "rgba(255,255,255,.03)",
+                          border: `1px solid ${active ? "var(--accent-border)" : "rgba(255,255,255,.07)"}`,
+                          borderRadius: "var(--radius-sm)", cursor: "pointer",
+                          fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600,
+                          color: active ? "var(--accent)" : "rgba(255,255,255,.4)",
+                          transition: "all var(--transition-fast)",
+                        }}
+                      >{preset.label}</button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 8, textAlign: "center" }}>Budget: under ${budgetMin} · Mid: ${budgetMin}–${budgetMax} · Premium: ${budgetMax}+</div>
               </div>
 
               <div className="sec-t">Size Preferences</div>
@@ -4325,49 +4647,71 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Budget */}
+                {/* Budget — range slider + preset chips */}
                 <div style={{ marginBottom: 24 }}>
                   <div className="item-opts-label">Budget range for this item</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div className="budget-input-wrap">
-                      <span>$</span>
-                      <input
-                        type="number"
-                        placeholder="0"
-                        value={bMin || ""}
-                        onChange={e => {
-                          const val = parseInt(e.target.value) || 0;
-                          setOv(o2 => {
-                            const cur = o2 || ov;
-                            const next = { ...cur, budgetMin: val };
-                            // Auto-init max to 2× min whenever max is unset or now below min
-                            if (!cur.budgetMax || cur.budgetMax <= val) next.budgetMax = val * 2;
-                            return next;
-                          });
-                        }}
-                        onBlur={() => { if (bMin >= bMax) setOv(o2 => ({ ...(o2||ov), budgetMax: bMin * 2 })); }}
-                      />
-                    </div>
-                    <span style={{ color: "rgba(255,255,255,.2)", fontSize: 18, flexShrink: 0 }}>—</span>
-                    <div className="budget-input-wrap">
-                      <span>$</span>
-                      <input
-                        type="number"
-                        placeholder="0"
-                        value={bMax || ""}
-                        onChange={e => setOv(o2 => ({ ...(o2||ov), budgetMax: parseInt(e.target.value) || 0 }))}
-                        onBlur={() => { if (bMax <= bMin) setOv(o2 => ({ ...(o2||ov), budgetMax: bMin + 50 })); }}
-                      />
-                    </div>
+
+                  {/* Dual range slider */}
+                  <div style={{ position: "relative", height: 40, marginBottom: 8 }}>
+                    <div style={{ position: "absolute", top: 18, left: 0, right: 0, height: 4, background: "rgba(255,255,255,.06)", borderRadius: 2 }} />
+                    <div style={{ position: "absolute", top: 18, left: `${Math.max(0, (bMin / 1000) * 100)}%`, right: `${Math.max(0, 100 - (bMax / 1000) * 100)}%`, height: 4, background: "var(--accent)", borderRadius: 2, transition: "left var(--transition-fast), right var(--transition-fast)" }} />
+                    <input
+                      type="range" min="0" max="1000" step="10" value={bMin}
+                      aria-label="Minimum budget"
+                      onChange={e => {
+                        const val = parseInt(e.target.value);
+                        if (val < bMax) setOv(o2 => ({ ...(o2 || ov), budgetMin: val }));
+                      }}
+                      style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2, margin: 0 }}
+                      className="budget-range-thumb"
+                    />
+                    <input
+                      type="range" min="0" max="1000" step="10" value={bMax}
+                      aria-label="Maximum budget"
+                      onChange={e => {
+                        const val = parseInt(e.target.value);
+                        if (val > bMin) setOv(o2 => ({ ...(o2 || ov), budgetMax: val }));
+                      }}
+                      style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3, margin: 0 }}
+                      className="budget-range-thumb"
+                    />
                   </div>
-                  {bMax > 0 && bMax <= bMin && (
-                    <div style={{ fontSize: 11, color: "rgba(255,100,100,.7)", marginTop: 6 }}>Max must be greater than min</div>
-                  )}
-                  {bMin >= 0 && bMax > bMin && (
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 6 }}>
-                      Budget tier: under ${bMin} · Mid: ${bMin}–${bMax} · Premium: ${bMax}+
-                    </div>
-                  )}
+
+                  {/* Display range */}
+                  <div style={{ textAlign: "center", fontSize: 14, fontWeight: 600, color: "var(--accent)", marginBottom: 10 }}>
+                    ${bMin} – ${bMax}{bMax >= 1000 ? "+" : ""}
+                  </div>
+
+                  {/* Preset chips */}
+                  <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                    {[
+                      { label: "$", min: 0, max: 50 },
+                      { label: "$$", min: 50, max: 150 },
+                      { label: "$$$", min: 150, max: 500 },
+                      { label: "$$$$", min: 500, max: 1000 },
+                    ].map(preset => {
+                      const isPresetActive = bMin === preset.min && bMax === preset.max;
+                      return (
+                        <button
+                          key={preset.label}
+                          aria-label={`Set budget to ${preset.label} range: $${preset.min} to $${preset.max}`}
+                          onClick={() => setOv(o2 => ({ ...(o2 || ov), budgetMin: preset.min, budgetMax: preset.max }))}
+                          style={{
+                            flex: 1, padding: "8px 6px", minHeight: 44,
+                            background: isPresetActive ? "var(--accent-bg)" : "rgba(255,255,255,.03)",
+                            border: `1px solid ${isPresetActive ? "var(--accent-border)" : "rgba(255,255,255,.07)"}`,
+                            borderRadius: "var(--radius-sm)", cursor: "pointer",
+                            fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600,
+                            color: isPresetActive ? "var(--accent)" : "rgba(255,255,255,.4)",
+                            transition: "all var(--transition-fast)",
+                          }}
+                        >{preset.label}</button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 8, textAlign: "center" }}>
+                    Budget: under ${bMin} · Mid: ${bMin}–${bMax} · Premium: ${bMax}+
+                  </div>
                 </div>
 
                 {/* Body type */}
@@ -4414,6 +4758,56 @@ export default function App() {
             </>
           );
         })()}
+
+        {/* ─── User Search Overlay ──────────────────────── */}
+        {showUserSearch && (
+          <div className="user-search-overlay">
+            <div className="user-search-header">
+              <input className="user-search-input" placeholder="Search people..." autoFocus value={userSearchQuery} onChange={e => setUserSearchQuery(e.target.value)} />
+              <button className="user-search-cancel" onClick={() => { setShowUserSearch(false); setUserSearchQuery(""); setUserSearchResults([]); }}>Cancel</button>
+            </div>
+            <div className="user-search-list">
+              {userSearchLoading && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Searching...</div>}
+              {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>No users found</div>}
+              {!userSearchLoading && !userSearchQuery.trim() && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Type a name to search</div>}
+              {userSearchResults.map(usr => {
+                const ini = (usr.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                const isFlw = followingSet.has(usr.id);
+                return (
+                  <div key={usr.id} className="user-search-row">
+                    <div className="user-search-avatar">{ini}</div>
+                    <div className="user-search-info">
+                      <div className="user-search-name">{usr.display_name}</div>
+                      {usr.bio && <div className="user-search-bio">{usr.bio}</div>}
+                      <div className="user-search-followers">{usr.follower_count || 0} follower{(usr.follower_count || 0) !== 1 ? "s" : ""}</div>
+                    </div>
+                    <button className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`} onClick={() => handleFollowFromSearch(usr.id)}>{isFlw ? "Following" : "Follow"}</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Feed Detail Overlay ─────────────────────── */}
+        {feedDetailScan && (
+          <div className="feed-detail-overlay">
+            <button className="feed-detail-close" onClick={() => setFeedDetailScan(null)}>&#x2715;</button>
+            {feedDetailScan.image_url && <img className="feed-detail-img" src={feedDetailScan.image_url} alt="" />}
+            <div className="feed-detail-body">
+              <div className="feed-detail-user">
+                <div className="feed-card-avatar" style={{ width: 40, height: 40, fontSize: 15 }}>{((feedDetailScan.user?.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</div>
+                <div>
+                  <div className="feed-detail-name">{feedDetailScan.user?.display_name || "Anonymous"}</div>
+                  {feedDetailScan.created_at && <div className="feed-detail-date">{new Date(feedDetailScan.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</div>}
+                </div>
+              </div>
+              {feedDetailScan.summary && <div className="feed-detail-summary">{feedDetailScan.summary}</div>}
+              {feedDetailScan.item_count > 0 && <div style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 16 }}>{feedDetailScan.item_count} item{feedDetailScan.item_count !== 1 ? "s" : ""} identified</div>}
+              {feedDetailScan.user?.bio && <div style={{ fontSize: 13, color: "var(--text-tertiary)", padding: "12px 0", borderTop: "1px solid var(--border)" }}>{feedDetailScan.user.bio}</div>}
+            </div>
+          </div>
+        )}
 
         {/* ─── Tab bar (4 tabs) ────────────────────────── */}
         <div className="tb">
@@ -4475,14 +4869,14 @@ export default function App() {
                     setCircleConfirmed(false);
                     setCircleSearchActive(true);
                   }}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "rgba(255,120,80,.15)", border: "1px solid rgba(255,120,80,.5)", borderRadius: 100, color: "rgb(255,120,80)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44 }}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.4)", borderRadius: 100, color: "#C9A96E", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44 }}
                   aria-label="Clear circled item"
                 >
                   ✓ Item circled — Clear
                 </button>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "rgba(255,120,80,.06)", border: "1px solid rgba(255,120,80,.2)", borderRadius: 100 }}>
-                  <span style={{ fontSize: 11, color: "rgba(255,120,80,.7)", fontFamily: "'Outfit'", fontWeight: 600 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 100 }}>
+                  <span style={{ fontSize: 11, color: "rgba(201,169,110,.7)", fontFamily: "'Outfit'", fontWeight: 600 }}>
                     ✏ Draw a circle around any item to prioritize it
                   </span>
                 </div>
@@ -4514,8 +4908,13 @@ export default function App() {
                 }} style={{ flex: 1, padding: "14px 0", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                   Crop
                 </button>
-                <button onClick={skipCrop} style={{ flex: 2, padding: "14px 0", background: priorityRegionBase64 ? "rgba(201,169,110,.9)" : "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                  {priorityRegionBase64 ? "Scan circled item" : "Use photo"}
+                <button
+                  onClick={skipCrop}
+                  aria-label={priorityRegionBase64 ? "Scan circled item" : "Scan this outfit"}
+                  style={{ flex: 2, padding: "14px 0", background: priorityRegionBase64 ? "rgba(201,169,110,.9)" : "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 48, boxShadow: "0 4px 16px rgba(201,169,110,.35)", transition: "all var(--transition-fast)" }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0C0C0E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                  {priorityRegionBase64 ? "Scan Circled Item" : "Scan This"}
                 </button>
               </>
             )}
