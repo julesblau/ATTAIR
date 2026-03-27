@@ -2,3 +2,4 @@
 node_modules/
 e2e-run.js
 .checkpoint.json
+.discord-bridge/

@@ -1,68 +1,90 @@
 /**
- * ATTAIR Agent ↔ Human Communication via GitHub Issues
+ * ATTAIR Agent ↔ Human Communication
  * ─────────────────────────────────────────────────────
- * Lets the agent army ask questions, send updates, and wait for replies
- * from the human via GitHub Issues on julesblau/ATTAIR.
+ * Routes through Discord (when DISCORD_BRIDGE=true) or GitHub Issues (fallback).
  *
  * Usage:
- *   import { askHuman, notifyHuman, getReply } from "./notify.js";
+ *   import { askHuman, notifyHuman } from "./notify.js";
  *
- *   // Ask a question and wait for a reply (blocks until human responds)
  *   const answer = await askHuman("Should we remove light mode entirely or fix it?");
- *
- *   // Send a status update (non-blocking, no reply expected)
  *   await notifyHuman("Backend agent finished. Starting UI/UX agent now.");
- *
- *   // Low-level: create issue, poll for reply separately
- *   const issueNum = await createIssue("Question", "body text");
- *   const reply = await pollForReply(issueNum);
  */
 
 import { execSync } from "child_process";
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
+import { join } from "path";
+import { randomUUID } from "crypto";
 
-// Use gh from PATH on Linux/macOS (GitHub Actions), fall back to Windows install path
+// ─── Mode Detection ──────────────────────────────────────────────────────────
+const USE_DISCORD = process.env.DISCORD_BRIDGE === "true";
+const BRIDGE_DIR = process.env.DISCORD_BRIDGE_DIR || join(process.cwd(), "agents", ".discord-bridge");
+
+// GitHub fallback config
 const GH = process.platform === "win32" ? '"C:\\Program Files\\GitHub CLI\\gh.exe"' : "gh";
 const REPO = "julesblau/ATTAIR";
 const HUMAN = "julesblau";
-const POLL_INTERVAL_MS = 30_000;  // Check every 30 seconds
-const MAX_WAIT_MS = 4 * 60 * 60 * 1000; // Give up after 4 hours
+const POLL_INTERVAL_MS = USE_DISCORD ? 3_000 : 30_000; // Poll faster for Discord
+const MAX_WAIT_MS = 4 * 60 * 60 * 1000;
 
-// ─── Core Functions ──────────────────────────────────────────────────────────
+// ─── Discord Bridge Functions ────────────────────────────────────────────────
 
-/**
- * Create a GitHub issue and return its number.
- */
+function discordAsk(question, context = "") {
+  const id = randomUUID().slice(0, 8);
+  const questionFile = join(BRIDGE_DIR, "question.json");
+  writeFileSync(questionFile, JSON.stringify({ id, text: question, context, ts: Date.now() }));
+  return id;
+}
+
+async function discordPollReply(questionId, timeoutMs = MAX_WAIT_MS) {
+  const responseFile = join(BRIDGE_DIR, `response-${questionId}.json`);
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    await sleep(POLL_INTERVAL_MS);
+
+    if (existsSync(responseFile)) {
+      try {
+        const raw = readFileSync(responseFile, "utf-8");
+        const data = JSON.parse(raw);
+        // Clean up
+        try { unlinkSync(responseFile); } catch {}
+        return data.reply ?? null;
+      } catch {
+        // File might be mid-write
+      }
+    }
+  }
+
+  return null;
+}
+
+function discordNotify(message) {
+  const notifyFile = join(BRIDGE_DIR, "notification.json");
+  writeFileSync(notifyFile, JSON.stringify({ text: message, ts: Date.now() }));
+}
+
+// ─── GitHub Core Functions ───────────────────────────────────────────────────
+
 export function createIssue(title, body, labels = [], assignee = "") {
   const labelArgs = labels.map(l => `--label ${l}`).join(" ");
   const assigneeArg = assignee ? `--assignee ${assignee}` : "";
-  // Flags MUST come before --body to avoid being swallowed by shell escaping
   const cmd = `${GH} issue create --repo ${REPO} ${labelArgs} ${assigneeArg} --title "${esc(title)}" --body "${esc(body)}"`;
   const output = execSync(cmd, { encoding: "utf-8", timeout: 30_000 }).trim();
-  // gh issue create returns the issue URL, extract the number
   const match = output.match(/\/issues\/(\d+)/);
   if (!match) throw new Error(`Failed to parse issue number from: ${output}`);
   return parseInt(match[1], 10);
 }
 
-/**
- * Add a comment to an existing issue.
- */
 export function commentOnIssue(issueNum, body) {
   const cmd = `${GH} issue comment ${issueNum} --repo ${REPO} --body "${esc(body)}"`;
   execSync(cmd, { encoding: "utf-8", timeout: 30_000 });
 }
 
-/**
- * Close an issue.
- */
 export function closeIssue(issueNum) {
   const cmd = `${GH} issue close ${issueNum} --repo ${REPO}`;
   execSync(cmd, { encoding: "utf-8", timeout: 30_000 });
 }
 
-/**
- * Get all comments on an issue (returns array of { author, body, createdAt }).
- */
 export function getComments(issueNum) {
   const cmd = `${GH} issue view ${issueNum} --repo ${REPO} --json comments`;
   const output = execSync(cmd, { encoding: "utf-8", timeout: 30_000 });
@@ -74,59 +96,49 @@ export function getComments(issueNum) {
   }));
 }
 
-/**
- * Poll an issue for a human reply (any comment not from the bot/agent).
- * Returns the reply text, or null if timed out.
- */
 export async function pollForReply(issueNum, timeoutMs = MAX_WAIT_MS) {
   const start = Date.now();
-  // Brief delay to let GitHub propagate the issue before first poll
   await sleep(3_000);
   const knownComments = new Set(getComments(issueNum).map(c => c.createdAt));
 
   while (Date.now() - start < timeoutMs) {
     await sleep(POLL_INTERVAL_MS);
-
     const comments = getComments(issueNum);
     const newComment = comments.find(c => !knownComments.has(c.createdAt));
-
-    if (newComment) {
-      return newComment.body;
-    }
+    if (newComment) return newComment.body;
   }
-
-  return null; // Timed out
+  return null;
 }
 
-// ─── High-Level API ──────────────────────────────────────────────────────────
+// ─── High-Level API (auto-routes Discord or GitHub) ──────────────────────────
 
-/**
- * Ask the human a question via GitHub issue. Blocks until they reply.
- * Returns their reply text.
- *
- * @param {string} question - The question to ask
- * @param {object} opts
- * @param {string} opts.context - Additional context to include in the issue body
- * @param {number} opts.timeoutMs - How long to wait (default 4 hours)
- * @returns {Promise<string|null>} The human's reply, or null if timed out
- */
 export async function askHuman(question, opts = {}) {
   const { context = "", timeoutMs = MAX_WAIT_MS } = opts;
-  const now = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
 
+  if (USE_DISCORD) {
+    const questionId = discordAsk(question, context);
+    console.log(`📩 Question sent to Discord (id: ${questionId})`);
+    console.log(`   Waiting for Jules' reply...`);
+
+    const reply = await discordPollReply(questionId, timeoutMs);
+
+    if (reply) {
+      console.log(`✅ Got reply via Discord`);
+    } else {
+      console.log(`⏰ Timed out waiting for Discord reply`);
+    }
+
+    return { reply, issueNum: questionId };
+  }
+
+  // GitHub fallback
+  const now = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
   const title = `[Agent] ${question.slice(0, 60)}${question.length > 60 ? "..." : ""}`;
   const body = [
-    `@${HUMAN}`,
-    ``,
-    `## Agent Question`,
-    ``,
-    question,
-    ``,
+    `@${HUMAN}`, ``, `## Agent Question`, ``, question, ``,
     context ? `### Context\n${context}\n` : "",
-    `---`,
-    `**Reply in a comment below.** The agent is waiting and will continue once you respond.`,
-    ``,
-    `_Sent at ${now} ET_`,
+    `---`, `**Reply in a comment below.** The agent is waiting and will continue once you respond.`,
+    ``, `_Sent at ${now} ET_`,
   ].filter(Boolean).join("\n");
 
   const issueNum = createIssue(title, body, ["agent-question"], HUMAN);
@@ -145,40 +157,33 @@ export async function askHuman(question, opts = {}) {
   return { reply, issueNum };
 }
 
-/**
- * Follow up on an existing issue — post a comment and wait for a reply.
- * Use this to have a back-and-forth chat on the same GitHub issue thread.
- *
- * @param {number} issueNum - The issue to comment on
- * @param {string} message - The follow-up message
- * @param {object} opts
- * @param {number} opts.timeoutMs - How long to wait (default 4 hours)
- * @returns {Promise<string|null>} The human's reply, or null if timed out
- */
 export async function followUp(issueNum, message, opts = {}) {
   const { timeoutMs = MAX_WAIT_MS } = opts;
+
+  if (USE_DISCORD) {
+    // In Discord mode, follow-ups are just new questions
+    return (await askHuman(message, { timeoutMs })).reply;
+  }
 
   commentOnIssue(issueNum, `@${HUMAN}\n\n${message}`);
   console.log(`💬 Follow-up posted on issue #${issueNum}`);
 
   const reply = await pollForReply(issueNum, timeoutMs);
-
   if (reply) {
     console.log(`✅ Got reply on issue #${issueNum}`);
   } else {
     console.log(`⏰ Timed out waiting for reply on issue #${issueNum}`);
   }
-
   return reply;
 }
 
-/**
- * Close a conversation thread when done.
- *
- * @param {number} issueNum - The issue to close
- * @param {string} summary - Optional closing summary
- */
 export function closeThread(issueNum, summary = "") {
+  if (USE_DISCORD) {
+    // No-op in Discord mode — threads are ephemeral
+    console.log(`🔒 Thread closed (Discord mode)`);
+    return;
+  }
+
   const msg = summary
     ? `_Thread closed. ${summary}_`
     : `_Agent received your reply and is continuing. Thread closed._`;
@@ -187,28 +192,20 @@ export function closeThread(issueNum, summary = "") {
   console.log(`🔒 Closed issue #${issueNum}`);
 }
 
-/**
- * Send the human a status update / notification (non-blocking).
- *
- * @param {string} message - The update message
- * @param {object} opts
- * @param {string} opts.title - Custom issue title (auto-generated if omitted)
- */
 export function notifyHuman(message, opts = {}) {
+  if (USE_DISCORD) {
+    discordNotify(message);
+    console.log(`📤 Notification sent to Discord`);
+    return "discord";
+  }
+
   const now = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
   const title = opts.title || `[Agent Update] ${now}`;
 
   const body = [
-    `@${HUMAN}`,
-    ``,
-    `## Status Update`,
-    ``,
-    message,
-    ``,
-    `---`,
-    `_This is an automated update. No reply needed unless you have feedback._`,
-    ``,
-    `_Sent at ${now} ET_`,
+    `@${HUMAN}`, ``, `## Status Update`, ``, message, ``,
+    `---`, `_This is an automated update. No reply needed unless you have feedback._`,
+    ``, `_Sent at ${now} ET_`,
   ].join("\n");
 
   const issueNum = createIssue(title, body, ["agent-update"], HUMAN);
@@ -216,14 +213,25 @@ export function notifyHuman(message, opts = {}) {
   return issueNum;
 }
 
-// ─── Inbox (Human → Agent) ───────────────────────────────────────────────────
+// ─── Inbox ───────────────────────────────────────────────────────────────────
 
-/**
- * Check for new issues created by the human (labeled "from-jules").
- * Returns an array of { issueNum, title, body } for each open issue.
- * The PM should call this between phases to pick up new input.
- */
 export function checkInbox() {
+  if (USE_DISCORD) {
+    // In Discord mode, messages come through the bridge in real-time
+    // Check for any queued messages from the bot
+    const inboxFile = join(BRIDGE_DIR, "inbox.json");
+    if (existsSync(inboxFile)) {
+      try {
+        const raw = readFileSync(inboxFile, "utf-8");
+        const items = JSON.parse(raw);
+        // Clear after reading
+        writeFileSync(inboxFile, "[]");
+        return items;
+      } catch { return []; }
+    }
+    return [];
+  }
+
   const cmd = `${GH} issue list --repo ${REPO} --label from-jules --state open --json number,title,body`;
   const output = execSync(cmd, { encoding: "utf-8", timeout: 30_000 });
   const issues = JSON.parse(output);
@@ -234,10 +242,12 @@ export function checkInbox() {
   }));
 }
 
-/**
- * Acknowledge a human-created issue — comment that it's been received and close it.
- */
 export function acknowledgeInbox(issueNum, response = "") {
+  if (USE_DISCORD) {
+    console.log(`📥 Acknowledged Discord message`);
+    return;
+  }
+
   const msg = response
     ? `_Agent received this. ${response}_`
     : `_Agent received this and will incorporate it into the current run._`;
@@ -249,7 +259,6 @@ export function acknowledgeInbox(issueNum, response = "") {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function esc(str) {
-  // Escape double quotes and backticks for shell safety
   return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/`/g, "\\`").replace(/\$/g, "\\$");
 }
 

@@ -2725,6 +2725,10 @@ async function main() {
         env: {
           ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
           GH_TOKEN: process.env.GH_TOKEN ?? "",
+          ...(process.env.DISCORD_BRIDGE === "true" ? {
+            DISCORD_BRIDGE: "true",
+            DISCORD_BRIDGE_DIR: process.env.DISCORD_BRIDGE_DIR ?? "",
+          } : {}),
         },
       };
 
