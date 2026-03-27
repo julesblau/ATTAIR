@@ -1310,8 +1310,8 @@ export default function App() {
   const [profileBio, setProfileBio] = useState("");
   const [profileBioEditing, setProfileBioEditing] = useState(false);
   const [profileBioSaving, setProfileBioSaving] = useState(false);
-  const [profileStats, setProfileStats] = useState(null); // { followers_count, following_count }
-  const [scanVisibilityMap, setScanVisibilityMap] = useState({}); // { [scanId]: "public"|"private"|"followers_only" }
+  const [profileStats, setProfileStats] = useState({ followers_count: 0, following_count: 0 }); // { followers_count, following_count }
+  const [scanVisibilityMap, setScanVisibilityMap] = useState({}); // { [scanId]: "public"|"private"|"followers" }
 
   // ─── Theme (dark / light) ─────────────────────────────────
   const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
@@ -2355,6 +2355,13 @@ export default function App() {
       /* Visibility menu chips */
       .app[data-theme='light'] .scan-vis-chip{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.5)!important}
       .app[data-theme='light'] .scan-vis-chip.active{background:rgba(201,169,110,.1)!important;border-color:rgba(201,169,110,.4)!important;color:#8B6914!important}
+      .app[data-theme='light'] .profile-bio-area{background:#F0F0F2!important;color:#1a1a1a!important;border-color:rgba(0,0,0,.1)!important}
+      .app[data-theme='light'] .profile-bio-area::placeholder{color:rgba(0,0,0,.3)!important}
+      .app[data-theme='light'] .profile-stats-row{border-top-color:rgba(0,0,0,.08)!important}
+      .app[data-theme='light'] .profile-stat-val{color:#1a1a1a!important}
+      .app[data-theme='light'] .profile-stat-lbl{color:#666!important}
+      .app[data-theme='light'] .interest-chip{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.5)!important}
+      .app[data-theme='light'] .interest-chip.on{background:rgba(201,169,110,.1)!important;border-color:rgba(201,169,110,.4)!important;color:#8B6914!important}
 
       /* ─── Comprehensive light mode: likes tab ─────────── */
       .app[data-theme='light'] .likes-card{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important;box-shadow:0 1px 4px rgba(0,0,0,.08)}
@@ -2646,14 +2653,14 @@ export default function App() {
             <p className="modal-sub" style={{ marginBottom: 20 }}>Pick up to 5. We'll personalize your results.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
               {[
-                { v: "actors", l: "Actors & Actresses", icon: "🎬" },
-                { v: "musicians", l: "Musicians & K-Pop", icon: "🎵" },
-                { v: "athletes", l: "Athletes", icon: "🏀" },
-                { v: "tiktok", l: "TikTok Creators", icon: "📱" },
-                { v: "instagram", l: "Instagram Influencers", icon: "📸" },
-                { v: "streamers", l: "Streamers & YouTubers", icon: "🎮" },
-                { v: "fashion", l: "Fashion Icons & Models", icon: "👗" },
-                { v: "street", l: "Street Style", icon: "🌍" },
+                { v: "Actors & Actresses", l: "Actors & Actresses", icon: "🎬" },
+                { v: "Musicians & K-Pop", l: "Musicians & K-Pop", icon: "🎵" },
+                { v: "Athletes", l: "Athletes", icon: "🏀" },
+                { v: "TikTok Creators", l: "TikTok Creators", icon: "📱" },
+                { v: "Instagram Influencers", l: "Instagram Influencers", icon: "📸" },
+                { v: "Streamers & YouTubers", l: "Streamers & YouTubers", icon: "🎮" },
+                { v: "Fashion Icons & Models", l: "Fashion Icons & Models", icon: "👗" },
+                { v: "Street Style", l: "Street Style", icon: "🌍" },
               ].map(({ v, l, icon }) => {
                 const on = selectedInterests.includes(v);
                 return (
@@ -3086,7 +3093,7 @@ export default function App() {
                         if (sod.appearances) { setSeenOnData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: true } })); return; }
                         setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: true } }));
                         try {
-                          const res = await API.seenOn(item.brand, item.name, profile?.style_interests);
+                          const res = await API.seenOn(item.brand, item.name, selectedInterests);
                           setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: res.appearances || [] } }));
                           track("seen_on_viewed", { brand: item.brand }, scanId, "scan");
                         } catch { setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: [] } })); }
@@ -3709,7 +3716,7 @@ export default function App() {
                             <div onClick={e => e.stopPropagation()} style={{display:"flex",gap:4,marginTop:5,flexWrap:"wrap"}}>
                               {[
                                 { v: "public", l: t("public_profile"), icon: "🌐" },
-                                { v: "followers_only", l: t("followers_only"), icon: "👥" },
+                                { v: "followers", l: t("followers_only"), icon: "👥" },
                                 { v: "private", l: t("private_profile"), icon: "🔒" },
                               ].map(({ v, l, icon }) => {
                                 const current = scanVisibilityMap[h.id] || h.visibility || "public";
@@ -3721,7 +3728,7 @@ export default function App() {
                                     aria-label={`Set scan visibility to ${l}`}
                                     onClick={async () => {
                                       setScanVisibilityMap(m => ({ ...m, [h.id]: v }));
-                                      try { await authFetch(`${API_BASE}/api/scans/${h.id}/visibility`, { method: "PATCH", body: JSON.stringify({ visibility: v }) }); } catch {}
+                                      try { await authFetch(`${API_BASE}/api/social/scans/${h.id}/visibility`, { method: "PATCH", body: JSON.stringify({ visibility: v }) }); } catch {}
                                       track("scan_visibility_changed", { visibility: v }, h.id, "history");
                                     }}>
                                     <span>{icon}</span>{l}
@@ -4088,14 +4095,14 @@ export default function App() {
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 14, lineHeight: 1.5 }}>Pick up to 5. We'll personalize your results.</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                   {[
-                    { v: "actors", l: "Actors & Actresses", icon: "🎬" },
-                    { v: "musicians", l: "Musicians & K-Pop", icon: "🎵" },
-                    { v: "athletes", l: "Athletes", icon: "🏀" },
-                    { v: "tiktok", l: "TikTok Creators", icon: "📱" },
-                    { v: "instagram", l: "Instagram Influencers", icon: "📸" },
-                    { v: "streamers", l: "Streamers & YouTubers", icon: "🎮" },
-                    { v: "fashion", l: "Fashion Icons & Models", icon: "👗" },
-                    { v: "street", l: "Street Style", icon: "🌍" },
+                    { v: "Actors & Actresses", l: "Actors & Actresses", icon: "🎬" },
+                    { v: "Musicians & K-Pop", l: "Musicians & K-Pop", icon: "🎵" },
+                    { v: "Athletes", l: "Athletes", icon: "🏀" },
+                    { v: "TikTok Creators", l: "TikTok Creators", icon: "📱" },
+                    { v: "Instagram Influencers", l: "Instagram Influencers", icon: "📸" },
+                    { v: "Streamers & YouTubers", l: "Streamers & YouTubers", icon: "🎮" },
+                    { v: "Fashion Icons & Models", l: "Fashion Icons & Models", icon: "👗" },
+                    { v: "Street Style", l: "Street Style", icon: "🌍" },
                   ].map(({ v, l, icon }) => {
                     const on = selectedInterests.includes(v);
                     return (

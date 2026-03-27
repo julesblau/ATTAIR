@@ -145,6 +145,7 @@ describe("INTEREST_QUERY_MAP — query template content", () => {
       return { ok: false };
     });
 
+    vi.resetModules();
     const app = express();
     const { default: seenOnRouter } = await import("../routes/seenOn.js");
     app.use(express.json());
@@ -176,6 +177,7 @@ describe("INTEREST_QUERY_MAP — query template content", () => {
       return { ok: false };
     });
 
+    vi.resetModules();
     const app = express();
     const { default: seenOnRouter } = await import("../routes/seenOn.js");
     app.use(express.json());
@@ -206,6 +208,7 @@ describe("INTEREST_QUERY_MAP — query template content", () => {
       return { ok: false };
     });
 
+    vi.resetModules();
     const app = express();
     const { default: seenOnRouter } = await import("../routes/seenOn.js");
     app.use(express.json());
