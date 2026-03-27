@@ -250,60 +250,61 @@ Redesign to feel like TikTok/Instagram profile page.
 
 ---
 
-## AGENT NOTES
+## AGENT ASSIGNMENTS
 
 **Execution order is CRITICAL. Do not skip ahead.**
 
-**Phase 1 (FIRST — blocks Phase 3 and 4):**
-  design-system-agent → Section 1. Commit + push when done.
-
-**Phase 2 (IN PARALLEL with Phase 1 — no UI dependency):**
-  ai-prompt-agent → Section 2 (claude.js prompt) + verdict migration
-  backend-agent → Section 3 (all backend endpoints, sizes, pairings, feed, pricing)
-  Commit + push each when done.
-
-**Phase 3 (AFTER Phase 1 completes):**
-  uiux-agent → Sections 4, 5 (scan flow, results overhaul, budget slider, circle tool)
+**PHASE 0 — BRAND IDENTITY (runs FIRST, blocks everything else):**
+  brand-agent → Logo (10 options → Jules picks), app naming, favicon, onboarding redesign
+  Presents options to Jules via notify-cli. Waits for reply. Implements chosen option.
   Commit + push when done.
 
-**Phase 4 (AFTER Phase 1, can overlap with Phase 3):**
-  social-feed-agent → Section 6 (home feed, user search)
-  uiux-agent (or second pass) → Sections 7, 8, 9 (profile, history, likes)
+**PHASE 1 — DESIGN FOUNDATION (runs SECOND, still blocks screen agents):**
+  design-token-agent → CSS custom properties ONLY (index.css :root vars)
+  component-agent    → Base component classes ONLY (App.css: btn, card, chip, sheet, etc.)
+  animation-agent    → Transitions, micro-interactions, loading states, skeletons
+  [These 3 can run sequentially — each depends on the previous]
+  Commit + push when all 3 done.
+
+**PHASE 2 — BACKEND (IN PARALLEL with Phases 0+1 — no UI dependency):**
+  ai-prompt-agent → Section 2 (claude.js prompt) + verdict migration (sql/005-verdict.sql)
+  backend-agent   → Section 3 (all backend endpoints, sizes, pairings, feed, pricing)
   Commit + push each when done.
 
-**Phase 5 (AFTER core flows work):**
-  creative-build-agent → Sections 10, 11 (share links, cards, onboarding)
+**PHASE 3 — SCREEN BUILDERS (AFTER Phase 1 completes, ONE AT A TIME):**
+  For each screen: interview Jules → build → e2e-agent review → fix until PASS → commit
+  Screen order:
+    3a. social-feed-agent → Section 6 (home feed, For You + Following, user search)
+    3b. scan-agent        → Section 4 (camera, preview, circle-to-search, loading)
+    3c. results-agent     → Section 5 (items, tiers, verdict, search notes, budget slider)
+    3d. profile-agent     → Section 7 (profile header, stats, photo grid, settings sheet)
+    3e. uiux-agent        → Section 8 (history list, click-through to results)
+    3f. saved-agent       → Section 9 (Saved tab — NOT "Likes", product grid, filters)
+  Commit + push after each screen passes e2e-agent review.
+
+**PHASE 4 — VIRAL FEATURES (AFTER core screens work):**
+  creative-build-agent → Sections 10, 11 (share links, share cards)
+  brand-agent (2nd pass) → Compress onboarding to 2 screens + style fingerprint card
   Commit + push when done.
 
-**Post-build (after all phases):**
+**POST-BUILD (after all phases):**
   security-agent → audit all new endpoints and UI for vulnerabilities (REPORT ONLY)
-  testing-agent → add tests for new endpoints, run full suite
-  e2e-agent → test EVERY screen in dark + light at 390px, verify all buttons visible
-  Commit + push when done.
+  testing-agent  → add tests for new endpoints, run full suite
+  e2e-agent      → FINAL full walkthrough: ALL screens, dark + light, 390px
 
 **PM WORKFLOW — BUILD→REVIEW→FIX LOOP:**
-  For EACH screen (one at a time, never parallel UI agents):
+  For EACH screen (one at a time, NEVER parallel UI agents):
     1. INTERVIEW JULES via notify-cli: "Starting [screen]. What should it look like?"
     2. WAIT for Jules' reply — his answer IS the spec
-    3. Dispatch ONE UI agent with Jules' exact words as the brief
-    4. Run E2E agent to screenshot and evaluate the result
-    5. If FAIL → send issues back to builder, fix, re-review (max 3 iterations)
-    6. If PASS or Jules approves → commit + push → move to next screen
-    7. Check inbox before each new screen
-
-  SCREEN ORDER:
-    1. Design system (CSS tokens, buttons, cards)
-    2. Home feed (For You / Following)
-    3. Scan flow (camera, preview, loading, circle-to-search)
-    4. Results screen (items, tiers, verdict, search notes, budget slider)
-    5. Profile page (header, stats, grid, settings)
-    6. History page (list, click-through)
-    7. Likes page (grid, filters, budget tracker)
-    8. Onboarding (2-step, post-scan prefs)
-    9. Share features (public scan, share cards)
+    3. Dispatch ONE specialized agent (see assignments above) with Jules' exact words
+    4. Run e2e-agent (Opus) to screenshot and evaluate the result — PASS/FAIL verdict
+    5. If FAIL or NEEDS WORK → send specific issues back to builder, fix, re-review
+    6. Max 3 iterations. If still failing → notify Jules with current screenshots
+    7. If PASS → commit + push → check inbox → move to next screen
 
   CRITICAL RULES:
     - ONE agent touches frontend at a time. NEVER parallel UI edits.
-    - E2E review after EVERY UI change, not just at the end.
+    - e2e-agent reviews after EVERY screen change, not just at the end.
     - Backend agents CAN run in parallel (they don't touch frontend files).
     - Jules' interview response is the spec. Don't deviate from it.
+    - Tab 3 is called "Saved" not "Likes" — liking is a social action on public scans.
