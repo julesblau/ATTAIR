@@ -136,6 +136,15 @@ STEP 3 — DELEGATE TO SPECIALISTS
   Independent tasks CAN be dispatched in parallel.
   Tasks with dependencies must be sequenced.
 
+  IMPORTANT — COMMIT AFTER EACH AGENT:
+  After EACH builder agent completes, immediately commit and push their work:
+    cd ${REPO_ROOT}
+    git add -A
+    git commit -m "feat: [agent-name] — [brief summary] — Agent Army ${today}"
+    git push origin main
+  This ensures NO WORK IS LOST if the run is interrupted by rate limits or budget caps.
+  Do NOT wait until all agents finish to push. Push incrementally.
+
   AGENT ROSTER (builders):
     uiux-agent      → React frontend, components, styling, UX
     backend-agent   → API routes, Express, Supabase, DB migrations
@@ -1270,8 +1279,8 @@ async function main() {
         allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"],
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
-        maxTurns: 300,
-        maxBudgetUsd: 30,
+        maxTurns: 500,
+        maxBudgetUsd: 75,
         agents: AGENTS,
         model: "opus",
         ...(claudeCliPath ? { pathToClaudeCodeExecutable: claudeCliPath } : {}),
