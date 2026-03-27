@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 80" fill="none">
+  <!-- OPTION 2: ZARA-inspired — Thin elegant serif "ATTAIRE" -->
+  <!-- Ultra-tight letter spacing, refined, fashion-house masthead energy. -->
+  <text
+    x="210"
+    y="56"
+    text-anchor="middle"
+    font-family="'Times New Roman', 'Georgia', 'Playfair Display', Times, serif"
+    font-weight="300"
+    font-size="62"
+    letter-spacing="-5"
+    fill="#FAFAFA"
+  >ATTAIRE</text>
+</svg>

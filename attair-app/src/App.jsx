@@ -139,7 +139,7 @@ const API = {
     if (!res.ok) {
       let data = {};
       try { data = await res.json(); } catch { data = { message: `HTTP ${res.status} (non-JSON body)` }; }
-      console.error("[ATTAIR] /api/identify response:", res.status, data);
+      console.error("[ATTAIRE] /api/identify response:", res.status, data);
       throw new Error(data.message || data.error || `API error ${res.status}`);
     }
     return await res.json();
@@ -555,7 +555,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e => e.stopPropagation()} style={{ overflowY: "auto", maxHeight: "90vh" }}>
         <button className="modal-x" onClick={onClose}>✕</button>
-        <div className="pw-badge">✦ ATTAIR PRO</div>
+        <div className="pw-badge">✦ ATTAIRE PRO</div>
         <h2 className="modal-title">{m.title}</h2>
         <p className="modal-sub">{m.sub}</p>
         <div className="pw-fs" style={{ marginBottom: 24 }}>
@@ -1136,11 +1136,11 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
     ctx.fillText(`Scanned by ${userName}`, 540, 1580);
   }
 
-  // ATTAIR watermark
+  // ATTAIRE watermark
   ctx.fillStyle = "#C9A96E";
   ctx.font = "bold 56px system-ui";
   ctx.textAlign = "center";
-  ctx.fillText("ATTAIR", 540, 1800);
+  ctx.fillText("ATTAIRE", 540, 1800);
   ctx.fillStyle = "rgba(201,169,110,0.5)";
   ctx.font = "400 24px system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1850);
@@ -1622,7 +1622,7 @@ export default function App() {
       setFeedHasMore(data.has_more || false);
       setFeedPage(page);
     } catch (err) {
-      console.error("[ATTAIR] Feed load error:", err);
+      console.error("[ATTAIRE] Feed load error:", err);
     } finally {
       setFeedLoading(false);
     }
@@ -2002,7 +2002,7 @@ export default function App() {
       } else if (err.message.includes("fetch") || err.message.includes("network") || err.message.includes("Failed")) {
         setError("Couldn't connect to the server. Check your internet connection and try again.");
       } else {
-        console.error("[ATTAIR] Identify error:", err.message);
+        console.error("[ATTAIRE] Identify error:", err.message);
         setError("Something went wrong analyzing the photo. Please try again.");
       }
     }
@@ -3097,7 +3097,7 @@ export default function App() {
       {/* ─── UPGRADE SUCCESS BANNER ──────────────────────── */}
       {upgradeSuccess && (
         <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
-          Welcome to ATTAIR Pro!
+          Welcome to ATTAIRE Pro!
         </div>
       )}
 
@@ -3546,7 +3546,7 @@ export default function App() {
                     aria-label="Share Your Look"
                     onClick={async () => {
                       const shareUrl = `${window.location.origin}/scan/${scanId}`;
-                      const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
+                      const shareData = { title: "ATTAIRE - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIRE!", url: shareUrl };
                       if (navigator.share) {
                         try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
                       } else {
@@ -3590,7 +3590,7 @@ export default function App() {
                         const file = new File([blob], "attair-outfit.png", { type: "image/png" });
                         if (navigator.share && navigator.canShare?.({ files: [file] })) {
                           try {
-                            await navigator.share({ title: "My ATTAIR Outfit", files: [file] });
+                            await navigator.share({ title: "My ATTAIRE Outfit", files: [file] });
                             track("share_card", { method: "native" }, scanId, "scan");
                           } catch {}
                         } else {
@@ -5245,9 +5245,9 @@ export default function App() {
                 )}
                 <button className="btn gold" disabled={!referralCode} style={{width:"100%", opacity: referralCode ? 1 : 0.4, cursor: referralCode ? "pointer" : "default"}} onClick={async () => {
                   const code = referralCode || "...";
-                  const text = `Check out ATTAIR — AI that finds the exact outfit you're looking for! Use my code ${code} at attair.vercel.app`;
+                  const text = `Check out ATTAIRE — AI that finds the exact outfit you're looking for! Use my code ${code} at attair.vercel.app`;
                   if (navigator.share) {
-                    try { await navigator.share({ title: "ATTAIR", text }); } catch {}
+                    try { await navigator.share({ title: "ATTAIRE", text }); } catch {}
                   } else {
                     navigator.clipboard.writeText(text).then(() => {
                       setReferralCopied(true);
@@ -5637,7 +5637,7 @@ export default function App() {
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, padding: 32 }}>
               <div style={{ fontSize: 32, color: "rgba(255,255,255,.15)" }}>404</div>
               <div style={{ fontSize: 14, color: "rgba(255,255,255,.4)", textAlign: "center" }}>{publicScanView.error}</div>
-              <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} className="cta" style={{ width: "auto", padding: "14px 32px" }}>Go to ATTAIR</button>
+              <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} className="cta" style={{ width: "auto", padding: "14px 32px" }}>Go to ATTAIRE</button>
             </div>
           )}
 
@@ -5712,7 +5712,7 @@ export default function App() {
                   </button>
 
                   <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: "rgba(255,255,255,.2)" }}>
-                    Powered by ATTAIR AI Fashion Scanner
+                    Powered by ATTAIRE AI Fashion Scanner
                   </div>
                 </div>
               </div>

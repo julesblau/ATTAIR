@@ -1,13 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <!-- ATTAIRE Favicon: Clean geometric "A" in dark circle. No gold. GOAT-style. -->
-  <circle cx="16" cy="16" r="16" fill="#0C0C0E"/>
+  <!-- ATTAIRE Monogram: Geometric "A" without background circle. -->
   <text
     x="16"
-    y="23"
+    y="26"
     text-anchor="middle"
     font-family="'Helvetica Neue', 'Arial Black', Helvetica, Arial, sans-serif"
     font-weight="900"
-    font-size="22"
+    font-size="30"
     fill="#FAFAFA"
   >A</text>
 </svg>

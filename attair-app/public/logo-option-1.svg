@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 80" fill="none">
+  <!-- ATTAIRE wordmark — GOAT-inspired bold geometric sans-serif -->
+  <!-- The "AI" is subtly highlighted with a slightly warmer tone -->
+  <defs>
+    <linearGradient id="aiAccent" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F0E6D3"/>
+      <stop offset="100%" stop-color="#E8DCC8"/>
+    </linearGradient>
+  </defs>
+  <!-- ATT -->
+  <text
+    x="50"
+    y="56"
+    font-family="'Helvetica Neue', 'Arial Black', 'Inter', Helvetica, Arial, sans-serif"
+    font-weight="900"
+    font-size="62"
+    letter-spacing="-3"
+    fill="#FAFAFA"
+  >ATT</text>
+  <!-- AI — subtly warmer, barely noticeable -->
+  <text
+    x="197"
+    y="56"
+    font-family="'Helvetica Neue', 'Arial Black', 'Inter', Helvetica, Arial, sans-serif"
+    font-weight="900"
+    font-size="62"
+    letter-spacing="-3"
+    fill="url(#aiAccent)"
+  >AI</text>
+  <!-- RE -->
+  <text
+    x="292"
+    y="56"
+    font-family="'Helvetica Neue', 'Arial Black', 'Inter', Helvetica, Arial, sans-serif"
+    font-weight="900"
+    font-size="62"
+    letter-spacing="-3"
+    fill="#FAFAFA"
+  >RE</text>
+</svg>
