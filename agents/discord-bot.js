@@ -53,38 +53,18 @@ const BRIDGE_DIR = join(__dirname, ".discord-bridge");
 if (!existsSync(BRIDGE_DIR)) mkdirSync(BRIDGE_DIR, { recursive: true });
 
 // ─── Opus System Prompt ──────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Jules' AI product partner for ATTAIR — an AI-powered fashion shopping app.
-You're chatting via Discord on his phone while he's at work.
+const SYSTEM_PROMPT = `You're Jules' product partner for ATTAIR (AI fashion shopping app). Discord on his phone.
 
-YOUR ROLE:
-- Help Jules think through what to build today
-- Turn conversations into clear, structured requirements
-- Manage the creative backlog
-- Answer questions about the codebase and product
-- Be concise — Jules is on mobile, short messages work best
+RULES:
+- TEXT like a coworker. 1 sentence max unless he asks for more.
+- No intros, no "great question", no fluff. Just answer.
+- If he says something vague, ask ONE clarifying question.
+- You can push back, suggest things, and start conversations.
+- When writing requirements: be specific (screens, files, behavior).
 
-ATTAIR CONTEXT:
-- React 19 + Vite frontend (App.jsx monolith)
-- Node.js/Express backend on Railway
-- Supabase (Postgres + Auth + Storage)
-- Claude AI for clothing identification
-- SerpAPI for product search (Google Lens + Shopping)
-- Business model: freemium (12 scans/mo free, Pro unlimited)
+CONTEXT: React 19 + Vite, Node/Express on Railway, Supabase, Claude AI vision, SerpAPI, freemium model.
 
-SPECIAL COMMANDS (Jules types these directly):
-- "run" or "run the army" → triggers the agent army
-- "backlog: [idea]" → adds idea to creative-backlog.md
-- "requirements" or "write requirements" → you generate today.md from the conversation
-- "status" → show army run status
-- "stop" → stop the current army run
-
-WHEN WRITING REQUIREMENTS:
-- Be specific and actionable
-- Include screen names, file paths, behavioral specs
-- Reference the existing codebase structure
-- Format as markdown sections the PM agent can parse
-
-Keep responses SHORT. 1-3 sentences unless Jules asks for detail. You're texting, not writing docs.`;
+COMMANDS: "run" = start army, "backlog: X" = add idea, "requirements" = write today.md, "status" / "stop".`;
 
 // ─── Helper: Send to channel (handles 2000 char limit) ──────────────────────
 async function sendToChannel(channel, text) {
@@ -303,6 +283,8 @@ async function handleMessage(message) {
   const content = message.content.trim();
   if (!content) return;
 
+  lastMessageTime = Date.now();
+
   // Show typing indicator
   await message.channel.sendTyping();
 
@@ -369,11 +351,19 @@ async function handleMessage(message) {
 
   // ── Default: chat with Opus ──
   try {
+    // React immediately so Jules knows the bot heard him
+    await message.react("⏳").catch(() => {});
+
     const reply = await chatWithOpus(content);
+
+    // Remove thinking reaction, add done
+    await message.reactions.cache.get("⏳")?.users.remove(client.user.id).catch(() => {});
+
     await sendToChannel(message.channel, reply);
   } catch (err) {
+    await message.reactions.cache.get("⏳")?.users.remove(client.user.id).catch(() => {});
     console.error("Claude error:", err.message);
-    await message.reply("Claude error: " + err.message.slice(0, 200));
+    await message.reply("Error: " + err.message.slice(0, 200));
   }
 }
 
@@ -397,6 +387,30 @@ client.on("messageCreate", handleMessage);
 client.on("error", (err) => {
   console.error("Discord error:", err.message);
 });
+
+// ─── Proactive Check-ins ─────────────────────────────────────────────────────
+let lastMessageTime = Date.now();
+const CHECKIN_INTERVAL = 3 * 60 * 60 * 1000; // 3 hours
+
+setInterval(async () => {
+  if (!CHAT_CHANNEL_ID) return;
+  if (armyProcess) return; // Don't nag during a run
+  if (Date.now() - lastMessageTime < CHECKIN_INTERVAL) return;
+
+  try {
+    const channel = await client.channels.fetch(CHAT_CHANNEL_ID);
+    const today = new Date().toISOString().split("T")[0];
+    const reqPath = join(REPO_ROOT, "requirements", "today.md");
+    const hasReqs = existsSync(reqPath);
+
+    if (!hasReqs) {
+      await channel.send("Hey — no requirements written for today yet. Want to talk through what to build?");
+    } else {
+      await channel.send("Requirements are set. Want me to run the army, or tweak anything first?");
+    }
+    lastMessageTime = Date.now();
+  } catch {}
+}, 30 * 60 * 1000); // Check every 30 min
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 console.log("Connecting to Discord...");
