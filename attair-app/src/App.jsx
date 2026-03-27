@@ -649,6 +649,7 @@ function asTierArray(val) {
 // ═══════════════════════════════════════════════════════════════
 const STRINGS = {
   en: {
+    home: "Home",
     scan: "Scan",
     history: "History",
     saved: "Saved",
@@ -699,6 +700,7 @@ const STRINGS = {
     followers_only: "Followers Only",
   },
   es: {
+    home: "Inicio",
     scan: "Escanear",
     history: "Historial",
     saved: "Guardados",
@@ -749,6 +751,7 @@ const STRINGS = {
     followers_only: "Solo seguidores",
   },
   fr: {
+    home: "Accueil",
     scan: "Scanner",
     history: "Historique",
     saved: "Sauvegardes",
@@ -799,6 +802,7 @@ const STRINGS = {
     followers_only: "Abonnés uniquement",
   },
   de: {
+    home: "Start",
     scan: "Scannen",
     history: "Verlauf",
     saved: "Gespeichert",
@@ -849,6 +853,7 @@ const STRINGS = {
     followers_only: "Nur Follower",
   },
   zh: {
+    home: "首页",
     scan: "扫描",
     history: "历史",
     saved: "已保存",
@@ -899,6 +904,7 @@ const STRINGS = {
     followers_only: "仅粉丝可见",
   },
   ja: {
+    home: "ホーム",
     scan: "スキャン",
     history: "履歴",
     saved: "保存済み",
@@ -949,6 +955,7 @@ const STRINGS = {
     followers_only: "フォロワーのみ",
   },
   ko: {
+    home: "홈",
     scan: "스캔",
     history: "기록",
     saved: "저장됨",
@@ -999,6 +1006,7 @@ const STRINGS = {
     followers_only: "팔로워만",
   },
   pt: {
+    home: "Inicio",
     scan: "Escanear",
     history: "Histórico",
     saved: "Salvos",
@@ -2220,9 +2228,11 @@ export default function App() {
       .free-badge{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-tertiary);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
       .scan-counter{font-size:11px;color:var(--text-tertiary);text-align:center;margin-top:-8px;margin-bottom:8px}
       .scan-counter strong{color:var(--accent)}
-      .tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;background:color-mix(in srgb,var(--bg-secondary) 95%,transparent);backdrop-filter:blur(24px);border-top:1px solid var(--border);padding:8px 0;padding-bottom:max(8px,env(safe-area-inset-bottom));z-index:100}
-      .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer;background:none;border:none;color:var(--text-tertiary);transition:color .2s;font-family:'Outfit';min-height:44px}.tab.on{color:var(--accent)}
-      .tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8}.tab-l{font-size:9px;font-weight:600;letter-spacing:.5px}
+      .tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;background:var(--bg-card);backdrop-filter:blur(24px);border-top:1px solid var(--border);padding:6px 0 0;padding-bottom:max(6px,env(safe-area-inset-bottom));z-index:100}
+      .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0 4px;cursor:pointer;background:none;border:none;color:var(--text-tertiary);transition:color .2s;font-family:'Outfit';min-height:44px;position:relative}.tab.on{color:var(--accent)}
+      .tab.on::before{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:20px;height:2px;background:var(--accent);border-radius:2px}
+      .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}.tab.on svg{stroke-width:2}
+      .tab-l{font-size:10px;font-weight:500;letter-spacing:.3px;margin-top:1px}.tab.on .tab-l{font-weight:700}
 
       .shome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;gap:28px;text-align:center}
       .scan-ring{width:150px;height:150px;border-radius:50%;border:1.5px dashed var(--accent-border);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s}
@@ -2362,8 +2372,8 @@ export default function App() {
       .app[data-theme='light'] .hdr{background:rgba(246,244,240,.92);border-bottom-color:rgba(0,0,0,.06)}
       .app[data-theme='light'] .logo{color:#1A1816}
       .app[data-theme='light'] .free-badge{background:rgba(0,0,0,.04);color:rgba(0,0,0,.3)}
-      .app[data-theme='light'] .tb{background:rgba(246,244,240,.95);border-top-color:rgba(0,0,0,.06)}
-      .app[data-theme='light'] .tab{color:rgba(0,0,0,.2)}
+      .app[data-theme='light'] .tb{background:rgba(255,255,255,.97);border-top-color:rgba(0,0,0,.08)}
+      .app[data-theme='light'] .tab{color:rgba(0,0,0,.3)}
       .app[data-theme='light'] .tab.on{color:#C9A96E}
       .app[data-theme='light'] .res-grad{background:linear-gradient(transparent,#F6F4F0)}
       .app[data-theme='light'] .ob-bar{background:rgba(0,0,0,.06)}
@@ -2794,23 +2804,25 @@ export default function App() {
       @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 
       /* ─── Social Feed ──────────────────────────────────── */
-      .feed-tabs{display:flex;gap:0;padding:0 var(--space-md);margin-bottom:var(--space-sm)}
-      .feed-tab{flex:1;padding:12px 0;background:none;border:none;border-bottom:2.5px solid transparent;font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;color:var(--text-tertiary);cursor:pointer;transition:all .15s;min-height:44px;text-align:center}
-      .feed-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-      .feed-list{display:flex;flex-direction:column;gap:16px;padding:0 16px 100px}
-      .feed-card{background:var(--bg-card);border-radius:20px;overflow:hidden;box-shadow:var(--shadow-card);cursor:pointer;transition:transform .15s;-webkit-tap-highlight-color:transparent}
-      .feed-card:active{transform:scale(0.98)}
-      .feed-card-img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block;background:rgba(255,255,255,.04)}
-      .feed-card-overlay{position:absolute;bottom:0;left:0;right:0;padding:24px 16px 16px;background:linear-gradient(transparent,rgba(0,0,0,.7));display:flex;align-items:flex-end;justify-content:space-between}
+      .feed-tabs{display:flex;gap:0;padding:0;margin:0 auto var(--space-sm);max-width:240px;position:relative}
+      .feed-tabs::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:var(--border);opacity:.5}
+      .feed-tab{flex:1;padding:10px 0;background:none;border:none;border-bottom:2px solid transparent;font-family:'Outfit',sans-serif;font-size:14px;font-weight:500;color:var(--text-tertiary);cursor:pointer;transition:all .2s;min-height:44px;text-align:center;letter-spacing:.2px;position:relative;z-index:1}
+      .feed-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+      .feed-list{display:flex;flex-direction:column;gap:14px;padding:4px 16px 100px}
+      .feed-card{background:var(--bg-card);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-card);cursor:pointer;transition:transform .15s;-webkit-tap-highlight-color:transparent}
+      .feed-card:active{transform:scale(0.985)}
+      .feed-card-img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:rgba(255,255,255,.04);max-height:400px}
+      .feed-card-overlay{position:absolute;bottom:0;left:0;right:0;padding:20px 14px 14px;background:linear-gradient(transparent,rgba(0,0,0,.65));display:flex;align-items:flex-end;justify-content:space-between}
       .feed-card-user{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-      .feed-card-avatar{width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;flex-shrink:0;border:2px solid rgba(255,255,255,.3)}
+      .feed-card-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;flex-shrink:0;border:1.5px solid rgba(255,255,255,.4)}
       .feed-card-info{min-width:0}
-      .feed-card-name{font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .feed-card-summary{font-size:12px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
-      .feed-card-items{font-size:10px;color:rgba(255,255,255,.5);margin-top:2px}
-      .feed-card-heart{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.3);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent}
-      .feed-skeleton{border-radius:20px;background:var(--bg-card);overflow:hidden}
-      .feed-skeleton-img{width:100%;aspect-ratio:4/5;background:linear-gradient(110deg,var(--bg-card) 30%,rgba(255,255,255,.04) 50%,var(--bg-card) 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
+      .feed-card-name{font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .feed-card-summary{font-size:11px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;margin-top:1px}
+      .feed-card-items{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px}
+      .feed-card-heart{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+      .feed-card-heart:active{transform:scale(0.9)}
+      .feed-skeleton{border-radius:16px;background:var(--bg-card);overflow:hidden}
+      .feed-skeleton-img{width:100%;aspect-ratio:1/1;max-height:400px;background:linear-gradient(110deg,var(--bg-card) 30%,rgba(255,255,255,.04) 50%,var(--bg-card) 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
       @keyframes skeletonShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
       .feed-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 32px;gap:12px}
       .feed-empty-icon{font-size:48px;opacity:.15;margin-bottom:8px}
@@ -5494,10 +5506,10 @@ export default function App() {
 
         {/* ─── Tab bar (4 tabs) ────────────────────────── */}
         <div className="tb">
-          <button className={`tab ${tab==="scan"?"on":""}`} onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); }}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg><span className="tab-l">{t("scan")}</span></button>
-          <button className={`tab ${tab==="history"?"on":""}`} onClick={() => { track("tab_switched", { tab: "history" }); setTab("history"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" /></svg><span className="tab-l">{t("history")}</span></button>
-          <button className={`tab ${tab==="likes"?"on":""}`} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label={t("likes")}><svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span className="tab-l">{t("likes")}</span></button>
-          <button className={`tab ${tab==="profile"?"on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }}><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7" /></svg><span className="tab-l">{t("profile")}</span></button>
+          <button className={`tab ${tab==="scan"?"on":""}`} onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); }} aria-label={t("home")}><svg viewBox="0 0 24 24" fill={tab==="scan"?"currentColor":"none"}><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z" strokeLinecap="round" strokeLinejoin="round"/></svg><span className="tab-l">{t("home")}</span></button>
+          <button className={`tab ${tab==="history"?"on":""}`} onClick={() => { track("tab_switched", { tab: "history" }); setTab("history"); }} aria-label={t("history")}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" strokeLinecap="round" strokeLinejoin="round" /></svg><span className="tab-l">{t("history")}</span></button>
+          <button className={`tab ${tab==="likes"?"on":""}`} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label={t("saved")}><svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span className="tab-l">{t("saved")}</span></button>
+          <button className={`tab ${tab==="profile"?"on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }} aria-label={t("profile")}><svg viewBox="0 0 24 24" fill={tab==="profile"?"currentColor":"none"}><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7" strokeLinecap="round" /></svg><span className="tab-l">{t("profile")}</span></button>
         </div>
       </>)}
 
