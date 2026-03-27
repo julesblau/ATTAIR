@@ -1444,6 +1444,12 @@ export default function App() {
   // ─── Re-search indicator ──────────────────────────────────
   const [isResearch, setIsResearch] = useState(false); // true when re-running a search (not first run)
 
+  // ─── Advanced section toggle (results screen) ─────────────
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // ─── Expanded items in results ────────────────────────────
+  const [expandedItems, setExpandedItems] = useState(new Set()); // which item indices are expanded
+
   // ─── Social profile ───────────────────────────────────────
   const [profileBio, setProfileBio] = useState("");
   const [profileBioEditing, setProfileBioEditing] = useState(false);
@@ -2056,6 +2062,8 @@ export default function App() {
     }
     setPhase("done");
     setIsResearch(false);
+    // Auto-expand first picked item in results
+    setExpandedItems(new Set([pickedIndices[0]]));
     // Auto-switch picked items to "shop" view once search completes
     setItemViewModes(prev => {
       const next = { ...prev };
@@ -2076,7 +2084,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); setShowAdvanced(false); setExpandedItems(new Set()); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -2177,6 +2185,8 @@ export default function App() {
       @keyframes circleGlow{0%,100%{opacity:0.6;filter:drop-shadow(0 0 10px rgba(201,169,110,0.4)) drop-shadow(0 0 3px rgba(201,169,110,0.6))}50%{opacity:1;filter:drop-shadow(0 0 20px rgba(201,169,110,0.7)) drop-shadow(0 0 6px rgba(201,169,110,0.9))}}
       @keyframes searchPulse{0%,100%{background-position:200% center}50%{background-position:0% center}}
       @keyframes verdictPop{0%{transform:scale(1)}30%{transform:scale(1.25)}60%{transform:scale(0.95)}100%{transform:scale(1)}}
+      @keyframes slideDown{0%{opacity:0;max-height:0}100%{opacity:1;max-height:2000px}}
+      .scroll-x::-webkit-scrollbar{display:none}
       @keyframes verdictShake{0%,100%{transform:translateX(0)}15%{transform:translateX(-4px)}30%{transform:translateX(4px)}45%{transform:translateX(-3px)}60%{transform:translateX(3px)}75%{transform:translateX(-1px)}90%{transform:translateX(1px)}}
       @keyframes highlighterPulse{0%{opacity:0.6}50%{opacity:0.9}100%{opacity:0.6}}
       @keyframes budgetSliderPulse{0%{box-shadow:0 0 0 0 rgba(201,169,110,0.3)}70%{box-shadow:0 0 0 6px rgba(201,169,110,0)}100%{box-shadow:0 0 0 0 rgba(201,169,110,0)}}
@@ -3518,10 +3528,10 @@ export default function App() {
             </div>
           )}
 
-          {/* ─── Results ───────────────────────────────── */}
+          {/* ─── Results (Minimalist Redesign) ───────────────────────────────── */}
           {tab === "scan" && results && (phase === "searching" || phase === "done") && (
             <div className="res">
-              {/* Re-search banner — shown prominently when re-running from done state */}
+              {/* Re-search banner */}
               {phase === "searching" && isResearch && (
                 <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", borderBottom: "1px solid rgba(201,169,110,.15)", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
@@ -3534,280 +3544,137 @@ export default function App() {
                   </div>
                 </div>
               )}
-              {/* Verification progress */}
+
+              {/* Progress bar */}
               <div className="v-banner">
                 <div className="v-steps">
                   <div className="v-step">
                     <div className="v-step-bar"><div className="v-step-fill" style={{ width: "100%", background: "#C9A96E" }} /></div>
-                    <div className="v-step-l" style={{ color: "#C9A96E" }}>✓ Identified</div>
+                    <div className="v-step-l" style={{ color: "#C9A96E" }}>Identified</div>
                   </div>
                   <div className="v-step">
-                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: phase === "searching" ? "40%" : "100%", background: phase === "done" ? (results.items.some(i => i.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.15)") : "rgba(201,169,110,.4)", transition: phase === "searching" ? "width 12s linear" : "width .5s ease" }} /></div>
-                    <div className="v-step-l" style={{ color: phase === "searching" ? "rgba(201,169,110,.5)" : results.items.some(i => i.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.2)", transition: "opacity .35s ease", opacity: phase === "searching" ? (loadMsgVisible ? 1 : 0.3) : 1 }}>
+                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: phase === "searching" ? "40%" : "100%", background: phase === "done" ? (results.items.some(it => it.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.15)") : "rgba(201,169,110,.4)", transition: phase === "searching" ? "width 12s linear" : "width .5s ease" }} /></div>
+                    <div className="v-step-l" style={{ color: phase === "searching" ? "rgba(201,169,110,.5)" : results.items.some(it => it.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.2)", transition: "opacity .35s ease", opacity: phase === "searching" ? (loadMsgVisible ? 1 : 0.3) : 1 }}>
                       {phase === "searching"
                         ? (isResearch ? RESEARCH_MESSAGES[loadMsgIdx % RESEARCH_MESSAGES.length] : SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length])
-                        : results.items.some(i => i.status === "verified") ? "✓ Products found" : "Search complete"}
+                        : results.items.some(it => it.status === "verified") ? "Products found" : "Search complete"}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Image with hotspots — only picked items */}
-              <div className="res-img-sec">
-                <img src={img} className="res-img" alt="" /><div className="res-grad" />
-                <button className="res-close" onClick={reset}><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
-                <button className="res-new" onClick={reset}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>{t("new_scan")}</button>
-                {results.items.map((item, i) => {
-                  if (!pickedItems.has(i)) return null;
-                  const py = item.position_y != null ? Math.max(0.08, Math.min(0.85, item.position_y)) : (CAT_POSITIONS[item.category] || 0.5);
-                  const px = 0.5 + (i % 2 === 0 ? -0.22 : 0.22);
-                  return (
-                    <div key={i} className={`hs ${selIdx === i ? "on" : ""}`} style={{ top: `${py*100}%`, left: `${Math.max(0.12, Math.min(0.88, px))*100}%` }} onClick={() => setSelIdx(i)}>
-                      <div className="hs-ring"><span className="hs-num">{[...pickedItems].sort((a,b)=>a-b).indexOf(i)+1}</span></div>
-                      {selIdx === i && <div className="hs-tag">{item.subcategory || item.category}</div>}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Summary */}
-              <div style={{ padding: "14px 20px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,.35)", textTransform: "uppercase" }}>{pickedItems.size} items</span>
-                  {/* Gender toggle — tap to switch and re-search */}
-                  <div style={{ display: "flex", background: "rgba(255,255,255,.04)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden", marginLeft: "auto" }}>
-                    <button
-                      aria-label="Switch to Men's results"
-                      onClick={() => {
-                        if (results.gender !== "male") {
-                          setResults(prev => prev ? { ...prev, gender: "male" } : prev);
-                          if (phase === "done" && pickedItems.size > 0) {
-                            setTimeout(() => runProductSearch(), 100);
-                          }
-                        }
-                      }}
-                      style={{ padding: "6px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 32, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "rgba(255,255,255,.3)", borderRight: "1px solid var(--border)" }}
-                    >Men's</button>
-                    <button
-                      aria-label="Switch to Women's results"
-                      onClick={() => {
-                        if (results.gender !== "female") {
-                          setResults(prev => prev ? { ...prev, gender: "female" } : prev);
-                          if (phase === "done" && pickedItems.size > 0) {
-                            setTimeout(() => runProductSearch(), 100);
-                          }
-                        }
-                      }}
-                      style={{ padding: "6px 14px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 32, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "rgba(255,255,255,.3)" }}
-                    >Women's</button>
-                  </div>
-                </div>
-                {results.summary && <div style={{ fontSize: 13, color: "rgba(255,255,255,.5)", fontStyle: "italic", lineHeight: 1.5 }}>{results.summary}</div>}
-
-                {/* ─── Ident preview — shown while searching ── */}
-                {phase === "searching" && identPreview && identPreview.length > 0 && (
-                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "rgba(201,169,110,.4)", textTransform: "uppercase", marginBottom: 2 }}>Found in this photo</div>
-                    {identPreview.slice(0, 4).map((item, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,.04)" }}>
-                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#C9A96E", flexShrink: 0 }} />
-                        <div style={{ flex: 1 }}>
-                          <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>{item.name}</span>
-                          {item.brand && item.brand !== "Unidentified" && <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginLeft: 6 }}>{item.brand}</span>}
-                          {item.color && <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)", marginLeft: 4 }}>· {item.color}</span>}
-                        </div>
-                      </div>
-                    ))}
+              {/* ─── Compact header: photo + summary + gender ─── */}
+              <div style={{ display: "flex", gap: 14, padding: "14px 20px", alignItems: "flex-start" }}>
+                {img && (
+                  <div style={{ width: 90, height: 120, borderRadius: 12, overflow: "hidden", flexShrink: 0, position: "relative" }}>
+                    <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <button onClick={reset} style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.5)", border: "none", color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} aria-label="New scan">
+                      <svg viewBox="0 0 14 14" width="10" height="10" stroke="currentColor" strokeWidth="2"><path d="M2 2l10 10M12 2L2 12"/></svg>
+                    </button>
                   </div>
                 )}
-
-                {/* ─── Outfit verdict ──────────────────── */}
-                {phase === "done" && scanId && (
-                  <div style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "center" }}>
-                    {[
-                      { key: "would_wear", label: "Would Wear", icon: "\u2713", color: "var(--success)", bg: "rgba(76,175,80,.1)", border: "rgba(76,175,80,.3)" },
-                      { key: "on_the_fence", label: "On the Fence", icon: "~", color: "var(--warning)", bg: "rgba(255,183,77,.1)", border: "rgba(255,183,77,.3)" },
-                      { key: "not_for_me", label: "Not for Me", icon: "\u2717", color: "var(--error)", bg: "rgba(255,82,82,.1)", border: "rgba(255,82,82,.3)" },
-                    ].map(v => {
-                      const isActive = scanVerdicts[scanId] === v.key;
-                      const isAnimating = verdictAnimating === v.key;
-                      return (
-                        <button
-                          key={v.key}
-                          aria-label={`Mark outfit as ${v.label}`}
-                          onClick={async () => {
-                            const newVerdict = isActive ? null : v.key;
-                            setScanVerdicts(sv => ({ ...sv, [scanId]: newVerdict }));
-                            setVerdictAnimating(v.key);
-                            setTimeout(() => setVerdictAnimating(null), 500);
-                            if (newVerdict) {
-                              API.setVerdict(scanId, newVerdict).catch(() => {});
-                              track("verdict_set", { verdict: newVerdict }, scanId, "scan");
-                              // Auto-save all items to Likes when "Would Wear"
-                              if (newVerdict === "would_wear" && results?.items) {
-                                results.items.forEach((item, idx) => {
-                                  if (pickedItems.has(idx) && item.tiers) {
-                                    const bestTier = item.tiers.find(t => t.products?.length > 0);
-                                    if (bestTier) {
-                                      API.saveItem(scanId, item, bestTier.tier, bestTier.products[0]).catch(() => {});
-                                    }
-                                  }
-                                });
-                                API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
-                              }
-                            }
-                          }}
-                          style={{
-                            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                            padding: "10px 8px", minHeight: 44,
-                            background: isActive ? v.bg : "rgba(255,255,255,.02)",
-                            border: `1px solid ${isActive ? v.border : "rgba(255,255,255,.06)"}`,
-                            borderRadius: "var(--radius-md)", cursor: "pointer",
-                            transition: "all var(--transition-fast)",
-                            animation: isAnimating && v.key === "not_for_me" ? "verdictShake 0.4s ease" : isAnimating ? "verdictPop 0.4s ease" : "none",
-                            fontFamily: "'Outfit'",
-                          }}
-                        >
-                          <span style={{ fontSize: 18, fontWeight: 700, color: isActive ? v.color : "rgba(255,255,255,.25)", transition: "color var(--transition-fast)" }}>{v.icon}</span>
-                          <span style={{ fontSize: 10, fontWeight: 600, color: isActive ? v.color : "rgba(255,255,255,.3)", letterSpacing: 0.3, transition: "color var(--transition-fast)" }}>{v.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* ─── Share buttons ──────────────────────────── */}
-              {phase === "done" && scanId && (
-                <div style={{ padding: "0 20px 10px", display: "flex", gap: 8 }}>
-                  <button
-                    aria-label="Share Your Look"
-                    onClick={async () => {
-                      const shareUrl = `${window.location.origin}/scan/${scanId}`;
-                      const shareData = { title: "ATTAIRE - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIRE!", url: shareUrl };
-                      if (navigator.share) {
-                        try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
-                      } else {
-                        try {
-                          await navigator.clipboard.writeText(shareUrl);
-                          setShareLinkCopied(true);
-                          setTimeout(() => setShareLinkCopied(false), 2000);
-                          track("share_link", { method: "clipboard" }, scanId, "scan");
-                        } catch {}
-                      }
-                    }}
-                    style={{
-                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                      padding: "12px 16px", minHeight: 44,
-                      background: "var(--accent)", color: "var(--text-inverse)",
-                      border: "none", borderRadius: "var(--radius-md)",
-                      fontFamily: "'Outfit'", fontSize: 13, fontWeight: 700, cursor: "pointer",
-                      transition: "all var(--transition-fast)",
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                    {shareLinkCopied ? "Link copied!" : "Share Your Look"}
-                  </button>
-                  <button
-                    aria-label="Share Card"
-                    disabled={shareCardLoading}
-                    onClick={async () => {
-                      setShareCardLoading(true);
-                      try {
-                        const userName = authName || (authEmail ? authEmail.split("@")[0] : "");
-                        const cardDataUrl = await generateShareCard({
-                          imageUrl: img,
-                          summary: results?.summary,
-                          items: results?.items?.filter((_, i) => pickedItems.has(i)),
-                          verdict: scanVerdicts[scanId],
-                          userName,
-                        });
-                        // Convert dataURL to blob for sharing
-                        const res = await fetch(cardDataUrl);
-                        const blob = await res.blob();
-                        const file = new File([blob], "attair-outfit.png", { type: "image/png" });
-                        if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                          try {
-                            await navigator.share({ title: "My ATTAIRE Outfit", files: [file] });
-                            track("share_card", { method: "native" }, scanId, "scan");
-                          } catch {}
-                        } else {
-                          // Fallback: download the image
-                          const a = document.createElement("a");
-                          a.href = cardDataUrl;
-                          a.download = "attair-outfit.png";
-                          document.body.appendChild(a);
-                          a.click();
-                          document.body.removeChild(a);
-                          track("share_card", { method: "download" }, scanId, "scan");
-                        }
-                      } catch (e) {
-                        console.error("Share card generation failed:", e);
-                      }
-                      setShareCardLoading(false);
-                    }}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                      padding: "12px 16px", minHeight: 44,
-                      background: "rgba(201,169,110,.1)", color: "#C9A96E",
-                      border: "1px solid rgba(201,169,110,.3)", borderRadius: "var(--radius-md)",
-                      fontFamily: "'Outfit'", fontSize: 13, fontWeight: 700, cursor: "pointer",
-                      transition: "all var(--transition-fast)",
-                      opacity: shareCardLoading ? 0.6 : 1,
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    {shareCardLoading ? "..." : "Share Card"}
-                  </button>
-                </div>
-              )}
-
-              {/* ─── Search notes (editable chip on results) ── */}
-              {phase === "done" && (
-                <div style={{ padding: "0 20px 8px" }}>
-                  {searchNotes ? (
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-full)", cursor: "pointer", transition: "all var(--transition-fast)" }}
-                      onClick={() => {
-                        const el = document.getElementById("results-search-notes");
-                        if (el) { el.style.display = "block"; el.focus(); }
-                      }}>
-                      <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 500, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{searchNotes}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {results.summary && <div style={{ fontSize: 13, color: "rgba(255,255,255,.6)", lineHeight: 1.5, marginBottom: 8 }}>{results.summary}</div>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,.35)", textTransform: "uppercase" }}>{pickedItems.size} items</span>
+                    <div style={{ display: "inline-flex", background: "rgba(255,255,255,.04)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden", marginLeft: "auto" }}>
                       <button
-                        aria-label="Clear search notes"
-                        onClick={(e) => { e.stopPropagation(); setSearchNotes(""); setTimeout(() => runProductSearch(), 100); }}
-                        style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1, minWidth: 20, minHeight: 20 }}
-                      >&times;</button>
+                        aria-label="Switch to Men's results"
+                        onClick={() => {
+                          if (results.gender !== "male") {
+                            setResults(prev => prev ? { ...prev, gender: "male" } : prev);
+                            if (phase === "done" && pickedItems.size > 0) setTimeout(() => runProductSearch(), 100);
+                          }
+                        }}
+                        style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 28, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "rgba(255,255,255,.3)", borderRight: "1px solid var(--border)" }}
+                      >Men's</button>
+                      <button
+                        aria-label="Switch to Women's results"
+                        onClick={() => {
+                          if (results.gender !== "female") {
+                            setResults(prev => prev ? { ...prev, gender: "female" } : prev);
+                            if (phase === "done" && pickedItems.size > 0) setTimeout(() => runProductSearch(), 100);
+                          }
+                        }}
+                        style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 28, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "rgba(255,255,255,.3)" }}
+                      >Women's</button>
                     </div>
-                  ) : null}
-                  <input
-                    id="results-search-notes"
-                    aria-label="Search notes - tell us more about what you are looking for"
-                    value={searchNotes}
-                    onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" && searchNotes.trim()) {
-                        e.target.blur();
-                        runProductSearch();
-                      }
-                    }}
-                    onBlur={(e) => {
-                      if (!searchNotes) e.target.style.display = searchNotes ? "none" : "block";
-                    }}
-                    placeholder="Tell us more... (e.g., 'I think this is Zara')"
-                    style={{
-                      display: searchNotes ? "none" : "block",
-                      width: "100%", padding: "10px 14px", marginTop: searchNotes ? 8 : 0,
-                      background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)",
-                      borderRadius: "var(--radius-md)", color: "var(--text-secondary)", fontSize: "var(--text-sm)",
-                      fontFamily: "'Outfit'", outline: "none", transition: "border-color var(--transition-fast)",
-                      boxSizing: "border-box", minHeight: 44,
-                    }}
-                    onFocus={e => e.target.style.borderColor = "rgba(201,169,110,.3)"}
-                  />
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── Ident preview while searching ─── */}
+              {phase === "searching" && identPreview && identPreview.length > 0 && (
+                <div style={{ padding: "0 20px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "rgba(201,169,110,.4)", textTransform: "uppercase", marginBottom: 2 }}>Found in this photo</div>
+                  {identPreview.slice(0, 4).map((item, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,.04)" }}>
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#C9A96E", flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>{item.name}</span>
+                        {item.brand && item.brand !== "Unidentified" && <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginLeft: 6 }}>{item.brand}</span>}
+                        {item.color && <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)", marginLeft: 4 }}>· {item.color}</span>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
-              {/* ─── Banner ad slot (free users) ──────── */}
+              {/* ─── Outfit verdict (prominent) ─── */}
+              {phase === "done" && scanId && (
+                <div style={{ padding: "0 20px 12px", display: "flex", gap: 8, justifyContent: "center" }}>
+                  {[
+                    { key: "would_wear", label: "Would Wear", icon: "\u2713", color: "var(--success)", bg: "rgba(76,175,80,.1)", border: "rgba(76,175,80,.3)" },
+                    { key: "on_the_fence", label: "On the Fence", icon: "~", color: "var(--warning)", bg: "rgba(255,183,77,.1)", border: "rgba(255,183,77,.3)" },
+                    { key: "not_for_me", label: "Not for Me", icon: "\u2717", color: "var(--error)", bg: "rgba(255,82,82,.1)", border: "rgba(255,82,82,.3)" },
+                  ].map(v => {
+                    const isActive = scanVerdicts[scanId] === v.key;
+                    const isAnimating = verdictAnimating === v.key;
+                    return (
+                      <button
+                        key={v.key}
+                        aria-label={`Mark outfit as ${v.label}`}
+                        onClick={async () => {
+                          const newVerdict = isActive ? null : v.key;
+                          setScanVerdicts(sv => ({ ...sv, [scanId]: newVerdict }));
+                          setVerdictAnimating(v.key);
+                          setTimeout(() => setVerdictAnimating(null), 500);
+                          if (newVerdict) {
+                            API.setVerdict(scanId, newVerdict).catch(() => {});
+                            track("verdict_set", { verdict: newVerdict }, scanId, "scan");
+                            if (newVerdict === "would_wear" && results?.items) {
+                              results.items.forEach((item, idx) => {
+                                if (pickedItems.has(idx) && item.tiers) {
+                                  const bestTier = item.tiers.find(t => t.products?.length > 0);
+                                  if (bestTier) {
+                                    API.saveItem(scanId, item, bestTier.tier, bestTier.products[0]).catch(() => {});
+                                  }
+                                }
+                              });
+                              API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
+                            }
+                          }
+                        }}
+                        style={{
+                          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                          padding: "10px 8px", minHeight: 44,
+                          background: isActive ? v.bg : "rgba(255,255,255,.02)",
+                          border: `1px solid ${isActive ? v.border : "rgba(255,255,255,.06)"}`,
+                          borderRadius: "var(--radius-md)", cursor: "pointer",
+                          transition: "all var(--transition-fast)",
+                          animation: isAnimating && v.key === "not_for_me" ? "verdictShake 0.4s ease" : isAnimating ? "verdictPop 0.4s ease" : "none",
+                          fontFamily: "'Outfit'",
+                        }}
+                      >
+                        <span style={{ fontSize: 18, fontWeight: 700, color: isActive ? v.color : "rgba(255,255,255,.25)", transition: "color var(--transition-fast)" }}>{v.icon}</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: isActive ? v.color : "rgba(255,255,255,.3)", letterSpacing: 0.3, transition: "color var(--transition-fast)" }}>{v.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ─── Banner ad slot (free users) ─── */}
               {showAds && (
                 <div className="ad-slot ad-banner" style={{ margin: "0 20px 8px", height: "auto", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,.05)", background: "linear-gradient(135deg, rgba(201,169,110,.06) 0%, rgba(255,255,255,.02) 100%)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
@@ -3821,432 +3688,414 @@ export default function App() {
                 </div>
               )}
 
-              {/* Selected item detail */}
-              {selIdx !== null && results.items[selIdx] && pickedItems.has(selIdx) && (() => {
-                const item = results.items[selIdx];
-                const bc = brandConfLabel(item.brand_confidence);
-                return (
-                  <div className="det" key={selIdx}>
-                    <div className="det-top">
-                      {/* Product thumbnail pulled from best tier image */}
-                      {item.tiers && (() => {
-                        const thumb = ["mid","budget","premium"].map(tierKey => asTierArray(item.tiers[tierKey])[0]).find(p => p?.image_url);
-                        return thumb ? (
-                          <img src={thumb.image_url} alt="" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.04)" }} onError={e => e.target.style.display = "none"} />
-                        ) : null;
-                      })()}
-                      <h2 className="det-name" style={{ flex: 1 }}>
-                        {item.priority && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, padding: "2px 8px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.4)", borderRadius: 100, color: "#C9A96E", letterSpacing: .5, marginRight: 6, verticalAlign: "middle" }}>Your pick &#8857;</span>}
-                        {item.name}
-                      </h2>
-                      <button className={`det-save ${isSaved(item)?"on":""}`} onClick={() => toggleSave(item)}>{isSaved(item)?"♥":"♡"}</button>
-                    </div>
+              {/* ═══════════════════════════════════════════════════════════
+                  CORE: Per-item collapsible sections with horizontal product scroll
+                  ═══════════════════════════════════════════════════════════ */}
+              <div style={{ padding: "0 0 8px" }}>
+                {results.items.map((item, i) => {
+                  if (!pickedItems.has(i)) return null;
+                  const isExpanded = expandedItems.has(i);
+                  const TIER_CFG = { budget: { label: "Budget", accent: "#5AC8FF" }, mid: { label: "Match", accent: "#C9A96E" }, premium: { label: "Premium", accent: "#C77DFF" }, resale: { label: "Resale", accent: "#7BC47F" } };
+                  const allTierProducts = item.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(item.tiers[tk]).map(p => ({ ...p, _tier: tk }))) : [];
 
-                    {item.brand && item.brand !== "Unidentified" && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{item.brand}</span>
-                        {item.product_line && <span style={{ fontSize: 12, color: "rgba(255,255,255,.3)" }}>· {item.product_line}</span>}
-                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, padding: "3px 8px", borderRadius: 4, textTransform: "uppercase", background: `${bc.c}15`, color: bc.c, border: `1px solid ${bc.c}30` }}>{bc.t}</span>
-                      </div>
-                    )}
-                    {item.brand_evidence && <div style={{ fontSize: 11, color: "rgba(255,255,255,.25)", marginTop: 6, fontStyle: "italic" }}>Evidence: {item.brand_evidence}</div>}
-
-                    {/* ─── As Seen On ─────────────────────────── */}
-                    {item.brand && item.brand !== "Unidentified" && (() => {
-                      const sod = seenOnData[selIdx] || {};
-                      const toggleSeenOn = async () => {
-                        if (sod.open) { setSeenOnData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: false } })); return; }
-                        if (sod.appearances) { setSeenOnData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: true } })); return; }
-                        setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: true } }));
-                        try {
-                          const res = await API.seenOn(item.brand, item.name, selectedInterests);
-                          setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: res.appearances || [] } }));
-                          track("seen_on_viewed", { brand: item.brand }, scanId, "scan");
-                        } catch { setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: [] } })); }
-                      };
-                      return (
-                        <div style={{ marginTop: 10, marginBottom: 4 }}>
-                          <button onClick={toggleSeenOn} style={{ background: "none", border: "none", padding: "6px 0", cursor: "pointer", fontFamily: "'Outfit'", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.3)", display: "flex", alignItems: "center", gap: 5, letterSpacing: .5 }}>
-                            <span style={{ fontSize: 13 }}>{sod.open ? "▾" : "▸"}</span>
-                            {t("as_seen_on")} <span style={{ color: "rgba(255,255,255,.15)" }}>— {item.brand}</span>
-                          </button>
-                          {sod.open && (
-                            <div style={{ marginTop: 6 }}>
-                              {sod.loading && <div style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>Searching…</div>}
-                              {!sod.loading && sod.appearances?.length === 0 && <div style={{ fontSize: 11, color: "rgba(255,255,255,.15)" }}>No recent sightings found.</div>}
-                              {/* SECURITY: a.source_url and a.thumbnail originate from SerpAPI.
-                                  The backend (seenOn.js) validates both URLs via safeUrl() and only
-                                  passes through http/https URLs, so javascript: and data: schemes are
-                                  already rejected before reaching this component. React sets this as an
-                                  href attribute value (not innerHTML), so no further sanitization is needed. */}
-                              {!sod.loading && sod.appearances?.map((a, i) => (
-                                <a key={i} href={a.source_url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,.04)", textDecoration: "none", color: "inherit" }}>
-                                  {a.thumbnail && <img src={a.thumbnail} alt="" style={{ width: 44, height: 44, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} onError={e => e.target.style.display = "none"} />}
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.7)", lineHeight: 1.3, marginBottom: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{a.title}</div>
-                                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.25)" }}>{a.source_name} {a.date && `· ${a.date}`}</div>
-                                  </div>
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* ─── Get It Today ────────────────────────── */}
-                    {(() => {
-                      const nd = nearbyData[selIdx] || {};
-                      const toggleNearby = async () => {
-                        if (nd.open) { setNearbyData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: false } })); return; }
-                        if (nd.stores) { setNearbyData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: true } })); return; }
-                        setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: true } }));
-                        // Request geolocation
-                        if (!navigator.geolocation) {
-                          setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: false, stores: [], error: "Location not supported" } }));
-                          return;
-                        }
-                        navigator.geolocation.getCurrentPosition(
-                          async (pos) => {
-                            try {
-                              const res = await API.nearbyStores(item.brand, item.category, pos.coords.latitude, pos.coords.longitude);
-                              setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: false, stores: res.stores || [] } }));
-                              track("nearby_stores_viewed", { brand: item.brand, store_count: res.stores?.length || 0 }, scanId, "scan");
-                            } catch { setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: false, stores: [] } })); }
-                          },
-                          () => setNearbyData(d => ({ ...d, [selIdx]: { open: true, loading: false, stores: [], error: "Location access denied" } }))
-                        );
-                      };
-                      return (
-                        <div style={{ marginTop: 10, marginBottom: 4 }}>
-                          <button onClick={toggleNearby} style={{ background: "none", border: "none", padding: "6px 0", cursor: "pointer", fontFamily: "'Outfit'", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.3)", display: "flex", alignItems: "center", gap: 5, letterSpacing: .5 }}>
-                            <span style={{ fontSize: 13 }}>{nd.open ? "▾" : "▸"}</span>
-                            📍 {t("get_it_today")}
-                            <span style={{ color: "rgba(255,255,255,.15)" }}>— nearby stores</span>
-                          </button>
-                          {nd.open && (
-                            <div style={{ marginTop: 6 }}>
-                              {nd.loading && <div style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>Finding stores near you…</div>}
-                              {nd.error && <div style={{ fontSize: 11, color: "rgba(255,100,100,.4)" }}>{nd.error}</div>}
-                              {!nd.loading && !nd.error && nd.stores?.length === 0 && <div style={{ fontSize: 11, color: "rgba(255,255,255,.15)" }}>No stores found nearby.</div>}
-                              {/* SECURITY: s.maps_url originates from SerpAPI (Google Maps engine) and is not
-                                  validated here. The fallback constructs a safe google.com URL, but the primary
-                                  maps_url is passed through from the backend unchanged.
-                                  Follow-up: filter maps_url to https?:// in nearbyStores.js before returning it. */}
-                              {!nd.loading && nd.stores?.map((s, i) => (
-                                <a key={i} href={s.maps_url || `https://www.google.com/maps/search/${encodeURIComponent(s.name + " " + s.address)}`} target="_blank" rel="noopener noreferrer"
-                                  style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,.04)", textDecoration: "none", color: "inherit" }}>
-                                  <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(255,255,255,.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>🏪</div>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.7)", lineHeight: 1.3 }}>{s.name}</div>
-                                    <div style={{ fontSize: 10, color: "rgba(255,255,255,.25)", marginTop: 1 }}>
-                                      {s.address}
-                                      {s.distance && ` · ${s.distance}`}
-                                    </div>
-                                    <div style={{ display: "flex", gap: 6, marginTop: 3, alignItems: "center" }}>
-                                      {s.rating && <span style={{ fontSize: 10, color: "#C9A96E" }}>★ {s.rating}</span>}
-                                      {s.open_now && <span style={{ fontSize: 9, color: s.open_now.toLowerCase().includes("open") ? "#7BC47F" : "rgba(255,255,255,.2)" }}>{s.open_now}</span>}
-                                    </div>
-                                  </div>
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    <div className="det-tags">
-                      <span className="det-tag">{item.color}</span>
-                      <span className="det-tag">{item.material}</span>
-                      {item.fit && <span className="det-tag">{item.fit}</span>}
-                      {item.subcategory && <span className="det-tag">{item.subcategory}</span>}
-                    </div>
-
-
-                    {item.status !== "verified" && item.price_range && (
-                      <div style={{ fontSize: 13, color: "rgba(255,255,255,.25)", marginBottom: 14, fontStyle: "italic" }}>Typical retail: {item.price_range}</div>
-                    )}
-
-                    {/* ID / Shop toggle */}
-                    {(() => {
-                      const viewMode = itemViewModes[selIdx] || (item.tiers ? "shop" : "id");
-                      const chat = itemChats[selIdx] || [];
-                      const refineInput = refineInputs[selIdx] || "";
-                      const isRefining = refineLoadings[selIdx] || false;
-                      return (
-                        <>
-                          <div className="view-toggle">
-                            <button className={`view-tab ${viewMode === "id" ? "on" : "off"}`} onClick={() => setItemViewModes(m => ({ ...m, [selIdx]: "id" }))}>Identify</button>
-                            <button className={`view-tab ${viewMode === "shop" ? "on" : "off"}`} onClick={() => setItemViewModes(m => ({ ...m, [selIdx]: "shop" }))}>Shop</button>
+                  return (
+                    <div key={i} style={{ borderBottom: "1px solid rgba(255,255,255,.04)" }}>
+                      {/* Item header — tap to expand/collapse */}
+                      <button
+                        onClick={() => {
+                          setExpandedItems(prev => {
+                            const next = new Set(prev);
+                            if (next.has(i)) next.delete(i); else next.add(i);
+                            return next;
+                          });
+                          setSelIdx(i);
+                        }}
+                        style={{
+                          width: "100%", display: "flex", alignItems: "center", gap: 10,
+                          padding: "14px 20px", background: "none", border: "none",
+                          cursor: "pointer", fontFamily: "'Outfit'", textAlign: "left",
+                          transition: "background .15s",
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", lineHeight: 1.3 }}>
+                            {item.name}
+                            {item.priority && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", borderRadius: 100, color: "#C9A96E", letterSpacing: .5, verticalAlign: "middle" }}>Circled</span>}
                           </div>
+                          <div style={{ fontSize: 11, color: "rgba(255,255,255,.35)", marginTop: 2 }}>
+                            {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
+                          </div>
+                        </div>
+                        {item.status === "searching" && <div className="ld-dot" style={{ width: 8, height: 8, background: "#C9A96E", flexShrink: 0 }} />}
+                        {item.status === "verified" && allTierProducts.length > 0 && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,.25)", flexShrink: 0 }}>{allTierProducts.length} products</span>
+                        )}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform .2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </button>
 
-                          {viewMode === "id" && (
-                            <div>
-                              {/* Identification summary */}
-                              <div style={{ padding: "12px 14px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.04)", borderRadius: 12, marginBottom: 14 }}>
-                                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 8 }}>AI Identification</div>
-                                {[
-                                  ["Name", item.name],
-                                  ["Brand", item.brand && item.brand !== "Unidentified" ? item.brand : null],
-                                  ["Color", item.color],
-                                  ["Material", item.material],
-                                  ["Fit", item.fit],
-                                  ["Search query", item.search_query],
-                                ].filter(([,v]) => v).map(([k, v]) => (
-                                  <div key={k} style={{ display: "flex", gap: 8, marginBottom: 5, alignItems: "baseline" }}>
-                                    <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,.2)", width: 70, flexShrink: 0, textTransform: "uppercase", letterSpacing: .5 }}>{k}</span>
-                                    <span style={{ fontSize: 12, color: "rgba(255,255,255,.6)", lineHeight: 1.4 }}>{v}</span>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Correction chat */}
-                              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 8 }}>Correct the AI</div>
-                              {chat.length > 0 && (
-                                <div className="refine-chat">
-                                  {chat.map((m, i) => (
-                                    <div key={i} className={`refine-msg ${m.role === "user" ? "user" : "ai"}`}>{m.content}</div>
-                                  ))}
-                                </div>
-                              )}
-                              <div className="refine-input-row">
-                                <textarea
-                                  className="refine-input"
-                                  rows={2}
-                                  placeholder={chat.length === 0 ? `e.g. "It's a navy bomber jacket, not black" or "The brand is Stone Island"` : "Correct further…"}
-                                  value={refineInput}
-                                  onChange={e => setRefineInputs(r => ({ ...r, [selIdx]: e.target.value }))}
-                                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleRefine(selIdx); } }}
-                                  disabled={isRefining}
-                                />
-                                <button className="refine-send" onClick={() => handleRefine(selIdx)} disabled={!refineInput.trim() || isRefining}>
-                                  {isRefining
-                                    ? <div className="ld-dot" style={{ width: 6, height: 6 }} />
-                                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0C0C0E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2L15 22 11 13 2 9l20-7z" /></svg>
-                                  }
-                                </button>
-                              </div>
-                              {item.tiers && (
-                                <button onClick={() => setItemViewModes(m => ({ ...m, [selIdx]: "shop" }))} style={{ width: "100%", marginTop: 12, padding: "11px 0", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                                  View shopping options →
-                                </button>
-                              )}
-                              {/* Re-search button — appears when the AI has been corrected */}
-                              {chat.length > 0 && (
-                                <button
-                                  onClick={() => {
-                                    setItemViewModes(m => ({ ...m, [selIdx]: "shop" }));
-                                    runProductSearch();
-                                  }}
-                                  style={{ width: "100%", marginTop: 8, padding: "11px 0", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, color: "rgba(255,255,255,.5)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                                  Re-search with these changes
-                                </button>
-                              )}
+                      {/* Expanded content */}
+                      {isExpanded && (
+                        <div style={{ padding: "0 0 16px", overflow: "hidden", animation: "slideDown .2s ease" }}>
+                          {/* Searching state */}
+                          {item.status === "searching" && (
+                            <div style={{ padding: "12px 20px", textAlign: "center", color: "rgba(201,169,110,.5)", fontSize: 12 }}>
+                              Finding products...
                             </div>
                           )}
 
-                          {viewMode === "shop" && (<>
-                            {/* Three-tier product cards */}
-                            <div className="sec-t">
-                              <span>{t("shop_item")}</span>
-                              <StatusPill status={item.status} />
+                          {/* Failed state */}
+                          {item.status === "failed" && !item.tiers && (
+                            <div style={{ padding: "12px 20px", textAlign: "center", color: "rgba(255,255,255,.25)", fontSize: 12 }}>
+                              No products found.{" "}
+                              <span style={{ color: "#C9A96E", cursor: "pointer" }} onClick={() => { setSelIdx(i); setItemViewModes(m => ({ ...m, [i]: "id" })); }}>Correct the AI</span>
                             </div>
+                          )}
 
-                            {item.status === "searching" && (
-                              <div className="tier-empty" style={{ background: "rgba(201,169,110,.03)", borderColor: "rgba(201,169,110,.1)", color: "rgba(201,169,110,.5)" }}>
-                                Finding budget, mid-range, and premium options…<br />
-                                <span style={{ fontSize: 10, color: "rgba(201,169,110,.3)" }}>This takes 10-15 seconds</span>
-                              </div>
-                            )}
-
-                            {item.status === "failed" && !item.tiers && (
-                              <div className="tier-empty">
-                                Couldn't find products online.{" "}
-                                <span style={{ color: "#C9A96E", cursor: "pointer" }} onClick={() => setItemViewModes(m => ({ ...m, [selIdx]: "id" }))}>Correct the AI →</span>
-                              </div>
-                            )}
-
-                            {item.tiers && (() => {
-                              const TIER_LABELS = { budget: { label: "Save", icon: "$", accent: "#5AC8FF" }, mid: { label: "Best Value", icon: "$$", accent: "#C9A96E" }, premium: { label: "Splurge", icon: "$$$", accent: "#C77DFF" } };
-                              const resaleProducts = asTierArray(item.tiers.resale);
-                              return (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                                  {["budget", "mid", "premium"].map(tierKey => {
-                                    const products = asTierArray(item.tiers[tierKey]);
-                                    const cfg = TIER_LABELS[tierKey];
-                                    if (!products.length) return null;
+                          {/* Horizontal product scroll per tier */}
+                          {item.tiers && ["budget", "mid", "premium", "resale"].map(tierKey => {
+                            const products = asTierArray(item.tiers[tierKey]);
+                            if (!products.length) return null;
+                            const cfg = TIER_CFG[tierKey];
+                            return (
+                              <div key={tierKey} style={{ marginBottom: 12 }}>
+                                <div style={{ padding: "0 20px 6px", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>
+                                  {cfg.label}
+                                </div>
+                                <div className="scroll-x" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+                                  {products.map((p, j) => {
+                                    const isFallback = !p.is_product_page && p.brand === "Google Shopping";
+                                    const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
+                                    const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
+                                    const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
                                     return (
-                                      <div key={tierKey}>
-                                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                                          <span>{cfg.icon}</span><span>{cfg.label}</span>
-                                        </div>
-                                        <div style={{ display: "grid", gridTemplateColumns: products.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
-                                          {products.map((p, j) => <MiniCard key={j} tier={tierKey} data={p} scanId={scanId} itemIndex={selIdx} onSave={() => quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId)} isSavedItem={saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name))} />)}
-                                        </div>
+                                      <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
+                                        <a href={href} target="_blank" rel="noopener noreferrer"
+                                          onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback }, scanId, "scan")}
+                                          style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "rgba(255,255,255,.02)", border: `1px solid ${p.is_identified_brand ? "rgba(201,169,110,.25)" : "rgba(255,255,255,.05)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
+                                          {p.image_url && (
+                                            <div style={{ width: "100%", aspectRatio: "1", background: "rgba(255,255,255,.04)", overflow: "hidden" }}>
+                                              <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                            </div>
+                                          )}
+                                          <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
+                                            {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "#C9A96E", alignSelf: "flex-start" }}>ORIGINAL</span>}
+                                            <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,.7)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                                              {isFallback ? "Search results" : (p.product_name || "Product")}
+                                            </div>
+                                            <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
+                                            <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : p.price}</div>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid rgba(255,255,255,.04)" }}>Shop</div>
+                                          </div>
+                                        </a>
+                                        {/* Save heart */}
+                                        <button
+                                          aria-label={isSavedProduct ? "Remove from Likes" : "Save to Likes"}
+                                          onClick={e => { e.preventDefault(); e.stopPropagation(); quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId); }}
+                                          style={{ position: "absolute", top: 6, right: 6, width: 28, height: 28, borderRadius: "50%", background: isSavedProduct ? "rgba(255,60,80,.9)" : "rgba(0,0,0,.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", zIndex: 2 }}>
+                                          <svg viewBox="0 0 24 24" width="12" height="12" fill={isSavedProduct ? "#fff" : "none"} stroke={isSavedProduct ? "#fff" : "rgba(255,255,255,.8)"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                                          </svg>
+                                        </button>
                                       </div>
                                     );
                                   })}
-                                  {resaleProducts.length > 0 && (
-                                    <div>
-                                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "#7BC47F", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                                        <span>↺</span><span>Pre-Owned &amp; Resale</span>
-                                      </div>
-                                      <div style={{ display: "grid", gridTemplateColumns: resaleProducts.length > 1 ? "1fr 1fr" : "1fr", gap: 8 }}>
-                                        {resaleProducts.map((p, j) => <MiniCard key={j} tier="resale" data={p} scanId={scanId} itemIndex={selIdx} onSave={() => quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId)} isSavedItem={saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name))} />)}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* ─── Smart Re-Search Recovery Row ─────────── */}
-                                  {(() => {
-                                    const allProducts = ["budget", "mid", "premium"].flatMap(tk => asTierArray(item.tiers[tk]));
-                                    const hasFallback = allProducts.some(p => !p.is_product_page && p.brand === "Google Shopping");
-                                    if (!hasFallback) return null;
-                                    const googleQuery = item.search_query || `${item.brand || ""} ${item.name || ""}`.trim();
-                                    return (
-                                      <div
-                                        style={{ marginTop: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12, textAlign: "center" }}
-                                        aria-label="Alternate search options for this item"
-                                      >
-                                        <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>
-                                          Not what you're looking for?
-                                        </div>
-                                        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-                                          {item.alt_search && (
-                                            <button
-                                              aria-label="Try alternate search terms"
-                                              onClick={() => {
-                                                setSearchNotes(item.alt_search);
-                                                setTimeout(() => runProductSearch(), 100);
-                                                track("alt_search_clicked", { item_name: item.name, alt_search: item.alt_search }, scanId, "scan");
-                                              }}
-                                              style={{ minHeight: 44, padding: "10px 18px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 10, color: "var(--accent)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}
-                                            >
-                                              Try alternate search
-                                            </button>
-                                          )}
-                                          <a
-                                            href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            aria-label="Search Google Shopping for this item"
-                                            onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
-                                            style={{ minHeight: 44, padding: "10px 18px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6, transition: "all .2s" }}
-                                          >
-                                            Search Google
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                          </a>
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
                                 </div>
-                              );
-                            })()}
-                          </>)}
-                        </>
-                      );
-                    })()}
+                              </div>
+                            );
+                          })}
 
-                    {/* ─── Complete the Look ─────────────────────── */}
-                    {phase === "done" && results?.items?.length > 0 && (
-                      <div style={{ marginTop: 4 }}>
-                        <div className="sec-t" style={{ marginBottom: 10 }}>
-                          <span>{t("complete_look")}</span>
+                          {/* Not finding what you want? */}
+                          {item.tiers && (() => {
+                            const allProducts = ["budget", "mid", "premium"].flatMap(tk => asTierArray(item.tiers[tk]));
+                            const hasFallback = allProducts.some(p => !p.is_product_page && p.brand === "Google Shopping");
+                            if (!hasFallback) return null;
+                            const googleQuery = item.search_query || `${item.brand || ""} ${item.name || ""}`.trim();
+                            return (
+                              <div style={{ padding: "0 20px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                                {item.alt_search && (
+                                  <button
+                                    onClick={() => { setSearchNotes(item.alt_search); setTimeout(() => runProductSearch(), 100); track("alt_search_clicked", { item_name: item.name, alt_search: item.alt_search }, scanId, "scan"); }}
+                                    style={{ padding: "8px 14px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 10, color: "var(--accent)", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                                    Try alternate search
+                                  </button>
+                                )}
+                                <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`} target="_blank" rel="noopener noreferrer"
+                                  onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
+                                  style={{ padding: "8px 14px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  Google Shopping
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                </a>
+                              </div>
+                            );
+                          })()}
                         </div>
-                        {!pairings && !pairingsLoading && (
-                          <button
-                            onClick={async () => {
-                              setPairingsLoading(true);
-                              try {
-                                const res = await API.suggestPairings(scanId, results.items.filter((_, i) => pickedItems.has(i)), results.gender);
-                                setPairings(res?.pairings || []);
-                                track("pairings_requested", { item_count: pickedItems.size }, scanId, "scan");
-                              } catch { setPairings([]); }
-                              setPairingsLoading(false);
-                            }}
-                            aria-label="Complete the Look — get AI suggestions for missing items"
-                            style={{ width: "100%", padding: "13px 0", background: "rgba(201,169,110,.07)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "all .2s", letterSpacing: 0.3 }}>
-                            Complete the Look ✦
-                          </button>
-                        )}
-                        {pairingsLoading && (
-                          <div style={{ padding: "14px", textAlign: "center", color: "rgba(255,255,255,.3)", fontSize: 12 }}>
-                            <div className="ld-dots" style={{ justifyContent: "center", marginBottom: 6 }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
-                            Thinking about what completes this look…
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ═══════════════════════════════════════════════════════════
+                  ADVANCED / REFINE SEARCH — hidden by default
+                  ═══════════════════════════════════════════════════════════ */}
+              {phase === "done" && (
+                <div style={{ padding: "0 20px" }}>
+                  {/* Toggle button */}
+                  <button
+                    onClick={() => setShowAdvanced(a => !a)}
+                    style={{
+                      width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      padding: "12px 0", background: "none", border: "none",
+                      cursor: "pointer", fontFamily: "'Outfit'",
+                      color: "rgba(255,255,255,.35)", fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
+                    }}
+                  >
+                    Refine Search
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform .2s", transform: showAdvanced ? "rotate(180deg)" : "rotate(0)" }}>
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </button>
+
+                  {/* Advanced content */}
+                  {showAdvanced && (
+                    <div style={{ paddingBottom: 16, display: "flex", flexDirection: "column", gap: 16, animation: "slideDown .2s ease" }}>
+
+                      {/* Search notes */}
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase", marginBottom: 6 }}>Search Notes</div>
+                        {searchNotes ? (
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-full)", cursor: "pointer", marginBottom: 6 }}
+                            onClick={() => { const el = document.getElementById("adv-search-notes"); if (el) el.focus(); }}>
+                            <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 500, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{searchNotes}</span>
+                            <button aria-label="Clear search notes" onClick={(e) => { e.stopPropagation(); setSearchNotes(""); setTimeout(() => runProductSearch(), 100); }}
+                              style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}>&times;</button>
                           </div>
-                        )}
-                        {pairings && pairings.length > 0 && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                              {pairings.map((p, i) => {
-                                const prod = p.product;
-                                const shopUrl = prod?.url
-                                  ? API.affiliateUrl(`pairing_${scanId}_${i}`, prod.url, scanId, 0, "pairing", prod.brand)
-                                  : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
-                                return (
-                                  <a key={i} href={shopUrl} target="_blank" rel="noopener noreferrer"
-                                    onClick={async () => {
-                                      track("pairing_clicked", { name: p.name, search_query: p.search_query, category: p.category, has_product: !!prod }, scanId, "scan");
-                                      authFetch(`${API_BASE}/api/suggest-pairings/track-click`, { method: "POST", body: JSON.stringify({ pairing_product_url: shopUrl, item_name: p.name }) }).catch(() => {});
-                                    }}
-                                    style={{ padding: prod ? "10px" : "12px 10px", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: prod ? "row" : "column", alignItems: prod ? "center" : "center", gap: prod ? 10 : 8, transition: "all .2s", textAlign: prod ? "left" : "center" }}>
-                                    {prod?.image_url ? (
-                                      <div style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", background: "rgba(255,255,255,.04)", flexShrink: 0 }}>
-                                        <img src={prod.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
-                                      </div>
-                                    ) : (
-                                      <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-                                        {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[p.category] || "✦"}
-                                      </div>
-                                    )}
-                                    {prod ? (
-                                      <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prod.product_name || p.name || "Item"}</div>
-                                        {prod.brand && <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginTop: 1 }}>{prod.brand}</div>}
-                                        {prod.price && <div style={{ fontSize: 13, color: "var(--accent)", fontWeight: 700, marginTop: 2 }}>{prod.price}</div>}
-                                      </div>
-                                    ) : (
-                                      <div style={{ width: "100%" }}>
-                                        <div style={{ fontSize: 12, fontWeight: 600, color: "#fff", marginBottom: 2, lineHeight: 1.3 }}>{p.name || p.title || "Item"}</div>
-                                        {(p.brand || p.retailer) && <div style={{ fontSize: 10, color: "rgba(255,255,255,.4)", marginBottom: 2 }}>{p.brand || p.retailer}</div>}
-                                        {p.price && <div style={{ fontSize: 12, color: "#FF6B35", fontWeight: 700, marginBottom: 2 }}>{p.price}</div>}
-                                        {!p.brand && !p.price && p.why && <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", lineHeight: 1.4 }}>{p.why}</div>}
-                                      </div>
-                                    )}
-                                    <div style={{ fontSize: 11, color: "#C9A96E", fontWeight: 600, flexShrink: 0, minHeight: 44, display: "flex", alignItems: "center" }}>{prod ? "Shop" : "Shop →"}</div>
-                                  </a>
-                                );
-                              })}
+                        ) : null}
+                        <input
+                          id="adv-search-notes"
+                          value={searchNotes}
+                          onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
+                          onKeyDown={e => { if (e.key === "Enter" && searchNotes.trim()) { e.target.blur(); runProductSearch(); } }}
+                          placeholder="Tell us more... (brand, color, style)"
+                          style={{
+                            width: "100%", padding: "10px 14px",
+                            background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)",
+                            borderRadius: "var(--radius-md)", color: "var(--text-secondary)", fontSize: "var(--text-sm)",
+                            fontFamily: "'Outfit'", outline: "none", boxSizing: "border-box", minHeight: 44,
+                          }}
+                          onFocus={e => e.target.style.borderColor = "rgba(201,169,110,.3)"}
+                          onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.06)"}
+                        />
+                      </div>
+
+                      {/* Budget presets + range */}
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase", marginBottom: 8 }}>Budget Range</div>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                          {[
+                            { l: "$ Under $50", min: 0, max: 50 },
+                            { l: "$$ $50-150", min: 50, max: 150 },
+                            { l: "$$$ $150-500", min: 150, max: 500 },
+                            { l: "$$$$ $500+", min: 500, max: 2000 },
+                          ].map(preset => {
+                            const isActive = budgetMin === preset.min && budgetMax === preset.max;
+                            return (
+                              <button key={preset.l}
+                                onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); }}
+                                style={{
+                                  padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s",
+                                  background: isActive ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.03)",
+                                  border: `1px solid ${isActive ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.06)"}`,
+                                  color: isActive ? "#C9A96E" : "rgba(255,255,255,.4)",
+                                }}>
+                                {preset.l}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,.2)", marginBottom: 4 }}>MIN</div>
+                            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 10, padding: "8px 12px" }}>
+                              <span style={{ color: "rgba(255,255,255,.3)", fontSize: 14, marginRight: 4 }}>$</span>
+                              <input type="number" value={budgetMin} onChange={e => setBudgetMin(Math.max(0, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, width: "100%", outline: "none" }} />
                             </div>
-                            <button onClick={() => setPairings(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.15)", fontFamily: "'Outfit'", fontSize: 11, cursor: "pointer", padding: "4px 0" }}>Dismiss</button>
                           </div>
-                        )}
-                        {pairings && pairings.length === 0 && (
-                          <div style={{ fontSize: 12, color: "rgba(255,255,255,.2)", textAlign: "center", padding: "12px 0" }}>Outfit looks complete — no obvious gaps found.</div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Native ad slot — free users, every 2 items */}
-                    {showAds && selIdx % 2 === 1 && (
-                      <div style={{ background: "linear-gradient(135deg, rgba(255,107,53,.07) 0%, rgba(255,107,53,.02) 100%)", border: "1px solid rgba(255,107,53,.18)", borderRadius: 12, padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
-                        <div style={{ width: 44, height: 44, borderRadius: 8, flexShrink: 0, background: "linear-gradient(135deg, rgba(255,107,53,.5), rgba(255,140,90,.6))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>✨</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 9, color: "rgba(255,255,255,.25)", letterSpacing: 1, textTransform: "uppercase", marginBottom: 2 }}>Sponsored</div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 2 }}>Featured Brand</div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)" }}>Discover this season's essentials</div>
+                          <span style={{ color: "rgba(255,255,255,.15)", fontSize: 14, marginTop: 16 }}>--</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 9, color: "rgba(255,255,255,.2)", marginBottom: 4 }}>MAX</div>
+                            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 10, padding: "8px 12px" }}>
+                              <span style={{ color: "rgba(255,255,255,.3)", fontSize: 14, marginRight: 4 }}>$</span>
+                              <input type="number" value={budgetMax} onChange={e => setBudgetMax(Math.max(budgetMin + 1, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, width: "100%", outline: "none" }} />
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ fontSize: 11, color: "#FF6B35", fontWeight: 600, padding: "5px 10px", border: "1px solid rgba(255,107,53,.35)", borderRadius: 6, whiteSpace: "nowrap", flexShrink: 0 }}>Shop →</div>
                       </div>
-                    )}
 
-                    <div className="aff-note">Links may include affiliate partnerships</div>
-                  </div>
-                );
-              })()}
+                      {/* Update button */}
+                      <button
+                        onClick={() => { setPrefs(p => ({ ...p, budget_min: budgetMin, budget_max: budgetMax })); runProductSearch(); }}
+                        style={{
+                          width: "100%", padding: "12px 0",
+                          background: "#C9A96E", color: "#0C0C0E", border: "none",
+                          borderRadius: "var(--radius-md)", fontFamily: "'Outfit'",
+                          fontSize: 14, fontWeight: 700, cursor: "pointer",
+                        }}>
+                        Update Search
+                      </button>
+
+                      {/* Complete the Look */}
+                      {results?.items?.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase", marginBottom: 8 }}>{t("complete_look")}</div>
+                          {!pairings && !pairingsLoading && (
+                            <button
+                              onClick={async () => {
+                                setPairingsLoading(true);
+                                try {
+                                  const res = await API.suggestPairings(scanId, results.items.filter((_, idx) => pickedItems.has(idx)), results.gender);
+                                  setPairings(res?.pairings || []);
+                                  track("pairings_requested", { item_count: pickedItems.size }, scanId, "scan");
+                                } catch { setPairings([]); }
+                                setPairingsLoading(false);
+                              }}
+                              style={{ width: "100%", padding: "12px 0", background: "rgba(201,169,110,.07)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                              Complete the Look
+                            </button>
+                          )}
+                          {pairingsLoading && (
+                            <div style={{ padding: "14px", textAlign: "center", color: "rgba(255,255,255,.3)", fontSize: 12 }}>
+                              <div className="ld-dots" style={{ justifyContent: "center", marginBottom: 6 }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
+                              Finding complementary pieces...
+                            </div>
+                          )}
+                          {pairings && pairings.length > 0 && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                              <div className="scroll-x" style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+                                {pairings.map((p, pi) => {
+                                  const prod = p.product;
+                                  const shopUrl = prod?.url
+                                    ? API.affiliateUrl(`pairing_${scanId}_${pi}`, prod.url, scanId, 0, "pairing", prod.brand)
+                                    : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
+                                  return (
+                                    <a key={pi} href={shopUrl} target="_blank" rel="noopener noreferrer"
+                                      onClick={async () => {
+                                        track("pairing_clicked", { name: p.name, search_query: p.search_query, category: p.category, has_product: !!prod }, scanId, "scan");
+                                        authFetch(`${API_BASE}/api/suggest-pairings/track-click`, { method: "POST", body: JSON.stringify({ pairing_product_url: shopUrl, item_name: p.name }) }).catch(() => {});
+                                      }}
+                                      className="card-press"
+                                      style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", overflow: "hidden" }}>
+                                      {prod?.image_url ? (
+                                        <div style={{ width: "100%", aspectRatio: "1", background: "rgba(255,255,255,.04)", overflow: "hidden" }}>
+                                          <img src={prod.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                        </div>
+                                      ) : (
+                                        <div style={{ width: "100%", aspectRatio: "1", background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+                                          {{ shoes: "S", accessory: "A", bag: "B", outerwear: "O", top: "T", bottom: "B", dress: "D" }[p.category] || "?"}
+                                        </div>
+                                      )}
+                                      <div style={{ padding: "8px 10px" }}>
+                                        <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,.7)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod?.product_name || p.name || "Item"}</div>
+                                        {(prod?.brand || p.brand) && <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)" }}>{prod?.brand || p.brand}</div>}
+                                        {(prod?.price || p.price) && <div style={{ fontSize: 13, fontWeight: 700, color: "#C9A96E", marginTop: 2 }}>{prod?.price || p.price}</div>}
+                                        <div style={{ fontSize: 11, fontWeight: 600, color: "#C9A96E", textAlign: "center", paddingTop: 4, borderTop: "1px solid rgba(255,255,255,.04)" }}>Shop</div>
+                                      </div>
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                              <button onClick={() => setPairings(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.15)", fontFamily: "'Outfit'", fontSize: 11, cursor: "pointer", padding: "4px 0" }}>Dismiss</button>
+                            </div>
+                          )}
+                          {pairings && pairings.length === 0 && (
+                            <div style={{ fontSize: 12, color: "rgba(255,255,255,.2)", textAlign: "center", padding: "12px 0" }}>Outfit looks complete.</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Share buttons */}
+                      {scanId && (
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            aria-label="Share Your Look"
+                            onClick={async () => {
+                              const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                              const shareData = { title: "ATTAIRE - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIRE!", url: shareUrl };
+                              if (navigator.share) {
+                                try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
+                              } else {
+                                try {
+                                  await navigator.clipboard.writeText(shareUrl);
+                                  setShareLinkCopied(true);
+                                  setTimeout(() => setShareLinkCopied(false), 2000);
+                                  track("share_link", { method: "clipboard" }, scanId, "scan");
+                                } catch {}
+                              }
+                            }}
+                            style={{
+                              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                              padding: "12px 16px", minHeight: 44,
+                              background: "rgba(255,255,255,.04)", color: "rgba(255,255,255,.5)",
+                              border: "1px solid rgba(255,255,255,.08)", borderRadius: "var(--radius-md)",
+                              fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                            {shareLinkCopied ? "Copied!" : "Share"}
+                          </button>
+                          <button
+                            aria-label="Share Card"
+                            disabled={shareCardLoading}
+                            onClick={async () => {
+                              setShareCardLoading(true);
+                              try {
+                                const userName = authName || (authEmail ? authEmail.split("@")[0] : "");
+                                const cardDataUrl = await generateShareCard({
+                                  imageUrl: img,
+                                  summary: results?.summary,
+                                  items: results?.items?.filter((_, idx) => pickedItems.has(idx)),
+                                  verdict: scanVerdicts[scanId],
+                                  userName,
+                                });
+                                const res = await fetch(cardDataUrl);
+                                const blob = await res.blob();
+                                const file = new File([blob], "attair-outfit.png", { type: "image/png" });
+                                if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                                  try { await navigator.share({ title: "My ATTAIRE Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
+                                } else {
+                                  const a = document.createElement("a");
+                                  a.href = cardDataUrl;
+                                  a.download = "attair-outfit.png";
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  track("share_card", { method: "download" }, scanId, "scan");
+                                }
+                              } catch (e) { console.error("Share card generation failed:", e); }
+                              setShareCardLoading(false);
+                            }}
+                            style={{
+                              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                              padding: "12px 16px", minHeight: 44,
+                              background: "rgba(255,255,255,.04)", color: "rgba(255,255,255,.5)",
+                              border: "1px solid rgba(255,255,255,.08)", borderRadius: "var(--radius-md)",
+                              fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                              opacity: shareCardLoading ? 0.6 : 1,
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            {shareCardLoading ? "..." : "Share Card"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="aff-note" style={{ padding: "8px 20px 16px" }}>Links may include affiliate partnerships</div>
             </div>
           )}
 
