@@ -1054,12 +1054,91 @@ const STRINGS = {
 // ONBOARDING
 // ═══════════════════════════════════════════════════════════════
 const OB_STEPS = [
-  { id: "welcome", type: "info", icon: "✦", title: "Identify any outfit.\nShop it at any budget.", sub: "Snap a photo. Our AI identifies every item, then finds you a budget, mid-range, and premium option for each.", cta: "Get Started" },
-  { id: "gender", type: "select", title: "I usually shop for…", sub: "We also auto-detect from each photo.", opts: [{ l: "Menswear", v: "men" },{ l: "Womenswear", v: "women" },{ l: "Both", v: "both" }] },
-  { id: "budget", type: "budget_range", title: "What's your budget\nper item?", sub: "We'll tailor budget, mid, and premium tiers to your range. You can change this anytime." },
-  { id: "size_prefs", type: "size_prefs", title: "How do you like to fit?", sub: "We'll prioritize results in your size. You can skip and update this anytime in Profile." },
-  { id: "proof", type: "info", icon: "◎", title: "You're all set.", sub: "Every scan gives you 3 price options per item — budget, mid-range, and premium. You choose.", cta: "Continue" },
+  { id: "welcome", type: "info", icon: "✦", title: "Scan any outfit.\nFind where to buy it.", sub: "Point your camera at any look. Our AI identifies every piece and finds you budget, mid, and premium options instantly.", cta: "Get Started" },
+  { id: "first_scan", type: "first_scan", title: "Scan Your First Outfit", sub: "Take a photo or upload one to see the magic." },
 ];
+
+// ═══════════════════════════════════════════════════════════════
+// SHARE CARD GENERATOR — Canvas API (Instagram story 9:16)
+// ═══════════════════════════════════════════════════════════════
+async function generateShareCard({ imageUrl, summary, items, verdict, userName }) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const ctx = canvas.getContext("2d");
+
+  // Background: dark gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, 1920);
+  grad.addColorStop(0, "#0C0C0E");
+  grad.addColorStop(1, "#1A1A1A");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1080, 1920);
+
+  // Load and draw outfit photo
+  try {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = imageUrl;
+    });
+    const photoX = 40, photoY = 120, photoW = 1000, photoH = 1200;
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(photoX, photoY, photoW, photoH, 24);
+    ctx.clip();
+    const scale = Math.max(photoW / img.width, photoH / img.height);
+    const sw = photoW / scale, sh = photoH / scale;
+    const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2;
+    ctx.drawImage(img, sx, sy, sw, sh, photoX, photoY, photoW, photoH);
+    ctx.restore();
+  } catch (e) {
+    // If image fails, continue with text only
+  }
+
+  // Verdict badge
+  const verdictY = 1380;
+  if (verdict) {
+    const labels = { would_wear: "Would Wear", on_the_fence: "On the Fence", not_for_me: "Not for Me" };
+    const colors = { would_wear: "#4CAF50", on_the_fence: "#FFB74D", not_for_me: "#FF5252" };
+    ctx.fillStyle = colors[verdict] || "#C9A96E";
+    ctx.font = "bold 48px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(labels[verdict] || "", 540, verdictY);
+  }
+
+  // Summary
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "600 36px system-ui";
+  ctx.textAlign = "center";
+  const summaryText = summary?.substring(0, 60) || "";
+  if (summaryText) ctx.fillText(summaryText, 540, 1460);
+
+  // Items count
+  const itemCount = items?.length || 0;
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.font = "400 28px system-ui";
+  ctx.fillText(`${itemCount} item${itemCount !== 1 ? "s" : ""} identified`, 540, 1520);
+
+  // User name
+  if (userName) {
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "400 24px system-ui";
+    ctx.fillText(`Scanned by ${userName}`, 540, 1580);
+  }
+
+  // ATTAIR watermark
+  ctx.fillStyle = "#C9A96E";
+  ctx.font = "bold 56px system-ui";
+  ctx.textAlign = "center";
+  ctx.fillText("ATTAIR", 540, 1800);
+  ctx.fillStyle = "rgba(201,169,110,0.5)";
+  ctx.font = "400 24px system-ui";
+  ctx.fillText("AI Fashion Scanner", 540, 1850);
+
+  return canvas.toDataURL("image/png");
+}
 
 // ═══════════════════════════════════════════════════════════════
 // ─── Loading message arrays ──────────────────────────────────
@@ -1293,6 +1372,22 @@ export default function App() {
   const [scanVerdicts, setScanVerdicts] = useState({}); // { [scanId]: "would_wear"|"on_the_fence"|"not_for_me" }
   const [verdictAnimating, setVerdictAnimating] = useState(null); // "would_wear"|"on_the_fence"|"not_for_me"|null
 
+  // ─── Public scan view (deep link /scan/:id) ────────────────
+  const [publicScanView, setPublicScanView] = useState(null); // { scanId, data, loading, error }
+
+  // ─── Share card generation ──────────────────────────────────
+  const [shareCardLoading, setShareCardLoading] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  // ─── Post-first-scan preference sheet ──────────────────────
+  const [showPrefSheet, setShowPrefSheet] = useState(false);
+  const [prefSheetBudgetMin, setPrefSheetBudgetMin] = useState(50);
+  const [prefSheetBudgetMax, setPrefSheetBudgetMax] = useState(150);
+  const [prefSheetFit, setPrefSheetFit] = useState([]);
+
+  // ─── Style fingerprint card ────────────────────────────────
+  const [showStyleFingerprint, setShowStyleFingerprint] = useState(false);
+
   // ─── Wishlists ────────────────────────────────────────────
   const [wishlists, setWishlists] = useState([]);       // [{ id, name, created_at }]
   const [activeWishlist, setActiveWishlist] = useState(null); // { id, name } | null
@@ -1306,6 +1401,13 @@ export default function App() {
   const [likesLongPressItem, setLikesLongPressItem] = useState(null); // { savedItem } for collection sheet
   const [likesCollectionInput, setLikesCollectionInput] = useState("");
   const [likesCollectionCreating, setLikesCollectionCreating] = useState(false);
+  const [likesCategoryFilter, setLikesCategoryFilter] = useState("all"); // category chip filter
+  const [likesBudgetExpanded, setLikesBudgetExpanded] = useState(false); // budget tracker toggle
+
+  // ─── Profile redesign ──────────────────────────────────────
+  const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
+  const [profileScanOverlay, setProfileScanOverlay] = useState(null); // scan object for overlay
+  const [historyDetailScan, setHistoryDetailScan] = useState(null); // history item detail overlay
 
   // ─── Interest Picker (style inspirations) ─────────────────
   const [showInterestPicker, setShowInterestPicker] = useState(false);
@@ -1628,6 +1730,24 @@ export default function App() {
     }
   }, []);
 
+  // ─── Public scan deep link — /scan/:scanId ──────────────────
+  useEffect(() => {
+    const match = window.location.pathname.match(/^\/scan\/([a-zA-Z0-9\-]+)$/);
+    if (match) {
+      const deepScanId = match[1];
+      setPublicScanView({ scanId: deepScanId, data: null, loading: true, error: null });
+      API.getPublicScan(deepScanId).then(data => {
+        if (data.error) {
+          setPublicScanView(prev => prev ? { ...prev, loading: false, error: data.error } : null);
+        } else {
+          setPublicScanView(prev => prev ? { ...prev, loading: false, data } : null);
+        }
+      }).catch(err => {
+        setPublicScanView(prev => prev ? { ...prev, loading: false, error: err.message || "Failed to load scan" } : null);
+      });
+    }
+  }, []);
+
   // ─── Auth handlers ────────────────────────────────────────
   const handleAuth = async () => {
     setAuthErr(null);
@@ -1931,6 +2051,14 @@ export default function App() {
       [...pickedItems].forEach(idx => { next[idx] = "shop"; });
       return next;
     });
+
+    // Post-first-scan preference sheet — show once after the user's very first scan
+    if (!localStorage.getItem("attair_pref_sheet_shown")) {
+      setTimeout(() => {
+        setShowPrefSheet(true);
+        localStorage.setItem("attair_pref_sheet_shown", "1");
+      }, 1200);
+    }
 
     // Refresh history + saved so those tabs are up to date
     API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
@@ -2522,6 +2650,103 @@ export default function App() {
       .scan-vis-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;border:1px solid var(--border);background:var(--accent-bg);color:var(--text-secondary);font-family:'Outfit';font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;min-height:32px}
       .scan-vis-chip.active{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
 
+      /* ─── Profile Redesign (TikTok/IG style) ────────── */
+      .profile-v2{display:flex;flex-direction:column;min-height:100%}
+      .profile-v2-header{display:flex;flex-direction:column;align-items:center;padding:24px 20px 16px;position:relative}
+      .profile-v2-avatar{width:64px;height:64px;border-radius:50%;background:var(--accent-bg);border:2px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);font-size:24px;font-family:'Outfit';flex-shrink:0}
+      .profile-v2-name{font-size:var(--text-xl,24px);font-weight:var(--weight-bold,700);color:var(--text-primary);margin-top:12px;text-align:center}
+      .profile-v2-bio{font-size:var(--text-sm,14px);color:var(--text-secondary);margin-top:4px;text-align:center;cursor:pointer;max-width:280px;line-height:1.4}
+      .profile-v2-gear{position:absolute;top:16px;right:16px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;cursor:pointer;border-radius:50%;transition:background var(--transition-fast);-webkit-tap-highlight-color:transparent}
+      .profile-v2-gear:hover{background:var(--accent-bg)}
+      .profile-v2-gear svg{width:22px;height:22px;stroke:var(--text-secondary);fill:none;stroke-width:1.8}
+
+      .profile-v2-stats{display:flex;justify-content:center;gap:0;padding:16px 0;margin:0 20px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+      .profile-v2-stat{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+      .profile-v2-stat-num{font-size:18px;font-weight:var(--weight-bold,700);color:var(--text-primary)}
+      .profile-v2-stat-label{font-size:var(--text-xs,12px);color:var(--text-tertiary);font-weight:var(--weight-medium,500)}
+
+      .profile-v2-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px}
+      .profile-v2-grid-cell{aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;background:var(--bg-card)}
+      .profile-v2-grid-cell img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity var(--transition-fast)}
+      .profile-v2-grid-cell:active img{opacity:.7}
+      .profile-v2-grid-cell .grid-items-badge{position:absolute;bottom:6px;right:6px;font-size:10px;font-weight:700;background:rgba(0,0,0,.6);color:#fff;padding:2px 6px;border-radius:4px;backdrop-filter:blur(4px)}
+      .profile-v2-grid-placeholder{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--accent-bg);font-size:24px;opacity:.3}
+
+      .scan-overlay{position:fixed;inset:0;z-index:var(--z-modal,200);background:var(--bg-primary);animation:slideUpSheet var(--transition-normal);overflow-y:auto;-webkit-overflow-scrolling:touch}
+      .scan-overlay-close{position:fixed;top:16px;right:16px;z-index:calc(var(--z-modal,200) + 1);width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:50%;cursor:pointer;transition:all var(--transition-fast)}
+      .scan-overlay-close svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
+      .scan-overlay-img{width:100%;max-height:50vh;object-fit:cover;display:block}
+      .scan-overlay-body{padding:20px}
+      .scan-overlay-summary{font-size:var(--text-sm,14px);color:var(--text-secondary);line-height:1.5;margin-bottom:12px}
+      .scan-overlay-meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+      .scan-overlay-tag{font-size:var(--text-xs,12px);font-weight:var(--weight-semibold,600);padding:4px 10px;border-radius:var(--radius-full,9999px);background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
+
+      /* ─── Settings bottom sheet ─────────────────────── */
+      .settings-sheet-item{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);font-size:var(--text-md,16px);color:var(--text-primary);cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent}
+      .settings-sheet-item:last-child{border-bottom:none}
+      .settings-sheet-item .settings-label{font-weight:var(--weight-medium,500)}
+      .settings-sheet-item .settings-value{font-size:var(--text-sm,14px);color:var(--text-tertiary)}
+      .settings-sheet-item.danger{color:var(--error);justify-content:center;font-weight:var(--weight-semibold,600)}
+
+      /* ─── History Redesign ──────────────────────────── */
+      .history-v2{padding:16px;display:flex;flex-direction:column;gap:10px}
+      .history-v2-card{display:flex;gap:12px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md,12px);box-shadow:var(--shadow-card);cursor:pointer;transition:all var(--transition-fast);-webkit-tap-highlight-color:transparent;align-items:center}
+      .history-v2-card:active{transform:scale(0.98)}
+      .history-v2-thumb{width:60px;height:60px;border-radius:var(--radius-sm,8px);object-fit:cover;flex-shrink:0;background:var(--bg-card)}
+      .history-v2-thumb-placeholder{width:60px;height:60px;border-radius:var(--radius-sm,8px);background:var(--accent-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;opacity:.5}
+      .history-v2-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+      .history-v2-title{font-size:var(--text-sm,14px);font-weight:var(--weight-semibold,600);color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .history-v2-date{font-size:var(--text-xs,12px);color:var(--text-tertiary)}
+      .history-v2-summary{font-size:var(--text-xs,12px);color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .history-v2-badge{font-size:10px;font-weight:var(--weight-bold,700);padding:2px 7px;border-radius:var(--radius-sm,8px);background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);white-space:nowrap;flex-shrink:0}
+      .history-v2-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+
+      .history-v2-detail{position:fixed;inset:0;z-index:var(--z-modal,200);background:var(--bg-primary);animation:slideUpSheet var(--transition-normal);overflow-y:auto;-webkit-overflow-scrolling:touch}
+      .history-v2-detail-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:color-mix(in srgb,var(--bg-primary) 92%,transparent);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+
+      /* ─── Likes Redesign (Pinterest masonry) ─────────── */
+      .likes-v2{display:flex;flex-direction:column;min-height:100%}
+      .likes-v2-chips{display:flex;gap:6px;padding:12px 16px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+      .likes-v2-chips::-webkit-scrollbar{display:none}
+      .likes-v2-masonry{display:flex;gap:10px;padding:0 16px 80px}
+      .likes-v2-col{display:flex;flex-direction:column;gap:10px;flex:1;min-width:0}
+      .likes-v2-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg,16px);overflow:hidden;box-shadow:var(--shadow-card);position:relative;break-inside:avoid}
+      .likes-v2-card-img{width:100%;display:block;background:var(--accent-bg)}
+      .likes-v2-card-img-placeholder{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--accent-bg);font-size:32px;opacity:.3}
+      .likes-v2-card-body{padding:10px 12px 12px}
+      .likes-v2-card-brand{font-size:var(--text-xs,12px);color:var(--text-tertiary);font-weight:var(--weight-medium,500);margin-bottom:2px}
+      .likes-v2-card-name{font-size:var(--text-sm,14px);font-weight:var(--weight-semibold,600);color:var(--text-primary);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;margin-bottom:4px}
+      .likes-v2-card-price{font-size:var(--text-sm,14px);font-weight:var(--weight-bold,700);color:var(--accent)}
+      .likes-v2-heart{position:absolute;top:4px;right:4px;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all var(--transition-fast)}
+      .likes-v2-heart:active{transform:scale(.88)}
+      .likes-v2-heart svg{width:16px;height:16px;fill:var(--accent);stroke:var(--accent);stroke-width:1.5}
+
+      .budget-tracker{margin:0 16px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md,12px);overflow:hidden;box-shadow:var(--shadow-card)}
+      .budget-tracker-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:44px}
+      .budget-tracker-header span{font-size:var(--text-sm,14px);font-weight:var(--weight-semibold,600);color:var(--text-primary)}
+      .budget-tracker-chevron{font-size:14px;color:var(--text-tertiary);transition:transform var(--transition-fast)}
+      .budget-tracker-body{padding:0 14px 14px}
+      .budget-tracker-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+      .budget-tracker-bar-label{font-size:var(--text-xs,12px);color:var(--text-secondary);width:70px;flex-shrink:0}
+      .budget-tracker-bar-track{flex:1;height:8px;background:var(--accent-bg);border-radius:var(--radius-full,9999px);overflow:hidden}
+      .budget-tracker-bar-fill{height:100%;border-radius:var(--radius-full,9999px);transition:width var(--transition-normal)}
+      .budget-tracker-total{display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);margin-top:4px}
+      .budget-tracker-total span{font-size:var(--text-sm,14px)}
+      .budget-tracker-total .total-label{color:var(--text-secondary)}
+      .budget-tracker-total .total-value{font-weight:var(--weight-bold,700);color:var(--accent)}
+      .budget-tracker-locked{padding:16px 14px;text-align:center}
+      .budget-tracker-locked p{font-size:var(--text-sm,14px);color:var(--text-tertiary);margin-bottom:10px}
+
+      /* ─── Light mode for new components ─────────────── */
+      .app[data-theme='light'] .profile-v2-avatar{background:rgba(201,169,110,.1);border-color:rgba(201,169,110,.3)}
+      .app[data-theme='light'] .scan-overlay{background:var(--bg-primary)}
+      .app[data-theme='light'] .scan-overlay-close{background:rgba(0,0,0,.3)}
+      .app[data-theme='light'] .history-v2-card{background:#fff;border-color:rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+      .app[data-theme='light'] .likes-v2-card{background:#fff;border-color:rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+      .app[data-theme='light'] .likes-v2-heart{background:rgba(255,255,255,.8)}
+      .app[data-theme='light'] .budget-tracker{background:#fff;border-color:rgba(0,0,0,.08)}
+      .app[data-theme='light'] .settings-sheet-item{border-bottom-color:rgba(0,0,0,.06)}
+
       /* ─── Comprehensive light mode: item-opts-sheet ────── */
       .app[data-theme='light'] .item-opts-sheet [style*="color: \"#fff\""][style*="fontSize: 16"]{color:#1a1a1a!important}
       .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.3)"][style*="fontSize: 11"]{color:rgba(0,0,0,.4)!important}
@@ -2677,6 +2902,24 @@ export default function App() {
                 </div>
               );
             })()}
+            {step.type === "first_scan" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
+                <div style={{ width: 120, height: 120, borderRadius: "50%", border: "1.5px dashed rgba(201,169,110,.4)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
+                </div>
+                <div style={{ display: "flex", gap: 12, width: "100%" }}>
+                  <button className="cta" style={{ flex: 1 }} onClick={() => { trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: "middle" }}><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
+                    Take a Photo
+                  </button>
+                  <button className="cta" style={{ flex: 1, background: "rgba(201,169,110,.12)", color: "#C9A96E" }} onClick={() => { trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: "middle" }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload
+                  </button>
+                </div>
+                <button className="ob-skip" onClick={() => { trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }}>Skip for now</button>
+              </div>
+            )}
             {step.type === "info" && <button className="cta" onClick={() => obNext()}>{step.cta}</button>}
             {obIdx === 0 && <button style={{background:"none",border:"none",color:"rgba(255,255,255,.25)",fontSize:13,cursor:"pointer",fontFamily:"'Outfit'",padding:"12px 0",marginTop:8}} onClick={() => { setScreen("auth"); setAuthScreen("login"); }}>Already have an account? Log in</button>}
           </div>
@@ -3284,6 +3527,91 @@ export default function App() {
                 )}
               </div>
 
+              {/* ─── Share buttons ──────────────────────────── */}
+              {phase === "done" && scanId && (
+                <div style={{ padding: "0 20px 10px", display: "flex", gap: 8 }}>
+                  <button
+                    aria-label="Share Your Look"
+                    onClick={async () => {
+                      const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                      const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
+                      if (navigator.share) {
+                        try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
+                      } else {
+                        try {
+                          await navigator.clipboard.writeText(shareUrl);
+                          setShareLinkCopied(true);
+                          setTimeout(() => setShareLinkCopied(false), 2000);
+                          track("share_link", { method: "clipboard" }, scanId, "scan");
+                        } catch {}
+                      }
+                    }}
+                    style={{
+                      flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      padding: "12px 16px", minHeight: 44,
+                      background: "var(--accent)", color: "var(--text-inverse)",
+                      border: "none", borderRadius: "var(--radius-md)",
+                      fontFamily: "'Outfit'", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                      transition: "all var(--transition-fast)",
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    {shareLinkCopied ? "Link copied!" : "Share Your Look"}
+                  </button>
+                  <button
+                    aria-label="Share Card"
+                    disabled={shareCardLoading}
+                    onClick={async () => {
+                      setShareCardLoading(true);
+                      try {
+                        const userName = authName || (authEmail ? authEmail.split("@")[0] : "");
+                        const cardDataUrl = await generateShareCard({
+                          imageUrl: img,
+                          summary: results?.summary,
+                          items: results?.items?.filter((_, i) => pickedItems.has(i)),
+                          verdict: scanVerdicts[scanId],
+                          userName,
+                        });
+                        // Convert dataURL to blob for sharing
+                        const res = await fetch(cardDataUrl);
+                        const blob = await res.blob();
+                        const file = new File([blob], "attair-outfit.png", { type: "image/png" });
+                        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                          try {
+                            await navigator.share({ title: "My ATTAIR Outfit", files: [file] });
+                            track("share_card", { method: "native" }, scanId, "scan");
+                          } catch {}
+                        } else {
+                          // Fallback: download the image
+                          const a = document.createElement("a");
+                          a.href = cardDataUrl;
+                          a.download = "attair-outfit.png";
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          track("share_card", { method: "download" }, scanId, "scan");
+                        }
+                      } catch (e) {
+                        console.error("Share card generation failed:", e);
+                      }
+                      setShareCardLoading(false);
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      padding: "12px 16px", minHeight: 44,
+                      background: "rgba(201,169,110,.1)", color: "#C9A96E",
+                      border: "1px solid rgba(201,169,110,.3)", borderRadius: "var(--radius-md)",
+                      fontFamily: "'Outfit'", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                      transition: "all var(--transition-fast)",
+                      opacity: shareCardLoading ? 0.6 : 1,
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    {shareCardLoading ? "..." : "Share Card"}
+                  </button>
+                </div>
+              )}
+
               {/* ─── Search notes (editable chip on results) ── */}
               {phase === "done" && (
                 <div style={{ padding: "0 20px 8px" }}>
@@ -3711,9 +4039,9 @@ export default function App() {
             </div>
           )}
 
-          {/* ─── History (merged with Saved) ─────────────── */}
+          {/* ─── History (Redesigned) ─────────────────────── */}
           {tab === "history" && (() => {
-            const filteredHistory = history; // "all" tab shows full history; saved tab shows saved items separately
+            const filteredHistory = history;
             const loadScan = (h) => {
               const items = h.items || [];
               setResults({ gender: h.detected_gender || "male", summary: h.summary || "", items: items.map(it => ({ ...it, status: h.tiers ? "verified" : "identified", tiers: null })) });
@@ -3723,8 +4051,98 @@ export default function App() {
               setImg(h.image_url || h.image_thumbnail || null);
               setScanId(h.id); setSelIdx(0); setPickedItems(new Set((h.tiers || []).map(t => t.item_index))); setPhase("done"); setTab("scan");
             };
-            return <div className="hist-list">
-                  {/* Filter tabs — saved items and lists moved to Likes tab */}
+            return <div className="history-v2">
+                  {/* Free tier notice */}
+                  {isFree && <div style={{fontSize:10,color:"var(--text-tertiary)",marginBottom:8,display:"flex",justifyContent:"space-between"}}><span>Last 7 days</span><span style={{color:"var(--accent)",cursor:"pointer"}} onClick={() => setUpgradeModal("history_expiring")}>Keep all history</span></div>}
+
+                  {/* Empty State */}
+                  {filteredHistory.length === 0 ? (
+                    <div className="empty" style={{ padding: "60px 24px" }}>
+                      <div className="empty-i" style={{ fontSize: 40, opacity: 0.15 }}>
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
+                      </div>
+                      <div className="empty-t">No scans yet</div>
+                      <div className="empty-s">Your scan history will appear here</div>
+                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setTab("scan")}>Scan your first outfit</button>
+                    </div>
+                  ) : (
+                    <>
+                    {filteredHistory.map((h, i) => {
+                      const hItems = h.items || [];
+                      const hImgSrc = h.image_url || h.image_thumbnail;
+                      const hSummary = h.summary || hItems.map(it => it.name).slice(0, 2).join(", ") || "Outfit scan";
+                      return (
+                        <div className="history-v2-card" key={h.id || i} onClick={() => setHistoryDetailScan(h)} aria-label={`Scan from ${new Date(h.created_at).toLocaleDateString()}`}>
+                          {hImgSrc ? (
+                            <img src={hImgSrc} className="history-v2-thumb" alt="" onError={e => e.target.style.display = "none"} />
+                          ) : (
+                            <div className="history-v2-thumb-placeholder">{h.detected_gender === "female" ? "\uD83D\uDC57" : "\uD83D\uDC54"}</div>
+                          )}
+                          <div className="history-v2-info">
+                            <div className="history-v2-title">{h.scan_name || hSummary}</div>
+                            <div className="history-v2-date">{new Date(h.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>
+                            <div className="history-v2-summary">{hSummary}</div>
+                          </div>
+                          <div className="history-v2-badge">{hItems.length} item{hItems.length !== 1 ? "s" : ""}</div>
+                          <div className="history-v2-actions" onClick={e => e.stopPropagation()}>
+                            {confirmDeleteId === h.id ? (
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <button className="btn-primary" style={{ padding: "4px 10px", fontSize: 11, minHeight: 30, background: "var(--error)" }} onClick={async () => { const ok = await API.deleteScan(h.id); if (ok) setHistory(prev => prev.filter(s => s.id !== h.id)); setConfirmDeleteId(null); }} aria-label="Confirm delete">Yes</button>
+                                <button className="btn-ghost" style={{ padding: "4px 10px", fontSize: 11, minHeight: 30 }} onClick={() => setConfirmDeleteId(null)} aria-label="Cancel">No</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setConfirmDeleteId(h.id)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 14, cursor: "pointer", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Delete scan">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    </>
+                  )}
+
+                  {/* History Detail Overlay */}
+                  {historyDetailScan && (() => {
+                    const hd = historyDetailScan, hdItems = hd.items || [], hdImg = hd.image_url || hd.image_thumbnail;
+                    return (
+                      <div className="scan-overlay" role="dialog" aria-label="Scan details" aria-modal="true">
+                        <button className="scan-overlay-close" onClick={() => setHistoryDetailScan(null)} aria-label="Close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                        {hdImg && <img className="scan-overlay-img" src={hdImg} alt="Scan" />}
+                        <div className="scan-overlay-body">
+                          <div className="scan-overlay-meta">
+                            <span className="scan-overlay-tag">{hdItems.length} item{hdItems.length !== 1 ? "s" : ""}</span>
+                            <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{new Date(hd.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
+                            {hd.detected_gender && <span className="scan-overlay-tag">{hd.detected_gender}</span>}
+                          </div>
+                          {hd.summary && <div className="scan-overlay-summary">{hd.summary}</div>}
+                          {hdItems.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            <div className="sec-t">Identified Items</div>
+                            {hdItems.map((it, idx) => (
+                              <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
+                                <div style={{ width: 36, height: 36, borderRadius: "var(--radius-sm)", background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{{ shoes: "\uD83D\uDC5F", accessory: "\u231A", bag: "\uD83D\uDC5C", outerwear: "\uD83E\uDDE5", top: "\uD83D\uDC55", bottom: "\uD83D\uDC56", dress: "\uD83D\uDC57" }[it.category] || "\u2726"}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+                                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{it.brand || it.category}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>}
+                          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                            <button className="btn-primary" style={{ flex: 1 }} onClick={() => { loadScan(hd); setHistoryDetailScan(null); }}>View Full Results</button>
+                            <button className="btn-secondary" style={{ flex: 1 }} onClick={() => {
+                              loadScan(hd); setHistoryDetailScan(null);
+                              // Re-run search with current preferences
+                              setTimeout(() => { setPhase("done"); }, 100);
+                            }}>Search Again</button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Legacy history rendering preserved below (hidden) */}
+                  <div style={{ display: "none" }}>
                   <div style={{ display: "flex", gap: 0, marginBottom: 12, background: "rgba(255,255,255,.03)", borderRadius: 10, padding: 3 }}>
                     {["all"].map(f => (
                       <button key={f} onClick={() => { setHistoryFilter(f); setActiveWishlist(null); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, border: "none", background: historyFilter === f ? "rgba(201,169,110,.12)" : "transparent", color: historyFilter === f ? "#C9A96E" : "rgba(255,255,255,.3)", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all .2s", letterSpacing: 0.5 }}>
@@ -4062,57 +4480,123 @@ export default function App() {
                     })
                   }
                   </>}
+                  </div>{/* end hidden legacy */}
                 </div>;
           })()}
 
-          {/* ─── Likes tab ─────────────────────────────── */}
+          {/* ─── Likes tab (Pinterest-style) ─────────────── */}
           {tab === "likes" && (() => {
-            // Group saved items by scan_id
-            const savedItemsByScan = {};
-            saved.forEach(s => {
-              const key = s.scan_id || "unsorted";
-              if (!savedItemsByScan[key]) savedItemsByScan[key] = [];
-              savedItemsByScan[key].push(s);
-            });
-
-            // Derive scan thumbnails from history
-            const scanThumbMap = {};
-            history.forEach(h => { if (h.id) scanThumbMap[h.id] = h.image_thumbnail || h.image_url; });
-
-            // Filter by collection
-            const allSavedItems = likesCollectionFilter === "all"
+            // Filter by collection first
+            const collFiltered = likesCollectionFilter === "all"
               ? saved
               : saved.filter(s => s.wishlist_id === likesCollectionFilter);
 
-            // Relative timestamp helper
-            const relTime = (dateStr) => {
-              if (!dateStr) return "";
-              const diff = Date.now() - new Date(dateStr).getTime();
-              const days = Math.floor(diff / 86400000);
-              if (days === 0) return "Saved today";
-              if (days === 1) return "Saved yesterday";
-              if (days < 7) return `Saved ${days} days ago`;
-              if (days < 30) return `Saved ${Math.floor(days / 7)}w ago`;
-              return `Saved ${new Date(dateStr).toLocaleDateString()}`;
+            // Derive unique categories
+            const categories = [...new Set(collFiltered.map(s => (s.item_data || s).category).filter(Boolean))];
+
+            // Apply category filter
+            const allSavedItems = likesCategoryFilter === "all"
+              ? collFiltered
+              : collFiltered.filter(s => (s.item_data || s).category === likesCategoryFilter);
+
+            // Budget tracker data
+            const budgetTierTotals = { budget: 0, mid: 0, premium: 0 };
+            collFiltered.forEach(s => {
+              const item = s.item_data || s;
+              const priceNum = parseFloat((item.price || "").replace(/[^0-9.]/g, ""));
+              if (!isNaN(priceNum)) {
+                if (priceNum < budgetMin) budgetTierTotals.budget += priceNum;
+                else if (priceNum <= budgetMax) budgetTierTotals.mid += priceNum;
+                else budgetTierTotals.premium += priceNum;
+              }
+            });
+            const budgetTotal = budgetTierTotals.budget + budgetTierTotals.mid + budgetTierTotals.premium;
+            const budgetMaxBar = Math.max(budgetTierTotals.budget, budgetTierTotals.mid, budgetTierTotals.premium, 1);
+
+            // Split into 2 columns for masonry
+            const col1 = [], col2 = [];
+            allSavedItems.forEach((s, i) => (i % 2 === 0 ? col1 : col2).push(s));
+
+            const renderCard = (s) => {
+              const item = s.item_data || s;
+              return (
+                <div key={s.id} className="likes-v2-card">
+                  {item.image_url ? (
+                    <img className="likes-v2-card-img" src={item.image_url} alt={item.name} loading="lazy" onError={e => e.target.style.display = "none"} />
+                  ) : (
+                    <div className="likes-v2-card-img-placeholder">{{ shoes: "\uD83D\uDC5F", accessory: "\u231A", bag: "\uD83D\uDC5C", outerwear: "\uD83E\uDDE5", top: "\uD83D\uDC55", bottom: "\uD83D\uDC56", dress: "\uD83D\uDC57" }[item.category] || "\u2726"}</div>
+                  )}
+                  <button className="likes-v2-heart" aria-label={`Unlike ${item.name}`} onClick={async () => { await API.deleteSaved(s.id).catch(() => {}); setSaved(prev => prev.filter(x => x.id !== s.id)); refreshStatus(); }}>
+                    <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  </button>
+                  <div className="likes-v2-card-body">
+                    {item.brand && item.brand !== "Unidentified" && <div className="likes-v2-card-brand">{item.brand}</div>}
+                    <div className="likes-v2-card-name">{item.name}</div>
+                    {item.price && <div className="likes-v2-card-price">{item.price}</div>}
+                  </div>
+                </div>
+              );
             };
 
             return (
-              <div style={{ display: "flex", flexDirection: "column", minHeight: "100%" }}>
-                {/* Collections chips */}
-                <div style={{ padding: "12px 16px 0", overflowX: "auto" }}>
-                  <div style={{ display: "flex", gap: 6, paddingBottom: 2 }}>
-                    {[{ id: "all", name: "All" }, ...wishlists].map(col => (
-                      <button key={col.id}
-                        onClick={() => setLikesCollectionFilter(col.id)}
-                        style={{ whiteSpace: "nowrap", padding: "6px 14px", borderRadius: 20, border: `1px solid ${likesCollectionFilter === col.id ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: likesCollectionFilter === col.id ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.03)", color: likesCollectionFilter === col.id ? "#C9A96E" : "rgba(255,255,255,.4)", fontSize: 12, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s", flexShrink: 0 }}>
-                        {col.name}
-                        {col.id !== "all" && <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.6 }}>{saved.filter(s => s.wishlist_id === col.id).length}</span>}
-                      </button>
-                    ))}
+              <div className="likes-v2">
+                {/* Budget Tracker (PRO) */}
+                <div className="budget-tracker">
+                  <div className="budget-tracker-header" onClick={() => setLikesBudgetExpanded(!likesBudgetExpanded)} aria-label="Toggle budget tracker" role="button">
+                    <span>Budget Tracker</span>
+                    <span className="budget-tracker-chevron" style={{ transform: likesBudgetExpanded ? "rotate(180deg)" : "rotate(0)" }}>{"\u25BE"}</span>
                   </div>
+                  {likesBudgetExpanded && (
+                    isPro ? (
+                      <div className="budget-tracker-body">
+                        <div className="budget-tracker-bar">
+                          <span className="budget-tracker-bar-label">Budget</span>
+                          <div className="budget-tracker-bar-track"><div className="budget-tracker-bar-fill" style={{ width: `${(budgetTierTotals.budget / budgetMaxBar) * 100}%`, background: "var(--success)" }} /></div>
+                          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", minWidth: 50, textAlign: "right" }}>${budgetTierTotals.budget.toFixed(0)}</span>
+                        </div>
+                        <div className="budget-tracker-bar">
+                          <span className="budget-tracker-bar-label">Mid</span>
+                          <div className="budget-tracker-bar-track"><div className="budget-tracker-bar-fill" style={{ width: `${(budgetTierTotals.mid / budgetMaxBar) * 100}%`, background: "var(--accent)" }} /></div>
+                          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", minWidth: 50, textAlign: "right" }}>${budgetTierTotals.mid.toFixed(0)}</span>
+                        </div>
+                        <div className="budget-tracker-bar">
+                          <span className="budget-tracker-bar-label">Premium</span>
+                          <div className="budget-tracker-bar-track"><div className="budget-tracker-bar-fill" style={{ width: `${(budgetTierTotals.premium / budgetMaxBar) * 100}%`, background: "var(--warning,#F5A623)" }} /></div>
+                          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", minWidth: 50, textAlign: "right" }}>${budgetTierTotals.premium.toFixed(0)}</span>
+                        </div>
+                        <div className="budget-tracker-total">
+                          <span className="total-label">Running total</span>
+                          <span className="total-value">${budgetTotal.toFixed(0)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="budget-tracker-locked">
+                        <p>Go Pro to track spending across all your saved items</p>
+                        <button className="btn-primary" style={{ fontSize: 12, padding: "8px 16px" }} onClick={() => setUpgradeModal("general")}>Go Pro to track your budget</button>
+                      </div>
+                    )
+                  )}
                 </div>
 
-                {/* Content area */}
+                {/* Filter Chips: Collections + Categories */}
+                <div className="likes-v2-chips" role="tablist" aria-label="Filter saved items">
+                  {[{ id: "all", name: "All" }, ...wishlists].map(col => (
+                    <button key={col.id} className={`chip${likesCollectionFilter === col.id ? " active" : ""}`} onClick={() => { setLikesCollectionFilter(col.id); setLikesCategoryFilter("all"); }} role="tab" aria-selected={likesCollectionFilter === col.id} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
+                      {col.name}
+                      {col.id !== "all" && <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.6 }}>{saved.filter(s => s.wishlist_id === col.id).length}</span>}
+                    </button>
+                  ))}
+                </div>
+                {categories.length > 1 && (
+                  <div className="likes-v2-chips" style={{ paddingTop: 0 }} role="tablist" aria-label="Filter by category">
+                    <button className={`chip${likesCategoryFilter === "all" ? " active" : ""}`} onClick={() => setLikesCategoryFilter("all")} style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: 12 }}>All</button>
+                    {categories.map(cat => (
+                      <button key={cat} className={`chip${likesCategoryFilter === cat ? " active" : ""}`} onClick={() => setLikesCategoryFilter(cat)} style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: 12, textTransform: "capitalize" }}>{cat}</button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Content — Pinterest masonry 2-col */}
                 {allSavedItems.length === 0 ? (
                   <div className="empty" style={{ padding: "60px 24px", textAlign: "center" }}>
                     <div className="empty-i">
@@ -4121,11 +4605,19 @@ export default function App() {
                       </svg>
                     </div>
                     <div className="empty-t" style={{ marginTop: 12 }}>{t("no_likes")}</div>
-                    <div className="empty-s" style={{ marginTop: 6 }}>Tap the heart on any product to save it here</div>
+                    <div className="empty-s" style={{ marginTop: 6 }}>Start scanning to save items you love</div>
+                    <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setTab("scan")}>Scan Now</button>
                   </div>
                 ) : (
+                  <div className="likes-v2-masonry">
+                    <div className="likes-v2-col">{col1.map(renderCard)}</div>
+                    <div className="likes-v2-col">{col2.map(renderCard)}</div>
+                  </div>
+                )}
+
+                {/* Legacy likes rendering (hidden) */}
+                {false && (
                   <div style={{ padding: "12px 16px 80px" }}>
-                    {/* Group by scan */}
                     {Object.entries(
                       allSavedItems.reduce((groups, s) => {
                         const key = s.scan_id || "unsorted";
@@ -4134,6 +4626,8 @@ export default function App() {
                         return groups;
                       }, {})
                     ).map(([scanKey, items]) => {
+                      const scanThumbMap = {};
+                      history.forEach(h => { if (h.id) scanThumbMap[h.id] = h.image_thumbnail || h.image_url; });
                       const thumb = scanThumbMap[scanKey];
                       const scanEntry = history.find(h => h.id === scanKey);
                       return (
@@ -4222,6 +4716,7 @@ export default function App() {
                     })}
                   </div>
                 )}
+                {/* end legacy likes */}
 
                 {/* Add-to-collection bottom sheet */}
                 {likesLongPressItem && (() => {
@@ -4296,8 +4791,135 @@ export default function App() {
             );
           })()}
 
-          {/* ─── Profile ───────────────────────────────── */}
-          {tab === "profile" && (
+          {/* ─── Profile (TikTok/IG Style) ──────────────── */}
+          {tab === "profile" && (() => {
+            const profileScansCount = history.length;
+            return (
+            <div className="profile-v2">
+              {/* Profile Header */}
+              <div className="profile-v2-header">
+                <button className="profile-v2-gear" aria-label="Open settings" onClick={() => setProfileSettingsOpen(true)}>
+                  <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                </button>
+                <div className="profile-v2-avatar" aria-label="Profile avatar">
+                  {(authName || authEmail || "U")[0].toUpperCase()}
+                </div>
+                <div className="profile-v2-name">
+                  {authName || (isPro ? "Pro Member" : "Free Account")}
+                  {isPro && <span className="pro" style={{ marginLeft: 8, verticalAlign: "middle" }}>PRO</span>}
+                  {isFree && <span className="free-badge" style={{ marginLeft: 8, verticalAlign: "middle", cursor: "pointer" }} onClick={() => setUpgradeModal("general")}>FREE</span>}
+                </div>
+                {profileBioEditing ? (
+                  <div style={{ width: "100%", maxWidth: 320, marginTop: 8 }}>
+                    <textarea className="profile-bio-area" rows={3} maxLength={200} autoFocus value={profileBio} onChange={e => setProfileBio(e.target.value.slice(0, 200))} placeholder="Tell people about your style..." aria-label="Edit your bio" />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                      <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{profileBio.length}/200</span>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn-ghost" style={{ padding: "6px 14px", fontSize: 12 }} onClick={() => setProfileBioEditing(false)}>Cancel</button>
+                        <button className="btn-primary" style={{ padding: "6px 14px", fontSize: 12 }} onClick={async () => { setProfileBioSaving(true); try { await API.updateProfile({ bio: profileBio }); } catch {} setProfileBioSaving(false); setProfileBioEditing(false); }}>{profileBioSaving ? "Saving..." : "Save"}</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="profile-v2-bio" onClick={() => setProfileBioEditing(true)} role="button" aria-label="Tap to edit bio" tabIndex={0}>
+                    {profileBio || <span style={{ fontStyle: "italic", color: "var(--text-tertiary)" }}>Add a bio...</span>}
+                  </div>
+                )}
+              </div>
+              <div className="profile-v2-stats" role="list" aria-label="Profile statistics">
+                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{profileScansCount}</div><div className="profile-v2-stat-label">Scans</div></div>
+                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{saved.length}</div><div className="profile-v2-stat-label">Likes</div></div>
+                <div className="profile-v2-stat" role="listitem"><div className="profile-v2-stat-num">{wishlists.length}</div><div className="profile-v2-stat-label">Collections</div></div>
+              </div>
+              {userStatus?.tier === "trial" && userStatus?.trial_ends_at && (() => {
+                const daysLeft = Math.ceil((new Date(userStatus.trial_ends_at) - Date.now()) / 86400000);
+                return daysLeft > 0 ? <div style={{ margin: "12px 20px 0", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 14px", borderRadius: "var(--radius-sm)", background: "rgba(255,107,53,.1)", border: "1px solid rgba(255,107,53,.25)", color: "#FF6B35", fontWeight: 600 }}>{daysLeft} day{daysLeft !== 1 ? "s" : ""} left in trial</div> : null;
+              })()}
+              {isFree && <div className="rcard" style={{ margin: "12px 20px 0" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Unlock the full experience</div><div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.4 }}>Unlimited scans, no ads, full history</div></div><button className="btn-primary" style={{ padding: "8px 16px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => setUpgradeModal("general")}>Go Pro</button></div></div>}
+              <div style={{ padding: "16px 0 80px" }}>
+                {history.length === 0 ? (
+                  <div className="empty" style={{ padding: "40px 20px" }}>
+                    <div className="empty-i" style={{ fontSize: 36, opacity: 0.2 }}><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg></div>
+                    <div className="empty-t">No scans yet</div>
+                    <div className="empty-s">Your outfits will show up here</div>
+                    <button className="btn-primary" style={{ marginTop: 8 }} onClick={() => setTab("scan")}>Scan your first outfit</button>
+                  </div>
+                ) : (
+                  <div className="profile-v2-grid">
+                    {history.map((hx) => {
+                      const hxImg = hx.image_thumbnail || hx.image_url;
+                      const hxItems = hx.items || [];
+                      return (
+                        <div key={hx.id} className="profile-v2-grid-cell" onClick={() => setProfileScanOverlay(hx)} aria-label={`Scan: ${hxItems.length} items`}>
+                          {hxImg ? <img src={hxImg} alt="" loading="lazy" onError={e => { e.target.style.display = "none"; }} /> : <div className="profile-v2-grid-placeholder">{hx.detected_gender === "female" ? "\uD83D\uDC57" : "\uD83D\uDC54"}</div>}
+                          {hxItems.length > 0 && <span className="grid-items-badge">{hxItems.length}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {profileScanOverlay && (() => {
+                const hs = profileScanOverlay, hsItems = hs.items || [], hsImg = hs.image_url || hs.image_thumbnail;
+                return (
+                  <div className="scan-overlay" role="dialog" aria-label="Scan details" aria-modal="true">
+                    <button className="scan-overlay-close" onClick={() => setProfileScanOverlay(null)} aria-label="Close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    {hsImg && <img className="scan-overlay-img" src={hsImg} alt="Scan" />}
+                    <div className="scan-overlay-body">
+                      <div className="scan-overlay-meta">
+                        <span className="scan-overlay-tag">{hsItems.length} item{hsItems.length !== 1 ? "s" : ""}</span>
+                        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{new Date(hs.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
+                        {hs.detected_gender && <span className="scan-overlay-tag">{hs.detected_gender}</span>}
+                      </div>
+                      {hs.summary && <div className="scan-overlay-summary">{hs.summary}</div>}
+                      {hsItems.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div className="sec-t">Identified Items</div>
+                        {hsItems.map((it, idx) => (
+                          <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
+                            <div style={{ width: 36, height: 36, borderRadius: "var(--radius-sm)", background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{{ shoes: "\uD83D\uDC5F", accessory: "\u231A", bag: "\uD83D\uDC5C", outerwear: "\uD83E\uDDE5", top: "\uD83D\uDC55", bottom: "\uD83D\uDC56", dress: "\uD83D\uDC57" }[it.category] || "\u2726"}</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+                              <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{it.brand || it.category}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>}
+                      <button className="btn-primary" style={{ width: "100%", marginTop: 16 }} onClick={() => {
+                        setResults({ gender: hs.detected_gender || "male", summary: hs.summary || "", items: hsItems.map(it => ({ ...it, status: hs.tiers ? "verified" : "identified", tiers: null })) });
+                        if (hs.tiers && Array.isArray(hs.tiers)) setResults(prev => prev ? { ...prev, items: prev.items.map((item, idx) => { const sr = hs.tiers.find(t2 => t2.item_index === idx); return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev);
+                        setImg(hs.image_url || hs.image_thumbnail || null);
+                        setScanId(hs.id); setSelIdx(0); setPickedItems(new Set((hs.tiers || []).map(t2 => t2.item_index))); setPhase("done"); setTab("scan"); setProfileScanOverlay(null);
+                      }}>View Full Results</button>
+                    </div>
+                  </div>
+                );
+              })()}
+              {profileSettingsOpen && <>
+                <div className="bottom-sheet-overlay" onClick={() => setProfileSettingsOpen(false)} />
+                <div className="bottom-sheet" role="dialog" aria-label="Settings" aria-modal="true">
+                  <div className="bottom-sheet-handle" />
+                  <div style={{ fontSize: "var(--text-lg,18px)", fontWeight: "var(--weight-bold,700)", color: "var(--text-primary)", marginBottom: 16 }}>Settings</div>
+                  <div className="settings-sheet-item" onClick={toggleTheme} role="button" aria-label="Toggle theme"><span className="settings-label">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span><span className="settings-value">{theme === "dark" ? "DARK" : "LIGHT"}</span></div>
+                  <div className="settings-sheet-item" style={{ cursor: "default" }}><span className="settings-label">Budget Range</span><span className="settings-value">${budgetMin} - ${budgetMax}{budgetMax >= 1000 ? "+" : ""}</span></div>
+                  <div className="settings-sheet-item" style={{ cursor: "default" }}><span className="settings-label">Size Preferences</span><span className="settings-value">{(sizePrefs.body_type || []).length > 0 ? (sizePrefs.body_type || []).join(", ") : "Not set"}</span></div>
+                  <div className="settings-sheet-item" style={{ cursor: "default" }}><span className="settings-label">Subscription</span><span className="settings-value" style={{ color: isPro ? "var(--accent)" : undefined }}>{isPro ? "Pro" : "Free"}</span></div>
+                  <div className="settings-sheet-item" style={{ alignItems: "flex-start", flexDirection: "column", gap: 8, cursor: "default" }}>
+                    <span className="settings-label">Language</span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {[["en","EN"],["es","ES"],["fr","FR"],["de","DE"],["zh","\u4E2D"],["ja","\u65E5"],["ko","\uD55C"],["pt","PT"]].map(([l, label]) => (
+                        <button key={l} className={`chip${lang === l ? " active" : ""}`} onClick={() => { setLang(l); localStorage.setItem("attair_lang", l); }} style={{ padding: "4px 10px", fontSize: 12, minHeight: 32 }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="settings-sheet-item danger" onClick={() => { setProfileSettingsOpen(false); handleLogout(); }} role="button" aria-label="Sign out">{t("log_out")}</div>
+                </div>
+              </>}
+            </div>
+            );
+          })()}
+
+          {/* ─── Profile Legacy (hidden, preserves settings data) ── */}
+          {false && tab === "profile" && (
             <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
               <div className="sec-t" style={{marginTop:8}}>Account</div>
               <div className="pcard">
@@ -4918,6 +5540,246 @@ export default function App() {
                 </button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ PUBLIC SCAN VIEW (deep link /scan/:scanId) ═══════ */}
+      {publicScanView && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-secondary, #0C0C0E)", display: "flex", flexDirection: "column", overflow: "auto" }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
+            <div className="logo" style={{ fontFamily: "'Instrument Serif'", fontSize: 22, fontStyle: "italic", color: "#fff" }}>A<span style={{ color: "#C9A96E" }}>TT</span>AIR</div>
+            <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} style={{ background: "none", border: "none", color: "rgba(255,255,255,.4)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
+          </div>
+
+          {publicScanView.loading && (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
+              <div className="ld-dots" style={{ justifyContent: "center" }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,.3)" }}>Loading scan...</div>
+            </div>
+          )}
+
+          {publicScanView.error && (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, padding: 32 }}>
+              <div style={{ fontSize: 32, color: "rgba(255,255,255,.15)" }}>404</div>
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,.4)", textAlign: "center" }}>{publicScanView.error}</div>
+              <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} className="cta" style={{ width: "auto", padding: "14px 32px" }}>Go to ATTAIR</button>
+            </div>
+          )}
+
+          {publicScanView.data && !publicScanView.loading && (() => {
+            const ps = publicScanView.data;
+            return (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                {/* Outfit image full-bleed */}
+                {ps.image_url && (
+                  <div style={{ position: "relative", width: "100%", maxHeight: "55vh", overflow: "hidden" }}>
+                    <img src={ps.image_url} alt="Outfit" style={{ width: "100%", objectFit: "cover", display: "block" }} />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, background: "linear-gradient(transparent, var(--bg-secondary, #0C0C0E))" }} />
+                  </div>
+                )}
+
+                <div style={{ padding: "16px 20px", flex: 1 }}>
+                  {/* User name */}
+                  {ps.user?.display_name && (
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,.35)", marginBottom: 8, fontWeight: 600 }}>
+                      Scanned by {ps.user.display_name}
+                    </div>
+                  )}
+
+                  {/* Summary */}
+                  {ps.summary && (
+                    <div style={{ fontSize: 15, color: "rgba(255,255,255,.65)", fontStyle: "italic", lineHeight: 1.5, marginBottom: 16 }}>
+                      {ps.summary}
+                    </div>
+                  )}
+
+                  {/* Items list */}
+                  {ps.items && ps.items.length > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,.25)", textTransform: "uppercase", marginBottom: 10 }}>{ps.items.length} item{ps.items.length !== 1 ? "s" : ""} identified</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {ps.items.map((item, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(255,255,255,.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,.06)" }}>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#C9A96E", flexShrink: 0 }} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 14, color: "#fff", fontWeight: 600 }}>{item.name || item.category}</div>
+                              {item.brand && item.brand !== "Unidentified" && <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginTop: 2 }}>{item.brand}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Find my version CTA */}
+                  <button
+                    onClick={() => {
+                      setPublicScanView(null);
+                      window.history.replaceState(null, "", "/");
+                      if (authed) {
+                        setTab("scan");
+                        setScreen("app");
+                      } else {
+                        setScreen("auth");
+                        setAuthScreen("signup");
+                      }
+                    }}
+                    style={{
+                      width: "100%", padding: "16px 0", minHeight: 52,
+                      background: "#C9A96E", color: "#0C0C0E", border: "none", borderRadius: 14,
+                      fontFamily: "'Outfit'", fontSize: 16, fontWeight: 700, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      boxShadow: "0 4px 20px rgba(201,169,110,.4)",
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    Find my version
+                  </button>
+
+                  <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: "rgba(255,255,255,.2)" }}>
+                    Powered by ATTAIR AI Fashion Scanner
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ═══ POST-FIRST-SCAN PREFERENCE SHEET ═════════════════ */}
+      {showPrefSheet && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,.6)", backdropFilter: "blur(8px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowPrefSheet(false); } }}>
+          <div style={{
+            width: "100%", maxWidth: 430, background: "var(--bg-card, #1A1A1C)", borderRadius: "24px 24px 0 0",
+            padding: "24px 24px 32px", animation: "slideUp .35s ease forwards",
+          }}>
+            {/* Handle */}
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: "rgba(255,255,255,.12)", margin: "0 auto 20px" }} />
+
+            <h2 style={{ fontFamily: "'Instrument Serif'", fontSize: 24, color: "#fff", marginBottom: 6, textAlign: "center" }}>Personalize Your Experience</h2>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,.4)", textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>Help us find better matches for you.</p>
+
+            {/* Budget range */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 10 }}>Budget per item</div>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "12px 14px" }}>
+                    <span style={{ color: "rgba(255,255,255,.3)", fontSize: 16, fontWeight: 600, marginRight: 4 }}>$</span>
+                    <input type="number" value={prefSheetBudgetMin} onChange={e => setPrefSheetBudgetMin(Math.max(0, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 16, fontWeight: 600, width: "100%", outline: "none" }} />
+                  </div>
+                </div>
+                <span style={{ color: "rgba(255,255,255,.15)", fontSize: 14 }}>to</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "12px 14px" }}>
+                    <span style={{ color: "rgba(255,255,255,.3)", fontSize: 16, fontWeight: 600, marginRight: 4 }}>$</span>
+                    <input type="number" value={prefSheetBudgetMax} onChange={e => setPrefSheetBudgetMax(Math.max(prefSheetBudgetMin + 1, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 16, fontWeight: 600, width: "100%", outline: "none" }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Fit preference chips */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 10 }}>Fit preference</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {["Slim", "Regular", "Relaxed", "Oversized"].map(fit => {
+                  const isOn = prefSheetFit.includes(fit.toLowerCase());
+                  return (
+                    <button key={fit} onClick={() => setPrefSheetFit(prev => isOn ? prev.filter(f => f !== fit.toLowerCase()) : [...prev, fit.toLowerCase()])}
+                      style={{
+                        padding: "10px 20px", minHeight: 44,
+                        background: isOn ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.03)",
+                        border: `1px solid ${isOn ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.08)"}`,
+                        borderRadius: 100, cursor: "pointer",
+                        fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600,
+                        color: isOn ? "#C9A96E" : "rgba(255,255,255,.45)",
+                        transition: "all .2s",
+                      }}
+                    >{fit}</button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Save button */}
+            <button
+              onClick={() => {
+                setBudgetMin(prefSheetBudgetMin);
+                setBudgetMax(prefSheetBudgetMax);
+                setSizePrefs(prev => ({ ...prev, fit: prefSheetFit }));
+                setPrefs(prev => ({ ...prev, budget_min: prefSheetBudgetMin, budget_max: prefSheetBudgetMax, size_prefs: { ...prev.size_prefs, fit: prefSheetFit } }));
+                // Persist to backend if authed
+                if (authed) {
+                  API.updateProfile({ budget_min: prefSheetBudgetMin, budget_max: prefSheetBudgetMax }).catch(() => {});
+                }
+                setShowPrefSheet(false);
+                // Show style fingerprint card briefly
+                setShowStyleFingerprint(true);
+                setTimeout(() => setShowStyleFingerprint(false), 3500);
+                track("pref_sheet_saved", { budget_min: prefSheetBudgetMin, budget_max: prefSheetBudgetMax, fits: prefSheetFit });
+              }}
+              style={{
+                width: "100%", padding: "16px 0", minHeight: 48,
+                background: "#C9A96E", color: "#0C0C0E", border: "none", borderRadius: 14,
+                fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer",
+                marginBottom: 8,
+              }}
+            >Save Preferences</button>
+            <button onClick={() => { setShowPrefSheet(false); setShowStyleFingerprint(true); setTimeout(() => setShowStyleFingerprint(false), 3500); }}
+              style={{ width: "100%", padding: "12px 0", background: "none", border: "none", color: "rgba(255,255,255,.3)", fontFamily: "'Outfit'", fontSize: 13, cursor: "pointer", minHeight: 44 }}>
+              Skip for now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ STYLE FINGERPRINT CARD ═══════════════════════════ */}
+      {showStyleFingerprint && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9997, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.5)", backdropFilter: "blur(6px)" }}
+          onClick={() => setShowStyleFingerprint(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            position: "relative", width: "calc(100% - 48px)", maxWidth: 380,
+            background: "linear-gradient(145deg, #1A1A1C 0%, #0C0C0E 100%)",
+            border: "1px solid rgba(201,169,110,.2)", borderRadius: 20,
+            padding: "28px 24px", textAlign: "center",
+            animation: "slideIn .4s ease forwards", overflow: "hidden",
+            boxShadow: "0 20px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(201,169,110,.08)",
+          }}>
+            {/* Shimmer overlay */}
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: 20, overflow: "hidden", pointerEvents: "none",
+              background: "linear-gradient(105deg, transparent 40%, rgba(201,169,110,.06) 45%, rgba(201,169,110,.12) 50%, rgba(201,169,110,.06) 55%, transparent 60%)",
+              backgroundSize: "200% 100%", animation: "searchPulse 2s ease infinite",
+            }} />
+
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "#C9A96E", textTransform: "uppercase", marginBottom: 12 }}>Your Style Fingerprint</div>
+            <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "#fff", marginBottom: 20 }}>Looking good.</div>
+
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 16 }}>
+              {/* Budget badge */}
+              <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Budget</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#C9A96E" }}>${prefSheetBudgetMin}-${prefSheetBudgetMax}</div>
+              </div>
+              {/* Fit badge */}
+              {prefSheetFit.length > 0 && (
+                <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Fit</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#C9A96E", textTransform: "capitalize" }}>{prefSheetFit.join(", ")}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Scan count */}
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,.25)", lineHeight: 1.5 }}>
+              {history.length > 0 ? `${history.length} outfit${history.length !== 1 ? "s" : ""} scanned` : "First scan complete!"}
+            </div>
+
+            <div style={{ marginTop: 16, fontSize: 11, color: "rgba(255,255,255,.15)" }}>Tap anywhere to dismiss</div>
           </div>
         </div>
       )}
