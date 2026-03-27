@@ -1259,6 +1259,12 @@ async function main() {
   while (true) {
     try {
       // Build query options — resume if we have a session from a previous run
+      // Resolve Claude Code CLI path — SDK looks for its own bundled cli.js by default,
+      // but on CI (GitHub Actions) we install the standalone binary at ~/.local/bin/claude.
+      const claudeCliPath = process.platform === "win32"
+        ? undefined  // Let SDK find it on Windows (local dev)
+        : join(process.env.HOME || "/root", ".local", "bin", "claude");
+
       const queryOptions = {
         cwd: REPO_ROOT,
         allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"],
@@ -1268,6 +1274,7 @@ async function main() {
         maxBudgetUsd: 30,
         agents: AGENTS,
         model: "opus",
+        ...(claudeCliPath ? { pathToClaudeCodeExecutable: claudeCliPath } : {}),
         env: {
           ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
           GH_TOKEN: process.env.GH_TOKEN ?? "",
