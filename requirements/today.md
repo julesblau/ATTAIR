@@ -12,6 +12,28 @@ Run `git log --oneline -30` before starting. Do NOT redo anything already done.
 
 Trendy. Fun. Dead-simple. Beautiful. Every screen immediately obvious to a first-time user.
 
+### THE VISION (from Jules — this is the north star):
+- **Dark theme** with high-contrast accent colors and smooth animations
+- **Bottom sheet** interaction patterns (pull-up panels, not page navigations)
+- **Full-bleed photos** that dominate the screen — scan photos are the content
+- **Minimal text, icon-heavy** navigation — universal language over words
+- **The app gets influencers** (like Beli for restaurants). You follow influencers
+  and see their scans. Think fashion TikTok where the content IS the outfits.
+- **For You Page**: learns your styles and preferences, surfaces relevant public scans
+- **Following Page**: what your friends and followed influencers are scanning
+- **Profile = Instagram**: tap a scan in the grid → overlay/modal (not a new page)
+- **Circle-to-search**: Apple Markup tool style (clean, precise, iOS-native feel)
+- **Pricing**: $5/month, $30/year (may change later)
+
+### DESIGN PRINCIPLES (every agent must follow these):
+- Full-bleed imagery — photos are hero content, not thumbnails
+- Bottom sheets over page navigations — slide up, don't navigate away
+- Icons over text wherever possible
+- Smooth transitions and animations — nothing should snap or jump
+- Progressive disclosure — don't show everything at once, expand on tap
+- 44px minimum touch targets — this is a thumb-driven app
+- Card-based layout with generous whitespace and rounded corners
+
 ---
 
 ## PHASE 1 — FOUNDATION (no other UI work starts until this is done)
@@ -92,7 +114,7 @@ All backend work that doesn't depend on the design system. Do it now.
   (enum: 'would_wear', 'on_the_fence', 'not_for_me', NULL)
 
 **Pricing fix:**
-- Correct pricing everywhere: $4.99/month, $29.99/year. Fix any discrepancy.
+- Correct pricing everywhere: $5/month, $30/year. Fix any discrepancy in both frontend and backend.
 
 ---
 
@@ -108,9 +130,10 @@ The scan flow is confusing. Users don't know how to use it.
 - **Loading state**: Branded animation during AI identification (not just a spinner)
 - **Gender display**: Show detected gender ("Men's" / "Women's") prominently on results.
   Add toggle to switch if wrong — switching re-triggers product search.
-- **Circle-to-search modernization**: Smooth glowing neon line (not basic solid color).
-  White glow + colored core. Thicker (3-4px min). Subtle pulse after completing circle.
-  Should feel like iOS markup / Instagram stories, not MSPaint.
+- **Circle-to-search modernization**: Apple Markup tool style — clean, precise, iOS-native.
+  Smooth yellow highlighter stroke, slightly transparent, thick (4-5px). Clean rounded
+  endpoints. Subtle animation on completion (brief highlight then fade to selection).
+  Should feel like the native iOS screenshot annotation tool, not a drawing app.
 
 ### 5. Results Screen Overhaul
 
@@ -133,26 +156,49 @@ The results screen needs to show more, let users interact more, and be easier to
 
 ## PHASE 4 — PAGES (starts after Phase 1, can run in parallel with Phase 3)
 
-### 6. Home Screen — Social Discovery Feed
+### 6. Home Screen — TikTok-Style Feed with For You + Following
 
-Now that there's a social layer, the home screen should engage users.
+The home screen IS the app now. This is where users spend their time.
 
-- **Top**: "Scan an Outfit" CTA (always prominent, never buried)
-- **Below**: "From People You Follow" feed of public scans
-  - Each card: outfit photo, user avatar + name, scan summary, item count
-  - Tap → view their scan results
-  - Heart/like on each
-- **If not following anyone**: Show trending/popular public scans
-- **User search**: Search bar to find users by display name (Instagram-style)
+**Layout: Two tabs at the top — "For You" and "Following"**
 
-### 7. Profile & Settings — TikTok Style
+**For You tab:**
+- Algorithm-driven feed of public scans the user would like
+- Based on: their style interests, liked items, scan history, followed categories
+- Full-bleed scan photos as feed cards (like TikTok/Instagram)
+- Each card: full-width outfit photo, user avatar + name overlay at bottom,
+  scan summary, item count, heart/like button
+- Tap → Instagram-style overlay/modal showing full results (NOT a page navigation)
+- This is the discovery engine — how new users find influencers and styles
+- If user has no history yet: show trending/popular scans as bootstrap
+
+**Following tab:**
+- Chronological feed of scans from people you follow
+- Same card format as For You
+- This is your friends + influencers you chose to follow
+
+**Scan button:**
+- Floating action button (FAB) — always visible, bottom-center, above the tab bar
+- Camera icon, accent color, slightly elevated
+- Tapping opens camera/upload bottom sheet (not a page navigation)
+
+**User search:**
+- Search icon in top-right → search bar slides down
+- Search users by display name
+- Results show avatar, name, bio preview, "Follow" button
+- Tap user → Instagram-style profile overlay
+
+### 7. Profile & Settings — TikTok/Instagram Style
 
 Redesign to feel like TikTok/Instagram profile page.
 
 - **Profile header**: Avatar/initial, display name, bio, follower/following counts
 - **Stats row**: Scans, Likes, Collections counts (like TikTok's posts/followers/likes)
-- **Photo grid below**: User's public scans as Instagram-style grid. Tap → view results.
-- **Settings gear** → clean settings panel: theme toggle, language, budget prefs,
+- **Photo grid below**: User's scans as Instagram-style 3-column grid
+- **Tap a scan → Instagram-style overlay/modal** showing full results with items and
+  product tiers. Swipe down or tap X to dismiss. NOT a page navigation.
+- **Other users' profiles**: Same layout. Follow/unfollow button. Only shows public scans.
+- **Settings gear** → bottom sheet (not a page): theme toggle, language, budget prefs,
   size prefs, subscription status, sign out
 
 ### 8. History — Click Into Old Scans

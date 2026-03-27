@@ -409,7 +409,7 @@ LESSONS FROM PREVIOUS RUN — DO NOT REPEAT THESE MISTAKES
 const AGENTS = {
 
   "uiux-agent": {
-    model: "sonnet",  // Use Sonnet for subagents — saves tokens, Opus only for PM
+    model: "opus",  // Opus — this agent builds every screen the user sees
     description: "Expert React UI/UX developer who builds world-class mobile-first interfaces for ATTAIR. Specializes in React 19, modern CSS, shopping app UX patterns, and accessibility. Works in attair-app/src/.",
     prompt: `You are a world-class UI/UX developer working on ATTAIR, an AI-powered fashion
 shopping app. The app is currently web-based React but is moving to iPhone — design mobile-first.
@@ -563,7 +563,7 @@ HOW TO WORK:
   },
 
   "design-system-agent": {
-    model: "sonnet",
+    model: "opus",  // Opus — this is the visual foundation everything depends on
     description: "Expert design systems engineer who establishes visual foundations — color palettes, typography scales, spacing systems, component tokens, and CSS custom properties. Runs FIRST before any other UI agent.",
     prompt: `You are a design systems engineer specializing in mobile-first CSS design tokens.
 Your job is to establish the VISUAL FOUNDATION that all other UI agents build on.
@@ -637,7 +637,7 @@ CONSTRAINTS:
   },
 
   "social-feed-agent": {
-    model: "sonnet",
+    model: "opus",  // Opus — the feed IS the home screen, must feel premium
     description: "Builds social discovery features — home feed, user search, trending scans, follow-based content. Works across backend API and frontend.",
     prompt: `You are building ATTAIR's social discovery layer — the features that make users
 come back daily and discover new style inspiration from people they follow.
@@ -655,25 +655,38 @@ TECH CONTEXT:
   Auth: requireAuth middleware for authenticated endpoints
 
 BACKEND ENDPOINTS TO CREATE:
-  GET /api/feed
-    - Returns public scans from users the authenticated user follows
+  GET /api/feed/foryou
+    - Algorithm-driven feed of public scans the user would like
+    - Rank by: user's style_interests overlap, liked item categories, recency
     - Paginated (limit/offset)
-    - Include: scan image, user display_name, user avatar, summary, item count, created_at
-    - If user follows nobody, return trending/recent public scans instead
-    - Sort by created_at DESC
+    - Include: scan image_url, user display_name, summary, item count, created_at, user_id
+    - If user has no history: return trending (most liked) public scans
+    - requireAuth
+
+  GET /api/feed/following
+    - Chronological feed of public scans from users the authenticated user follows
+    - Paginated. Same response fields as foryou.
+    - requireAuth
 
   GET /api/users/search?q=name
     - Search users by display_name (case-insensitive ILIKE)
-    - Return: id, display_name, bio, avatar, follower_count
-    - Limit to 20 results
-    - requireAuth
+    - Return: id, display_name, bio, avatar_url, follower_count
+    - Limit 20 results. requireAuth.
 
-FRONTEND:
-  - Home screen: prominent "Scan an Outfit" button at top
-  - Below: feed of cards from followed users
-  - Each card: photo, user info, scan summary, tap to view
-  - Search bar for finding users
-  - If not following anyone: show discovery/trending section
+FRONTEND — THIS IS THE HOME SCREEN OF THE APP:
+  Think TikTok. The feed IS the app. Users open ATTAIR and see outfits.
+
+  - Two tabs at top of feed: "For You" and "Following"
+  - For You: algorithm-driven discovery. Full-bleed scan photos as cards.
+    Each card: full-width photo, user avatar + name overlay at bottom, item count, heart.
+    Tap card → Instagram-style overlay/modal showing scan details (NOT page navigation).
+  - Following: chronological feed from followed users. Same card format.
+  - Floating scan button (FAB): camera icon, accent color, bottom-center, above tab bar.
+    Opens camera/upload as a BOTTOM SHEET (not page nav).
+  - Search: icon top-right → search bar slides down. Find users by name.
+    Results: avatar, name, bio, "Follow" button. Tap → profile overlay.
+  - ALL detail views open as overlays/bottom sheets. Swipe down to dismiss.
+  - Smooth animations. Full-bleed photos. Icons over text.
 
 HOW TO WORK:
   1. Create backend routes first (new file: src/routes/feed.js)
@@ -732,7 +745,7 @@ FILES:
   },
 
   "creative-build-agent": {
-    model: "sonnet",
+    model: "opus",  // Opus — viral features must be polished, these drive growth
     description: "Implements creative/viral features — shareable scan pages, style fingerprint onboarding, budget tracker, share card generator. Frontend-focused builder for growth features.",
     prompt: `You are building ATTAIR's viral growth features — the things that make users
 share the app and bring friends in.
@@ -1508,8 +1521,8 @@ async function main() {
         allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"],
         permissionMode: "bypassPermissions",
         allowDangerouslySkipPermissions: true,
-        maxTurns: 500,
-        maxBudgetUsd: 75,
+        maxTurns: 1000,
+        maxBudgetUsd: 500,  // User is on Claude Max — this is a safety cap, not billing
         agents: AGENTS,
         model: "opus",
         ...(claudeCliPath ? { pathToClaudeCodeExecutable: claudeCliPath } : {}),
