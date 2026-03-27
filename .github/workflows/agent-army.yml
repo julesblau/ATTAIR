@@ -45,6 +45,13 @@ jobs:
           # Allow pushing to main
           git config --global push.autoSetupRemote true
 
+      - name: Install Claude Code CLI
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          # Verify installation
+          $HOME/.local/bin/claude --version
+
       - name: Install agent dependencies
         working-directory: agents
         run: npm install
