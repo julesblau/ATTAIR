@@ -30,6 +30,16 @@ Trendy. Fun. Dead-simple. Beautiful. Every screen immediately obvious to a first
 - **Circle-to-search**: Apple Markup tool style (clean, precise, iOS-native feel)
 - **Pricing**: $5/month, $30/year (may change later)
 
+### LOGO REDESIGN
+The current logo/wordmark needs a refresh. The design-system-agent should create a new
+SVG logo for ATTAIR that feels premium, modern, and fashion-forward. Think:
+- Clean wordmark (the word "ATTAIR" in a custom treatment)
+- Works on both dark and light backgrounds
+- Looks good at small sizes (tab bar, favicon) and large (splash screen)
+- Gold accent color incorporated
+- Replace the current favicon.svg and any logo references in the app
+- Consider a minimal icon version (monogram or symbol) for small spaces
+
 ### DESIGN PRINCIPLES (every agent must follow these):
 - Full-bleed imagery — photos are hero content, not thumbnails
 - Bottom sheets over page navigations — slide up, don't navigate away
