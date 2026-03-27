@@ -484,7 +484,12 @@ function extractPrice(val) {
 // ═════════════════════════════════════════════════════════════
 async function googleLensSearch(imageUrl) {
   if (!imageUrl) {
-    console.log("[Lens] No image URL provided, skipping visual search");
+    // This is the most common cause of 0 results for user-uploaded photos.
+    // If you see this warning in production, check that:
+    //   1. Supabase Storage bucket is set to PUBLIC (not private).
+    //   2. The image upload route is returning the public URL, not a signed URL.
+    //   3. The SerpAPI Google Lens engine can fetch the URL without authentication.
+    console.warn("[Lens] WARNING: No image URL for Lens search — check Supabase Storage bucket permissions. Text-only fallback will run.");
     return [];
   }
 
@@ -693,6 +698,117 @@ function cleanForSearch(q) {
 }
 
 /**
+ * Adjectives and descriptors that Claude's AI output commonly produces but
+ * that Google Shopping does NOT index on product titles. Including them in a
+ * query shrinks the result set dramatically — or returns 0 results — because
+ * Shopping tries to match all tokens.
+ *
+ * These are stripped by stripShoppingNoise() before any Shopping API call.
+ * Words must be whole-word matched (surrounded by \b) to avoid stripping
+ * meaningful substrings (e.g. "light" inside "lightweight" is stripped, but
+ * we use word boundaries so "lights" won't strip the word "light" inside
+ * "highlights").
+ *
+ * When adding words: prefer the base/root form; the regex strips them
+ * case-insensitively with word-boundary anchors.
+ */
+const SHOPPING_NOISE_WORDS = [
+  // Subjective style adjectives — not indexed by Shopping
+  "beautifully", "beautiful", "stylish", "stylishly", "elegant", "elegantly",
+  "classic", "classical", "timeless", "sophisticated", "chic",
+  "comfortable", "comfortably", "cozy", "cosy",
+  "premium", "quality", "luxurious", "luxury",
+  "lightweight", "light-weight", "breathable",
+  "tailored", "well-tailored", "perfectly tailored",
+  "versatile", "effortless", "effortlessly",
+  "minimal", "minimalist", "minimalistic",
+  "trendy", "fashionable",
+  "everyday", // "everyday" dilutes Shopping queries — use occasion modifiers instead
+  // Occasion/use-case phrases that are NOT Shopping product attributes
+  "for any occasion", "all occasions", "day to night",
+  // Filler words that add no Shopping signal
+  "great", "nice", "perfect", "ideal", "excellent",
+  "modern", "contemporary",
+  "high quality", "high-quality",
+];
+
+/**
+ * Remove AI-generated adjectives and filler words that Google Shopping does
+ * not index. After stripping, collapse extra whitespace.
+ *
+ * This is applied on top of cleanForSearch() — use both together for queries
+ * that come from Claude's search_query field.
+ *
+ * @param {string} q - Query string
+ * @returns {string} Cleaned query string
+ */
+function stripShoppingNoise(q) {
+  let out = q;
+  for (const word of SHOPPING_NOISE_WORDS) {
+    // Escape any regex metacharacters in the noise word (e.g. hyphens)
+    const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    out = out.replace(new RegExp(`\\b${escaped}\\b`, "gi"), "");
+  }
+  return out.replace(/\s{2,}/g, " ").trim();
+}
+
+/**
+ * Build a ranked set of Shopping-optimised queries for a single item.
+ *
+ * Unlike the original textSearchForItem query builder, these queries are
+ * short and use only tokens that Google Shopping actually indexes. The
+ * queries are ordered from most specific to broadest so that if the first
+ * query returns 0 results, subsequent ones definitely will.
+ *
+ * The final "nuclear fallback" query ({gender} {category}) is guaranteed to
+ * return results for any valid clothing category.
+ *
+ * Query order and reasoning:
+ *   1. Brand + subcategory  → most specific; will miss no-brand photos
+ *   2. Color + subcategory  → still specific but works without a brand
+ *   3. Subcategory alone    → reliable for common garment types
+ *   4. Category alone       → nuclear fallback; ALWAYS returns results
+ *
+ * Queries 1–3 include the gender prefix because Shopping uses it as a
+ * hard filter on the product catalog. Query 4 (the nuclear fallback) also
+ * includes the gender prefix for the same reason.
+ *
+ * @param {object} item   - Identified clothing item with .brand, .color, .subcategory, .category
+ * @param {string} gender - "male" | "female"
+ * @returns {string[]} Array of 2–4 distinct query strings, shortest-first
+ */
+function buildShoppingQueries(item, gender) {
+  const g = gender === "female" ? "women's" : "men's";
+  const brand = item.brand && item.brand !== "Unidentified" ? item.brand.trim() : "";
+  const color = (item.color || "").trim();
+  const sub = (item.subcategory || "").trim();
+  const cat = (item.category || "").trim();
+
+  const queries = [];
+
+  // Query 1: Brand + subcategory (only when brand is known)
+  if (brand && sub) queries.push(`${g} ${brand} ${sub}`);
+  else if (brand && cat) queries.push(`${g} ${brand} ${cat}`);
+
+  // Query 2: Color + subcategory (skip if color is empty or redundant)
+  if (color && sub) queries.push(`${g} ${color} ${sub}`);
+  else if (color && cat) queries.push(`${g} ${color} ${cat}`);
+
+  // Query 3: Subcategory (or category) alone — reliable fallback
+  if (sub) queries.push(`${g} ${sub}`);
+  else if (cat) queries.push(`${g} ${cat}`);
+
+  // Query 4: Nuclear fallback — bare category ALWAYS returns results.
+  // Only added when subcategory is present (otherwise query 3 already covers this).
+  if (sub && cat && !queries.some(q => q === `${g} ${cat}`)) {
+    queries.push(`${g} ${cat}`);
+  }
+
+  // Deduplicate while preserving order
+  return [...new Set(queries.filter(Boolean))];
+}
+
+/**
  * Run text-based Shopping searches for a single identified item.
  *
  * Constructs up to 3 distinct queries (A, B, C/D) and runs them concurrently:
@@ -720,8 +836,12 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
   const notes = typeof searchNotes === "string" ? searchNotes.trim() : "";
 
   // Maximum total query length for Google Shopping API.
-  // Tokens beyond ~150 chars are ignored or degrade relevance ranking.
-  const MAX_QUERY_LEN = 150;
+  // CHANGED: reduced from 150 to 80. Google Shopping degrades noticeably beyond
+  // ~80 characters — extra tokens dilute the query signal and can return 0 results
+  // when the tail tokens are non-indexed adjectives from Claude's AI output.
+  // Query A now also runs through stripShoppingNoise() to remove adjectives before
+  // the 80-char limit is applied.
+  const MAX_QUERY_LEN = 80;
 
   const bodyTypes = Array.isArray(sizePrefs.body_type) ? sizePrefs.body_type : (sizePrefs.body_type ? [sizePrefs.body_type] : []);
   const fitStyles = Array.isArray(sizePrefs.fit) ? sizePrefs.fit : (sizePrefs.fit ? [sizePrefs.fit] : []);
@@ -745,17 +865,18 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
   const queries = [];
 
   // ── Query A: Claude's search_query, cleaned and correctly gender-prefixed ──
-  // Fixes: (1) Unicode apostrophe → double prefix bug, (2) "no tie" style noise
-  // searchNotes is appended here as the most specific refinement signal —
-  // but only when: (a) it fits within MAX_QUERY_LEN, and (b) it is not already
-  // present in the query (case-insensitive duplicate guard).
+  // Two-pass cleaning: cleanForSearch() removes occasion/negation phrases, then
+  // stripShoppingNoise() removes AI-generated adjectives that Shopping doesn't index.
+  // searchNotes is appended when it fits within the new 80-char limit.
   if (item.search_query) {
-    const cleaned = cleanForSearch(item.search_query);
+    const cleaned = stripShoppingNoise(cleanForSearch(item.search_query));
     let q = hasGenderPrefix(cleaned) ? cleaned : `${g} ${cleaned}`;
     if (bodyTerm && !q.toLowerCase().includes(bodyTerm)) q = `${bodyTerm} ${q}`;
     // Append occasion modifier when set (only if not already present in query)
     if (occasionTerm && !q.toLowerCase().includes(occasionTerm.split(" ")[0])) q = `${q} ${occasionTerm}`;
     q = q.replace(/\s{2,}/g, " ").trim();
+    // Truncate to MAX_QUERY_LEN before appending notes (keeps the query tight)
+    if (q.length > MAX_QUERY_LEN) q = q.slice(0, MAX_QUERY_LEN).trim();
     if (notes && !q.toLowerCase().includes(notes.toLowerCase())) {
       const withNotes = `${q} ${notes}`;
       if (withNotes.length <= MAX_QUERY_LEN) q = withNotes;
@@ -769,32 +890,48 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
     queries.push(item.product_line ? `${brand} ${item.product_line}` : `${brand} ${item.name}`);
   }
 
-  // ── Query C: Simple clean descriptor — guaranteed to find results ──
-  // Just gender + color + subcategory, no fit/body/size qualifiers.
-  // This is the safety net: even if A is too specific, C always works for
-  // common items like "men's white dress shirt".
-  // searchNotes are also appended here when the descriptor has room, giving
-  // the safety-net query the caller's refinement intent without truncation risk.
-  const occasionSuffix = occasionTerm ? ` ${occasionTerm}` : "";
-  let simpleDesc = `${g} ${item.color || ""} ${item.subcategory || item.category}${occasionSuffix}`.replace(/\s+/g, " ").trim();
-  if (notes && !simpleDesc.toLowerCase().includes(notes.toLowerCase())) {
-    const withNotes = `${simpleDesc} ${notes}`;
-    if (withNotes.length <= MAX_QUERY_LEN) simpleDesc = withNotes;
-  }
-  if (!queries.some(q => q.toLowerCase() === simpleDesc.toLowerCase())) {
-    queries.push(simpleDesc);
+  // ── Queries C/D/E: buildShoppingQueries — short, Shopping-indexed fallbacks ──
+  //
+  // buildShoppingQueries() generates up to 4 progressively broader queries:
+  //   C: {gender} {brand} {subcategory}
+  //   D: {gender} {color} {subcategory}
+  //   E: {gender} {subcategory}
+  //   F: {gender} {category}    ← nuclear fallback, ALWAYS returns results
+  //
+  // These replace the old Query C/D pair. They are shorter, Shopping-indexed, and
+  // guaranteed to produce results because the broadest form is just gender + category.
+  // searchNotes are appended to the first Shopping query that has room (≤ 80 chars).
+  const shoppingFallbacks = buildShoppingQueries(item, gender);
+  let notesInjected = false;
+  for (const sq of shoppingFallbacks) {
+    if (!queries.some(q => q.toLowerCase() === sq.toLowerCase())) {
+      // Inject searchNotes into the first fallback that has room
+      if (notes && !notesInjected && !sq.toLowerCase().includes(notes.toLowerCase())) {
+        const withNotes = `${sq} ${notes}`;
+        if (withNotes.length <= MAX_QUERY_LEN) {
+          queries.push(withNotes);
+          notesInjected = true;
+          continue;
+        }
+      }
+      queries.push(sq);
+    }
   }
 
-  // ── Query D: Full descriptor with fit/body/size (only if distinct from C) ──
+  // Also include the full-descriptor query (fit + size) if distinct and short enough
+  const occasionSuffix = occasionTerm ? ` ${occasionTerm}` : "";
   const bodyPrefix = bodyTerm ? `${bodyTerm} ` : "";
   const fitSuffix = fitTerm ? ` ${fitTerm}` : "";
   const sizeSuffix = sizeTerm ? ` size ${sizeTerm}` : "";
-  const fullDesc = `${g} ${bodyPrefix}${item.subcategory || item.category} ${item.color || ""}${fitSuffix}${sizeSuffix}`.replace(/\s+/g, " ").trim();
-  if (fullDesc !== simpleDesc && !queries.some(q => q.toLowerCase() === fullDesc.toLowerCase())) {
+  const fullDesc = `${g} ${bodyPrefix}${item.subcategory || item.category} ${item.color || ""}${fitSuffix}${sizeSuffix}${occasionSuffix}`.replace(/\s+/g, " ").trim();
+  if (fullDesc.length <= MAX_QUERY_LEN && !queries.some(q => q.toLowerCase() === fullDesc.toLowerCase())) {
     queries.push(fullDesc);
   }
 
-  // Run up to 3 unique queries concurrently
+  // Run up to 3 unique queries concurrently.
+  // We prioritise the first 3 as they are most specific. If those return 0 results
+  // the broadest fallback (last element from buildShoppingQueries) is guaranteed to
+  // return something, so we cap at 3 to avoid unnecessary API calls.
   const uniqueQueries = [...new Set(queries.filter(Boolean))].slice(0, 3);
   console.log(`[TextFallback] "${item.name}" → ${uniqueQueries.map(q => `"${q}"`).join(" | ")} budget=$${tierBounds.min}-$${tierBounds.max}${notes ? ` notes="${notes}"` : ""}`);
 
@@ -805,6 +942,71 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
   for (const batch of batches) allResults.push(...batch);
 
   return allResults;
+}
+
+// ═════════════════════════════════════════════════════════════
+// SYNONYM MAP — Common garment name equivalences
+// ═════════════════════════════════════════════════════════════
+//
+// Retailers and Claude's AI output use different names for the same garment.
+// "chinos" ≠ "khakis" in a string comparison, but they ARE the same product.
+// Without synonyms, a product titled "khaki pants" scores 0 for subcategory
+// match when the identified item is "chinos" — causing it to be filtered out
+// even though it is a correct result.
+//
+// Each entry is a synonym group (array of equivalent terms). During scoring,
+// if the product title contains any synonym of the item's subcategory, we
+// award +20 (slightly less than the +25 exact match, to preserve ranking order
+// while still keeping synonym matches well above the score > 0 gate).
+//
+// How to maintain this list:
+//   - Add groups when you observe mismatches in product search logs.
+//   - Keep terms lowercase (matching is done on lowercased title).
+//   - Terms must be 3+ chars to avoid false-positive partial matches.
+//   - Prefer the retailer-facing term as the first entry in each group.
+const GARMENT_SYNONYMS = [
+  ["chinos", "khakis", "khaki pants", "chino trousers"],
+  ["hoodie", "hooded sweatshirt", "hooded pullover", "zip-up hoodie"],
+  ["sneakers", "trainers", "running shoes", "athletic shoes", "tennis shoes"],
+  ["t-shirt", "tee", "tee shirt", "crew neck tee", "crewneck tee"],
+  ["blazer", "sport coat", "sports coat", "suit jacket", "sport jacket"],
+  ["joggers", "sweatpants", "track pants", "jogging pants", "tracksuit bottoms"],
+  ["polo", "polo shirt", "polo top"],
+  ["dress shirt", "button-down", "button-up", "button down shirt", "button up shirt", "oxford shirt"],
+  ["bomber", "bomber jacket", "flight jacket"],
+  ["parka", "winter jacket", "puffy jacket", "puffer jacket", "down jacket"],
+  ["loafers", "slip-ons", "slip on shoes", "moccasins"],
+  ["sandals", "slides", "flip-flops", "flip flops", "thongs"],
+  ["cardigan", "knit sweater", "open-front sweater"],
+  ["tank top", "sleeveless top", "muscle tee", "singlet"],
+  ["leggings", "tights", "running tights"],
+  ["windbreaker", "rain jacket", "shell jacket", "anorak", "cagoule"],
+  ["jeans", "denim pants", "denim trousers", "denim jeans"],
+  ["shorts", "short pants", "board shorts", "chino shorts"],
+  ["sweatshirt", "crewneck sweatshirt", "crew neck sweatshirt", "pullover sweatshirt"],
+  ["vest", "gilet", "puffer vest", "down vest", "quilted vest"],
+  ["boots", "ankle boots", "chelsea boots", "combat boots"],
+  ["coat", "overcoat", "topcoat", "wool coat", "trench coat"],
+];
+
+/**
+ * Given an item's subcategory string, return all known synonyms (lowercased).
+ * Returns an empty array if the subcategory is not in the synonym map.
+ *
+ * @param {string} subcategory - Item subcategory (already lowercased)
+ * @returns {string[]} All synonyms for the given subcategory (excluding itself)
+ */
+function getSynonyms(subcategory) {
+  if (!subcategory) return [];
+  for (const group of GARMENT_SYNONYMS) {
+    // Check if any term in the group matches (substring or exact)
+    const match = group.some(term => subcategory.includes(term) || term.includes(subcategory));
+    if (match) {
+      // Return all terms in this group except the subcategory itself
+      return group.filter(term => term !== subcategory);
+    }
+  }
+  return [];
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -860,6 +1062,17 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
       const subWords = sub.split(/\s+/).filter(w => w.length > 3);
       if (subWords.length > 1 && subWords.every(w => title.includes(w))) score += 20;
       else if (subWords.some(w => w.length > 4 && title.includes(w))) score += 10;
+      else {
+        // ── Synonym match ──────────────────────────────────────
+        // Claude and retailers use different names for the same garment.
+        // "chinos" vs "khaki pants", "hoodie" vs "hooded sweatshirt", etc.
+        // Award +20 for a synonym match — slightly less than exact (+25) to
+        // preserve ranking order while still surfacing correct results.
+        // Without this, synonym-titled products score 0 and get filtered out
+        // even though they are correct matches for the identified item.
+        const synonyms = getSynonyms(sub);
+        if (synonyms.some(syn => title.includes(syn))) score += 20; // synonym match
+      }
     }
   }
 
@@ -895,8 +1108,8 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
 
   // Penalties
   const isMale = (item.gender || "male") === "male";
-  if (isMale && (title.includes("women's") || title.includes("womens"))) score -= 40;
-  if (!isMale && (title.includes("men's ") || title.includes("mens "))) score -= 40;
+  if (isMale && /\bwomen'?s\b/i.test(title)) score -= 40;
+  if (!isMale && /\bmen'?s\b/i.test(title) && !/\bwomen'?s\b/i.test(title)) score -= 40;
   if (/\b(set of|pack of|\d+\s*pack|bundle)\b/i.test(product.title || "")) score -= 25;
 
   // Size preference scoring (body_type and fit are arrays)
@@ -1192,8 +1405,9 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
   const lensResults = await googleLensSearch(imageUrl);
 
   // ── Step 2: Match Lens results to identified items ─
-  // Each item gets a pool of matched products
-  const itemPools = items.map(() => ({ lens: [], text: [] }));
+  // Each item gets a pool of matched products.
+  // textQueryCount is stored for telemetry (search_quality log).
+  const itemPools = items.map(() => ({ lens: [], text: [], textQueryCount: 0 }));
 
   for (const result of lensResults) {
     const matchIdx = matchLensResultToItem(result, items);
@@ -1218,6 +1432,8 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     if (pricedLens.length < 3) {
       const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
       itemPools[i].text = textResults;
+      // Record that text search ran for this item (used in telemetry)
+      itemPools[i].textQueryCount = Math.min(3, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0) + 1);
       console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
     }
   });
@@ -1260,14 +1476,41 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       console.log(`[Market] "${item.name}": pref="${itemMarketPref}" — ${allProducts.length} total → ${marketFiltered.length} after filter`);
     }
 
+    // Determine whether Lens produced any results for this item.
+    // When Lens returns 0 matches, text results lose their only competition —
+    // but they also start from 0 base score while Lens results would have gotten
+    // a +25 bonus. To compensate, we boost text results by +15 when there are
+    // no Lens matches for this item. This is applied AFTER scoreProduct so it
+    // doesn't interfere with the existing scoring arithmetic.
+    // Note: isFromLens is false for all products in pool.text, so this bonus
+    // only applies to text results (correct — Lens results already get +25).
+    const hasLensMatchesForItem = pool.lens.length > 0;
+
     // Score everything
     const allScored = marketFiltered
-      .map(({ product, isLens }) => ({
-        product,
-        isLens,
-        score: scoreProduct(product, item, isLens, itemSizePrefs, itemTierBounds),
-        price: extractPrice(product.price) || extractPrice(product.extracted_price),
-      }))
+      .map(({ product, isLens }) => {
+        let score = scoreProduct(product, item, isLens, itemSizePrefs, itemTierBounds);
+        // No-lens text bonus: when Lens produced nothing for this item, text
+        // results from trusted retailers get +10 to compensate for the missing
+        // Lens base bonus (+25). We use a smaller number (+10 not +15) to avoid
+        // accidentally promoting low-quality text results over each other.
+        // This only applies to text results (isLens === false) and only when
+        // the item has zero Lens matches.
+        if (!isLens && !hasLensMatchesForItem && score > 0) {
+          const link = product.link || product.product_link || product.url || "";
+          const isTrusted = TRUSTED_RETAILER_DOMAINS.has(
+            link.replace(/^https?:\/\/(?:www\.)?/, "").split("/")[0]
+          );
+          if (isTrusted) score += 10;
+          else score += 5; // smaller bonus for unknown domains
+        }
+        return {
+          product,
+          isLens,
+          score,
+          price: extractPrice(product.price) || extractPrice(product.extracted_price),
+        };
+      })
       .filter(s => s.score > 0)
       .sort((a, b) => b.score - a.score);
 
@@ -1411,6 +1654,53 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     };
   });
 
+  // ── Search quality telemetry ─────────────────────────────────
+  // Structured log emitted after every search request. Surfaces 0-result bugs,
+  // Lens failure patterns, and fallback usage in production logs.
+  // Parse with: jq 'select(.event == "search_quality")' from your log aggregator.
+  const lensVendorResults = lensResults.filter(r => isVendorPage(r)).length;
+  const telemetry = {
+    event: "search_quality",
+    imageUrl: !!imageUrl,
+    lensAttempted: !!imageUrl,
+    lensResultsTotal: lensResults.length,
+    lensVendorResults,
+    items: items.map((item, i) => {
+      const tierResult = output[i];
+      const budgetTier = tierResult?.tiers?.budget ?? [];
+      const midTier = tierResult?.tiers?.mid ?? [];
+      const premiumTier = tierResult?.tiers?.premium ?? [];
+      return {
+        name: item.name,
+        lensMatches: itemPools[i].lens.length,
+        textQueries: itemPools[i].textQueryCount,
+        textResults: itemPools[i].text.length,
+        finalTiers: {
+          budget: budgetTier.length,
+          mid: midTier.length,
+          premium: premiumTier.length,
+          // hasFallback = true when ALL results in a tier are Google Shopping
+          // fallback links (is_product_page === false) — indicates 0 real products found.
+          hasFallback:
+            (budgetTier.length > 0 && budgetTier.every(t => t?.is_product_page === false)) ||
+            (midTier.length > 0 && midTier.every(t => t?.is_product_page === false)) ||
+            (premiumTier.length > 0 && premiumTier.every(t => t?.is_product_page === false)),
+        },
+      };
+    }),
+  };
+  console.log(JSON.stringify(telemetry));
+
+  // Warn when ALL tiers for ANY item are pure fallback Shopping links.
+  // This means 0 real products were found — the search completely failed for that item.
+  const allFallbackItems = telemetry.items.filter(t => t.finalTiers.hasFallback);
+  if (allFallbackItems.length > 0) {
+    console.warn(
+      `[search_quality] WARN: ${allFallbackItems.length}/${items.length} items have only fallback results: ` +
+      allFallbackItems.map(t => `"${t.name}"`).join(", ")
+    );
+  }
+
   return output;
 }
 
@@ -1424,4 +1714,8 @@ export const _testExports = {
   classifyMarket,
   extractPrice,
   getTierBounds,
+  // v5 additions — exposed for unit testing the new query builder functions
+  buildShoppingQueries,
+  stripShoppingNoise,
+  getSynonyms,
 };

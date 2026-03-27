@@ -221,10 +221,11 @@ const API = {
     return res.ok ? await res.json() : null;
   },
 
-  async seenOn(brand, name) {
+  async seenOn(brand, name, interests) {
     const params = new URLSearchParams();
     if (brand) params.set("brand", brand);
     if (name) params.set("name", name);
+    if (interests && interests.length > 0) params.set("interests", interests.join(","));
     const res = await authFetch(`${API_BASE}/api/seen-on?${params}`);
     if (!res.ok) return { appearances: [] };
     return await res.json();
@@ -667,6 +668,7 @@ const STRINGS = {
     location_denied: "Location access needed",
     who_inspires: "Who inspires your style?",
     custom_occasion: "Custom",
+    search_failed: "Search failed. Try refining your items and searching again.",
     follow: "Follow",
     unfollow: "Unfollow",
     followers: "Followers",
@@ -716,6 +718,7 @@ const STRINGS = {
     location_denied: "Se necesita acceso a ubicación",
     who_inspires: "¿Quién inspira tu estilo?",
     custom_occasion: "Personalizar",
+    search_failed: "La búsqueda falló. Intenta refinar tus artículos y buscar de nuevo.",
     follow: "Seguir",
     unfollow: "Dejar de seguir",
     followers: "Seguidores",
@@ -765,6 +768,7 @@ const STRINGS = {
     location_denied: "Accès à la localisation requis",
     who_inspires: "Qui inspire votre style?",
     custom_occasion: "Personnalisé",
+    search_failed: "La recherche a échoué. Essayez d'affiner vos articles et relancez.",
     follow: "Suivre",
     unfollow: "Ne plus suivre",
     followers: "Abonnés",
@@ -814,6 +818,7 @@ const STRINGS = {
     location_denied: "Standortzugriff benötigt",
     who_inspires: "Wer inspiriert deinen Stil?",
     custom_occasion: "Benutzerdefiniert",
+    search_failed: "Suche fehlgeschlagen. Verfeinern Sie Ihre Artikel und versuchen Sie es erneut.",
     follow: "Folgen",
     unfollow: "Entfolgen",
     followers: "Follower",
@@ -863,6 +868,7 @@ const STRINGS = {
     location_denied: "需要位置权限",
     who_inspires: "谁启发了你的穿搭风格？",
     custom_occasion: "自定义",
+    search_failed: "搜索失败。请调整商品描述后重试。",
     follow: "关注",
     unfollow: "取消关注",
     followers: "粉丝",
@@ -912,6 +918,7 @@ const STRINGS = {
     location_denied: "位置情報へのアクセスが必要",
     who_inspires: "あなたのスタイルに影響を与える人は？",
     custom_occasion: "カスタム",
+    search_failed: "検索に失敗しました。アイテムを調整して再検索してください。",
     follow: "フォロー",
     unfollow: "フォロー解除",
     followers: "フォロワー",
@@ -961,6 +968,7 @@ const STRINGS = {
     location_denied: "위치 접근 권한 필요",
     who_inspires: "누가 당신의 스타일에 영감을 주나요?",
     custom_occasion: "직접 입력",
+    search_failed: "검색에 실패했습니다. 항목을 수정한 후 다시 검색해 주세요.",
     follow: "팔로우",
     unfollow: "언팔로우",
     followers: "팔로워",
@@ -1010,6 +1018,7 @@ const STRINGS = {
     location_denied: "Acesso à localização necessário",
     who_inspires: "Quem inspira o seu estilo?",
     custom_occasion: "Personalizado",
+    search_failed: "A pesquisa falhou. Tente refinar seus itens e pesquisar novamente.",
     follow: "Seguir",
     unfollow: "Deixar de seguir",
     followers: "Seguidores",
@@ -1042,13 +1051,20 @@ const SCAN_MESSAGES = [
   "Almost there…",
 ];
 const SEARCH_MESSAGES = [
-  "Searching the web…",
-  "Comparing prices across retailers…",
-  "Finding the best matches…",
-  "Running visual search…",
-  "Sorting by relevance…",
-  "Checking stock and sizing…",
+  "Analyzing your photo…",
+  "Searching stores…",
+  "Finding matches…",
+  "Comparing prices…",
+  "Checking stock…",
   "Almost ready…",
+];
+const RESEARCH_MESSAGES = [
+  "Re-running search…",
+  "Finding better matches…",
+  "Applying your changes…",
+  "Searching with new criteria…",
+  "Comparing results…",
+  "Almost there…",
 ];
 
 // ─── Circle to Search canvas overlay ────────────────────────
@@ -1287,6 +1303,9 @@ export default function App() {
   // ─── Identification preview ───────────────────────────────
   const [identPreview, setIdentPreview] = useState(null); // array of identified items | null
 
+  // ─── Re-search indicator ──────────────────────────────────
+  const [isResearch, setIsResearch] = useState(false); // true when re-running a search (not first run)
+
   // ─── Theme (dark / light) ─────────────────────────────────
   const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
   const toggleTheme = () => setTheme(t => { const n = t === "dark" ? "light" : "dark"; localStorage.setItem("attair_theme", n); return n; });
@@ -1311,13 +1330,13 @@ export default function App() {
   useEffect(() => {
     const isLoading = phase === "identifying" || phase === "searching";
     if (!isLoading) { setLoadMsgIdx(0); setLoadMsgVisible(true); return; }
-    const msgs = phase === "identifying" ? SCAN_MESSAGES : SEARCH_MESSAGES;
+    const msgs = phase === "identifying" ? SCAN_MESSAGES : (isResearch ? RESEARCH_MESSAGES : SEARCH_MESSAGES);
     const interval = setInterval(() => {
       setLoadMsgVisible(false);
       setTimeout(() => { setLoadMsgIdx(i => (i + 1) % msgs.length); setLoadMsgVisible(true); }, 350);
     }, 2800);
     return () => clearInterval(interval);
-  }, [phase]);
+  }, [phase, isResearch]);
 
   // ─── AI refinement (ID/Shop toggle + chat per item) ───────
   const [itemViewModes, setItemViewModes] = useState({}); // { [idx]: "id" | "shop" }
@@ -1773,6 +1792,9 @@ export default function App() {
     }));
     const pickedIndices = [...pickedItems].sort((a, b) => a - b);
 
+    // Detect re-search: phase was "done" meaning we already had results once
+    const wasAlreadySearched = phase === "done";
+    setIsResearch(wasAlreadySearched);
     setPhase("searching");
     setResults(prev => prev ? {
       ...prev,
@@ -1795,8 +1817,10 @@ export default function App() {
     } catch (err) {
       console.error("Product search failed:", err);
       setResults(prev => prev ? { ...prev, items: prev.items.map(it => it.status === "searching" ? { ...it, status: "failed" } : it) } : prev);
+      setError(t("search_failed") || "Search failed. Please try refining your items and searching again.");
     }
     setPhase("done");
+    setIsResearch(false);
     // Auto-switch picked items to "shop" view once search completes
     setItemViewModes(prev => {
       const next = { ...prev };
@@ -1809,7 +1833,7 @@ export default function App() {
     API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); };
+  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -1908,6 +1932,7 @@ export default function App() {
       @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
       @keyframes glowPulse{0%,100%{opacity:1;filter:brightness(1.5)}50%{opacity:.6;filter:brightness(2)}}
       @keyframes circleGlow{0%,100%{opacity:0.6;filter:drop-shadow(0 0 10px rgba(255,107,53,0.4)) drop-shadow(0 0 3px rgba(255,107,53,0.6))}50%{opacity:1;filter:drop-shadow(0 0 25px rgba(255,107,53,0.8)) drop-shadow(0 0 8px rgba(255,107,53,1))}}
+      @keyframes searchPulse{0%,100%{background-position:200% center}50%{background-position:0% center}}
       .fi{animation:fi .3s ease forwards}.fo{animation:fo .22s ease forwards}
       .app{width:100%;max-width:430px;min-height:100vh;margin:0 auto;background:#0C0C0E;font-family:'Outfit',sans-serif;color:#E8E6E1;display:flex;flex-direction:column;overflow-x:hidden}
       .serif{font-family:'Instrument Serif',serif}
@@ -2183,6 +2208,44 @@ export default function App() {
       .app[data-theme='light'] .hist-name-row div{color:#1A1816}
       /* Bottom sheet overlays */
       .app[data-theme='light'] .likes-card *:not(button):not(img){color:#1A1816}
+      /* Scan home */
+      .app[data-theme='light'] .shome{background:#F6F4F0}
+      .app[data-theme='light'] .btn.ghost{background:rgba(0,0,0,.04);color:rgba(0,0,0,.6);border-color:rgba(0,0,0,.08)}
+      /* Loading screen */
+      .app[data-theme='light'] .ld-wrap{background:#F6F4F0}
+      .app[data-theme='light'] .ld-info{background:#F6F4F0}
+      /* Results screen */
+      .app[data-theme='light'] .res-grad{background:linear-gradient(transparent,#F6F4F0)}
+      .app[data-theme='light'] .v-banner{background:#F6F4F0}
+      .app[data-theme='light'] .v-step-l{color:rgba(0,0,0,.4)}
+      .app[data-theme='light'] .det-conf{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.06)}
+      .app[data-theme='light'] .tier-empty{border-color:rgba(0,0,0,.08);color:rgba(0,0,0,.3)}
+      /* TierCard + MiniCard link colors */
+      .app[data-theme='light'] .tiers-scroll a{color:#1A1816}
+      /* MiniCard text overrides for light mode — inline rgba(255,255,255,.X) is invisible on white */
+      .app[data-theme='light'] .tiers-scroll a div{color:#1A1816 !important}
+      .app[data-theme='light'] .tiers-scroll a span{color:#666 !important}
+      .app[data-theme='light'] .tiers-scroll a span[style*="fontWeight: 700"]{color:inherit !important}
+      .app[data-theme='light'] .tiers-scroll a{background:rgba(0,0,0,.02) !important;border-color:rgba(0,0,0,.08) !important}
+      /* Pick-item screen */
+      .app[data-theme='light'] .pick-cta{background:linear-gradient(transparent,#F6F4F0 60%)}
+      /* Camera overlay */
+      .app[data-theme='light'] .cam{background:#000}
+      /* Progress dots */
+      .app[data-theme='light'] .ld-dot{background:#C9A96E}
+      /* Profile page */
+      .app[data-theme='light'] .pcard div:not(.pro):not(.free-badge){color:#1A1816}
+      .app[data-theme='light'] .rcard{background:#FFF9F0}
+      .app[data-theme='light'] .rcard div{color:#1A1816}
+      /* Wishlist/collection sheet */
+      .app[data-theme='light'] .likes-card{background:#FFFFFF;border-color:rgba(0,0,0,.07)}
+      /* As-seen-on links */
+      .app[data-theme='light'] .det a{color:#1A1816}
+      /* Search re-run banner */
+      .app[data-theme='light'] .research-banner{background:rgba(201,169,110,.06);border-bottom-color:rgba(201,169,110,.12)}
+      /* Onboarding page in light mode */
+      .app[data-theme='light'] .ob{background:#F6F4F0}
+      .app[data-theme='light'] .ob-skip{color:rgba(0,0,0,.25)}
 
       /* ─── Likes tab card styles ──────────────────────── */
       .likes-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:12px;overflow:hidden;cursor:default;-webkit-user-select:none;user-select:none}
@@ -2658,6 +2721,19 @@ export default function App() {
           {/* ─── Results ───────────────────────────────── */}
           {tab === "scan" && results && (phase === "searching" || phase === "done") && (
             <div className="res">
+              {/* Re-search banner — shown prominently when re-running from done state */}
+              {phase === "searching" && isResearch && (
+                <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", borderBottom: "1px solid rgba(201,169,110,.15)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <div className="ld-dot" style={{ background: "#C9A96E" }} />
+                    <div className="ld-dot" style={{ background: "#C9A96E", animationDelay: ".15s" }} />
+                    <div className="ld-dot" style={{ background: "#C9A96E", animationDelay: ".3s" }} />
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#C9A96E", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0.3 }}>
+                    {RESEARCH_MESSAGES[loadMsgIdx % RESEARCH_MESSAGES.length]}
+                  </div>
+                </div>
+              )}
               {/* Verification progress */}
               <div className="v-banner">
                 <div className="v-steps">
@@ -2668,7 +2744,9 @@ export default function App() {
                   <div className="v-step">
                     <div className="v-step-bar"><div className="v-step-fill" style={{ width: phase === "searching" ? "40%" : "100%", background: phase === "done" ? (results.items.some(i => i.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.15)") : "rgba(201,169,110,.4)", transition: phase === "searching" ? "width 12s linear" : "width .5s ease" }} /></div>
                     <div className="v-step-l" style={{ color: phase === "searching" ? "rgba(201,169,110,.5)" : results.items.some(i => i.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.2)", transition: "opacity .35s ease", opacity: phase === "searching" ? (loadMsgVisible ? 1 : 0.3) : 1 }}>
-                      {phase === "searching" ? SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length] : results.items.some(i => i.status === "verified") ? "✓ Products found" : "Search complete"}
+                      {phase === "searching"
+                        ? (isResearch ? RESEARCH_MESSAGES[loadMsgIdx % RESEARCH_MESSAGES.length] : SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length])
+                        : results.items.some(i => i.status === "verified") ? "✓ Products found" : "Search complete"}
                     </div>
                   </div>
                 </div>
@@ -2801,7 +2879,7 @@ export default function App() {
                         if (sod.appearances) { setSeenOnData(d => ({ ...d, [selIdx]: { ...d[selIdx], open: true } })); return; }
                         setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: true } }));
                         try {
-                          const res = await API.seenOn(item.brand, item.name);
+                          const res = await API.seenOn(item.brand, item.name, profile?.style_interests);
                           setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: res.appearances || [] } }));
                           track("seen_on_viewed", { brand: item.brand }, scanId, "scan");
                         } catch { setSeenOnData(d => ({ ...d, [selIdx]: { open: true, loading: false, appearances: [] } })); }
@@ -2972,6 +3050,18 @@ export default function App() {
                               {item.tiers && (
                                 <button onClick={() => setItemViewModes(m => ({ ...m, [selIdx]: "shop" }))} style={{ width: "100%", marginTop: 12, padding: "11px 0", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                                   View shopping options →
+                                </button>
+                              )}
+                              {/* Re-search button — appears when the AI has been corrected */}
+                              {chat.length > 0 && (
+                                <button
+                                  onClick={() => {
+                                    setItemViewModes(m => ({ ...m, [selIdx]: "shop" }));
+                                    runProductSearch();
+                                  }}
+                                  style={{ width: "100%", marginTop: 8, padding: "11px 0", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, color: "rgba(255,255,255,.5)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                                  Re-search with these changes
                                 </button>
                               )}
                             </div>

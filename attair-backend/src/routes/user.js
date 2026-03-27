@@ -86,7 +86,7 @@ router.patch("/profile", requireAuth, async (req, res) => {
   const { display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs, bio, style_interests } = req.body;
 
   const updates = {};
-  if (display_name !== undefined && display_name.length > 100) {
+  if (display_name !== undefined && display_name !== null && String(display_name).length > 100) {
     return res.status(400).json({ error: "Display name must be 100 characters or less" });
   }
   if (display_name !== undefined) updates.display_name = display_name;
@@ -404,6 +404,12 @@ router.post("/saved", requireAuth, async (req, res) => {
     const tier = profile?.tier || "free";
     if ((tier === "free" || tier === "expired") && (profile.saved_count || 0) >= FREE_SAVE_LIMIT) {
       return res.status(429).json({ error: "Save limit reached", message: `You've saved ${FREE_SAVE_LIMIT} items. Go Pro for unlimited.`, upgrade_url: "/subscribe" });
+    }
+
+    // SECURITY: Verify scan ownership when scan_id is provided — prevents saving references to other users' scans
+    if (scan_id) {
+      const { data: scanRow } = await supabase.from("scans").select("id").eq("id", scan_id).eq("user_id", req.userId).single();
+      if (!scanRow) return res.status(403).json({ error: "Scan not found" });
     }
 
     const { data: saved, error } = await supabase

@@ -11,7 +11,7 @@ const SERPAPI_URL = "https://serpapi.com/search.json";
  * Uses SerpAPI Google Maps engine.
  * Returns { stores: [{ name, address, rating, hours, distance, maps_url }] }
  *
- * Works for anonymous users (no purchase needed to discover stores).
+ * Requires authentication. Uses SerpAPI credits so auth prevents anonymous abuse.
  */
 router.get("/", requireAuth, async (req, res) => {
   const { brand, category, lat, lng } = req.query;
