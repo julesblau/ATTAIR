@@ -64,7 +64,18 @@ RULES:
 
 CONTEXT: React 19 + Vite, Node/Express on Railway, Supabase, Claude AI vision, SerpAPI, freemium model.
 
-COMMANDS: "run" = start army, "backlog: X" = add idea, "requirements" = write today.md, "status" / "stop".`;
+ACTIONS YOU CAN TRIGGER:
+You have special powers. When you determine Jules wants one of these, include the action tag in your response. The system will execute it and strip the tag before showing your message.
+
+- [ACTION:RUN_ARMY] — Start the agent army. Use when Jules wants to kick off a build, says "let's go", "ship it", "run it", "build this", "start the agents", etc.
+- [ACTION:STOP_ARMY] — Stop a running army. Use when Jules wants to halt, pause, stop, kill the current run.
+- [ACTION:WRITE_REQS:content here] — Write requirements/today.md. Use when Jules says to write/save/finalize requirements, or when you've agreed on what to build and it's time to lock it in.
+- [ACTION:BACKLOG:idea here] — Add to creative backlog. Use when Jules drops an idea for later, says "save this for later", "add to backlog", or mentions something that's not for today.
+- [ACTION:STATUS] — Check army status. Use when Jules asks how things are going, what's running, etc.
+
+You can combine actions with your text response. Example: "On it, kicking off the army now. [ACTION:RUN_ARMY]"
+
+Be smart about intent. "let's build this" = run army. "save that for later" = backlog. "that's good, lock it in" = write reqs. You don't need Jules to use magic words.`;
 
 // ─── Helper: Send to channel (handles 2000 char limit) ──────────────────────
 async function sendToChannel(channel, text) {
@@ -110,7 +121,12 @@ async function chatWithOpus(userMessage) {
   ].filter(Boolean).join("\n");
 
   const reply = await new Promise((resolve, reject) => {
-    const proc = spawn("claude", ["-p", "--model", "opus", "--output-format", "text", "--allowedTools", "*"], {
+    const proc = spawn("claude", [
+      "-p", "--model", "opus", "--output-format", "text",
+      "--allowedTools",
+      "Read", "Write", "Edit", "Glob", "Grep",
+      "Bash(git *)", "Bash(npm *)", "Bash(node *)", "Bash(cat *)", "Bash(ls *)", "Bash(wc *)",
+    ], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: REPO_ROOT,
       env: { ...process.env, GH_TOKEN: process.env.GH_TOKEN ?? "" },
@@ -293,78 +309,77 @@ async function handleMessage(message) {
     const responseFile = join(BRIDGE_DIR, `response-${pendingQuestion.id}.json`);
     writeFileSync(responseFile, JSON.stringify({ reply: content, ts: Date.now() }));
     pendingQuestion = null;
-    await message.reply("Got it, sending your reply back to the agent.");
+    await message.reply("Sent to the agent.");
     return;
   }
 
-  // ── Special commands ──
-  const lower = content.toLowerCase();
+  // ── Everything goes through Claude — it decides what to do ──
+  try {
+    const thinking = await message.channel.send("...");
 
-  // Run the army
-  if (lower === "run" || lower === "run the army" || lower === "start" || lower === "go") {
-    const logsChannel = LOGS_CHANNEL_ID ? await client.channels.fetch(LOGS_CHANNEL_ID).catch(() => null) : null;
-    await startArmy(message.channel, logsChannel);
-    return;
-  }
+    const reply = await chatWithOpus(content);
 
-  // Stop the army
-  if (lower === "stop" || lower === "kill" || lower === "abort") {
-    stopArmy(message.channel);
-    return;
-  }
+    await thinking.delete().catch(() => {});
 
-  // Status check
-  if (lower === "status") {
-    if (armyProcess) {
-      await message.reply("The agent army is currently running.");
-    } else {
-      await message.reply("No army running. Say `run` to start one.");
+    // Parse and execute any action tags Claude included
+    const displayText = await executeActions(reply, message.channel);
+
+    if (displayText.trim()) {
+      await sendToChannel(message.channel, displayText);
     }
-    return;
+  } catch (err) {
+    console.error("Claude error:", err.message);
+    await message.reply("Error: " + err.message.slice(0, 200));
+  }
+}
+
+// ─── Action Parser — executes action tags from Claude's response ─────────────
+async function executeActions(reply, channel) {
+  let text = reply;
+
+  // [ACTION:RUN_ARMY]
+  if (text.includes("[ACTION:RUN_ARMY]")) {
+    text = text.replace(/\[ACTION:RUN_ARMY\]/g, "").trim();
+    const logsChannel = LOGS_CHANNEL_ID ? await client.channels.fetch(LOGS_CHANNEL_ID).catch(() => null) : null;
+    await startArmy(channel, logsChannel);
   }
 
-  // Backlog idea
-  if (lower.startsWith("backlog:") || lower.startsWith("idea:")) {
-    const idea = content.slice(content.indexOf(":") + 1).trim();
+  // [ACTION:STOP_ARMY]
+  if (text.includes("[ACTION:STOP_ARMY]")) {
+    text = text.replace(/\[ACTION:STOP_ARMY\]/g, "").trim();
+    stopArmy(channel);
+  }
+
+  // [ACTION:STATUS]
+  if (text.includes("[ACTION:STATUS]")) {
+    text = text.replace(/\[ACTION:STATUS\]/g, "").trim();
+    const status = armyProcess ? "Army is currently running." : "No army running.";
+    text = text ? `${text}\n${status}` : status;
+  }
+
+  // [ACTION:WRITE_REQS:...]
+  const reqsMatch = text.match(/\[ACTION:WRITE_REQS:([\s\S]*?)\]/);
+  if (reqsMatch) {
+    const reqContent = reqsMatch[1].trim();
+    const reqPath = join(REPO_ROOT, "requirements", "today.md");
+    writeFileSync(reqPath, reqContent);
+    text = text.replace(reqsMatch[0], "").trim();
+    text = text ? `${text}\nWrote requirements to \`requirements/today.md\`.` : `Wrote requirements to \`requirements/today.md\`.`;
+  }
+
+  // [ACTION:BACKLOG:...]
+  const backlogMatch = text.match(/\[ACTION:BACKLOG:([\s\S]*?)\]/);
+  if (backlogMatch) {
+    const idea = backlogMatch[1].trim();
     const backlogPath = join(REPO_ROOT, "requirements", "creative-backlog.md");
     const date = new Date().toISOString().split("T")[0];
     const entry = `\n### ${date} — Jules via Discord\n${idea}\n**Status:** Pending review\n`;
     appendFileSync(backlogPath, entry);
-    await message.reply(`Added to creative backlog:\n> ${idea}`);
-    return;
+    text = text.replace(backlogMatch[0], "").trim();
+    text = text ? `${text}\nAdded to backlog.` : `Added to backlog: ${idea}`;
   }
 
-  // Write requirements
-  if (lower === "requirements" || lower === "write requirements" || lower === "write reqs") {
-    const reply = await chatWithOpus(
-      "Based on our conversation so far, write the requirements for today. " +
-      "Format it as a complete requirements/today.md file that the agent army PM can parse. " +
-      "Include specific screens, features, and behavioral specs. Use the standard format with sections."
-    );
-
-    const reqPath = join(REPO_ROOT, "requirements", "today.md");
-    writeFileSync(reqPath, reply);
-
-    await sendToChannel(message.channel, `Wrote requirements to \`requirements/today.md\`:\n\n${reply}`);
-    return;
-  }
-
-  // ── Default: chat with Opus ──
-  try {
-    // React immediately so Jules knows the bot heard him
-    await message.react("⏳").catch(() => {});
-
-    const reply = await chatWithOpus(content);
-
-    // Remove thinking reaction, add done
-    await message.reactions.cache.get("⏳")?.users.remove(client.user.id).catch(() => {});
-
-    await sendToChannel(message.channel, reply);
-  } catch (err) {
-    await message.reactions.cache.get("⏳")?.users.remove(client.user.id).catch(() => {});
-    console.error("Claude error:", err.message);
-    await message.reply("Error: " + err.message.slice(0, 200));
-  }
+  return text;
 }
 
 // ─── Discord Events ──────────────────────────────────────────────────────────

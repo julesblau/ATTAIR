@@ -2723,7 +2723,7 @@ async function main() {
         model: "opus",
         ...(claudeCliPath ? { pathToClaudeCodeExecutable: claudeCliPath } : {}),
         env: {
-          ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
+          ...process.env,
           GH_TOKEN: process.env.GH_TOKEN ?? "",
           ...(process.env.DISCORD_BRIDGE === "true" ? {
             DISCORD_BRIDGE: "true",
