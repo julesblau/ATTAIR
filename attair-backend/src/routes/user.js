@@ -509,4 +509,29 @@ router.get("/saved", requireAuth, async (req, res) => {
   return res.json({ items: items || [] });
 });
 
+// ─── PATCH /api/user/scan/:scanId/verdict ───────────────────
+router.patch("/scan/:scanId/verdict", requireAuth, async (req, res) => {
+  const { scanId } = req.params;
+  const { verdict } = req.body;
+
+  const validVerdicts = ["would_wear", "on_the_fence", "not_for_me", null];
+  if (!validVerdicts.includes(verdict)) {
+    return res.status(400).json({ error: "Invalid verdict. Must be: would_wear, on_the_fence, not_for_me, or null" });
+  }
+
+  try {
+    const { error } = await supabase
+      .from("scans")
+      .update({ verdict })
+      .eq("id", scanId)
+      .eq("user_id", req.userId);
+
+    if (error) throw error;
+    return res.json({ verdict });
+  } catch (err) {
+    console.error("Verdict error:", err.message);
+    return res.status(500).json({ error: "Failed to set verdict" });
+  }
+});
+
 export default router;

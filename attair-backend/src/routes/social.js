@@ -329,4 +329,161 @@ router.patch("/social/profile", requireAuth, async (req, res) => {
   }
 });
 
+// ─── GET /api/feed ───────────────────────────────────────────
+// Public scans from followed users, paginated.
+// Falls back to trending/recent public scans when following nobody.
+router.get("/feed", requireAuth, async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+
+  try {
+    // Get users the current user follows
+    const { data: following } = await supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", req.userId);
+
+    const followingIds = (following || []).map(f => f.following_id);
+
+    let query;
+    if (followingIds.length > 0) {
+      // Feed from followed users — public scans only
+      query = supabase
+        .from("scans")
+        .select("id, user_id, image_url, summary, items, created_at, visibility")
+        .in("user_id", followingIds)
+        .eq("visibility", "public")
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+    } else {
+      // No follows — show trending/recent public scans
+      query = supabase
+        .from("scans")
+        .select("id, user_id, image_url, summary, items, created_at, visibility")
+        .eq("visibility", "public")
+        .neq("user_id", req.userId)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+    }
+
+    const { data: scans, error } = await query;
+    if (error) throw error;
+
+    // Enrich with user info
+    if (scans && scans.length > 0) {
+      const userIds = [...new Set(scans.map(s => s.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name, bio")
+        .in("id", userIds);
+
+      const profileMap = {};
+      (profiles || []).forEach(p => { profileMap[p.id] = p; });
+
+      const enriched = scans.map(s => ({
+        id: s.id,
+        image_url: s.image_url,
+        summary: s.summary,
+        item_count: Array.isArray(s.items) ? s.items.length : 0,
+        created_at: s.created_at,
+        user: profileMap[s.user_id] || { display_name: "Anonymous" }
+      }));
+
+      return res.json({ scans: enriched, page, has_more: scans.length === limit });
+    }
+
+    return res.json({ scans: [], page, has_more: false });
+  } catch (err) {
+    console.error("Feed error:", err.message);
+    return res.status(500).json({ error: "Failed to load feed" });
+  }
+});
+
+// ─── GET /api/users/search ───────────────────────────────────
+// Search users by display_name (min 2 chars, max 100 chars).
+router.get("/users/search", requireAuth, async (req, res) => {
+  const q = (req.query.q || "").trim();
+  if (!q || q.length < 2) {
+    return res.status(400).json({ error: "Search query must be at least 2 characters" });
+  }
+  if (q.length > 100) {
+    return res.status(400).json({ error: "Search query too long" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, display_name, bio")
+      .ilike("display_name", `%${q}%`)
+      .neq("id", req.userId)
+      .limit(20);
+
+    if (error) throw error;
+
+    // Get follower counts for each result
+    const enriched = await Promise.all((data || []).map(async (user) => {
+      const { count } = await supabase
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("following_id", user.id);
+
+      return {
+        id: user.id,
+        display_name: user.display_name,
+        bio: user.bio,
+        follower_count: count || 0
+      };
+    }));
+
+    return res.json({ users: enriched });
+  } catch (err) {
+    console.error("User search error:", err.message);
+    return res.status(500).json({ error: "Search failed" });
+  }
+});
+
+// ─── GET /api/scan/:scanId/public ────────────────────────────
+// Public scan data — no auth required (share link).
+router.get("/scan/:scanId/public", async (req, res) => {
+  const { scanId } = req.params;
+
+  // Validate UUID format
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(scanId)) {
+    return res.status(400).json({ error: "Invalid scan ID" });
+  }
+
+  try {
+    const { data: scan, error } = await supabase
+      .from("scans")
+      .select("id, user_id, image_url, summary, items, created_at, visibility")
+      .eq("id", scanId)
+      .eq("visibility", "public")
+      .single();
+
+    if (error || !scan) {
+      return res.status(404).json({ error: "Scan not found or not public" });
+    }
+
+    // Get user display_name
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", scan.user_id)
+      .single();
+
+    return res.json({
+      id: scan.id,
+      image_url: scan.image_url,
+      summary: scan.summary,
+      items: scan.items,
+      created_at: scan.created_at,
+      user_display_name: profile?.display_name || "Anonymous"
+    });
+  } catch (err) {
+    console.error("Public scan error:", err.message);
+    return res.status(500).json({ error: "Failed to load scan" });
+  }
+});
+
 export default router;

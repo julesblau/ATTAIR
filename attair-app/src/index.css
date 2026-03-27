@@ -1,48 +1,139 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+/* ══════════════════════════════════════════════════════════════
+   ATTAIR Design System — Design Tokens
+   Dark mode is the DEFAULT. Light mode via [data-theme='light'].
+   ══════════════════════════════════════════════════════════════ */
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+:root {
+  /* ── Colors ── */
+  --accent: #C9A96E;
+  --accent-hover: #B8944F;
+  --accent-bg: rgba(201,169,110,0.08);
+  --accent-border: rgba(201,169,110,0.3);
+
+  --bg-primary: #000000;
+  --bg-secondary: #0C0C0E;
+  --bg-card: #1A1A1A;
+  --bg-input: #1A1A1A;
+  --bg-overlay: rgba(0,0,0,0.6);
+
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255,255,255,0.6);
+  --text-tertiary: rgba(255,255,255,0.35);
+  --text-inverse: #000000;
+
+  --border: rgba(255,255,255,0.08);
+  --border-focus: rgba(201,169,110,0.5);
+
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-elevated: 0 8px 32px rgba(0,0,0,0.4);
+
+  --success: #4CAF50;
+  --error: #FF5252;
+  --info: #64B5F6;
+  --warning: #FFB74D;
+
+  /* ── Typography ── */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Outfit', system-ui, sans-serif;
+
+  --text-xl: 24px;
+  --text-lg: 18px;
+  --text-md: 16px;
+  --text-sm: 14px;
+  --text-xs: 12px;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ── Spacing ── */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* ── Radius ── */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* ── Transitions ── */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms ease;
+
+  /* ── Z-index ── */
+  --z-dropdown: 100;
+  --z-modal: 1000;
+  --z-toast: 9999;
+
+  /* ── Legacy compat (referenced by old Vite boilerplate code) ── */
+  --text: rgba(255,255,255,0.6);
+  --text-h: #FFFFFF;
+  --bg: #000000;
+  --code-bg: #1f2028;
+  --social-bg: rgba(47,48,58,0.5);
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --sans: var(--font-sans);
+  --heading: var(--font-display);
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
+  font: 16px/145% var(--font-sans);
   letter-spacing: 0.18px;
   color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  color: var(--text-primary);
+  background: var(--bg-primary);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
+/* ── Light Mode (data-theme toggle) ── */
+[data-theme='light'] {
+  --bg-primary: #F8F8FA;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-input: #F0F0F2;
+  --bg-overlay: rgba(0,0,0,0.4);
+
+  --text-primary: #1A1A1A;
+  --text-secondary: rgba(0,0,0,0.55);
+  --text-tertiary: rgba(0,0,0,0.35);
+  --text-inverse: #FFFFFF;
+
+  --border: rgba(0,0,0,0.08);
+  --border-focus: rgba(201,169,110,0.5);
+
+  --shadow-card: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-elevated: 0 8px 32px rgba(0,0,0,0.12);
+
+  /* Legacy compat */
+  --text: rgba(0,0,0,0.55);
+  --text-h: #1A1A1A;
+  --bg: #F8F8FA;
+  --code-bg: #F0F0F2;
+  --social-bg: rgba(0,0,0,0.04);
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* ── Fallback for OS-level dark preference (no manual toggle) ── */
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
+    --text: rgba(255,255,255,0.6);
+    --text-h: #FFFFFF;
+    --bg: #000000;
     --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    --social-bg: rgba(47,48,58,0.5);
+    --shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
 
   #social .button-icon {
@@ -50,16 +141,18 @@
   }
 }
 
+/* ── Base Element Styles ── */
 body {
   margin: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 430px;
   margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -68,28 +161,21 @@ body {
 
 h1,
 h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+  font-family: var(--font-display);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+  font-size: 32px;
+  letter-spacing: -0.5px;
+  margin: 20px 0;
 }
 h2 {
-  font-size: 24px;
-  line-height: 118%;
+  font-size: var(--text-xl);
+  line-height: var(--leading-tight);
   letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+  margin: 0 0 var(--space-sm);
 }
 p {
   margin: 0;
@@ -100,12 +186,12 @@ code,
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
-  color: var(--text-h);
+  color: var(--text-primary);
 }
 
 code {
   font-size: 15px;
   line-height: 135%;
-  padding: 4px 8px;
+  padding: var(--space-xs) var(--space-sm);
   background: var(--code-bg);
 }

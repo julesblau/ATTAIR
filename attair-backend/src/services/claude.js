@@ -9,7 +9,7 @@ function buildIdentifyPrompt(prefs) {
   return `You are a fashion identification system. Your job is to look at this photo and tell me EXACTLY what each person is wearing. Be precise. Be honest.
 
 STRICT RULES:
-1. VISIBILITY: Only include items where 50%+ of the garment is clearly visible. Cropped shoes, barely-visible hats = skip them.
+1. VISIBILITY: Only include items where 70%+ of the garment is clearly visible. Exception: if a specific region was circled/highlighted by the user, include that item regardless of visibility percentage. Cropped shoes, barely-visible hats = skip them.
 2. ONE PER GARMENT: One jacket = one entry. Never list the same physical item twice with different descriptions.
 3. LAYERING LOGIC: A typical outfit is 1 outerwear + 1 top + 1 bottom + 0-1 visible shoes + 0-few accessories. If your count exceeds this, you're probably duplicating.
 4. BRAND HONESTY:
@@ -18,7 +18,8 @@ STRICT RULES:
    - "moderate" = general style suggests a brand but no hard evidence
    - "low" = pure guess based on aesthetic
    If you can't identify with at least moderate confidence, say "Unidentified"
-5. GENDER: Determine from the photo whether this is men's or women's clothing.
+5. GENDER: Determine from the photo whether this is men's or women's clothing. This MUST be returned as "male" or "female" in the gender field. If ambiguous, default to the user's preference if provided${prefs.gender ? ` (user preference: ${prefs.gender})` : ""}.
+6. ITEM LIMIT: Focus on the 3-5 most prominent, clearly visible garments. Ignore partially hidden items, undergarments, socks, and small accessories unless they are the main focus of the photo.
 
 For each item, think: "If someone searched for this exact item online, what would they type?" That's your search_query.
 
