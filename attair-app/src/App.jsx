@@ -1221,13 +1221,13 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     pts.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.strokeStyle = "rgba(201,169,110,0.6)";
+    ctx.strokeStyle = "rgba(255, 204, 0, 0.7)";
     ctx.lineWidth = 5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.stroke();
     ctx.closePath();
-    ctx.fillStyle = "rgba(201,169,110,0.08)";
+    ctx.fillStyle = "rgba(255, 220, 0, 0.06)";
     ctx.fill();
   };
 
@@ -1242,12 +1242,12 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     ctx.moveTo(path[0].x, path[0].y);
     path.forEach(p => ctx.lineTo(p.x, p.y));
     ctx.closePath();
-    ctx.strokeStyle = "rgba(201,169,110,0.7)";
+    ctx.strokeStyle = "rgba(255, 204, 0, 0.8)";
     ctx.lineWidth = 5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.stroke();
-    ctx.fillStyle = "rgba(201,169,110,0.1)";
+    ctx.fillStyle = "rgba(255, 220, 0, 0.1)";
     ctx.fill();
     setConfirmed(true);
     // Trigger glow animation to confirm "locked on" — lasts ~2 seconds
@@ -1358,6 +1358,7 @@ export default function App() {
   const [camOn, setCamOn] = useState(false);
   const [camReady, setCamReady] = useState(false);
   const [camFacing, setCamFacing] = useState("environment"); // "environment" (back) | "user" (front)
+  const [showScanSheet, setShowScanSheet] = useState(false); // bottom sheet for scan options
 
   // ─── Per-item overrides (reset each new scan) ─────────────
   const [itemOverrides, setItemOverrides] = useState({}); // { [itemIdx]: { budget, sizePrefs } }
@@ -3166,7 +3167,7 @@ export default function App() {
                   </div>
                   {feedTab === "following"
                     ? <button className="btn-primary" onClick={() => { setTab("search"); setShowUserSearch(true); }} style={{ padding: "12px 32px", borderRadius: 100, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Explore People</button>
-                    : <button className="btn-primary" onClick={() => { setTab("scan"); camStart(); }} style={{ padding: "12px 32px", borderRadius: 100, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Scan an Outfit</button>
+                    : <button className="btn-primary" onClick={() => { setShowScanSheet(true); }} style={{ padding: "12px 32px", borderRadius: 100, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Scan an Outfit</button>
                   }
                 </div>
               )}
@@ -3265,69 +3266,58 @@ export default function App() {
             </div>
           )}
 
-          {/* ─── Feed Home (legacy scan tab idle state) ───── */}
+          {/* ─── Scan Landing (clean idle state) ───── */}
           {tab === "scan" && phase === "idle" && !img && (<>
-            <div className="feed-tabs">
-              <button className={`feed-tab ${feedTab === "foryou" ? "active" : ""}`} onClick={() => { setFeedTab("foryou"); setFeedPage(1); }}>For You</button>
-              <button className={`feed-tab ${feedTab === "following" ? "active" : ""}`} onClick={() => { setFeedTab("following"); setFeedPage(1); }}>Following</button>
+            <div className="screen-enter" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px 40px", minHeight: "60vh", textAlign: "center" }}>
+              {/* Hero icon */}
+              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
+              </div>
+              {/* Title */}
+              <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "#fff", marginBottom: 8 }}>Scan an Outfit</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,.4)", lineHeight: 1.6, maxWidth: 280, marginBottom: 32 }}>
+                Point your camera at any outfit to find where to buy it
+              </div>
+
+              {isFree && scansLeft != null && (
+                <div style={{ marginBottom: 24 }}>
+                  <div className="scan-counter" style={{ display: "inline-block" }}>{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong> of {scansLimit} scans used</> : <>No scans left &middot; <span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12 }}>
+                <button className="btn-primary" onClick={camStart} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
+                  Take Photo
+                </button>
+                <button className="btn-secondary" onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                  Upload from Gallery
+                </button>
+              </div>
             </div>
-            {isFree && (
-              <div style={{ padding: "0 16px 8px", textAlign: "center" }}>
-                <div className="scan-counter" style={{ display: "inline-block" }}>{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong> of {scansLimit} scans used</> : <>No scans left · <span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
-              </div>
-            )}
-            {feedLoading && feedScans.length === 0 && (
-              <div className="feed-list">{[0,1,2].map(i => (<div key={i} className="feed-skeleton"><div className="feed-skeleton-img" /></div>))}</div>
-            )}
-            {!feedLoading && feedScans.length === 0 && (
-              <div className="feed-empty">
-                <div className="feed-empty-icon"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg></div>
-                <div className="feed-empty-title">{feedTab === "following" ? "No posts yet" : "No scans yet"}</div>
-                <div className="feed-empty-sub">{feedTab === "following" ? "Follow people to see their outfits here, or scan your first outfit!" : "Be the first to scan an outfit, or search for people to follow."}</div>
-                <button className="btn gold" onClick={camStart} style={{ marginTop: 16 }}><svg viewBox="0 0 24 24" width="18" height="18"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>Scan your first outfit</button>
-              </div>
-            )}
-            {feedScans.length > 0 && (
-              <div className="feed-list">
-                {feedScans.map((scan, idx) => {
-                  const u = scan.user || {};
-                  const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
-                  return (
-                    <div key={scan.id || idx} className="feed-card" onClick={() => setFeedDetailScan(scan)}>
-                      <div style={{ position: "relative" }}>
-                        {scan.image_url
-                          ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" />
-                          : <div className="feed-card-img" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg></div>
-                        }
-                        <div className="feed-card-overlay">
-                          <div className="feed-card-user">
-                            <div className="feed-card-avatar">{ini}</div>
-                            <div className="feed-card-info">
-                              <div className="feed-card-name">{u.display_name || "Anonymous"}</div>
-                              {scan.summary && <div className="feed-card-summary">{scan.summary}</div>}
-                              {scan.item_count > 0 && <div className="feed-card-items">{scan.item_count} item{scan.item_count !== 1 ? "s" : ""}</div>}
-                            </div>
-                          </div>
-                          <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
-                            <svg viewBox="0 0 24 24" width="20" height="20" fill={saved.some(s => s.scan_id === scan.id) ? "var(--accent)" : "none"} stroke={saved.some(s => s.scan_id === scan.id) ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {feedHasMore && <button onClick={() => loadFeed(feedPage + 1, true)} disabled={feedLoading} style={{ padding: "14px 0", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, color: "var(--text-secondary)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", minHeight: 44, opacity: feedLoading ? 0.5 : 1 }}>{feedLoading ? "Loading..." : "Load more"}</button>}
-              </div>
-            )}
           </>)}
 
-          {/* ─── Loading ───────────────────────────────── */}
+          {/* ─── Loading (branded identifying experience) ── */}
           {tab === "scan" && phase === "identifying" && img && (
-            <div className="ld-wrap">
-              <div className="ld-img-wrap"><img src={img} className="ld-img" alt="" /><div className="ld-scanline" /></div>
-              <div className="ld-info">
-                <div style={{fontSize:10,fontWeight:700,letterSpacing:2.5,color:"rgba(201,169,110,.5)",textTransform:"uppercase"}}>Identifying outfit</div>
-                <div className="serif" style={{fontSize:20,color:"#fff",transition:"opacity .35s ease",opacity:loadMsgVisible?1:0}}>{SCAN_MESSAGES[loadMsgIdx]}</div>
+            <div className="ld-wrap" style={{ position: "relative", minHeight: "70vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              {/* Background photo — blurred and darkened */}
+              <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 0 }}>
+                <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "blur(12px) brightness(0.3)", transform: "scale(1.1)" }} />
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
+              </div>
+              {/* Centered content panel */}
+              <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(201,169,110,.15)", maxWidth: 300 }}>
+                {/* ATTAIR wordmark */}
+                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 24, fontStyle: "italic", color: "#fff", letterSpacing: 1 }}>A<span style={{ color: "#C9A96E" }}>TT</span>AIR</div>
+                {/* Gold scan ring spinner */}
+                <div className="scan-ring--lg" />
+                {/* Animated status text */}
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2.5, color: "rgba(201,169,110,.5)", textTransform: "uppercase", marginBottom: 8 }}>Identifying outfit</div>
+                  <div className="serif" style={{ fontSize: 18, color: "#fff", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0, minHeight: 28 }}>{SCAN_MESSAGES[loadMsgIdx]}</div>
+                </div>
                 <div className="ld-dots"><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
               </div>
             </div>
@@ -3380,6 +3370,21 @@ export default function App() {
               <div style={{ padding: "16px 20px 6px", textAlign: "center" }}>
                 <div style={{ fontFamily: "'Instrument Serif'", fontSize: 22, color: "#fff", marginBottom: 6 }}>What do you want to shop?</div>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>Tap items on the image or below</div>
+                {/* Gender badge — prominent, tappable */}
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
+                  <div style={{ display: "inline-flex", background: "rgba(255,255,255,.04)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden" }}>
+                    <button
+                      aria-label="Switch to Men's"
+                      onClick={() => { if (results.gender !== "male") setResults(prev => prev ? { ...prev, gender: "male" } : prev); }}
+                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 36, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "rgba(255,255,255,.3)", borderRight: "1px solid var(--border)" }}
+                    >Men's</button>
+                    <button
+                      aria-label="Switch to Women's"
+                      onClick={() => { if (results.gender !== "female") setResults(prev => prev ? { ...prev, gender: "female" } : prev); }}
+                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 36, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "rgba(255,255,255,.3)" }}
+                    >Women's</button>
+                  </div>
+                </div>
               </div>
 
               {/* Item pick list — tap row to set per-item prefs, tap checkbox to toggle */}
@@ -5638,9 +5643,40 @@ export default function App() {
         )}
 
         {/* ─── FAB (visible on all tabs) ─────────────────── */}
-        <button className="fab" onClick={() => { track("fab_scan", {}); setTab("scan"); camStart(); }} aria-label="Scan outfit" style={{ position: "fixed", bottom: "calc(60px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 1001, width: 56, height: 56, borderRadius: "50%", background: "var(--accent)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(201,169,110,0.4)" }}>
+        <button className="fab" onClick={() => { track("fab_scan", {}); setShowScanSheet(true); }} aria-label="Scan outfit" style={{ position: "fixed", bottom: "calc(60px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 1001, width: 56, height: 56, borderRadius: "50%", background: "var(--accent)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(201,169,110,0.4)" }}>
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#0C0C0E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
         </button>
+
+        {/* ─── Scan bottom sheet ─────────────────────── */}
+        {showScanSheet && (
+          <>
+            <div className="bottom-sheet-overlay animate-fade-in" onClick={() => setShowScanSheet(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100 }} />
+            <div className="bottom-sheet animate-slide-up" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1101, background: "var(--bg-card, #1A1A1E)", borderRadius: "20px 20px 0 0", padding: "12px 20px calc(20px + env(safe-area-inset-bottom, 0px))" }}>
+              <div className="bottom-sheet-handle" style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,.15)", margin: "0 auto 20px" }} />
+              <button
+                onClick={() => { setShowScanSheet(false); setTab("scan"); camStart(); }}
+                style={{ width: "100%", padding: "16px 0", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, color: "#fff", fontFamily: "'Outfit'", fontSize: 16, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52, marginBottom: 10 }}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
+                Take Photo
+              </button>
+              <button
+                onClick={() => { setShowScanSheet(false); setTab("scan"); fileRef.current?.click(); }}
+                style={{ width: "100%", padding: "16px 0", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, color: "#fff", fontFamily: "'Outfit'", fontSize: 16, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52, marginBottom: 10 }}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                Choose from Gallery
+              </button>
+              <button
+                onClick={() => setShowScanSheet(false)}
+                className="btn-ghost"
+                style={{ width: "100%", padding: "14px 0", borderRadius: 14, fontFamily: "'Outfit'", fontSize: 15, fontWeight: 600, cursor: "pointer", minHeight: 48, color: "rgba(255,255,255,.4)" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
 
         {/* ─── Tab bar (5 sections: Home, Search, [FAB gap], Saved, Profile) ── */}
         <div className="tb" style={{ background: "var(--bg-secondary)", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0", position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000 }}>

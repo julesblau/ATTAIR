@@ -20,6 +20,7 @@ STRICT RULES:
    If you can't identify with at least moderate confidence, say "Unidentified"
 5. GENDER: Determine from the photo whether this is men's or women's clothing. This MUST be returned as "male" or "female" in the gender field. If ambiguous, default to the user's preference if provided${prefs.gender ? ` (user preference: ${prefs.gender})` : ""}.
 6. ITEM LIMIT: Focus on the 3-5 most prominent, clearly visible garments. Ignore partially hidden items, undergarments, socks, and small accessories unless they are the main focus of the photo.
+7. CLOTHING ONLY: Only identify clothing, shoes, bags, jewelry, hats, and fashion accessories. NEVER identify non-fashion items such as food, drinks, electronics, furniture, vehicles, animals, or other objects in the scene. If someone is holding a beer can, ignore it. This is a fashion-only system.
 
 For each item, think: "If someone searched for this exact item online, what would they type?" That's your search_query.
 
