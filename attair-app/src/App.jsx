@@ -1488,6 +1488,8 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     cropCtx.drawImage(img, minX * scaleX, minY * scaleY, cropW * scaleX, cropH * scaleY, 0, 0, cropCanvas.width, cropCanvas.height);
     const base64 = cropCanvas.toDataURL("image/jpeg", 0.9).split(",")[1];
     pendingBase64Ref.current = base64;
+    // Pass base64 to parent immediately but keep overlay visible so user can judge/redraw
+    onConfirm(base64);
   };
 
   const clear = () => {
@@ -1496,6 +1498,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     pendingBase64Ref.current = null;
     const canvas = canvasRef.current;
     if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    onConfirm(null);
   };
 
   return (
@@ -2103,11 +2106,11 @@ export default function App() {
   };
 
   const retakeCrop = () => {
-    const source = cropPending?.source;
     setCropPending(null);
     setCropMode(false);
-    // Always open native file picker for retake (camera code removed)
-    fileRef.current?.click();
+    setCircleSearchActive(false);
+    setPriorityRegionBase64(null);
+    setCircleConfirmed(false);
   };
 
   const onCropImageLoad = (e) => {
@@ -4665,7 +4668,6 @@ export default function App() {
                     onConfirm={(base64) => {
                       setPriorityRegionBase64(base64);
                       setCircleConfirmed(!!base64);
-                      if (base64) setCircleSearchActive(false);
                     }}
                     onCancel={() => setCircleSearchActive(false)}
                   />
