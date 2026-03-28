@@ -1165,7 +1165,7 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
   ctx.fillStyle = "#C9A96E";
   ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
-  ctx.fillText("ATTAIRE", 540, 1800);
+  ctx.fillText("ATTAIR", 540, 1800);
   ctx.fillStyle = "rgba(201,169,110,0.5)";
   ctx.font = "400 24px 'Outfit', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1850);
@@ -1281,7 +1281,7 @@ async function generateStyleDnaCard(dna, userName) {
   ctx.fillStyle = "#C9A96E";
   ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
-  ctx.fillText("ATTAIRE", 540, 1810);
+  ctx.fillText("ATTAIR", 540, 1810);
   ctx.fillStyle = "rgba(201,169,110,0.5)";
   ctx.font = "400 24px 'Outfit', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1860);
@@ -1605,6 +1605,7 @@ export default function App() {
   // ─── Share card generation ──────────────────────────────────
   const [shareCardLoading, setShareCardLoading] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [sharePublicToast, setSharePublicToast] = useState(false);
 
   // ─── Post-first-scan preference sheet ──────────────────────
   const [showPrefSheet, setShowPrefSheet] = useState(false);
@@ -2631,7 +2632,7 @@ export default function App() {
                     ].map((card, idx) => (
                       <div key={idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.08}s`, opacity: 0.85, pointerEvents: "none" }} aria-label={`Example outfit: ${card.title}`}>
                         <div style={{ position: "relative" }}>
-                          <div className="feed-card-img" style={{ aspectRatio: "4/5", background: card.gradient, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                          <div className="feed-card-img" style={{ background: card.gradient, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
                             <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                             <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.35)", letterSpacing: 1, textTransform: "uppercase" }}>{card.label}</span>
                           </div>
@@ -2712,8 +2713,8 @@ export default function App() {
                       <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => setFeedDetailScan(scan)}>
                         <div style={{ position: "relative" }}>
                           {scan.image_url
-                            ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" style={{ aspectRatio: "4/5" }} />
-                            : <div className="feed-card-img" style={{ aspectRatio: "4/5", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" />
+                            : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                               </div>
                           }
@@ -3084,6 +3085,23 @@ export default function App() {
                     );
                   })}
                 </div>
+                {/* Dual-thumb range slider */}
+                <div style={{ position: "relative", height: 28, marginTop: 8 }}>
+                  <div style={{ position: "absolute", top: 12, left: 0, right: 0, height: 4, background: "var(--bg-input)", borderRadius: 2 }} />
+                  <div style={{ position: "absolute", top: 12, left: `${(budgetMin / 500) * 100}%`, right: `${100 - (budgetMax / 500) * 100}%`, height: 4, background: "var(--accent)", borderRadius: 2 }} />
+                  <input type="range" min={0} max={500} step={10} value={budgetMin}
+                    onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) { setBudgetMin(v); setSelectedBudgetTiers(new Set()); } }}
+                    aria-label="Minimum budget"
+                    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2 }}
+                    className="budget-range-thumb"
+                  />
+                  <input type="range" min={0} max={500} step={10} value={budgetMax}
+                    onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) { setBudgetMax(v); setSelectedBudgetTiers(new Set()); } }}
+                    aria-label="Maximum budget"
+                    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3 }}
+                    className="budget-range-thumb"
+                  />
+                </div>
               </div>
 
               {/* Advanced filters — above item list for visibility */}
@@ -3209,6 +3227,13 @@ export default function App() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* ── Divider between filters and item list ── */}
+              <div style={{ margin: "4px 20px 8px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", flexShrink: 0 }}>Items found</span>
+                <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
               </div>
 
               {/* Item pick list — circle intent: only show circled items unless expanded */}
@@ -3506,57 +3531,123 @@ export default function App() {
               )}
 
               {/* ═══════════════════════════════════════════════════════════
-                  ADVANCED / REFINE SEARCH — hidden by default
+                  COMPLETE THE LOOK — always visible
+                  ═══════════════════════════════════════════════════════════ */}
+              {phase === "done" && results?.items?.length > 0 && (
+                <div style={{ padding: "12px 20px 8px" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 10 }}>{t("complete_look")}</div>
+                  {!pairings && !pairingsLoading && (
+                    <button
+                      onClick={async () => {
+                        setPairingsLoading(true);
+                        try {
+                          const res = await API.suggestPairings(scanId, results.items.filter((_, idx) => pickedItems.has(idx)), results.gender);
+                          setPairings(res?.pairings || []);
+                          track("pairings_requested", { item_count: pickedItems.size }, scanId, "scan");
+                        } catch { setPairings([]); }
+                        setPairingsLoading(false);
+                      }}
+                      style={{ width: "100%", padding: "12px 0", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                      Complete the Look
+                    </button>
+                  )}
+                  {pairingsLoading && (
+                    <div style={{ padding: "14px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 12 }}>
+                      <div className="ld-dots" style={{ justifyContent: "center", marginBottom: 6 }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
+                      Finding complementary pieces...
+                    </div>
+                  )}
+                  {pairings && pairings.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <div className="scroll-x" style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+                        {pairings.map((p, pi) => {
+                          const prod = p.product;
+                          const shopUrl = prod?.url
+                            ? API.affiliateUrl(`pairing_${scanId}_${pi}`, prod.url, scanId, 0, "pairing", prod.brand)
+                            : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
+                          return (
+                            <a key={pi} href={shopUrl} target="_blank" rel="noopener noreferrer"
+                              onClick={async () => {
+                                track("pairing_clicked", { name: p.name, search_query: p.search_query, category: p.category, has_product: !!prod }, scanId, "scan");
+                                authFetch(`${API_BASE}/api/suggest-pairings/track-click`, { method: "POST", body: JSON.stringify({ pairing_product_url: shopUrl, item_name: p.name }) }).catch(() => {});
+                              }}
+                              className="card-press"
+                              style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, textDecoration: "none", color: "inherit", overflow: "hidden" }}>
+                              {prod?.image_url ? (
+                                <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
+                                  <img src={prod.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                </div>
+                              ) : (
+                                <div style={{ width: "100%", aspectRatio: "1", background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+                                  {{ shoes: "S", accessory: "A", bag: "B", outerwear: "O", top: "T", bottom: "B", dress: "D" }[p.category] || "?"}
+                                </div>
+                              )}
+                              <div style={{ padding: "8px 10px" }}>
+                                <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod?.product_name || p.name || "Item"}</div>
+                                {(prod?.brand || p.brand) && <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{prod?.brand || p.brand}</div>}
+                                {(prod?.price || p.price) && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", marginTop: 2 }}>{prod?.price || p.price}</div>}
+                                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
+                              </div>
+                            </a>
+                          );
+                        })}
+                      </div>
+                      <button onClick={() => setPairings(null)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", fontSize: 11, cursor: "pointer", padding: "4px 0" }}>Dismiss</button>
+                    </div>
+                  )}
+                  {pairings && pairings.length === 0 && (
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "center", padding: "12px 0" }}>Outfit looks complete.</div>
+                  )}
+                </div>
+              )}
+
+              {/* ═══════════════════════════════════════════════════════════
+                  REFINE SEARCH — AI chat input
                   ═══════════════════════════════════════════════════════════ */}
               {phase === "done" && (
                 <div style={{ padding: "0 20px" }}>
-                  {/* Toggle button */}
+                  {/* AI refine chat input — always visible */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div className="refine-input-row">
+                      <input
+                        value={searchNotes}
+                        onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
+                        onKeyDown={e => { if (e.key === "Enter" && searchNotes.trim()) { e.target.blur(); runProductSearch(); } }}
+                        placeholder="Refine: \u201Ccheaper options\u201D, \u201Cmore casual\u201D, \u201Csustainable brands\u201D..."
+                        className="refine-input"
+                        style={{ flex: 1, minHeight: 44 }}
+                      />
+                      <button
+                        className="refine-send"
+                        disabled={!searchNotes.trim()}
+                        onClick={() => { if (searchNotes.trim()) runProductSearch(); }}
+                        aria-label="Run refined search"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      </button>
+                    </div>
+                    {searchNotes && (
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-full)", marginTop: 6, fontSize: 11, color: "var(--accent)" }}>
+                        Active: {searchNotes}
+                        <button aria-label="Clear refine" onClick={() => { setSearchNotes(""); setTimeout(() => runProductSearch(), 100); }}
+                          style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1 }}>&times;</button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* More options toggle */}
                   <button
                     onClick={() => setShowAdvanced(a => !a)}
-                    style={{
-                      width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                      padding: "12px 0", background: "none", border: "none",
-                      cursor: "pointer", fontFamily: "var(--font-sans)",
-                      color: "var(--text-tertiary)", fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
-                    }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "6px 0", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", color: "var(--text-tertiary)", fontSize: 11, fontWeight: 600, letterSpacing: 0.3 }}
                   >
-                    Refine Search
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform .2s", transform: showAdvanced ? "rotate(180deg)" : "rotate(0)" }}>
+                    More options
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform .2s", transform: showAdvanced ? "rotate(180deg)" : "rotate(0)" }}>
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>
                   </button>
 
-                  {/* Advanced content */}
                   {showAdvanced && (
                     <div style={{ paddingBottom: 16, display: "flex", flexDirection: "column", gap: 16, animation: "slideDown .2s ease" }}>
-
-                      {/* Search notes */}
-                      <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 6 }}>Search Notes</div>
-                        {searchNotes ? (
-                          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-full)", cursor: "pointer", marginBottom: 6 }}
-                            onClick={() => { const el = document.getElementById("adv-search-notes"); if (el) el.focus(); }}>
-                            <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 500, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{searchNotes}</span>
-                            <button aria-label="Clear search notes" onClick={(e) => { e.stopPropagation(); setSearchNotes(""); setTimeout(() => runProductSearch(), 100); }}
-                              style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1 }}>&times;</button>
-                          </div>
-                        ) : null}
-                        <input
-                          id="adv-search-notes"
-                          value={searchNotes}
-                          onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
-                          onKeyDown={e => { if (e.key === "Enter" && searchNotes.trim()) { e.target.blur(); runProductSearch(); } }}
-                          placeholder="Tell us more... (brand, color, style)"
-                          style={{
-                            width: "100%", padding: "10px 14px",
-                            background: "var(--bg-input)", border: "1px solid var(--border)",
-                            borderRadius: "var(--radius-md)", color: "var(--text-secondary)", fontSize: "var(--text-sm)",
-                            fontFamily: "var(--font-sans)", outline: "none", boxSizing: "border-box", minHeight: 44,
-                          }}
-                          onFocus={e => e.target.style.borderColor = "var(--border-focus)"}
-                          onBlur={e => e.target.style.borderColor = "var(--border)"}
-                        />
-                      </div>
 
                       {/* Budget presets + range */}
                       <div>
@@ -3613,84 +3704,21 @@ export default function App() {
                         }}>
                         Update Search
                       </button>
+                    </div>
+                  )}
 
-                      {/* Complete the Look */}
-                      {results?.items?.length > 0 && (
-                        <div>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 8 }}>{t("complete_look")}</div>
-                          {!pairings && !pairingsLoading && (
-                            <button
-                              onClick={async () => {
-                                setPairingsLoading(true);
-                                try {
-                                  const res = await API.suggestPairings(scanId, results.items.filter((_, idx) => pickedItems.has(idx)), results.gender);
-                                  setPairings(res?.pairings || []);
-                                  track("pairings_requested", { item_count: pickedItems.size }, scanId, "scan");
-                                } catch { setPairings([]); }
-                                setPairingsLoading(false);
-                              }}
-                              style={{ width: "100%", padding: "12px 0", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                              Complete the Look
-                            </button>
-                          )}
-                          {pairingsLoading && (
-                            <div style={{ padding: "14px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 12 }}>
-                              <div className="ld-dots" style={{ justifyContent: "center", marginBottom: 6 }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
-                              Finding complementary pieces...
-                            </div>
-                          )}
-                          {pairings && pairings.length > 0 && (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                              <div className="scroll-x" style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
-                                {pairings.map((p, pi) => {
-                                  const prod = p.product;
-                                  const shopUrl = prod?.url
-                                    ? API.affiliateUrl(`pairing_${scanId}_${pi}`, prod.url, scanId, 0, "pairing", prod.brand)
-                                    : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(p.search_query || p.name)}`;
-                                  return (
-                                    <a key={pi} href={shopUrl} target="_blank" rel="noopener noreferrer"
-                                      onClick={async () => {
-                                        track("pairing_clicked", { name: p.name, search_query: p.search_query, category: p.category, has_product: !!prod }, scanId, "scan");
-                                        authFetch(`${API_BASE}/api/suggest-pairings/track-click`, { method: "POST", body: JSON.stringify({ pairing_product_url: shopUrl, item_name: p.name }) }).catch(() => {});
-                                      }}
-                                      className="card-press"
-                                      style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, textDecoration: "none", color: "inherit", overflow: "hidden" }}>
-                                      {prod?.image_url ? (
-                                        <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
-                                          <img src={prod.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
-                                        </div>
-                                      ) : (
-                                        <div style={{ width: "100%", aspectRatio: "1", background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
-                                          {{ shoes: "S", accessory: "A", bag: "B", outerwear: "O", top: "T", bottom: "B", dress: "D" }[p.category] || "?"}
-                                        </div>
-                                      )}
-                                      <div style={{ padding: "8px 10px" }}>
-                                        <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod?.product_name || p.name || "Item"}</div>
-                                        {(prod?.brand || p.brand) && <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{prod?.brand || p.brand}</div>}
-                                        {(prod?.price || p.price) && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", marginTop: 2 }}>{prod?.price || p.price}</div>}
-                                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
-                                      </div>
-                                    </a>
-                                  );
-                                })}
-                              </div>
-                              <button onClick={() => setPairings(null)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", fontSize: 11, cursor: "pointer", padding: "4px 0" }}>Dismiss</button>
-                            </div>
-                          )}
-                          {pairings && pairings.length === 0 && (
-                            <div style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "center", padding: "12px 0" }}>Outfit looks complete.</div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Share buttons */}
+                  {/* Share buttons — always visible */}
                       {scanId && (
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
                             aria-label="Share Your Look"
                             onClick={async () => {
+                              // Auto-set scan to public
+                              API.updateScanVisibility(scanId, "public").catch(() => {});
+                              setSharePublicToast(true);
+                              setTimeout(() => setSharePublicToast(false), 2500);
                               const shareUrl = `${window.location.origin}/scan/${scanId}`;
-                              const shareData = { title: "ATTAIRE - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIRE!", url: shareUrl };
+                              const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
                               if (navigator.share) {
                                 try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
                               } else {
@@ -3717,6 +3745,10 @@ export default function App() {
                             aria-label="Share Card"
                             disabled={shareCardLoading}
                             onClick={async () => {
+                              // Auto-set scan to public
+                              API.updateScanVisibility(scanId, "public").catch(() => {});
+                              setSharePublicToast(true);
+                              setTimeout(() => setSharePublicToast(false), 2500);
                               setShareCardLoading(true);
                               try {
                                 const userName = authName || (authEmail ? authEmail.split("@")[0] : "");
@@ -3731,7 +3763,7 @@ export default function App() {
                                 const blob = await res.blob();
                                 const file = new File([blob], "attair-outfit.png", { type: "image/png" });
                                 if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                                  try { await navigator.share({ title: "My ATTAIRE Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
+                                  try { await navigator.share({ title: "My ATTAIR Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
                                 } else {
                                   const a = document.createElement("a");
                                   a.href = cardDataUrl;
@@ -3890,13 +3922,6 @@ export default function App() {
                             const googleQuery = item.search_query || `${item.brand || ""} ${item.name || ""}`.trim();
                             return (
                               <div style={{ padding: "0 20px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-                                {item.alt_search && (
-                                  <button
-                                    onClick={() => { setSearchNotes(item.alt_search); setTimeout(() => runProductSearch(), 100); track("alt_search_clicked", { item_name: item.name, alt_search: item.alt_search }, scanId, "scan"); }}
-                                    style={{ padding: "8px 14px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 10, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                                    Try alternate search
-                                  </button>
-                                )}
                                 <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`} target="_blank" rel="noopener noreferrer"
                                   onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
                                   style={{ padding: "8px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -3979,7 +4004,7 @@ export default function App() {
               e.stopPropagation();
               const shareUrl = `${window.location.origin}/scan/${scan.id}`;
               if (navigator.share) {
-                try { await navigator.share({ title: scan.scan_name || "ATTAIRE Scan", url: shareUrl }); } catch {}
+                try { await navigator.share({ title: scan.scan_name || "ATTAIR Scan", url: shareUrl }); } catch {}
               } else {
                 try { await navigator.clipboard.writeText(shareUrl); } catch {}
               }
@@ -5050,7 +5075,7 @@ export default function App() {
                 if (navigator.share) {
                   const blob = await (await fetch(cardUrl)).blob();
                   const file = new File([blob], "style-dna.png", { type: "image/png" });
-                  await navigator.share({ files: [file], title: "My Style DNA \u2014 ATTAIRE" });
+                  await navigator.share({ files: [file], title: "My Style DNA \u2014 ATTAIR" });
                 } else {
                   const a = document.createElement("a");
                   a.href = cardUrl;
@@ -5132,6 +5157,9 @@ export default function App() {
                   await API.addToWishlist(wl.id, scanId).catch(() => {});
                   setAddToListConfirm({ savedItemId: scanId, wishlistName: wl.name });
                   setTimeout(() => setAddToListConfirm(null), 2000);
+                  // Instant refresh
+                  API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
+                  API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
                 }
                 setWishlistPickerScan(null);
               }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", marginBottom: 8, minHeight: 48 }}>
@@ -5147,13 +5175,16 @@ export default function App() {
                 style={{ flex: 1, padding: "12px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none", minHeight: 44 }}
                 onKeyDown={e => {
                   if (e.key === "Enter" && newWishlistName.trim()) {
-                    API.createWishlist(newWishlistName.trim()).then(d => {
+                    API.createWishlist(newWishlistName.trim()).then(async d => {
                       if (d?.wishlist) {
                         setWishlists(prev => [...prev, d.wishlist]);
                         const scanId = wishlistPickerScan.scan_id || wishlistPickerScan.id;
-                        if (scanId) API.addToWishlist(d.wishlist.id, scanId).catch(() => {});
+                        if (scanId) await API.addToWishlist(d.wishlist.id, scanId).catch(() => {});
                         setAddToListConfirm({ savedItemId: scanId, wishlistName: d.wishlist.name });
                         setTimeout(() => setAddToListConfirm(null), 2000);
+                        // Instant refresh: re-fetch wishlists + saved items
+                        API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
+                        API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
                       }
                       setWishlistPickerScan(null);
                       setNewWishlistName("");
@@ -5165,13 +5196,16 @@ export default function App() {
                 disabled={!newWishlistName.trim()}
                 onClick={() => {
                   if (!newWishlistName.trim()) return;
-                  API.createWishlist(newWishlistName.trim()).then(d => {
+                  API.createWishlist(newWishlistName.trim()).then(async d => {
                     if (d?.wishlist) {
                       setWishlists(prev => [...prev, d.wishlist]);
                       const scanId = wishlistPickerScan.scan_id || wishlistPickerScan.id;
-                      if (scanId) API.addToWishlist(d.wishlist.id, scanId).catch(() => {});
+                      if (scanId) await API.addToWishlist(d.wishlist.id, scanId).catch(() => {});
                       setAddToListConfirm({ savedItemId: scanId, wishlistName: d.wishlist.name });
                       setTimeout(() => setAddToListConfirm(null), 2000);
+                      // Instant refresh: re-fetch wishlists + saved items
+                      API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
+                      API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
                     }
                     setWishlistPickerScan(null);
                     setNewWishlistName("");
@@ -5181,6 +5215,14 @@ export default function App() {
               >Create</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Share auto-public toast */}
+      {sharePublicToast && (
+        <div style={{ position: "fixed", bottom: 140, left: "50%", transform: "translateX(-50%)", zIndex: 10000, background: "var(--accent)", color: "#000", padding: "10px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13, fontFamily: "var(--font-sans)", boxShadow: "0 4px 20px rgba(0,0,0,.3)", animation: "slideUp .3s ease", display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
+          Link is now public
         </div>
       )}
 

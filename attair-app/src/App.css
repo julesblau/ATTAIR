@@ -2015,20 +2015,21 @@
 .feed-tabs::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:var(--border);opacity:.5}
 .feed-tab{flex:1;max-width:160px;padding:10px 0;background:none;border:none;border-bottom:3px solid transparent;font-family:var(--font-sans);font-size:15px;font-weight:var(--weight-medium);color:var(--text-tertiary);cursor:pointer;transition:all .2s ease;min-height:44px;text-align:center;letter-spacing:.2px;position:relative;z-index:1;-webkit-tap-highlight-color:transparent}
 .feed-tab.active{color:var(--text-primary);border-bottom-color:var(--accent);font-weight:var(--weight-bold)}
-.feed-list{display:flex;flex-direction:column;gap:14px;padding:4px 16px 100px}
-.feed-card{background:var(--bg-card);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-card);cursor:pointer;transition:transform .15s;-webkit-tap-highlight-color:transparent}
+.feed-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 12px 100px}
+.feed-card{background:var(--bg-card);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-card);cursor:pointer;transition:transform .15s;-webkit-tap-highlight-color:transparent}
 .feed-card:active{transform:scale(0.985)}
-.feed-card-img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:rgba(255,255,255,.04);max-height:400px}
-.feed-card-overlay{position:absolute;bottom:0;left:0;right:0;padding:20px 14px 14px;background:linear-gradient(transparent,rgba(0,0,0,.65));display:flex;align-items:flex-end;justify-content:space-between}
-.feed-card-user{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-.feed-card-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;flex-shrink:0;border:1.5px solid rgba(255,255,255,.4)}
+.feed-card-img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:rgba(255,255,255,.04)}
+.feed-card-overlay{position:absolute;bottom:0;left:0;right:0;padding:10px 8px 8px;background:linear-gradient(transparent,rgba(0,0,0,.7));display:flex;align-items:flex-end;justify-content:space-between}
+.feed-card-user{display:flex;align-items:center;gap:5px;flex:1;min-width:0}
+.feed-card-avatar{width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#000;flex-shrink:0;border:1px solid rgba(255,255,255,.4)}
 .feed-card-info{min-width:0}
-.feed-card-name{font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.feed-card-summary{font-size:11px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;margin-top:1px}
-.feed-card-items{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px}
-.feed-card-pill{position:absolute;top:12px;right:12px;padding:4px 10px;border-radius:100px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;gap:4px;font-size:12px;font-family:var(--font-sans);font-weight:600;color:#fff;z-index:1}
-.feed-card-heart{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+.feed-card-name{font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-card-summary{font-size:9px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;margin-top:1px}
+.feed-card-items{font-size:9px;color:rgba(255,255,255,.5);margin-top:1px}
+.feed-card-pill{position:absolute;top:8px;right:8px;padding:3px 7px;border-radius:100px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;gap:3px;font-size:10px;font-family:var(--font-sans);font-weight:600;color:#fff;z-index:1}
+.feed-card-heart{width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
 .feed-card-heart:active{transform:scale(0.9)}
+.feed-card-heart svg{width:16px;height:16px}
 
 /* ─── Feed Suggested Users (Following empty state) ─── */
 .feed-suggested-users{display:flex;flex-direction:column;gap:0}
