@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { optionalAuth } from "../middleware/auth.js";
 import supabase from "../lib/supabase.js";
@@ -141,24 +142,48 @@ function tagUrl(url) {
   }
 }
 
-// Per-IP rate limit on affiliate click endpoints to deter click-fraud / count inflation.
-// 60 clicks per minute per IP is generous for real users but hard to abuse at scale.
+// 10 clicks per minute per user (keyed on authenticated user ID, falling back to IP).
 const clickLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 60,
+  max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many affiliate clicks from this IP, please slow down" },
+  keyGenerator: (req) => req.userId || req.ip,
+  message: { error: "Too many affiliate clicks, please slow down" },
 });
+
+/**
+ * Returns true if the authenticated user already has a click logged for this
+ * product URL within the last hour, used to prevent per-user click fraud.
+ * Anonymous clicks (no userId) are always allowed through.
+ */
+async function isDuplicateClick(userId, productUrl) {
+  if (!userId) return false;
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("affiliate_clicks")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("product_url", productUrl)
+    .gte("created_at", oneHourAgo)
+    .limit(1)
+    .maybeSingle();
+  return data != null;
+}
 
 /**
  * POST /api/go/:click_id
  *
  * Body: { scan_id, item_index, tier, retailer, product_url }
  * Logs the click, then 302 redirects to the affiliate-tagged URL.
+ *
+ * SECURITY: click_id from the client is ignored — a new UUID is always
+ * generated server-side to prevent forged or replayed click IDs.
+ * Authenticated users are deduplicated: one logged click per product per hour.
  */
 router.post("/:click_id", clickLimiter, optionalAuth, async (req, res) => {
-  const { click_id } = req.params;
+  // Ignore client-supplied click_id; generate server-side
+  const serverClickId = randomUUID();
   const { scan_id, item_index, tier, retailer, product_url } = req.body;
 
   if (!product_url) {
@@ -170,22 +195,28 @@ router.post("/:click_id", clickLimiter, optionalAuth, async (req, res) => {
     return res.status(400).json({ error: "Invalid product_url: must be an http or https URL" });
   }
 
-  // Log the click asynchronously — don't block the redirect
-  supabase
-    .from("affiliate_clicks")
-    .insert({
-      user_id: req.userId || null,
-      scan_id: scan_id || null,
-      item_index: item_index ?? null,
-      tier: tier || null,
-      retailer: retailer || null,
-      product_url,
-      affiliate_url: affiliateUrl,
-      tag_applied: tagged,
-    })
-    .then(({ error }) => {
-      if (error) console.error("Click log error:", error.message);
-    });
+  // Per-user dedup: only log one click per product per hour
+  const duplicate = await isDuplicateClick(req.userId, product_url);
+
+  if (!duplicate) {
+    // Log the click asynchronously — don't block the redirect
+    supabase
+      .from("affiliate_clicks")
+      .insert({
+        id: serverClickId,
+        user_id: req.userId || null,
+        scan_id: scan_id || null,
+        item_index: item_index ?? null,
+        tier: tier || null,
+        retailer: retailer || null,
+        product_url,
+        affiliate_url: affiliateUrl,
+        tag_applied: tagged,
+      })
+      .then(({ error }) => {
+        if (error) console.error("Click log error:", error.message);
+      });
+  }
 
   return res.redirect(302, affiliateUrl);
 });
@@ -194,8 +225,12 @@ router.post("/:click_id", clickLimiter, optionalAuth, async (req, res) => {
  * GET /api/go/:click_id
  * Same as POST but for simple <a href> links from the frontend.
  * Expects query params: ?url=...&scan_id=...&item_index=...&tier=...&retailer=...
+ *
+ * SECURITY: Same server-side click ID generation and per-user dedup as POST.
  */
 router.get("/:click_id", clickLimiter, optionalAuth, async (req, res) => {
+  // Ignore client-supplied click_id in the path; generate server-side
+  const serverClickId = randomUUID();
   const { url, scan_id, item_index, tier, retailer } = req.query;
 
   if (!url) {
@@ -207,22 +242,28 @@ router.get("/:click_id", clickLimiter, optionalAuth, async (req, res) => {
     return res.status(400).json({ error: "Invalid url: must be an http or https URL" });
   }
 
-  // Log asynchronously
-  supabase
-    .from("affiliate_clicks")
-    .insert({
-      user_id: req.userId || null,
-      scan_id: scan_id || null,
-      item_index: item_index ? parseInt(item_index) : null,
-      tier: tier || null,
-      retailer: retailer || null,
-      product_url: url,
-      affiliate_url: affiliateUrl,
-      tag_applied: tagged,
-    })
-    .then(({ error }) => {
-      if (error) console.error("Click log error:", error.message);
-    });
+  // Per-user dedup: only log one click per product per hour
+  const duplicate = await isDuplicateClick(req.userId, url);
+
+  if (!duplicate) {
+    // Log asynchronously
+    supabase
+      .from("affiliate_clicks")
+      .insert({
+        id: serverClickId,
+        user_id: req.userId || null,
+        scan_id: scan_id || null,
+        item_index: item_index ? parseInt(item_index) : null,
+        tier: tier || null,
+        retailer: retailer || null,
+        product_url: url,
+        affiliate_url: affiliateUrl,
+        tag_applied: tagged,
+      })
+      .then(({ error }) => {
+        if (error) console.error("Click log error:", error.message);
+      });
+  }
 
   return res.redirect(302, affiliateUrl);
 });
