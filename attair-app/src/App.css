@@ -1834,3 +1834,21 @@
   color:var(--text-secondary);
   border:1px solid var(--border);
 }
+
+/* ─── Global budget slider (picking screen) ─── */
+.budget-slider-wrap{position:relative;height:40px;display:flex;align-items:center}
+.budget-slider-track{position:absolute;top:18px;left:0;right:0;height:4px;background:var(--border);border-radius:2px}
+.budget-slider-fill{position:absolute;top:18px;height:4px;background:var(--accent);border-radius:2px;transition:left var(--transition-fast),right var(--transition-fast)}
+.budget-slider{position:absolute;top:8px;left:0;width:100%;height:24px;-webkit-appearance:none;appearance:none;background:transparent;pointer-events:none;z-index:2;margin:0;outline:none}
+.budget-slider:last-child{z-index:3}
+.budget-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:var(--accent);border:3px solid var(--bg-primary);cursor:pointer;pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.35);transition:transform var(--transition-fast)}
+.budget-slider::-webkit-slider-thumb:active{transform:scale(1.18)}
+.budget-slider::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--accent);border:3px solid var(--bg-primary);cursor:pointer;pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+
+/* ─── Advanced filters collapse animation ─── */
+.animate-slide-down{animation:slideDown 250ms var(--ease-out-expo) both}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── Advanced filters toggle button ─── */
+.advanced-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 0;background:none;border:none;border-top:1px solid var(--border);cursor:pointer;color:var(--text-secondary);font-family:var(--font-sans);font-size:13px;font-weight:600;min-height:44px}
+.advanced-toggle svg{transition:transform .2s ease}

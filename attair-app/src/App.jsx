@@ -2850,20 +2850,52 @@ export default function App() {
               <div style={{ padding: "16px 20px 6px", textAlign: "center" }}>
                 <div style={{ fontFamily: "'Instrument Serif'", fontSize: 22, color: "var(--text-primary)", marginBottom: 6 }}>What do you want to shop?</div>
                 <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>Tap items on the image or below</div>
-                {/* Gender badge — prominent, tappable */}
-                <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
-                  <div style={{ display: "inline-flex", background: "var(--bg-input)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden" }}>
-                    <button
-                      aria-label="Switch to Men's"
-                      onClick={() => { if (results.gender !== "male") setResults(prev => prev ? { ...prev, gender: "male" } : prev); }}
-                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 36, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "var(--text-tertiary)", borderRight: "1px solid var(--border)" }}
-                    >Men's</button>
-                    <button
-                      aria-label="Switch to Women's"
-                      onClick={() => { if (results.gender !== "female") setResults(prev => prev ? { ...prev, gender: "female" } : prev); }}
-                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 36, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "var(--text-tertiary)" }}
-                    >Women's</button>
+              </div>
+
+              {/* Global budget slider */}
+              <div style={{ padding: "12px 20px 4px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Budget</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>
+                    ${budgetMin} {"\u2013"} {budgetMax >= 500 ? "$500+" : `$${budgetMax}`}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-tertiary)", flexShrink: 0 }}>$0</span>
+                  <div className="budget-slider-wrap" style={{ flex: 1 }}>
+                    <div className="budget-slider-track" />
+                    <div className="budget-slider-fill" style={{ left: `${(budgetMin / 500) * 100}%`, right: `${100 - (budgetMax / 500) * 100}%` }} />
+                    <input
+                      type="range" min={0} max={500} step={10} value={budgetMin}
+                      aria-label="Minimum budget"
+                      onChange={e => setBudgetMin(Math.min(Number(e.target.value), budgetMax - 10))}
+                      className="budget-slider"
+                    />
+                    <input
+                      type="range" min={0} max={500} step={10} value={budgetMax}
+                      aria-label="Maximum budget"
+                      onChange={e => setBudgetMax(Math.max(Number(e.target.value), budgetMin + 10))}
+                      className="budget-slider"
+                    />
                   </div>
+                  <span style={{ fontSize: 11, color: "var(--text-tertiary)", flexShrink: 0 }}>$500+</span>
+                </div>
+                {/* Quick preset chips */}
+                <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                  {[
+                    { label: "$", min: 0, max: 50 },
+                    { label: "$$", min: 50, max: 150 },
+                    { label: "$$$", min: 150, max: 300 },
+                    { label: "$$$$", min: 300, max: 500 },
+                  ].map(p => {
+                    const active = budgetMin === p.min && budgetMax === p.max;
+                    return (
+                      <button key={p.label} aria-label={`Budget preset ${p.label}: $${p.min} to $${p.max}`}
+                        onClick={() => { setBudgetMin(p.min); setBudgetMax(p.max); }}
+                        style={{ flex: 1, padding: "7px 4px", minHeight: 44, background: active ? "var(--accent-bg)" : "var(--bg-input)", border: `1px solid ${active ? "var(--accent-border)" : "var(--border)"}`, borderRadius: "var(--radius-sm)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text-tertiary)", transition: "all var(--transition-fast)" }}
+                      >{p.label}</button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2902,79 +2934,6 @@ export default function App() {
                 })}
               </div>
 
-              {/* Occasion Filter */}
-              <div style={{ padding: "4px 20px 0" }}>
-                <div className="item-opts-label">Occasion</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {[
-                    { v: "casual",    l: "Casual",   icon: "☀️" },
-                    { v: "work",      l: "Work",     icon: "💼" },
-                    { v: "night_out", l: "Night Out", icon: "🌙" },
-                    { v: "athletic",  l: "Athletic",  icon: "🏃" },
-                    { v: "formal",    l: "Formal",    icon: "✨" },
-                    { v: "outdoor",   l: "Outdoor",   icon: "🌲" },
-                  ].map(({ v, l, icon }) => (
-                    <button key={v} className={`scan-vis-chip${occasion === v ? " active" : ""}`} onClick={() => { setOccasion(o => o === v ? null : v); setShowCustomOccasion(false); }}>
-                      <span style={{ fontSize: 13 }}>{icon}</span>{l}
-                    </button>
-                  ))}
-                  {recentOccasions.map((ro, i) => (
-                    <button key={`recent-${i}`} className={`scan-vis-chip${occasion === ro ? " active" : ""}`} onClick={() => { setOccasion(o => o === ro ? null : ro); setShowCustomOccasion(false); }}>
-                      {ro}
-                    </button>
-                  ))}
-                  <button className={`scan-vis-chip${showCustomOccasion ? " active" : ""}`} onClick={() => setShowCustomOccasion(v => !v)}>
-                    <span style={{ fontSize: 13 }}>+</span>{t("custom_occasion")}
-                  </button>
-                </div>
-                {showCustomOccasion && (
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <input
-                      autoFocus
-                      value={customOccasionInput}
-                      onChange={e => setCustomOccasionInput(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === "Enter" && customOccasionInput.trim()) {
-                          const val = customOccasionInput.trim();
-                          setOccasion(val);
-                          setShowCustomOccasion(false);
-                          setCustomOccasionInput("");
-                          const updated = [val, ...recentOccasions.filter(x => x !== val)].slice(0, 5);
-                          setRecentOccasions(updated);
-                          localStorage.setItem("attair_recent_occasions", JSON.stringify(updated));
-                        }
-                      }}
-                      placeholder="e.g. rooftop brunch, job interview"
-                      style={{ flex: 1, padding: "8px 12px", background: "var(--bg-input)", border: "1px solid var(--accent-border)", borderRadius: 10, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 12, outline: "none", minHeight: 44 }}
-                    />
-                    <button onClick={() => {
-                      const val = customOccasionInput.trim();
-                      if (!val) return;
-                      setOccasion(val);
-                      setShowCustomOccasion(false);
-                      setCustomOccasionInput("");
-                      const updated = [val, ...recentOccasions.filter(x => x !== val)].slice(0, 5);
-                      setRecentOccasions(updated);
-                      localStorage.setItem("attair_recent_occasions", JSON.stringify(updated));
-                    }} style={{ padding: "8px 14px", background: "var(--accent)", border: "none", borderRadius: 10, color: "var(--text-inverse)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
-                      Set
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Search Notes */}
-              <div style={{ padding: "8px 20px 0" }}>
-                <textarea
-                  value={searchNotes}
-                  onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
-                  placeholder={t("search_notes_placeholder")}
-                  rows={2}
-                  className="refine-input"
-                  style={{ width: "100%", fontSize: 12 }}
-                />
-              </div>
-
               {/* Search CTA */}
               <div className="pick-cta">
                 <button
@@ -2982,12 +2941,121 @@ export default function App() {
                   onClick={runProductSearch}
                   disabled={pickedItems.size === 0}
                 >
-                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` · ${["casual","work","night_out","athletic","formal","outdoor"].find(v=>v===occasion) ? {casual:"Casual",work:"Work",night_out:"Night Out",athletic:"Athletic",formal:"Formal",outdoor:"Outdoor"}[occasion] : ""}` : ""}`}
+                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` \u00b7 ${["casual","work","night_out","athletic","formal","outdoor"].find(v=>v===occasion) ? {casual:"Casual",work:"Work",night_out:"Night Out",athletic:"Athletic",formal:"Formal",outdoor:"Outdoor"}[occasion] : ""}` : ""}`}
                 </button>
                 <button className="btn-ghost" style={{ width: "100%", fontSize: 12, marginTop: 4 }}
                   onClick={() => { setPickedItems(new Set(results.items.map((_, i) => i))); }}>
                   Select all
                 </button>
+              </div>
+
+              {/* Advanced filters — collapsed by default */}
+              <div style={{ padding: "0 20px 8px" }}>
+                <button
+                  className="advanced-toggle"
+                  aria-label={showAdvanced ? "Collapse advanced filters" : "Expand advanced filters"}
+                  aria-expanded={showAdvanced}
+                  onClick={() => setShowAdvanced(v => !v)}
+                >
+                  <span>Advanced filters{occasion || searchNotes ? " (active)" : ""}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    style={{ transform: showAdvanced ? "rotate(180deg)" : "rotate(0deg)" }}>
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                {showAdvanced && (
+                  <div className="animate-slide-down" style={{ paddingBottom: 12 }}>
+                    {/* Gender toggle */}
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                      <div style={{ display: "inline-flex", background: "var(--bg-input)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden" }}>
+                        <button
+                          aria-label="Switch to Men's"
+                          onClick={() => { if (results.gender !== "male") setResults(prev => prev ? { ...prev, gender: "male" } : prev); }}
+                          style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 44, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "var(--text-tertiary)", borderRight: "1px solid var(--border)" }}
+                        >Men's</button>
+                        <button
+                          aria-label="Switch to Women's"
+                          onClick={() => { if (results.gender !== "female") setResults(prev => prev ? { ...prev, gender: "female" } : prev); }}
+                          style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 44, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "var(--text-tertiary)" }}
+                        >Women's</button>
+                      </div>
+                    </div>
+
+                    {/* Occasion chips */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div className="item-opts-label">Occasion</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {[
+                          { v: "casual",    l: "Casual",   icon: "\u2600\uFE0F" },
+                          { v: "work",      l: "Work",     icon: "\uD83D\uDCBC" },
+                          { v: "night_out", l: "Night Out", icon: "\uD83C\uDF19" },
+                          { v: "athletic",  l: "Athletic",  icon: "\uD83C\uDFC3" },
+                          { v: "formal",    l: "Formal",    icon: "\u2728" },
+                          { v: "outdoor",   l: "Outdoor",   icon: "\uD83C\uDF32" },
+                        ].map(({ v, l, icon }) => (
+                          <button key={v} className={`scan-vis-chip${occasion === v ? " active" : ""}`} onClick={() => { setOccasion(o => o === v ? null : v); setShowCustomOccasion(false); }}>
+                            <span style={{ fontSize: 13 }}>{icon}</span>{l}
+                          </button>
+                        ))}
+                        {recentOccasions.map((ro, i) => (
+                          <button key={`recent-${i}`} className={`scan-vis-chip${occasion === ro ? " active" : ""}`} onClick={() => { setOccasion(o => o === ro ? null : ro); setShowCustomOccasion(false); }}>
+                            {ro}
+                          </button>
+                        ))}
+                        <button className={`scan-vis-chip${showCustomOccasion ? " active" : ""}`} onClick={() => setShowCustomOccasion(v => !v)}>
+                          <span style={{ fontSize: 13 }}>+</span>{t("custom_occasion")}
+                        </button>
+                      </div>
+                      {showCustomOccasion && (
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <input
+                            autoFocus
+                            value={customOccasionInput}
+                            onChange={e => setCustomOccasionInput(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter" && customOccasionInput.trim()) {
+                                const val = customOccasionInput.trim();
+                                setOccasion(val);
+                                setShowCustomOccasion(false);
+                                setCustomOccasionInput("");
+                                const updated = [val, ...recentOccasions.filter(x => x !== val)].slice(0, 5);
+                                setRecentOccasions(updated);
+                                localStorage.setItem("attair_recent_occasions", JSON.stringify(updated));
+                              }
+                            }}
+                            placeholder="e.g. rooftop brunch, job interview"
+                            style={{ flex: 1, padding: "8px 12px", background: "var(--bg-input)", border: "1px solid var(--accent-border)", borderRadius: 10, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 12, outline: "none", minHeight: 44 }}
+                          />
+                          <button onClick={() => {
+                            const val = customOccasionInput.trim();
+                            if (!val) return;
+                            setOccasion(val);
+                            setShowCustomOccasion(false);
+                            setCustomOccasionInput("");
+                            const updated = [val, ...recentOccasions.filter(x => x !== val)].slice(0, 5);
+                            setRecentOccasions(updated);
+                            localStorage.setItem("attair_recent_occasions", JSON.stringify(updated));
+                          }} style={{ padding: "8px 14px", background: "var(--accent)", border: "none", borderRadius: 10, color: "var(--text-inverse)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", minHeight: 44 }}>
+                            Set
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Search Notes */}
+                    <div>
+                      <div className="item-opts-label">Search notes</div>
+                      <textarea
+                        value={searchNotes}
+                        onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
+                        placeholder={t("search_notes_placeholder")}
+                        rows={2}
+                        className="refine-input"
+                        style={{ width: "100%", fontSize: 12 }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
