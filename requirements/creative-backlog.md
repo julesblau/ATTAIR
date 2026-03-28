@@ -145,3 +145,20 @@ SQL access via Claude CLI: Give Claude Code direct access to query the Supabase 
 ## Overnight / Autonomous Mode for Agent Army
 When Jules kicks off a run and marks it as "overnight" (or it's after a certain hour), agents should NOT block on permission prompts or questions — they should make their best judgment call and keep going. During daytime runs, keep the current behavior where agents can ask Jules questions via Discord. Could be a simple `--overnight` flag on `run.js` or a Discord command like `/run overnight`.
 **Status:** Pending review
+
+### 2026-03-28 — Jules via Discord
+PRIORITY UPDATE — All pending items now reviewed and prioritized:
+CRITICAL: ATTAIRE rename+branding, Discord bot UX (terser+individual agents), Discord formatting cleanup, SQL access via CLI, Overnight autonomous mode
+HIGH: Smaller/more frequent agent commits
+MEDIUM: Social proof signals on feed cards, Process keep-alive pings
+LOW: Scan-to-Reel video export, Follow-up nudge system
+Previously approved (unchanged): Affiliate expansion (S), Style DNA report (M), Price drop alerts (M)
+**Status:** Pending review
+
+### 2026-03-28 — Jules via Discord
+Update creative-backlog.md statuses — mark Discord bot UX, Discord formatting cleanup, and SQL access via CLI as "IN PROGRESS (Batch 1 — March 27)" since they're being built now
+**Status:** Pending review
+
+### 2026-03-28 — Jules via Discord
+Chat context persistence — instead of compressing conversation history, pass key context forward via memory system so nothing important gets lost between messages. Priority: LOW
+**Status:** Pending review

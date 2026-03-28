@@ -1,32 +1,68 @@
-# Requirements — March 27, 2026 (Agent Infrastructure Upgrade)
+# Requirements — March 27, 2026 (Discord Bot Overhaul — Batch 1)
 
 ## Context
-The agent army produces low-quality UI output because:
-1. Agents have zero visual references — they guess what "premium" means
-2. Agent prompts say "TikTok meets Instagram" but show no actual screenshots
-3. `run.js` uses `@anthropic-ai/claude-agent-sdk` `query()` instead of spawning `claude` CLI directly — should go through Max subscription like `discord-bot.js` does
-4. The AI-reviewing-AI loop (e2e-agent) has no ground truth to compare against
+Jules manages ATTAIR from his phone via Discord. Three critical pain points:
+1. Bot responses are too verbose — hard to read on mobile
+2. Message formatting breaks on Discord mobile (bad newlines, markdown rendering)
+3. No way to query the database without opening Supabase dashboard
 
-This run fixes the infrastructure so future UI runs produce dramatically better output.
+This is a focused `discord-bot.js` change. No app code touched.
 
 Run `git log --oneline -20` before starting. Do NOT redo anything already done.
 
 ---
 
-## MISSION: Fix the builder infrastructure so agents produce visually excellent UI.
+## MISSION: Make the Discord bot fast, clean, and useful from a phone.
 
-This is NOT a feature run. This is a tooling/infra run. After this, the agent army will:
-- Have real-world reference screenshots to match when building UI
-- Run through the Claude CLI (Max subscription) instead of the Agent SDK
-- Have upgraded prompts that mandate visual reference matching before writing CSS
+After this run:
+- Bot messages are terse and mobile-readable
+- Formatting renders correctly on Discord mobile
+- Jules can query Supabase directly from Discord chat
 
 ---
 
-## TASK 1 — CLI Migration (`agents/run.js`)
+## TASK 1 — Terser Bot Responses + Mobile Formatting
 
-**Goal:** Replace `@anthropic-ai/claude-agent-sdk` `query()` with direct `claude` CLI spawning, matching the pattern already used in `discord-bot.js`.
+**File:** `agents/discord-bot.js`
 
-**Current state:**
-- `run.js` imports `query` from `@anthropic-ai/claude-agent-sdk`
-- Uses `query({ prompt, options: queryOptions })` with async generator
-- `discord-bot.js` already spawns `claude` via `spawn("claude", ["-p", "--model", "opus", "--output-format", "text", "--allowedTools", ...
+**Problem:** The system prompt for `chatWithOpus()` produces long responses. Discord mobile renders markdown inconsistently — bullet lists, headers, and code blocks can look broken.
+
+**What to change:**
+
+1. **Update the Claude system prompt** in `chatWithOpus()` to enforce brevity:
+   - Add to the system prompt: "You are texting Jules on his phone via Discord. Keep responses to 1-3 sentences unless he asks for detail. No intros, no 'great question', no fluff. Use plain text, not markdown headers. Bullet points are OK but keep them short. Never use code blocks for non-code content."
+   - The existing system prompt context (ATTAIR product partner, actions, etc.) stays — just prepend the brevity rules
+
+2. **Fix `sendToChannel()` formatting:**
+   - Strip triple-backtick code blocks from non-code content before sending (they render poorly on mobile)
+   - Replace `###` and `##` headers with **bold text** instead (Discord mobile handles bold better than headers)
+   - Replace `---` horizontal rules with empty lines
+   - Ensure no double-newlines get sent (Discord collapses them weirdly on mobile)
+   - Keep the 1900-char chunking logic but break at sentence boundaries, not just newlines
+
+3. **Add a format helper function** `formatForMobile(text)`:
+   - `### Header` → `**Header**`
+   - `## Header` → `**Header**`
+   - `# Header` → `**Header**`
+   - Remove `---` dividers
+   - Collapse 3+ consecutive newlines to 2
+   - Strip code block fences (```) unless the content looks like actual code (contains `{`, `(`, `=`, `function`, `const`, etc.)
+   - Apply this to ALL bot messages before sending
+
+**Acceptance criteria:**
+- Bot responses are visibly shorter (1-3 sentences for simple questions)
+- No broken markdown rendering on Discord mobile
+- Headers render as bold text
+- Code blocks only appear for actual code
+
+---
+
+## TASK 2 — Individual Agent Dispatch from Discord
+
+**File:** `agents/discord-bot.js`
+
+**Problem:** Jules can only run the full army (``). Sometimes he just wants to run one agent for a quick task.
+
+**What to add:**
+
+1. **New action tag:** `[ACTION:RUN_AGENT:agent-name:task description
