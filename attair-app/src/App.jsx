@@ -1330,28 +1330,54 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !imageRef?.current) return;
-    const img = imageRef.current;
-    canvas.width = img.offsetWidth;
-    canvas.height = img.offsetHeight;
+    const img = imageRef?.current;
+    if (!canvas || !img) return;
+
+    const resize = () => {
+      if (img.offsetWidth > 0 && img.offsetHeight > 0) {
+        canvas.width = img.offsetWidth;
+        canvas.height = img.offsetHeight;
+      }
+    };
+
+    // Size immediately if already loaded
+    if (img.complete && img.naturalWidth > 0) resize();
+
+    // Re-size when image loads or changes layout
+    img.addEventListener("load", resize);
+    let ro;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(resize);
+      ro.observe(img);
+    }
+    // Fallback timeouts for edge cases (cached images, slow layout)
+    const t1 = setTimeout(resize, 150);
+    const t2 = setTimeout(resize, 600);
+    return () => {
+      img.removeEventListener("load", resize);
+      if (ro) ro.disconnect();
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [imageRef]);
 
   // Sample image pixels around a point and pick a high-contrast stroke color
   const pickContrastColor = (x, y) => {
     const img = imageRef?.current;
-    if (!img) return;
+    if (!img || !img.naturalWidth) return;
     try {
       const sampleCanvas = document.createElement("canvas");
       const scaleX = img.naturalWidth / img.offsetWidth;
       const scaleY = img.naturalHeight / img.offsetHeight;
-      const radius = 30;
+      const radius = 40;
       const sx = Math.max(0, (x - radius) * scaleX);
       const sy = Math.max(0, (y - radius) * scaleY);
       const sw = Math.min(img.naturalWidth - sx, radius * 2 * scaleX);
       const sh = Math.min(img.naturalHeight - sy, radius * 2 * scaleY);
+      if (sw < 1 || sh < 1) return;
       sampleCanvas.width = sw;
       sampleCanvas.height = sh;
-      const sCtx = sampleCanvas.getContext("2d");
+      const sCtx = sampleCanvas.getContext("2d", { willReadFrequently: true });
       sCtx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
       const data = sCtx.getImageData(0, 0, sw, sh).data;
       let rSum = 0, gSum = 0, bSum = 0, count = 0;
@@ -1362,19 +1388,16 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
       const avgR = rSum / count, avgG = gSum / count, avgB = bSum / count;
       const brightness = (avgR * 299 + avgG * 587 + avgB * 114) / 1000;
       if (brightness > 160) {
-        // Light background → use dark magenta/blue stroke
         strokeColorRef.current = "rgba(100, 20, 200, 0.8)";
         strokeColorSolidRef.current = "rgba(100, 20, 200, 0.9)";
         fillColorRef.current = "rgba(100, 20, 200, 0.06)";
         fillColorSolidRef.current = "rgba(100, 20, 200, 0.1)";
       } else if (brightness > 80) {
-        // Mid-tone → use bright white stroke
         strokeColorRef.current = "rgba(255, 255, 255, 0.85)";
         strokeColorSolidRef.current = "rgba(255, 255, 255, 0.95)";
         fillColorRef.current = "rgba(255, 255, 255, 0.06)";
         fillColorSolidRef.current = "rgba(255, 255, 255, 0.1)";
       } else {
-        // Dark background → use bright gold (default)
         strokeColorRef.current = "rgba(255, 204, 0, 0.7)";
         strokeColorSolidRef.current = "rgba(255, 204, 0, 0.8)";
         fillColorRef.current = "rgba(255, 220, 0, 0.06)";
@@ -2906,21 +2929,39 @@ export default function App() {
                 <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "blur(12px) brightness(0.3)", transform: "scale(1.1)" }} />
                 <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
               </div>
-              {/* Centered content panel */}
-              <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(201,169,110,.15)", maxWidth: 300 }}>
-                {/* ATTAIRE wordmark */}
-                <img src="/logo-option-3.svg" alt="ATTAIRE" style={{ height: 24, width: "auto" }} />
-                {/* Gold scan ring spinner with branded monogram */}
-                <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <div className="scan-ring scan-ring--lg" />
-                  <div className="scan-ring-monogram">A</div>
+              {/* Centered content panel — fixed width to prevent layout shift */}
+              <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 24, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(201,169,110,.15)", width: 300 }}>
+                {/* Branded logo spinner — dual orbit rings + floating logo */}
+                <div className="identify-logo-container">
+                  <div className="identify-orbit" />
+                  <div className="identify-orbit-inner" />
+                  <div className="identify-progress-arc" />
+                  <div className="identify-glow" />
+                  <div className="identify-scan-line" />
+                  <img src="/logo-option-3.svg" alt="ATTAIRE" className="identify-logo-img" />
                 </div>
+
                 {/* Animated status text */}
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2.5, color: "rgba(201,169,110,.5)", textTransform: "uppercase", marginBottom: 8 }}>Identifying outfit</div>
+                  <div className="identify-shimmer" style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 10 }}>Identifying outfit</div>
                   <div className="serif" style={{ fontSize: 18, color: "var(--text-primary)", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0, minHeight: 28 }}>{SCAN_MESSAGES[loadMsgIdx]}</div>
                 </div>
-                <div className="ld-dots"><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
+
+                {/* Step dots progress */}
+                <div className="identify-steps">
+                  {SCAN_MESSAGES.map((_, i) => (
+                    <div key={i} className={`identify-step-dot${i <= loadMsgIdx ? " active" : ""}`} />
+                  ))}
+                </div>
+
+                {/* Free user ad slot during loading */}
+                {isFree && (
+                  <div onClick={() => setUpgradeModal("identifying_ad")} style={{ width: "100%", padding: "12px 16px", background: "linear-gradient(135deg, rgba(201,169,110,.08), rgba(201,169,110,.02))", border: "1px solid rgba(201,169,110,.15)", borderRadius: 12, cursor: "pointer", textAlign: "center" }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(201,169,110,.4)", textTransform: "uppercase", marginBottom: 4 }}>Sponsored</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Skip the wait — Go Pro</div>
+                    <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>Unlimited scans &middot; Priority results</div>
+                  </div>
+                )}
               </div>
             </div>
           )}
