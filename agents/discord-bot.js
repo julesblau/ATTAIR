@@ -13,8 +13,9 @@
  */
 
 import { Client, GatewayIntentBits, Partials, EmbedBuilder } from "discord.js";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, createWriteStream } from "fs";
 import { spawn } from "child_process";
+import { pipeline } from "stream/promises";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { config } from "dotenv";
@@ -297,27 +298,66 @@ async function handleMessage(message) {
   if (message.channel.id !== CHAT_CHANNEL_ID) return;
 
   const content = message.content.trim();
-  if (!content) return;
+  const attachments = [...message.attachments.values()];
+  const hasImages = attachments.some(a => a.contentType?.startsWith("image/"));
+
+  if (!content && !hasImages) return;
 
   lastMessageTime = Date.now();
 
   // Show typing indicator
   await message.channel.sendTyping();
 
+  // ── Download any image attachments ──
+  const imagePaths = [];
+  if (hasImages) {
+    const screenshotDir = join(REPO_ROOT, "agents", ".discord-screenshots");
+    if (!existsSync(screenshotDir)) mkdirSync(screenshotDir, { recursive: true });
+
+    for (const att of attachments) {
+      if (!att.contentType?.startsWith("image/")) continue;
+      const ext = att.name?.split(".").pop() || "png";
+      const filename = `discord-${Date.now()}-${att.id}.${ext}`;
+      const filepath = join(screenshotDir, filename);
+      try {
+        const res = await fetch(att.url);
+        const fileStream = createWriteStream(filepath);
+        await pipeline(res.body, fileStream);
+        imagePaths.push(filepath);
+      } catch (e) {
+        console.error("Failed to download attachment:", e.message);
+      }
+    }
+  }
+
   // ── Check if this is a reply to a pending agent question ──
   if (pendingQuestion) {
     const responseFile = join(BRIDGE_DIR, `response-${pendingQuestion.id}.json`);
-    writeFileSync(responseFile, JSON.stringify({ reply: content, ts: Date.now() }));
+    const replyText = imagePaths.length
+      ? `${content || "See screenshot"}\n\nScreenshots saved at:\n${imagePaths.join("\n")}`
+      : content;
+    writeFileSync(responseFile, JSON.stringify({ reply: replyText, ts: Date.now() }));
     pendingQuestion = null;
     await message.reply("Sent to the agent.");
     return;
+  }
+
+  // ── Build prompt with image references ──
+  let userMessage = content || "";
+  if (imagePaths.length) {
+    const imageInstructions = imagePaths.map(p =>
+      `Jules sent a screenshot. Read the image at: ${p}`
+    ).join("\n");
+    userMessage = userMessage
+      ? `${userMessage}\n\n${imageInstructions}`
+      : imageInstructions;
   }
 
   // ── Everything goes through Claude — it decides what to do ──
   try {
     const thinking = await message.channel.send("...");
 
-    const reply = await chatWithOpus(content);
+    const reply = await chatWithOpus(userMessage);
 
     await thinking.delete().catch(() => {});
 

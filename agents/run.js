@@ -9,7 +9,7 @@
  *
  * REQUIREMENTS:
  *   1. Drop your requirements for today in: ATTAIR/requirements/today.md
- *   2. Ensure ANTHROPIC_API_KEY is set in your environment
+ *   2. Ensure `claude` CLI is installed and authenticated (Max subscription)
  *   3. Ensure `gh` (GitHub CLI) is authenticated: gh auth status
  *   4. Run from the agents/ directory or repo root
  *
@@ -22,9 +22,9 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
+import { createInterface } from "readline";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { config } from "dotenv";
@@ -2705,38 +2705,6 @@ async function main() {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      // Build query options — resume if we have a session from a previous run
-      // Resolve Claude Code CLI path — SDK looks for its own bundled cli.js by default,
-      // but on CI (GitHub Actions) we install the standalone binary at ~/.local/bin/claude.
-      const claudeCliPath = process.platform === "win32"
-        ? undefined  // Let SDK find it on Windows (local dev)
-        : join(process.env.HOME || "/root", ".local", "bin", "claude");
-
-      const queryOptions = {
-        cwd: REPO_ROOT,
-        allowedTools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent"],
-        permissionMode: "bypassPermissions",
-        allowDangerouslySkipPermissions: true,
-        maxTurns: 1000,
-        maxBudgetUsd: 500,  // User is on Claude Max — this is a safety cap, not billing
-        agents: AGENTS,
-        model: "opus",
-        ...(claudeCliPath ? { pathToClaudeCodeExecutable: claudeCliPath } : {}),
-        env: {
-          ...process.env,
-          GH_TOKEN: process.env.GH_TOKEN ?? "",
-          ...(process.env.DISCORD_BRIDGE === "true" ? {
-            DISCORD_BRIDGE: "true",
-            DISCORD_BRIDGE_DIR: process.env.DISCORD_BRIDGE_DIR ?? "",
-          } : {}),
-        },
-      };
-
-      // If resuming, tell the SDK to continue the previous session
-      if (sessionId) {
-        queryOptions.resume = sessionId;
-      }
-
       // Build the prompt — if resuming, tell PM to check what's already done
       const prompt = sessionId
         ? `You were interrupted mid-run (credits ran out). You are being RESUMED.
@@ -2752,10 +2720,67 @@ Your original mission:
 ${PM_PROMPT}`
         : PM_PROMPT;
 
+      // Build CLI args for the claude process
+      const cliArgs = [
+        "-p",
+        "--model", "opus",
+        "--output-format", "stream-json",
+        "--permission-mode", "bypassPermissions",
+        "--max-budget-usd", "500",
+        "--allowedTools",
+        "Read", "Write", "Edit", "Bash", "Glob", "Grep", "Agent",
+      ];
+
+      // Add resume if we have a session ID from a previous run
+      if (sessionId) {
+        cliArgs.push("--resume", sessionId);
+      }
+
+      // Add agents definitions
+      cliArgs.push("--agents", JSON.stringify(AGENTS));
+
+      // Resolve CLI path — prefer standalone binary on CI
+      const claudeCmd = (process.platform !== "win32" &&
+        existsSync(join(process.env.HOME || "/root", ".local", "bin", "claude")))
+        ? join(process.env.HOME || "/root", ".local", "bin", "claude")
+        : "claude";
+
+      const proc = spawn(claudeCmd, cliArgs, {
+        stdio: ["pipe", "pipe", "pipe"],
+        cwd: REPO_ROOT,
+        env: {
+          ...process.env,
+          GH_TOKEN: process.env.GH_TOKEN ?? "",
+          ...(process.env.DISCORD_BRIDGE === "true" ? {
+            DISCORD_BRIDGE: "true",
+            DISCORD_BRIDGE_DIR: process.env.DISCORD_BRIDGE_DIR ?? "",
+          } : {}),
+        },
+      });
+
+      // Write prompt to stdin and close
+      proc.stdin.write(prompt);
+      proc.stdin.end();
+
+      // Collect stderr for error handling
+      let stderrOutput = "";
+      proc.stderr.on("data", (d) => { stderrOutput += d.toString(); });
+
       let wasRateLimited = false;
       let lastRateLimitResetAt = null;
+      let gotResult = false;
 
-      for await (const message of query({ prompt, options: queryOptions })) {
+      // Parse stream-json output line by line
+      const rl = createInterface({ input: proc.stdout });
+      for await (const line of rl) {
+        let message;
+        try {
+          message = JSON.parse(line);
+        } catch {
+          // Non-JSON line (progress dots, etc.) — skip
+          continue;
+        }
+
         const type = message.type ?? "unknown";
         const subtype = message.subtype ?? "";
 
@@ -2789,11 +2814,12 @@ ${PM_PROMPT}`
           console.log("╚══════════════════════════════════════════════════╝\n");
           console.log(message.result);
           clearCheckpoint();
+          gotResult = true;
           // Notify Jules that the army is done
           try {
             notifyHuman(`Agent army completed for ${today}.\n\nCheck the standup report at standups/${today}.md and review the pushed changes on main.`, { title: `[Agent] ✅ Complete — ${today}` });
           } catch (e) { /* non-critical */ }
-          return; // Done — exit main()
+          break; // Done — exit the line-reading loop
         }
 
         // Assistant messages (PM thinking, tool calls)
@@ -2831,9 +2857,21 @@ ${PM_PROMPT}`
         }
       }
 
+      // Wait for the process to fully exit
+      const exitCode = await new Promise((resolve) => proc.on("close", resolve));
+
+      // If we got a result, we're done — exit main()
+      if (gotResult) {
+        return;
+      }
+
+      // Check stderr for rate limit / error info
+      if (stderrOutput) {
+        console.log(`[stderr] ${stderrOutput.trim().slice(0, 500)}`);
+      }
+
       // Stream ended without a result message — may have been rate limited
-      if (wasRateLimited) {
-        // SDK ended the stream due to rate limit — sleep until reset
+      if (wasRateLimited || stderrOutput.toLowerCase().includes("rate limit") || stderrOutput.toLowerCase().includes("out of usage")) {
         let waitMs;
         if (lastRateLimitResetAt) {
           const resetTime = new Date(lastRateLimitResetAt).getTime();
@@ -2852,7 +2890,7 @@ ${PM_PROMPT}`
         continue; // Loop back to retry
       }
 
-      console.log("\n⚠️  Stream ended without completion. Retrying in 30s...");
+      console.log(`\n⚠️  Stream ended without completion (exit code ${exitCode}). Retrying in 30s...`);
       await sleep(30_000);
       // Loop back to retry with resume
 
@@ -2881,8 +2919,8 @@ ${PM_PROMPT}`
       if (msg.includes("ANTHROPIC_API_KEY")) {
         console.error("\n💡 Fix: Set your API key: export ANTHROPIC_API_KEY=sk-ant-...");
       }
-      if (msg.includes("claude-agent-sdk")) {
-        console.error("\n💡 Fix: Run: cd agents && npm install");
+      if (msg.includes("claude") && msg.includes("not found")) {
+        console.error("\n💡 Fix: Ensure claude CLI is installed and on your PATH");
       }
 
       // Keep checkpoint so next manual run resumes

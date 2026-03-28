@@ -136,3 +136,12 @@ Agent audit: Review all agent prompts, workflows, and outputs to figure out why 
 ### 2026-03-28 — Jules via Discord
 Discord bot formatting cleanup: Fix message formatting issues — newlines don't render well, markdown may not display correctly on mobile. Make messages easier to read in Discord, especially on phone. Test formatting on mobile before shipping.
 **Status:** Pending review
+
+### 2026-03-28 — Jules via Discord
+SQL access via Claude CLI: Give Claude Code direct access to query the Supabase database (read/write) so agents and this chat can inspect data, debug issues, and run queries without needing a separate tool or dashboard.
+**Status:** Pending review
+
+### 2026-03-28 — Jules via Discord
+## Overnight / Autonomous Mode for Agent Army
+When Jules kicks off a run and marks it as "overnight" (or it's after a certain hour), agents should NOT block on permission prompts or questions — they should make their best judgment call and keep going. During daytime runs, keep the current behavior where agents can ask Jules questions via Discord. Could be a simple `--overnight` flag on `run.js` or a Discord command like `/run overnight`.
+**Status:** Pending review
