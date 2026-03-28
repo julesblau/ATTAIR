@@ -1600,10 +1600,11 @@ export default function App() {
   // ─── Public scan view (deep link /scan/:id) ────────────────
   const [publicScanView, setPublicScanView] = useState(null); // { scanId, data, loading, error }
 
-  // ─── Share card generation ──────────────────────────────────
+  // ─── Share ──────────────────────────────────────────────────
   const [shareCardLoading, setShareCardLoading] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
   const [sharePublicToast, setSharePublicToast] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   // ─── Post-first-scan preference sheet ──────────────────────
   const [showPrefSheet, setShowPrefSheet] = useState(false);
@@ -1872,9 +1873,30 @@ export default function App() {
     }
   }, [authed, screen]);
 
-  // ─── Feed loader ─────────────────────────────────────────────
+  // ─── Feed loader (with localStorage cache for instant load) ──
+  const FEED_CACHE_KEY = "attair_feed_cache";
+  const FEED_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
   const loadFeed = useCallback(async (page = 1, append = false) => {
     if (feedLoading) return;
+
+    // For page 1 (initial load), try cache first for instant render
+    if (page === 1 && !append) {
+      try {
+        const raw = localStorage.getItem(`${FEED_CACHE_KEY}_${feedTab}`);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (cached.scans?.length) {
+            setFeedScans(cached.scans);
+            setFeedHasMore(cached.has_more || false);
+            setFeedPage(1);
+            // If cache is fresh enough, skip network call
+            if (Date.now() - cached.ts < FEED_CACHE_TTL) return;
+          }
+        }
+      } catch {}
+    }
+
     setFeedLoading(true);
     try {
       const data = await API.getFeed(page, feedTab);
@@ -1882,12 +1904,21 @@ export default function App() {
       setFeedScans(prev => append ? [...prev, ...scans] : scans);
       setFeedHasMore(data.has_more || false);
       setFeedPage(page);
+
+      // Cache page 1 results
+      if (page === 1 && !append) {
+        try {
+          localStorage.setItem(`${FEED_CACHE_KEY}_${feedTab}`, JSON.stringify({
+            scans, has_more: data.has_more || false, ts: Date.now(),
+          }));
+        } catch {}
+      }
     } catch (err) {
       console.error("[ATTAIR] Feed load error:", err);
     } finally {
       setFeedLoading(false);
     }
-  }, [feedLoading]);
+  }, [feedLoading, feedTab]);
 
   useEffect(() => {
     if (authed && screen === "app" && (tab === "home" || (tab === "scan" && phase === "idle" && !img))) {
@@ -3633,16 +3664,19 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* More options toggle */}
-                  <button
-                    onClick={() => setShowAdvanced(a => !a)}
-                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "6px 0", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", color: "var(--text-tertiary)", fontSize: 11, fontWeight: 600, letterSpacing: 0.3 }}
-                  >
-                    More options
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform .2s", transform: showAdvanced ? "rotate(180deg)" : "rotate(0)" }}>
-                      <polyline points="6 9 12 15 18 9"/>
-                    </svg>
-                  </button>
+                  {/* More options toggle — visually separated */}
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--border)" }}>
+                    <button
+                      onClick={() => setShowAdvanced(a => !a)}
+                      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 0", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", color: "var(--text-tertiary)", fontSize: 11, fontWeight: 600, letterSpacing: 0.3 }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                      More options
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform .2s", transform: showAdvanced ? "rotate(180deg)" : "rotate(0)" }}>
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
+                    </button>
+                  </div>
 
                   {showAdvanced && (
                     <div style={{ paddingBottom: 16, display: "flex", flexDirection: "column", gap: 16, animation: "slideDown .2s ease" }}>
@@ -3705,89 +3739,27 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Share buttons — always visible */}
+                  {/* Share button — opens share sheet */}
                       {scanId && (<>
                         <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button
-                            aria-label="Share Your Look"
-                            onClick={async () => {
-                              // Auto-set scan to public
-                              API.updateScanVisibility(scanId, "public").catch(() => {});
-                              setSharePublicToast(true);
-                              setTimeout(() => setSharePublicToast(false), 2500);
-                              const shareUrl = `${window.location.origin}/scan/${scanId}`;
-                              const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
-                              if (navigator.share) {
-                                try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
-                              } else {
-                                try {
-                                  await navigator.clipboard.writeText(shareUrl);
-                                  setShareLinkCopied(true);
-                                  setTimeout(() => setShareLinkCopied(false), 2000);
-                                  track("share_link", { method: "clipboard" }, scanId, "scan");
-                                } catch {}
-                              }
-                            }}
-                            style={{
-                              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                              padding: "12px 16px", minHeight: 44,
-                              background: "var(--bg-input)", color: "var(--text-secondary)",
-                              border: "1px solid var(--border)", borderRadius: "var(--radius-md)",
-                              fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                            }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                            {shareLinkCopied ? "Copied!" : "Share"}
-                          </button>
-                          <button
-                            aria-label="Share Card"
-                            disabled={shareCardLoading}
-                            onClick={async () => {
-                              // Auto-set scan to public
-                              API.updateScanVisibility(scanId, "public").catch(() => {});
-                              setSharePublicToast(true);
-                              setTimeout(() => setSharePublicToast(false), 2500);
-                              setShareCardLoading(true);
-                              try {
-                                const userName = authName || (authEmail ? authEmail.split("@")[0] : "");
-                                const cardDataUrl = await generateShareCard({
-                                  imageUrl: img,
-                                  summary: results?.summary,
-                                  items: results?.items?.filter((_, idx) => pickedItems.has(idx)),
-                                  verdict: scanVerdicts[scanId],
-                                  userName,
-                                });
-                                const res = await fetch(cardDataUrl);
-                                const blob = await res.blob();
-                                const file = new File([blob], "attair-outfit.png", { type: "image/png" });
-                                if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                                  try { await navigator.share({ title: "My ATTAIR Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
-                                } else {
-                                  const a = document.createElement("a");
-                                  a.href = cardDataUrl;
-                                  a.download = "attair-outfit.png";
-                                  document.body.appendChild(a);
-                                  a.click();
-                                  document.body.removeChild(a);
-                                  track("share_card", { method: "download" }, scanId, "scan");
-                                }
-                              } catch (e) { console.error("Share card generation failed:", e); }
-                              setShareCardLoading(false);
-                            }}
-                            style={{
-                              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                              padding: "12px 16px", minHeight: 44,
-                              background: "var(--bg-input)", color: "var(--text-secondary)",
-                              border: "1px solid var(--border)", borderRadius: "var(--radius-md)",
-                              fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer",
-                              opacity: shareCardLoading ? 0.6 : 1,
-                            }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                            {shareCardLoading ? "..." : "Share Card"}
-                          </button>
-                    </div>
+                        <button
+                          aria-label="Share Your Look"
+                          onClick={() => {
+                            API.updateScanVisibility(scanId, "public").catch(() => {});
+                            setShowShareSheet(true);
+                          }}
+                          style={{
+                            width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                            padding: "14px 16px", minHeight: 48,
+                            background: "var(--accent)", color: "var(--text-inverse)",
+                            border: "none", borderRadius: "var(--radius-md)",
+                            fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 700, cursor: "pointer",
+                            boxShadow: "0 2px 12px rgba(201,169,110,.3)",
+                          }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                          Share This Look
+                        </button>
                   </>)}
                 </div>
               )}
@@ -4806,9 +4778,9 @@ export default function App() {
 
                 <div style={{ padding: "16px 20px", flex: 1 }}>
                   {/* User name */}
-                  {ps.user?.display_name && (
+                  {(ps.user_display_name || ps.user?.display_name) && (
                     <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 8, fontWeight: 600 }}>
-                      Scanned by {ps.user.display_name}
+                      Scanned by {ps.user_display_name || ps.user?.display_name}
                     </div>
                   )}
 
@@ -5219,6 +5191,156 @@ export default function App() {
                 }}
                 style={{ padding: "12px 18px", background: newWishlistName.trim() ? "var(--accent)" : "var(--bg-input)", color: newWishlistName.trim() ? "#000" : "var(--text-tertiary)", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: newWishlistName.trim() ? "pointer" : "default", fontFamily: "var(--font-sans)", minHeight: 44, transition: "all .2s" }}
               >Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Share Bottom Sheet ═══════════════════════════════════ */}
+      {showShareSheet && scanId && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,.55)", backdropFilter: "blur(6px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowShareSheet(false); }}>
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0,
+            background: "var(--bg-card, #1A1A1C)", borderRadius: "20px 20px 0 0",
+            padding: "20px 20px 36px", maxWidth: 430, margin: "0 auto",
+            animation: "slideUp .25s ease",
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>Share This Look</div>
+              <button onClick={() => setShowShareSheet(false)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 22, cursor: "pointer", padding: 6, minWidth: 36, minHeight: 36 }}>&times;</button>
+            </div>
+
+            {/* Share options grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
+              {/* Copy Link */}
+              <button onClick={async () => {
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                try {
+                  await navigator.clipboard.writeText(shareUrl);
+                  setShareLinkCopied(true);
+                  setTimeout(() => setShareLinkCopied(false), 2000);
+                  track("share_link", { method: "clipboard" }, scanId, "scan");
+                } catch {}
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--bg-input)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                </div>
+                <span style={{ fontSize: 11, color: shareLinkCopied ? "var(--accent)" : "var(--text-tertiary)", fontWeight: 600, fontFamily: "var(--font-sans)" }}>{shareLinkCopied ? "Copied!" : "Copy Link"}</span>
+              </button>
+
+              {/* Text / Native Share */}
+              <button onClick={async () => {
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
+                if (navigator.share) {
+                  try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
+                } else {
+                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch {}
+                }
+                setShowShareSheet(false);
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--bg-input)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600, fontFamily: "var(--font-sans)" }}>Text</span>
+              </button>
+
+              {/* Instagram */}
+              <button onClick={async () => {
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                if (navigator.share) {
+                  try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "instagram" }, scanId, "scan"); } catch {}
+                } else {
+                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch {}
+                }
+                setShowShareSheet(false);
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg, #833AB4, #FD1D1D, #F77737)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="#fff" stroke="none"/></svg>
+                </div>
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600, fontFamily: "var(--font-sans)" }}>Instagram</span>
+              </button>
+
+              {/* TikTok */}
+              <button onClick={async () => {
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                if (navigator.share) {
+                  try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "tiktok" }, scanId, "scan"); } catch {}
+                } else {
+                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch {}
+                }
+                setShowShareSheet(false);
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "#010101", border: "1px solid #333", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="20" height="22" viewBox="0 0 20 22" fill="#fff"><path d="M17.2 5.5a4.5 4.5 0 0 1-3-1.3 4.5 4.5 0 0 1-1.1-3h-3v12.8a2.8 2.8 0 0 1-2.8 2.7 2.8 2.8 0 0 1-2.8-2.8 2.8 2.8 0 0 1 2.8-2.8c.3 0 .6 0 .8.1V8a5.9 5.9 0 0 0-.9-.1 5.8 5.8 0 0 0-5.8 5.9A5.8 5.8 0 0 0 7.3 20a5.8 5.8 0 0 0 5.8-5.9V7.8A7.5 7.5 0 0 0 17.5 9V6a4.5 4.5 0 0 1-.3-.5z"/></svg>
+                </div>
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600, fontFamily: "var(--font-sans)" }}>TikTok</span>
+              </button>
+            </div>
+
+            {/* Second row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+              {/* Snapchat */}
+              <button onClick={async () => {
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                if (navigator.share) {
+                  try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "snapchat" }, scanId, "scan"); } catch {}
+                } else {
+                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch {}
+                }
+                setShowShareSheet(false);
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "#FFFC00", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#000"><path d="M12 2C6.5 2 3 5.7 3 9.5c0 1.8.8 3.4 2 4.7-.2.8-.7 2.2-1.5 3 0 0 2.2-.3 3.7-1.5.6.2 1.2.3 1.8.3h.2c-.1-.3-.1-.7-.1-1 0-3.3 2.7-6 6-6s6 2.7 6 6c0 .3 0 .7-.1 1h.2c.6 0 1.2-.1 1.8-.3 1.5 1.2 3.7 1.5 3.7 1.5-.8-.8-1.3-2.2-1.5-3 1.2-1.3 2-2.9 2-4.7C21 5.7 17.5 2 12 2z"/></svg>
+                </div>
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600, fontFamily: "var(--font-sans)" }}>Snapchat</span>
+              </button>
+
+              {/* Share Card (image) */}
+              <button disabled={shareCardLoading} onClick={async () => {
+                setShareCardLoading(true);
+                try {
+                  const userName = authName || (authEmail ? authEmail.split("@")[0] : "");
+                  const cardDataUrl = await generateShareCard({
+                    imageUrl: img,
+                    summary: results?.summary,
+                    items: results?.items?.filter((_, idx) => pickedItems.has(idx)),
+                    verdict: scanVerdicts[scanId],
+                    userName,
+                  });
+                  const res = await fetch(cardDataUrl);
+                  const blob = await res.blob();
+                  const file = new File([blob], "attair-outfit.png", { type: "image/png" });
+                  if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                    try { await navigator.share({ title: "My ATTAIR Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
+                  } else {
+                    const a = document.createElement("a");
+                    a.href = cardDataUrl;
+                    a.download = "attair-outfit.png";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    track("share_card", { method: "download" }, scanId, "scan");
+                  }
+                } catch (e) { console.error("Share card generation failed:", e); }
+                setShareCardLoading(false);
+                setShowShareSheet(false);
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", opacity: shareCardLoading ? 0.5 : 1 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--bg-input)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600, fontFamily: "var(--font-sans)" }}>{shareCardLoading ? "Creating..." : "Share Card"}</span>
+              </button>
+            </div>
+
+            {/* Link preview */}
+            <div style={{ background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <div style={{ flex: 1, fontSize: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {window.location.origin}/scan/{scanId?.slice(0, 8)}...
+              </div>
             </div>
           </div>
         </div>
