@@ -1323,6 +1323,10 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
   const [path, setPath] = useState([]);
   const [confirmed, setConfirmed] = useState(false);
   const [glowing, setGlowing] = useState(false);
+  const strokeColorRef = useRef("rgba(255, 204, 0, 0.7)");
+  const strokeColorSolidRef = useRef("rgba(255, 204, 0, 0.8)");
+  const fillColorRef = useRef("rgba(255, 220, 0, 0.06)");
+  const fillColorSolidRef = useRef("rgba(255, 220, 0, 0.1)");
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -1331,6 +1335,53 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     canvas.width = img.offsetWidth;
     canvas.height = img.offsetHeight;
   }, [imageRef]);
+
+  // Sample image pixels around a point and pick a high-contrast stroke color
+  const pickContrastColor = (x, y) => {
+    const img = imageRef?.current;
+    if (!img) return;
+    try {
+      const sampleCanvas = document.createElement("canvas");
+      const scaleX = img.naturalWidth / img.offsetWidth;
+      const scaleY = img.naturalHeight / img.offsetHeight;
+      const radius = 30;
+      const sx = Math.max(0, (x - radius) * scaleX);
+      const sy = Math.max(0, (y - radius) * scaleY);
+      const sw = Math.min(img.naturalWidth - sx, radius * 2 * scaleX);
+      const sh = Math.min(img.naturalHeight - sy, radius * 2 * scaleY);
+      sampleCanvas.width = sw;
+      sampleCanvas.height = sh;
+      const sCtx = sampleCanvas.getContext("2d");
+      sCtx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      const data = sCtx.getImageData(0, 0, sw, sh).data;
+      let rSum = 0, gSum = 0, bSum = 0, count = 0;
+      for (let i = 0; i < data.length; i += 16) {
+        rSum += data[i]; gSum += data[i + 1]; bSum += data[i + 2]; count++;
+      }
+      if (count === 0) return;
+      const avgR = rSum / count, avgG = gSum / count, avgB = bSum / count;
+      const brightness = (avgR * 299 + avgG * 587 + avgB * 114) / 1000;
+      if (brightness > 160) {
+        // Light background → use dark magenta/blue stroke
+        strokeColorRef.current = "rgba(100, 20, 200, 0.8)";
+        strokeColorSolidRef.current = "rgba(100, 20, 200, 0.9)";
+        fillColorRef.current = "rgba(100, 20, 200, 0.06)";
+        fillColorSolidRef.current = "rgba(100, 20, 200, 0.1)";
+      } else if (brightness > 80) {
+        // Mid-tone → use bright white stroke
+        strokeColorRef.current = "rgba(255, 255, 255, 0.85)";
+        strokeColorSolidRef.current = "rgba(255, 255, 255, 0.95)";
+        fillColorRef.current = "rgba(255, 255, 255, 0.06)";
+        fillColorSolidRef.current = "rgba(255, 255, 255, 0.1)";
+      } else {
+        // Dark background → use bright gold (default)
+        strokeColorRef.current = "rgba(255, 204, 0, 0.7)";
+        strokeColorSolidRef.current = "rgba(255, 204, 0, 0.8)";
+        fillColorRef.current = "rgba(255, 220, 0, 0.06)";
+        fillColorSolidRef.current = "rgba(255, 220, 0, 0.1)";
+      }
+    } catch (_) { /* cross-origin or missing image — keep default gold */ }
+  };
 
   const getPos = (e) => {
     const canvas = canvasRef.current;
@@ -1343,6 +1394,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
   const startDraw = (e) => {
     e.preventDefault();
     const pos = getPos(e);
+    pickContrastColor(pos.x, pos.y);
     setIsDrawing(true);
     setPath([pos]);
     setConfirmed(false);
@@ -1362,13 +1414,13 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
     pts.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.strokeStyle = "rgba(255, 204, 0, 0.7)";
+    ctx.strokeStyle = strokeColorRef.current;
     ctx.lineWidth = 5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.stroke();
     ctx.closePath();
-    ctx.fillStyle = "rgba(255, 220, 0, 0.06)";
+    ctx.fillStyle = fillColorRef.current;
     ctx.fill();
   };
 
@@ -1383,12 +1435,12 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     ctx.moveTo(path[0].x, path[0].y);
     path.forEach(p => ctx.lineTo(p.x, p.y));
     ctx.closePath();
-    ctx.strokeStyle = "rgba(255, 204, 0, 0.8)";
+    ctx.strokeStyle = strokeColorSolidRef.current;
     ctx.lineWidth = 5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.stroke();
-    ctx.fillStyle = "rgba(255, 220, 0, 0.1)";
+    ctx.fillStyle = fillColorSolidRef.current;
     ctx.fill();
     setConfirmed(true);
     // Trigger glow animation to confirm "locked on" — lasts ~2 seconds
@@ -2097,6 +2149,10 @@ export default function App() {
       setItemOverrides({});
       setItemSettingsIdx(null);
       setIdentPreview(items);
+      // Auto-select circled (priority) items so user sees their intent pre-picked
+      const priorityPicks = new Set();
+      items.forEach((item, i) => { if (item.priority) priorityPicks.add(i); });
+      if (priorityPicks.size > 0) setPickedItems(priorityPicks);
       setPhase("picking"); // Stop here — let user choose which items to search
       track("scan_completed", { item_count: items.length, gender: raw.gender }, raw.scan_id, "scan");
 
