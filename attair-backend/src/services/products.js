@@ -458,12 +458,16 @@ async function getCache(key) {
   return null;
 }
 
-async function setCache(key, results) {
+// Cache TTLs — shorter for price-sensitive text search, longer for visual matches
+const CACHE_TTL_LENS = 12 * 60 * 60 * 1000;   // 12 hours — Lens visual matches are stable
+const CACHE_TTL_TEXT = 6 * 60 * 60 * 1000;     // 6 hours — text/Shopping results have price volatility
+
+async function setCache(key, results, ttlMs = CACHE_TTL_TEXT) {
   const now = new Date();
   await supabase.from("product_cache").upsert({
     cache_key: key, results,
     cached_at: now.toISOString(),
-    expires_at: new Date(now.getTime() + 86400000).toISOString(),
+    expires_at: new Date(now.getTime() + ttlMs).toISOString(),
   });
 }
 
@@ -568,7 +572,7 @@ async function googleLensSearch(imageUrl) {
     // Only cache non-empty results — an empty array may be a transient API failure
     // and we do not want to lock out a valid retry for 24 hours.
     if (visualMatches.length > 0) {
-      await setCache(cacheKey, visualMatches);
+      await setCache(cacheKey, visualMatches, CACHE_TTL_LENS);
     }
     return visualMatches;
   } catch (err) {
@@ -1344,7 +1348,14 @@ function explainMatch(product, item, tier, isFromLens) {
   const price = extractPrice(product.price);
   if (price) reasons.push(`$${price.toFixed(0)}`);
 
-  return reasons.length ? reasons.join(" · ") : `${item.subcategory || item.category} — ${tier} tier`;
+  // Tier context — explain why this product is in this tier
+  const tierLabels = { budget: "save pick", mid: "best match", premium: "splurge pick" };
+  const tierLabel = tierLabels[tier] || tier;
+
+  if (reasons.length) {
+    return `${tierLabel} · ${reasons.join(" · ")}`;
+  }
+  return `${tierLabel} · ${item.subcategory || item.category}${price ? ` · $${price.toFixed(0)}` : ""}`;
 }
 
 // ─── Google Shopping fallback link ──────────────────────────
@@ -1823,13 +1834,18 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     const brandVerified = item.brand && item.brand !== "Unidentified" &&
       [...tiers.budget, ...tiers.mid, ...tiers.premium].some(t => t?.is_identified_brand);
 
+    // When ALL tiers are empty, show a single unified fallback instead of three
+    // separate Google Shopping links with different price filters
+    const allEmpty = !tiers.budget.length && !tiers.mid.length && !tiers.premium.length;
+    const singleFallback = allEmpty ? [fallbackTier(item, "mid", itemTierBounds)] : null;
+
     return {
       item_index: rawItem._scan_item_index ?? i,
       brand_verified: brandVerified,
       tiers: {
-        budget: tiers.budget.length ? tiers.budget : [fallbackTier(item, "budget", itemTierBounds)],
-        mid: tiers.mid.length ? tiers.mid : [fallbackTier(item, "mid", itemTierBounds)],
-        premium: tiers.premium.length ? tiers.premium : [fallbackTier(item, "premium", itemTierBounds)],
+        budget: tiers.budget.length ? tiers.budget : (singleFallback ? [] : [fallbackTier(item, "budget", itemTierBounds)]),
+        mid: tiers.mid.length ? tiers.mid : (singleFallback || [fallbackTier(item, "mid", itemTierBounds)]),
+        premium: tiers.premium.length ? tiers.premium : (singleFallback ? [] : [fallbackTier(item, "premium", itemTierBounds)]),
         resale: resaleFormatted,
       },
       _item: item, // carry forward for re-ranking
@@ -1876,7 +1892,10 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
         // Annotate top result with AI reason if available
         if (tier[0]?.url && aiScoreMap.has(tier[0].url)) {
           const ai = aiScoreMap.get(tier[0].url);
-          if (ai.reason) tier[0].why = `${tier[0].why} · ${ai.reason}`;
+          if (ai.reason) {
+            const combined = `${tier[0].why} · ${ai.reason}`;
+            tier[0].why = combined.length > 120 ? combined.slice(0, 117) + "…" : combined;
+          }
         }
       }
     });

@@ -309,7 +309,7 @@ Return JSON only — no markdown, no backticks:
 
 export async function identifyClothing(base64Image, mimeType, userPrefs, priorityRegionBase64) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 45000);
 
   const contentBlocks = [
     {
@@ -350,7 +350,7 @@ export async function identifyClothing(base64Image, mimeType, userPrefs, priorit
       signal: controller.signal,
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 3000,
+        max_tokens: 4000,
         messages: [
           {
             role: "user",
