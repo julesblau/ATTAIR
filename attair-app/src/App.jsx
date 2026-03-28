@@ -3611,7 +3611,7 @@ export default function App() {
                         value={searchNotes}
                         onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
                         onKeyDown={e => { if (e.key === "Enter" && searchNotes.trim()) { e.target.blur(); runProductSearch(); } }}
-                        placeholder="Refine: \u201Ccheaper options\u201D, \u201Cmore casual\u201D, \u201Csustainable brands\u201D..."
+                        placeholder="Refine your results with AI\u2026"
                         className="refine-input"
                         style={{ flex: 1, minHeight: 44 }}
                       />
@@ -3706,7 +3706,8 @@ export default function App() {
                   )}
 
                   {/* Share buttons — always visible */}
-                      {scanId && (
+                      {scanId && (<>
+                        <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
                             aria-label="Share Your Look"
@@ -3787,7 +3788,7 @@ export default function App() {
                             {shareCardLoading ? "..." : "Share Card"}
                           </button>
                     </div>
-                  )}
+                  </>)}
                 </div>
               )}
 
@@ -3943,11 +3944,15 @@ export default function App() {
 
           {/* ─── Saved tab (Scan History Library with Card Flip) ─────────── */}
           {tab === "likes" && (() => {
-            // Filter scans by search query
+            // Filter scans by active wishlist, then by search query
             let filteredScans = history;
+            if (activeWishlist) {
+              const wishlistScanIds = new Set(saved.filter(s => s.wishlist_id === activeWishlist.id).map(s => s.scan_id).filter(Boolean));
+              filteredScans = filteredScans.filter(scan => wishlistScanIds.has(scan.id));
+            }
             if (scanSearchQuery.trim()) {
               const q = scanSearchQuery.toLowerCase();
-              filteredScans = history.filter(scan => {
+              filteredScans = filteredScans.filter(scan => {
                 const nameMatch = (scan.scan_name || "").toLowerCase().includes(q);
                 const summaryMatch = (scan.summary || "").toLowerCase().includes(q);
                 const itemMatch = (scan.items || []).some(it =>
