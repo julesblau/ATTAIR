@@ -1321,7 +1321,6 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [path, setPath] = useState([]);
-  const [confirmed, setConfirmed] = useState(false);
   const [glowing, setGlowing] = useState(false);
   const pendingBase64Ref = useRef(null);
   const strokeColorRef = useRef("rgba(255, 204, 0, 0.7)");
@@ -1421,7 +1420,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     pickContrastColor(pos.x, pos.y);
     setIsDrawing(true);
     setPath([pos]);
-    setConfirmed(false);
+
     pendingBase64Ref.current = null;
     const ctx = canvasRef.current.getContext("2d");
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
@@ -1467,7 +1466,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     ctx.stroke();
     ctx.fillStyle = fillColorSolidRef.current;
     ctx.fill();
-    setConfirmed(true);
+
     // Trigger glow animation to confirm "locked on" — lasts ~2 seconds
     setGlowing(true);
     setTimeout(() => setGlowing(false), 2000);
@@ -1494,7 +1493,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
 
   const clear = () => {
     setPath([]);
-    setConfirmed(false);
+
     pendingBase64Ref.current = null;
     const canvas = canvasRef.current;
     if (canvas) canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
@@ -1511,7 +1510,6 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
       />
       <div style={{ position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 10, zIndex: 11 }}>
         <button onClick={clear} aria-label="Clear circle selection" style={{ padding: "8px 18px", background: "rgba(0,0,0,.7)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 100, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 44, minWidth: 44 }}>Clear</button>
-        {confirmed && <button onClick={() => onConfirm(pendingBase64Ref.current)} aria-label="Confirm circle selection" style={{ padding: "8px 18px", background: "rgba(201,169,110,.9)", border: "none", borderRadius: 100, color: "#0C0C0E", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 44, minWidth: 44 }}>Done</button>}
       </div>
     </div>
   );
