@@ -1582,3 +1582,11 @@
 .feed-detail-summary{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px}
 .app[data-theme='light'] .feed-card-overlay{background:linear-gradient(transparent,rgba(0,0,0,.55))}
 .app[data-theme='light'] .feed-skeleton-img{background:linear-gradient(110deg,#f0f0f0 30%,#e0e0e0 50%,#f0f0f0 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
+/* #11 Light mode: thicker/darker tab underline for visibility */
+.app[data-theme='light'] .feed-tab.active{border-bottom-width:3px;border-bottom-color:#8B6914}
+/* #15 Light mode: Edit Profile outlined button with visible border */
+.app[data-theme='light'] .btn-secondary{background:transparent;border:1.5px solid rgba(0,0,0,.2);color:#1A1816}
+.app[data-theme='light'] .btn-secondary:hover{background:rgba(201,169,110,.06);border-color:#C9A96E;color:#C9A96E}
+/* #16 Fix stray vertical line on profile by ensuring no unexpected borders */
+.app[data-theme='light'] .profile-v2-topbar{border:none}
+.app[data-theme='light'] .profile-v2-username{border:none}

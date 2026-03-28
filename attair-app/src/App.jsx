@@ -3688,7 +3688,7 @@ export default function App() {
                     <div style={{ fontSize: 40, opacity: 0.15, marginBottom: 12 }}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg></div>
                     <div className="empty-t">No scans yet</div>
                     <div className="empty-s">Scan outfits to fill your grid</div>
-                    <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setTab("scan")}>Scan your first outfit</button>
+                    <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setShowScanSheet(true)}>Scan your first outfit</button>
                   </div>
                 ) : (
                   <div className="profile-v2-grid">
