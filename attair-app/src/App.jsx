@@ -584,7 +584,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e => e.stopPropagation()} style={{ overflowY: "auto", maxHeight: "90vh" }}>
         <button className="modal-x" onClick={onClose}>✕</button>
-        <div className="pw-badge">✦ ATTAIR PRO</div>
+        <div className="pw-badge">✦ ATTAIRE PRO</div>
         <h2 className="modal-title">{m.title}</h2>
         <p className="modal-sub">{m.sub}</p>
         <div className="pw-fs" style={{ marginBottom: 24 }}>
@@ -1165,7 +1165,7 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
   ctx.fillStyle = "#C9A96E";
   ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
-  ctx.fillText("ATTAIR", 540, 1800);
+  ctx.fillText("ATTAIRE", 540, 1800);
   ctx.fillStyle = "rgba(201,169,110,0.5)";
   ctx.font = "400 24px 'Outfit', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1850);
@@ -1281,7 +1281,7 @@ async function generateStyleDnaCard(dna, userName) {
   ctx.fillStyle = "#C9A96E";
   ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
-  ctx.fillText("ATTAIR", 540, 1810);
+  ctx.fillText("ATTAIRE", 540, 1810);
   ctx.fillStyle = "rgba(201,169,110,0.5)";
   ctx.font = "400 24px 'Outfit', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1860);
@@ -2457,7 +2457,7 @@ export default function App() {
       {/* ─── UPGRADE SUCCESS BANNER ──────────────────────── */}
       {upgradeSuccess && (
         <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "var(--accent)", color: "var(--text-inverse)", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
-          Welcome to ATTAIR Pro!
+          Welcome to ATTAIRE Pro!
         </div>
       )}
 
@@ -2471,7 +2471,7 @@ export default function App() {
       {/* ─── MAIN APP ────────────────────────────────────── */}
       {screen === "app" && (<>
         <div className="hdr">
-          <img src="/logo-option-3.svg" alt="ATTAIR" className="logo-img" />
+          <img src="/logo-option-3.svg" alt="ATTAIRE" className="logo-img" />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {isPro
               ? <div className="pro">PRO</div>
@@ -2514,7 +2514,7 @@ export default function App() {
                   {/* Section header */}
                   <div style={{ padding: "20px 0 14px", display: "flex", alignItems: "center", gap: 8 }}>
                     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.3 }}>Trending on ATTAIR</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.3 }}>Trending on ATTAIRE</span>
                   </div>
 
                   {/* Pre-seeded placeholder cards */}
@@ -2645,7 +2645,7 @@ export default function App() {
             </div>
           )}
 
-          {/* ─── Search Tab ──────────────────────────────── */}
+          {/* ─── Discover Tab ──────────────────────────────── */}
           {tab === "search" && (
             <div className="animate-fade-in" style={{ paddingBottom: 80 }}>
               {/* People / Products sub-tabs */}
@@ -2852,8 +2852,8 @@ export default function App() {
               </div>
               {/* Centered content panel */}
               <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(201,169,110,.15)", maxWidth: 300 }}>
-                {/* ATTAIR wordmark */}
-                <img src="/logo-option-3.svg" alt="ATTAIR" style={{ height: 24, width: "auto" }} />
+                {/* ATTAIRE wordmark */}
+                <img src="/logo-option-3.svg" alt="ATTAIRE" style={{ height: 24, width: "auto" }} />
                 {/* Gold scan ring spinner with branded monogram */}
                 <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <div className="scan-ring scan-ring--lg" />
@@ -3465,7 +3465,7 @@ export default function App() {
                             aria-label="Share Your Look"
                             onClick={async () => {
                               const shareUrl = `${window.location.origin}/scan/${scanId}`;
-                              const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
+                              const shareData = { title: "ATTAIRE - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIRE!", url: shareUrl };
                               if (navigator.share) {
                                 try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
                               } else {
@@ -3506,7 +3506,7 @@ export default function App() {
                                 const blob = await res.blob();
                                 const file = new File([blob], "attair-outfit.png", { type: "image/png" });
                                 if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                                  try { await navigator.share({ title: "My ATTAIR Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
+                                  try { await navigator.share({ title: "My ATTAIRE Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
                                 } else {
                                   const a = document.createElement("a");
                                   a.href = cardDataUrl;
@@ -3754,7 +3754,7 @@ export default function App() {
               e.stopPropagation();
               const shareUrl = `${window.location.origin}/scan/${scan.id}`;
               if (navigator.share) {
-                try { await navigator.share({ title: scan.scan_name || "ATTAIR Scan", url: shareUrl }); } catch {}
+                try { await navigator.share({ title: scan.scan_name || "ATTAIRE Scan", url: shareUrl }); } catch {}
               } else {
                 try { await navigator.clipboard.writeText(shareUrl); } catch {}
               }
@@ -4375,15 +4375,15 @@ export default function App() {
           </div>
         )}
 
-        {/* ─── Tab bar (5 tabs: Feed, Search, Scan, Saved, Profile) ── */}
+        {/* ─── Tab bar (5 tabs: Feed, Discover, Scan, Saved, Profile) ── */}
         <div className="tb">
           <button className={`tab${tab==="home"?" on":""}`} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); setShowUserSearch(false); }} aria-label="Feed">
             <svg viewBox="0 0 24 24" fill={tab==="home"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
             <span className="tab-l">Feed</span>
           </button>
-          <button className={`tab${tab==="search"?" on":""}`} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); setShowUserSearch(false); }} aria-label="Search">
+          <button className={`tab${tab==="search"?" on":""}`} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); setShowUserSearch(false); }} aria-label="Discover">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <span className="tab-l">Search</span>
+            <span className="tab-l">Discover</span>
           </button>
           <button className="tab-scan" onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); setShowUserSearch(false); fileRef.current?.click(); }} aria-label="Scan outfit">
             <div className="tab-scan-icon">
@@ -4514,7 +4514,7 @@ export default function App() {
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-secondary, #0C0C0E)", display: "flex", flexDirection: "column", overflow: "auto" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
-            <img src="/logo-option-3.svg" alt="ATTAIR" className="logo-img" />
+            <img src="/logo-option-3.svg" alt="ATTAIRE" className="logo-img" />
             <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
           </div>
 
@@ -4529,7 +4529,7 @@ export default function App() {
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, padding: 32 }}>
               <div style={{ fontSize: 32, color: "var(--text-tertiary)" }}>404</div>
               <div style={{ fontSize: 14, color: "var(--text-secondary)", textAlign: "center" }}>{publicScanView.error}</div>
-              <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} className="cta" style={{ width: "auto", padding: "14px 32px" }}>Go to ATTAIR</button>
+              <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} className="cta" style={{ width: "auto", padding: "14px 32px" }}>Go to ATTAIRE</button>
             </div>
           )}
 
@@ -4604,7 +4604,7 @@ export default function App() {
                   </button>
 
                   <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: "var(--text-tertiary)" }}>
-                    Powered by ATTAIR AI Fashion Scanner
+                    Powered by ATTAIRE AI Fashion Scanner
                   </div>
                 </div>
               </div>
@@ -4822,7 +4822,7 @@ export default function App() {
                 if (navigator.share) {
                   const blob = await (await fetch(cardUrl)).blob();
                   const file = new File([blob], "style-dna.png", { type: "image/png" });
-                  await navigator.share({ files: [file], title: "My Style DNA \u2014 ATTAIR" });
+                  await navigator.share({ files: [file], title: "My Style DNA \u2014 ATTAIRE" });
                 } else {
                   const a = document.createElement("a");
                   a.href = cardUrl;

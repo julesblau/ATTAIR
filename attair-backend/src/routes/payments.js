@@ -56,8 +56,8 @@ router.post("/create-checkout-session", requireAuth, async (req, res) => {
       lineItem = { price: process.env.STRIPE_PRICE_MONTHLY, quantity: 1 };
     } else {
       const priceData = plan === "yearly"
-        ? { currency: "usd", unit_amount: 3000, recurring: { interval: "year" }, product_data: { name: "ATTAIR Pro — Yearly" } }
-        : { currency: "usd", unit_amount: 500, recurring: { interval: "month" }, product_data: { name: "ATTAIR Pro — Monthly" } };
+        ? { currency: "usd", unit_amount: 3000, recurring: { interval: "year" }, product_data: { name: "ATTAIRE Pro — Yearly" } }
+        : { currency: "usd", unit_amount: 500, recurring: { interval: "month" }, product_data: { name: "ATTAIRE Pro — Monthly" } };
       lineItem = { price_data: priceData, quantity: 1 };
     }
 

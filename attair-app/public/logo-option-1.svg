@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 80" fill="none">
-  <!-- ATTAIR wordmark — GOAT-inspired bold geometric sans-serif -->
+  <!-- ATTAIRE wordmark — GOAT-inspired bold geometric sans-serif -->
   <!-- The "AI" is subtly highlighted with a slightly warmer tone -->
   <defs>
     <linearGradient id="aiAccent" x1="0" y1="0" x2="0" y2="1">
@@ -27,7 +27,7 @@
     letter-spacing="-3"
     fill="url(#aiAccent)"
   >AI</text>
-  <!-- R -->
+  <!-- RE -->
   <text
     x="292"
     y="56"
@@ -36,5 +36,5 @@
     font-size="62"
     letter-spacing="-3"
     fill="#FAFAFA"
-  >R</text>
+  >RE</text>
 </svg>
