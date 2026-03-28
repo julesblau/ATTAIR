@@ -33,7 +33,7 @@ router.post("/", requireAuth, async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: "Failed to create wishlist" });
-  return res.json(data);
+  return res.json({ wishlist: data });
 });
 
 // ─── DELETE /api/wishlists/:id — delete a wishlist ───────────
