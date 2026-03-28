@@ -54,50 +54,84 @@ const BRIDGE_DIR = join(__dirname, ".discord-bridge");
 if (!existsSync(BRIDGE_DIR)) mkdirSync(BRIDGE_DIR, { recursive: true });
 
 // ─── Opus System Prompt ──────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You're Jules' product partner for ATTAIR (AI fashion shopping app). Discord on his phone.
+const SYSTEM_PROMPT = `You're Jules' product partner for ATTAIRE (AI fashion shopping app). Discord on his phone.
 
 RULES:
-- TEXT like a coworker. 1 sentence max unless he asks for more.
+- TEXT like a coworker. 1-2 sentences max unless he asks for more.
 - No intros, no "great question", no fluff. Just answer.
 - If he says something vague, ask ONE clarifying question.
 - You can push back, suggest things, and start conversations.
 - When writing requirements: be specific (screens, files, behavior).
+- Format for mobile: short lines, no walls of text, use bullet points sparingly.
 
 CONTEXT: React 19 + Vite, Node/Express on Railway, Supabase, Claude AI vision, SerpAPI, freemium model.
 
 ACTIONS YOU CAN TRIGGER:
-You have special powers. When you determine Jules wants one of these, include the action tag in your response. The system will execute it and strip the tag before showing your message.
+Include the action tag in your response. The system will execute it and strip the tag.
 
-- [ACTION:RUN_ARMY] — Start the agent army. Use when Jules wants to kick off a build, says "let's go", "ship it", "run it", "build this", "start the agents", etc.
-- [ACTION:STOP_ARMY] — Stop a running army. Use when Jules wants to halt, pause, stop, kill the current run.
-- [ACTION:WRITE_REQS:content here] — Write requirements/today.md. Use when Jules says to write/save/finalize requirements, or when you've agreed on what to build and it's time to lock it in.
-- [ACTION:BACKLOG:idea here] — Add to creative backlog. Use when Jules drops an idea for later, says "save this for later", "add to backlog", or mentions something that's not for today.
-- [ACTION:STATUS] — Check army status. Use when Jules asks how things are going, what's running, etc.
-- [ACTION:KILL_STALE] — Kill stale/orphaned claude and node processes (but not this bot). Use when Jules says "kill processes", "clean up", "something's stuck", "kill stale", etc.
+- [ACTION:RUN_ARMY] — Start the agent army (build/ship/go/run it)
+- [ACTION:RUN_ARMY:--overnight] — Start army in overnight/autonomous mode (no permission prompts)
+- [ACTION:STOP_ARMY] — Stop the running army
+- [ACTION:WRITE_REQS:content here] — Write requirements/today.md
+- [ACTION:BACKLOG:idea here] — Add to creative backlog
+- [ACTION:STATUS] — Check army status
+- [ACTION:KILL_STALE] — Kill stale/orphaned processes
 
-You can combine actions with your text response. Example: "On it, kicking off the army now. [ACTION:RUN_ARMY]"
+You can combine actions with text. Example: "On it. [ACTION:RUN_ARMY]"
 
-Be smart about intent. "let's build this" = run army. "save that for later" = backlog. "that's good, lock it in" = write reqs. You don't need Jules to use magic words.`;
+Be smart about intent. "let's build this" = run army. "save for later" = backlog. "lock it in" = write reqs. No magic words needed.`;
 
-// ─── Helper: Send to channel (handles 2000 char limit) ──────────────────────
+// ─── Helper: Send to channel (handles 2000 char limit, mobile-friendly) ─────
 async function sendToChannel(channel, text) {
   if (!channel) return;
-  // Discord has a 2000 char limit per message
+
+  // Clean up formatting for Discord mobile:
+  // - Replace triple+ newlines with double (less whitespace on small screens)
+  // - Ensure code blocks aren't split across messages
+  let cleaned = text.replace(/\n{3,}/g, "\n\n").trim();
+
   const chunks = [];
-  let remaining = text;
-  while (remaining.length > 0) {
-    if (remaining.length <= 1900) {
-      chunks.push(remaining);
+  while (cleaned.length > 0) {
+    if (cleaned.length <= 1900) {
+      chunks.push(cleaned);
       break;
     }
-    // Find a good break point
-    let breakAt = remaining.lastIndexOf("\n", 1900);
-    if (breakAt < 500) breakAt = 1900;
-    chunks.push(remaining.slice(0, breakAt));
-    remaining = remaining.slice(breakAt);
+
+    // Try to break at a good boundary (priority order):
+    // 1. Double newline (paragraph break)
+    // 2. Single newline
+    // 3. Space
+    let breakAt = -1;
+    const searchEnd = Math.min(cleaned.length, 1900);
+
+    // Don't break inside code blocks — find the end of the current block first
+    const codeBlockStart = cleaned.lastIndexOf("```", searchEnd);
+    const codeBlockEnd = cleaned.indexOf("```", codeBlockStart + 3);
+    if (codeBlockStart >= 0 && (codeBlockEnd < 0 || codeBlockEnd > searchEnd)) {
+      // Code block would be split — break before it
+      breakAt = cleaned.lastIndexOf("\n", codeBlockStart);
+      if (breakAt < 200) breakAt = codeBlockStart;
+    }
+
+    if (breakAt < 0) {
+      breakAt = cleaned.lastIndexOf("\n\n", searchEnd);
+    }
+    if (breakAt < 200) {
+      breakAt = cleaned.lastIndexOf("\n", searchEnd);
+    }
+    if (breakAt < 200) {
+      breakAt = cleaned.lastIndexOf(" ", searchEnd);
+    }
+    if (breakAt < 200) {
+      breakAt = searchEnd;
+    }
+
+    chunks.push(cleaned.slice(0, breakAt).trimEnd());
+    cleaned = cleaned.slice(breakAt).trimStart();
   }
+
   for (const chunk of chunks) {
-    await channel.send(chunk);
+    if (chunk.trim()) await channel.send(chunk);
   }
 }
 
@@ -127,7 +161,7 @@ async function chatWithOpus(userMessage) {
       "-p", "--model", "opus", "--output-format", "text",
       "--allowedTools",
       "Read", "Write", "Edit", "Glob", "Grep",
-      "Bash(git *)", "Bash(npm *)", "Bash(node *)", "Bash(cat *)", "Bash(ls *)", "Bash(wc *)",
+      "Bash(git *)", "Bash(npm *)", "Bash(node *)", "Bash(cat *)", "Bash(ls *)", "Bash(wc *)", "Bash(psql *)",
     ], {
       stdio: ["pipe", "pipe", "pipe"],
       cwd: REPO_ROOT,
@@ -156,22 +190,28 @@ async function chatWithOpus(userMessage) {
 }
 
 // ─── Army Runner ─────────────────────────────────────────────────────────────
-async function startArmy(chatChannel, logsChannel) {
+async function startArmy(chatChannel, logsChannel, flags = "") {
   if (armyProcess) {
-    await chatChannel.send("The army is already running. Say `stop` to kill it first.");
+    await chatChannel.send("Army already running. Say `stop` to kill it first.");
     return;
   }
 
-  await chatChannel.send("Starting the agent army... Output will stream to #agent-logs.");
+  const isOvernight = flags.includes("--overnight") || flags.includes("--auto");
+  const modeLabel = isOvernight ? "overnight (autonomous)" : "daytime";
+  await chatChannel.send(`Starting agent army in ${modeLabel} mode...`);
 
   // Set DISCORD_BRIDGE env so notify.js routes through Discord
   const env = {
     ...process.env,
     DISCORD_BRIDGE: "true",
     DISCORD_BRIDGE_DIR: BRIDGE_DIR,
+    ...(isOvernight ? { OVERNIGHT_MODE: "true" } : {}),
   };
 
-  armyProcess = spawn("node", [join(__dirname, "run.js")], {
+  const args = [join(__dirname, "run.js")];
+  if (isOvernight) args.push("--overnight");
+
+  armyProcess = spawn("node", args, {
     cwd: REPO_ROOT,
     env,
     stdio: ["pipe", "pipe", "pipe"],
@@ -366,7 +406,15 @@ async function handleMessage(message) {
     const displayText = await executeActions(reply, message.channel);
 
     if (displayText.trim()) {
-      await sendToChannel(message.channel, displayText);
+      // For longer responses, use an embed for better mobile readability
+      if (displayText.length > 300) {
+        const embed = new EmbedBuilder()
+          .setColor(0xC9A96E) // ATTAIRE gold
+          .setDescription(displayText.slice(0, 4096));
+        await message.channel.send({ embeds: [embed] });
+      } else {
+        await sendToChannel(message.channel, displayText);
+      }
     }
   } catch (err) {
     console.error("Claude error:", err.message);
@@ -378,11 +426,13 @@ async function handleMessage(message) {
 async function executeActions(reply, channel) {
   let text = reply;
 
-  // [ACTION:RUN_ARMY]
-  if (text.includes("[ACTION:RUN_ARMY]")) {
-    text = text.replace(/\[ACTION:RUN_ARMY\]/g, "").trim();
+  // [ACTION:RUN_ARMY] or [ACTION:RUN_ARMY:--overnight]
+  const armyMatch = text.match(/\[ACTION:RUN_ARMY(?::([^\]]*))?\]/);
+  if (armyMatch) {
+    const flags = armyMatch[1] || "";
+    text = text.replace(/\[ACTION:RUN_ARMY(?::[^\]]*)?\]/g, "").trim();
     const logsChannel = LOGS_CHANNEL_ID ? await client.channels.fetch(LOGS_CHANNEL_ID).catch(() => null) : null;
-    await startArmy(channel, logsChannel);
+    await startArmy(channel, logsChannel, flags.trim());
   }
 
   // [ACTION:STOP_ARMY]
@@ -465,7 +515,7 @@ client.once("ready", () => {
   // Send online message to chat channel
   if (CHAT_CHANNEL_ID) {
     client.channels.fetch(CHAT_CHANNEL_ID).then(ch => {
-      ch.send("ATTAIR Agent is online. Chat with me to plan today's work, or say `run` to start the army.");
+      ch.send("ATTAIRE Agent is online. Chat to plan, or say `run` to start the army.");
     }).catch(() => {});
   }
 });

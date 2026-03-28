@@ -51,6 +51,11 @@ vi.mock("../lib/supabase.js", () => {
     in: vi.fn(async () => ({ data: mockProfilesData, error: null })),
   });
 
+  const makeSavedItemsChain = () => ({
+    select: vi.fn().mockReturnThis(),
+    in: vi.fn(async () => ({ data: [], error: null })),
+  });
+
   const mockFrom = vi.fn().mockImplementation((table) => {
     if (table === "follows") {
       return {
@@ -63,6 +68,9 @@ vi.mock("../lib/supabase.js", () => {
     }
     if (table === "profiles") {
       return makeProfilesChain();
+    }
+    if (table === "saved_items") {
+      return makeSavedItemsChain();
     }
     return {};
   });
