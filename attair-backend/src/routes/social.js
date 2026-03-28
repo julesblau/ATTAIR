@@ -59,12 +59,37 @@ router.delete("/social/follow/:userId", requireAuth, async (req, res) => {
 // ─── GET /api/social/followers/:userId ──────────────────────
 router.get("/social/followers/:userId", requireAuth, async (req, res) => {
   const { userId: targetId } = req.params;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = 50;
+  const offset = (page - 1) * limit;
 
   try {
+    // Check target profile privacy before exposing the list
+    const { data: targetProfile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("is_private")
+      .eq("id", targetId)
+      .single();
+
+    if (profileErr || !targetProfile) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    const isSelf = req.userId === targetId;
+    if (!isSelf && targetProfile.is_private) {
+      // Private profile — return only the count, not the list
+      const { count } = await supabase
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("following_id", targetId);
+      return res.json({ count: count || 0 });
+    }
+
     const { data, error } = await supabase
       .from("follows")
       .select("follower_id, profiles!follows_follower_id_fkey(display_name, avatar_url)")
-      .eq("following_id", targetId);
+      .eq("following_id", targetId)
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
@@ -74,7 +99,7 @@ router.get("/social/followers/:userId", requireAuth, async (req, res) => {
       avatar_url: row.profiles?.avatar_url || null,
     }));
 
-    return res.json({ followers, count: followers.length });
+    return res.json({ followers, count: followers.length, page });
   } catch (err) {
     console.error("Followers error:", err.message);
     return res.status(500).json({ error: "Failed to fetch followers" });
@@ -84,12 +109,37 @@ router.get("/social/followers/:userId", requireAuth, async (req, res) => {
 // ─── GET /api/social/following/:userId ──────────────────────
 router.get("/social/following/:userId", requireAuth, async (req, res) => {
   const { userId: targetId } = req.params;
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = 50;
+  const offset = (page - 1) * limit;
 
   try {
+    // Check target profile privacy before exposing the list
+    const { data: targetProfile, error: profileErr } = await supabase
+      .from("profiles")
+      .select("is_private")
+      .eq("id", targetId)
+      .single();
+
+    if (profileErr || !targetProfile) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    const isSelf = req.userId === targetId;
+    if (!isSelf && targetProfile.is_private) {
+      // Private profile — return only the count, not the list
+      const { count } = await supabase
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("follower_id", targetId);
+      return res.json({ count: count || 0 });
+    }
+
     const { data, error } = await supabase
       .from("follows")
       .select("following_id, profiles!follows_following_id_fkey(display_name, avatar_url)")
-      .eq("follower_id", targetId);
+      .eq("follower_id", targetId)
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
@@ -99,7 +149,7 @@ router.get("/social/following/:userId", requireAuth, async (req, res) => {
       avatar_url: row.profiles?.avatar_url || null,
     }));
 
-    return res.json({ following, count: following.length });
+    return res.json({ following, count: following.length, page });
   } catch (err) {
     console.error("Following error:", err.message);
     return res.status(500).json({ error: "Failed to fetch following" });
