@@ -1087,7 +1087,7 @@ const STRINGS = {
 // ONBOARDING
 // ═══════════════════════════════════════════════════════════════
 const OB_STEPS = [
-  { id: "welcome", type: "info", icon: "✦", title: "Scan any outfit.\nFind where to buy it.", sub: "Point your camera at any look. Our AI identifies every piece and finds you budget, mid, and premium options instantly.", cta: "Get Started" },
+  { id: "welcome", type: "info", icon: "✦", title: "Scan any outfit.\nFind where to buy it.", sub: "Upload any outfit photo. Our AI identifies every piece and finds you budget, mid, and premium options instantly.", cta: "Get Started" },
   { id: "first_scan", type: "first_scan", title: "Scan Your First Outfit", sub: "Take a photo or upload one to see the magic." },
 ];
 
@@ -1165,7 +1165,7 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
   ctx.fillStyle = "#C9A96E";
   ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
-  ctx.fillText("ATTAIRE", 540, 1800);
+  ctx.fillText("ATTAIR", 540, 1800);
   ctx.fillStyle = "rgba(201,169,110,0.5)";
   ctx.font = "400 24px 'Outfit', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1850);
@@ -1281,7 +1281,7 @@ async function generateStyleDnaCard(dna, userName) {
   ctx.fillStyle = "#C9A96E";
   ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
-  ctx.fillText("ATTAIRE", 540, 1810);
+  ctx.fillText("ATTAIR", 540, 1810);
   ctx.fillStyle = "rgba(201,169,110,0.5)";
   ctx.font = "400 24px 'Outfit', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1860);
@@ -3554,7 +3554,7 @@ export default function App() {
                             aria-label="Share Your Look"
                             onClick={async () => {
                               const shareUrl = `${window.location.origin}/scan/${scanId}`;
-                              const shareData = { title: "ATTAIRE - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIRE!", url: shareUrl };
+                              const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
                               if (navigator.share) {
                                 try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
                               } else {
@@ -3595,7 +3595,7 @@ export default function App() {
                                 const blob = await res.blob();
                                 const file = new File([blob], "attair-outfit.png", { type: "image/png" });
                                 if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                                  try { await navigator.share({ title: "My ATTAIRE Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
+                                  try { await navigator.share({ title: "My ATTAIR Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
                                 } else {
                                   const a = document.createElement("a");
                                   a.href = cardDataUrl;
@@ -4439,7 +4439,7 @@ export default function App() {
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, padding: 32 }}>
               <div style={{ fontSize: 32, color: "var(--text-tertiary)" }}>404</div>
               <div style={{ fontSize: 14, color: "var(--text-secondary)", textAlign: "center" }}>{publicScanView.error}</div>
-              <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} className="cta" style={{ width: "auto", padding: "14px 32px" }}>Go to ATTAIRE</button>
+              <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} className="cta" style={{ width: "auto", padding: "14px 32px" }}>Go to ATTAIR</button>
             </div>
           )}
 
@@ -4732,7 +4732,7 @@ export default function App() {
                 if (navigator.share) {
                   const blob = await (await fetch(cardUrl)).blob();
                   const file = new File([blob], "style-dna.png", { type: "image/png" });
-                  await navigator.share({ files: [file], title: "My Style DNA \u2014 ATTAIRE" });
+                  await navigator.share({ files: [file], title: "My Style DNA \u2014 ATTAIR" });
                 } else {
                   const a = document.createElement("a");
                   a.href = cardUrl;
