@@ -1323,6 +1323,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
   const [path, setPath] = useState([]);
   const [confirmed, setConfirmed] = useState(false);
   const [glowing, setGlowing] = useState(false);
+  const pendingBase64Ref = useRef(null);
   const strokeColorRef = useRef("rgba(255, 204, 0, 0.7)");
   const strokeColorSolidRef = useRef("rgba(255, 204, 0, 0.8)");
   const fillColorRef = useRef("rgba(255, 220, 0, 0.06)");
@@ -1485,7 +1486,7 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
     const cropCtx = cropCanvas.getContext("2d");
     cropCtx.drawImage(img, minX * scaleX, minY * scaleY, cropW * scaleX, cropH * scaleY, 0, 0, cropCanvas.width, cropCanvas.height);
     const base64 = cropCanvas.toDataURL("image/jpeg", 0.9).split(",")[1];
-    onConfirm(base64);
+    pendingBase64Ref.current = base64;
   };
 
   const clear = () => {
@@ -1527,6 +1528,7 @@ export default function App() {
   const [authPhone, setAuthPhone] = useState("");
   const [budgetMin, setBudgetMin] = useState(50);
   const [budgetMax, setBudgetMax] = useState(100);
+  const [selectedBudgetTiers, setSelectedBudgetTiers] = useState(new Set());
   const [sizePrefs, setSizePrefs] = useState({ body_type: [], fit: [], sizes: {} });
 
   // ─── User status (from backend) ───────────────────────────
@@ -3036,115 +3038,51 @@ export default function App() {
                 <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>Tap items on the image or below</div>
               </div>
 
-              {/* Global budget slider */}
+              {/* Global budget — multi-select tier chips */}
               <div style={{ padding: "12px 20px 4px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Budget</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>
-                    ${budgetMin} {"\u2013"} {budgetMax >= 500 ? "$500+" : `$${budgetMax}`}
+                    {selectedBudgetTiers.size === 0
+                      ? `$${budgetMin} \u2013 ${budgetMax >= 500 ? "$500+" : `$${budgetMax}`}`
+                      : [...selectedBudgetTiers].sort((a, b) => a.min - b.min).map(t => t.label).join(", ")}
                   </span>
                 </div>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <span style={{ fontSize: 11, color: "var(--text-tertiary)", flexShrink: 0 }}>$0</span>
-                  <div className="budget-slider-wrap" style={{ flex: 1 }}>
-                    <div className="budget-slider-track" />
-                    <div className="budget-slider-fill" style={{ left: `${(budgetMin / 500) * 100}%`, right: `${100 - (budgetMax / 500) * 100}%` }} />
-                    <input
-                      type="range" min={0} max={500} step={10} value={budgetMin}
-                      aria-label="Minimum budget"
-                      onChange={e => setBudgetMin(Math.min(Number(e.target.value), budgetMax - 10))}
-                      className="budget-slider"
-                    />
-                    <input
-                      type="range" min={0} max={500} step={10} value={budgetMax}
-                      aria-label="Maximum budget"
-                      onChange={e => setBudgetMax(Math.max(Number(e.target.value), budgetMin + 10))}
-                      className="budget-slider"
-                    />
-                  </div>
-                  <span style={{ fontSize: 11, color: "var(--text-tertiary)", flexShrink: 0 }}>$500+</span>
-                </div>
-                {/* Quick preset chips */}
-                <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                <div style={{ display: "flex", gap: 6 }}>
                   {[
-                    { label: "$", min: 0, max: 50 },
-                    { label: "$$", min: 50, max: 150 },
-                    { label: "$$$", min: 150, max: 300 },
-                    { label: "$$$$", min: 300, max: 500 },
+                    { label: "$", min: 0, max: 50, desc: "Under $50" },
+                    { label: "$$", min: 50, max: 150, desc: "$50–$150" },
+                    { label: "$$$", min: 150, max: 300, desc: "$150–$300" },
+                    { label: "$$$$", min: 300, max: 500, desc: "$300+" },
                   ].map(p => {
-                    const active = budgetMin === p.min && budgetMax === p.max;
+                    const active = [...selectedBudgetTiers].some(t => t.label === p.label);
                     return (
-                      <button key={p.label} aria-label={`Budget preset ${p.label}: $${p.min} to $${p.max}`}
-                        onClick={() => { setBudgetMin(p.min); setBudgetMax(p.max); }}
-                        style={{ flex: 1, padding: "7px 4px", minHeight: 44, background: active ? "var(--accent-bg)" : "var(--bg-input)", border: `1px solid ${active ? "var(--accent-border)" : "var(--border)"}`, borderRadius: "var(--radius-sm)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text-tertiary)", transition: "all var(--transition-fast)" }}
-                      >{p.label}</button>
+                      <button key={p.label} aria-label={`Budget tier ${p.label}: ${p.desc}`}
+                        onClick={() => {
+                          setSelectedBudgetTiers(prev => {
+                            const next = new Set(prev);
+                            const existing = [...next].find(t => t.label === p.label);
+                            if (existing) next.delete(existing); else next.add(p);
+                            // Derive budgetMin/Max from selected tiers
+                            if (next.size > 0) {
+                              const tiers = [...next];
+                              setBudgetMin(Math.min(...tiers.map(t => t.min)));
+                              setBudgetMax(Math.max(...tiers.map(t => t.max)));
+                            }
+                            return next;
+                          });
+                        }}
+                        style={{ flex: 1, padding: "7px 4px", minHeight: 44, background: active ? "var(--accent-bg)" : "var(--bg-input)", border: `1px solid ${active ? "var(--accent-border)" : "var(--border)"}`, borderRadius: "var(--radius-sm)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text-tertiary)", transition: "all var(--transition-fast)", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
+                      >
+                        <span>{p.label}</span>
+                        <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>{p.desc}</span>
+                      </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Item pick list — circle intent: only show circled items unless expanded */}
-              {(() => {
-                const hasCircled = results.items.some(it => it.priority);
-                const hiddenCount = hasCircled && !showAllPickItems ? results.items.filter(it => !it.priority).length : 0;
-                const visibleItems = hasCircled && !showAllPickItems
-                  ? results.items.map((item, i) => ({ item, i })).filter(({ item }) => item.priority)
-                  : results.items.map((item, i) => ({ item, i }));
-                return (
-                  <div className="pick-list">
-                    {hasCircled && !showAllPickItems && (
-                      <div style={{ padding: "8px 0 4px", textAlign: "center" }}>
-                        <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>Showing circled items only</span>
-                      </div>
-                    )}
-                    {visibleItems.map(({ item, i }) => {
-                      const isPicked = pickedItems.has(i);
-                      const ov = itemOverrides[i];
-                      return (
-                        <div key={i} className={`pick-item ${isPicked ? "picked" : ""}`} onClick={() => setItemSettingsIdx(i)}>
-                          <div className="pick-check" onClick={e => { e.stopPropagation(); setPickedItems(prev => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; }); }}>
-                            {isPicked && <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6.5L5 9L9.5 3.5" fill="none" stroke="#0C0C0E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                              <span style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "var(--text-primary)" : "var(--text-secondary)", transition: "color .2s" }}>{item.name}</span>
-                              {item.priority && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, flexShrink: 0 }}>&#11044; Circled</span>}
-                            </div>
-                            <div style={{ fontSize: 11, color: isPicked ? "rgba(201,169,110,.6)" : "var(--text-tertiary)", transition: "color .2s" }}>
-                              {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
-                              {item.identification_confidence ? <span style={{ marginLeft: 4, color: "var(--text-tertiary)" }}>· {item.identification_confidence}%</span> : null}
-                            </div>
-                          </div>
-                          {ov?.budgetMin != null
-                            ? <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 7, padding: "4px 9px", whiteSpace: "nowrap" }}>${ov.budgetMin}–${ov.budgetMax ?? ov.budgetMin * 2}</div>
-                                <div style={{ fontSize: 9, color: "rgba(201,169,110,.5)", letterSpacing: .3 }}>tap to edit</div>
-                              </div>
-                            : <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 10, flexShrink: 0, cursor: "pointer" }}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A96E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="#C9A96E" stroke="none"/><circle cx="16" cy="12" r="2" fill="#C9A96E" stroke="none"/><circle cx="10" cy="18" r="2" fill="#C9A96E" stroke="none"/></svg>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Set prefs</span>
-                              </div>
-                          }
-                        </div>
-                      );
-                    })}
-                    {hasCircled && hiddenCount > 0 && (
-                      <button className="btn-ghost" style={{ width: "100%", fontSize: 12, padding: "10px 0", marginTop: 4 }}
-                        onClick={() => setShowAllPickItems(true)}>
-                        Show all {results.items.length} items ({hiddenCount} more)
-                      </button>
-                    )}
-                    {hasCircled && showAllPickItems && (
-                      <button className="btn-ghost" style={{ width: "100%", fontSize: 12, padding: "10px 0", marginTop: 4 }}
-                        onClick={() => setShowAllPickItems(false)}>
-                        Show circled only
-                      </button>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Advanced filters — collapsed by default, above search CTA */}
+              {/* Advanced filters — above item list for visibility */}
               <div style={{ padding: "0 20px 8px" }}>
                 <button
                   className="advanced-toggle"
@@ -3289,57 +3227,76 @@ export default function App() {
           {/* ─── Search Takeover (A+B combo: branded full-screen + item cards) ── */}
           {tab === "scan" && results && phase === "searching" && !isResearch && (
             <div className="search-takeover">
+              {/* Back button */}
+              <button className="search-takeover-back" onClick={() => { setPhase("picking"); setExpandedItems(new Set()); }}>
+                &larr; Back
+              </button>
+
               {/* Blurred photo background */}
-              <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 0 }}>
-                <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "blur(16px) brightness(0.25)", transform: "scale(1.1)" }} />
-                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
+              <div className="search-takeover-bg">
+                <img src={img} alt="" />
               </div>
 
               {/* Content */}
               <div className="search-takeover-content">
-                {/* Logo + spinner */}
-                <img src="/logo-option-3.svg" alt="ATTAIRE" style={{ height: 20, width: "auto", opacity: 0.7, marginBottom: 8 }} />
-
-                <div className="search-takeover-ring-wrap">
-                  <div className="search-takeover-ring" />
-                  <img src="/logo-option-3.svg" alt="" className="search-takeover-ring-logo" />
+                {/* Branded logo spinner — reuse identifying animation */}
+                <div className="identify-logo-container">
+                  <div className="identify-orbit-outer" />
+                  <div className="identify-orbit" />
+                  <div className="identify-orbit-inner" />
+                  <div className="identify-progress-arc" />
+                  <div className="identify-glow" />
+                  <div className="identify-scan-line" />
+                  <div className="identify-particle" />
+                  <div className="identify-particle" />
+                  <div className="identify-particle" />
+                  <img src="/logo-option-3.svg" alt="ATTAIRE" className="identify-logo-img" />
                 </div>
 
                 {/* Cycling status text */}
-                <div className="search-takeover-status" style={{ opacity: loadMsgVisible ? 1 : 0.3 }}>
-                  {SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length]}
+                <div className="search-takeover-status">
+                  <div className="identify-shimmer search-takeover-status-label">Finding your matches</div>
+                  <div className="search-takeover-status-msg serif" style={{ opacity: loadMsgVisible ? 1 : 0, transition: "opacity .35s ease" }}>
+                    {SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length]}
+                  </div>
                 </div>
 
                 {/* Item cards */}
-                <div className="search-takeover-cards">
+                <div className="search-item-cards">
                   {results.items.map((item, i) => {
                     if (!pickedItems.has(i)) return null;
                     const isRevealed = revealedSearchItems.has(i);
+                    const isFailed = isRevealed && item.status === "failed";
                     const productCount = item.tiers ? ["budget", "mid", "premium", "resale"].reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) : 0;
                     return (
-                      <div key={i} className={`search-takeover-card${isRevealed ? " revealed" : ""}`}>
-                        {!isRevealed ? (
-                          <>
-                            <div className="search-takeover-card-spinner" />
-                            <div className="search-takeover-card-info">
-                              <div className="search-takeover-card-name">{item.name}</div>
-                              <div className="search-takeover-card-detail">{item.brand && item.brand !== "Unidentified" ? item.brand : item.color} · {item.category}</div>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="search-takeover-card-check">
-                              <svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 8.5L6.5 12L13 4" fill="none" stroke="#C9A96E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </div>
-                            <div className="search-takeover-card-info">
-                              <div className="search-takeover-card-name">{item.name}</div>
-                              <div className="search-takeover-card-matches">{productCount > 0 ? `${productCount} matches found` : "No matches"}</div>
-                            </div>
-                          </>
-                        )}
+                      <div key={i} className={`search-item-card${isRevealed ? (isFailed ? " failed" : " found") : ""}`} style={{ animationDelay: `${i * 0.1}s` }}>
+                        <div className={`search-card-icon${isRevealed ? (isFailed ? " failed" : " found") : " searching"}`}>
+                          {!isRevealed ? (
+                            <div className="ld-dot" style={{ width: 8, height: 8, background: "var(--accent)" }} />
+                          ) : isFailed ? (
+                            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" fill="none" stroke="#FF5252" strokeWidth="2" strokeLinecap="round"/></svg>
+                          ) : (
+                            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5L5.5 11L12 3" fill="none" stroke="#C9A96E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          )}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="search-card-name">{item.name}</div>
+                          <div className={`search-card-detail${isRevealed ? (isFailed ? " failed" : " found") : ""}`}>
+                            {!isRevealed
+                              ? `${item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}${item.category}`
+                              : isFailed ? "No matches" : `${productCount} match${productCount !== 1 ? "es" : ""} found`}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Progress dots */}
+                <div className="identify-steps" style={{ marginTop: 4 }}>
+                  {results.items.filter((_, i) => pickedItems.has(i)).map((_, i) => (
+                    <div key={i} className={`identify-step-dot${i < revealedSearchItems.size ? " active" : ""}`} />
+                  ))}
                 </div>
               </div>
             </div>

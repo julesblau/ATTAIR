@@ -1202,6 +1202,131 @@
   to { transform: rotate(360deg); }
 }
 
+/* ── Search takeover: background + back button + new card layout ── */
+.search-takeover-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+.search-takeover-bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(16px) brightness(0.25);
+  transform: scale(1.15);
+}
+.search-takeover-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,.5) 0%, rgba(12,12,14,.85) 100%);
+}
+.search-takeover-back {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  padding: 8px 14px;
+  background: rgba(12,12,14,.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(201,169,110,.2);
+  border-radius: 10px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-sans);
+}
+.search-takeover-status-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.search-takeover-status-msg {
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  min-height: 32px;
+}
+.search-item-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+}
+.search-item-card {
+  width: calc(50% - 5px);
+  padding: 14px 12px;
+  background: rgba(12,12,14,0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(201,169,110,.12);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: all .5s ease;
+  animation: searchCardIn .4s ease-out both;
+}
+.search-item-card.found {
+  border-color: rgba(201,169,110,.35);
+  background: rgba(201,169,110,.08);
+}
+.search-item-card.failed {
+  border-color: rgba(255,82,82,.2);
+  opacity: .6;
+}
+.search-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  transition: all .4s ease;
+}
+.search-card-icon.searching {
+  background: rgba(201,169,110,.1);
+  border: 1.5px solid rgba(201,169,110,.3);
+  animation: searchCardPulse 1.5s ease-in-out infinite;
+}
+.search-card-icon.found {
+  background: rgba(201,169,110,.15);
+  border: 1.5px solid var(--accent);
+  animation: searchCardPop .4s ease-out;
+}
+.search-card-icon.failed {
+  background: rgba(255,82,82,.1);
+  border: 1.5px solid rgba(255,82,82,.3);
+}
+.search-card-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-card-detail {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.search-card-detail.found {
+  color: var(--accent);
+  font-weight: 600;
+}
+.search-card-detail.failed {
+  color: rgba(255,82,82,.7);
+}
+
 .scan-dots::after {
   content: '';
   animation: dots 1.2s steps(3) infinite;
