@@ -1,8 +1,22 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { optionalAuth } from "../middleware/auth.js";
 import supabase from "../lib/supabase.js";
 
 const router = Router();
+
+const EVENTS_MAX_BATCH = 50;
+const EVENT_NAME_MAX_LEN = 100;
+const EVENT_METADATA_MAX_BYTES = 1024; // 1 KB
+
+// 10 requests per minute per IP on the events endpoint
+const eventsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many event requests, please slow down" },
+});
 
 /**
  * POST /api/events
@@ -13,21 +27,45 @@ const router = Router();
  *
  * Request body (single): { event_type, event_data, scan_id, page, session_id }
  * Request body (array):  [ { event_type, ... }, ... ]
+ *
+ * Limits: max 50 events per request, event_name <= 100 chars, metadata <= 1 KB.
  */
-router.post("/", optionalAuth, async (req, res) => {
+router.post("/", eventsLimiter, optionalAuth, async (req, res) => {
   const body = req.body;
-  const events = Array.isArray(body) ? body : [body];
+  const rawEvents = Array.isArray(body) ? body : [body];
+
+  // Cap batch size
+  if (rawEvents.length > EVENTS_MAX_BATCH) {
+    return res.status(400).json({ error: `Batch too large: max ${EVENTS_MAX_BATCH} events per request` });
+  }
+
+  const events = rawEvents;
 
   const rows = events
     .filter(e => e && typeof e.event_type === "string" && e.event_type.length > 0)
-    .map(e => ({
-      user_id: req.userId || null,
-      session_id: e.session_id || null,
-      event_type: e.event_type,
-      event_data: e.event_data && typeof e.event_data === "object" ? e.event_data : {},
-      scan_id: e.scan_id || null,
-      page: e.page || null,
-    }));
+    .map(e => {
+      // Truncate event_type to the allowed maximum
+      const eventType = e.event_type.slice(0, EVENT_NAME_MAX_LEN);
+
+      // Truncate metadata: serialise, check byte length, fall back to empty object
+      let eventData = {};
+      if (e.event_data && typeof e.event_data === "object") {
+        const serialised = JSON.stringify(e.event_data);
+        if (Buffer.byteLength(serialised, "utf8") <= EVENT_METADATA_MAX_BYTES) {
+          eventData = e.event_data;
+        }
+        // If over 1 KB, silently drop the metadata to prevent DB bloat
+      }
+
+      return {
+        user_id: req.userId || null,
+        session_id: e.session_id || null,
+        event_type: eventType,
+        event_data: eventData,
+        scan_id: e.scan_id || null,
+        page: e.page || null,
+      };
+    });
 
   if (rows.length === 0) {
     return res.status(400).json({ error: "No valid events provided" });
