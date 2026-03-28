@@ -1611,3 +1611,226 @@
 /* #16 Fix stray vertical line on profile by ensuring no unexpected borders */
 .app[data-theme='light'] .profile-v2-topbar{border:none}
 .app[data-theme='light'] .profile-v2-username{border:none}
+
+/* ── Scan History Card Flip ── */
+.scan-card-flip{
+  perspective:800px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  break-inside:avoid;
+}
+.scan-card-inner{
+  position:relative;
+  transition:transform 0.5s ease;
+  transform-style:preserve-3d;
+}
+.scan-card-inner.flipped{
+  transform:rotateY(180deg);
+}
+.scan-card-front,.scan-card-back{
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  border-radius:var(--radius-lg,16px);
+  overflow:hidden;
+}
+.scan-card-front{
+  position:relative;
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-card);
+}
+.scan-card-img{
+  width:100%;
+  aspect-ratio:3/4;
+  object-fit:cover;
+  display:block;
+  background:var(--accent-bg);
+}
+.scan-card-img-placeholder{
+  width:100%;
+  aspect-ratio:3/4;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--accent-bg);
+}
+.scan-card-overlay{
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  padding:24px 10px 10px;
+  background:linear-gradient(transparent,rgba(0,0,0,.7));
+}
+.scan-card-title{
+  font-size:13px;
+  font-weight:var(--weight-bold,700);
+  color:#fff;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  line-height:1.3;
+}
+.scan-card-meta{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-top:3px;
+}
+.scan-card-badge{
+  font-size:11px;
+  font-weight:var(--weight-semibold,600);
+  color:rgba(255,255,255,.85);
+  background:rgba(255,255,255,.15);
+  padding:2px 7px;
+  border-radius:var(--radius-full,9999px);
+  backdrop-filter:blur(4px);
+}
+.scan-card-date{
+  font-size:11px;
+  color:rgba(255,255,255,.6);
+}
+.scan-card-vis-badge{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  background:rgba(0,0,0,.45);
+  backdrop-filter:blur(4px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:var(--accent);
+}
+
+/* Card back */
+.scan-card-back{
+  position:absolute;
+  inset:0;
+  transform:rotateY(180deg);
+  background:var(--bg-card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg,16px);
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  overflow-y:auto;
+  box-shadow:var(--shadow-card);
+}
+.scan-card-back-header{
+  font-size:14px;
+  font-weight:var(--weight-bold,700);
+  color:var(--text-primary);
+  margin-bottom:2px;
+}
+.scan-card-back-summary{
+  font-size:12px;
+  color:var(--text-secondary);
+  line-height:1.5;
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.scan-card-back-items{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+}
+.scan-card-back-item{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 8px;
+  background:var(--bg-input);
+  border-radius:var(--radius-sm,8px);
+  min-height:0;
+}
+.scan-card-back-item-icon{
+  font-size:14px;
+  flex-shrink:0;
+  width:20px;
+  text-align:center;
+}
+.scan-card-back-item-name{
+  font-size:12px;
+  color:var(--text-primary);
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  font-weight:var(--weight-medium,500);
+}
+.scan-card-back-more{
+  font-size:11px;
+  color:var(--text-tertiary);
+  padding:2px 8px;
+  font-weight:var(--weight-medium,500);
+}
+.scan-card-back-toggle{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:6px 0;
+  min-height:44px;
+  cursor:pointer;
+}
+.scan-card-back-toggle-label{
+  font-size:13px;
+  font-weight:var(--weight-semibold,600);
+  color:var(--text-secondary);
+}
+.scan-card-back-pill{
+  width:44px;
+  height:26px;
+  border-radius:13px;
+  background:var(--border);
+  position:relative;
+  transition:background 0.2s;
+  flex-shrink:0;
+}
+.scan-card-back-pill.active{
+  background:var(--accent);
+}
+.scan-card-back-pill-knob{
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:#fff;
+  position:absolute;
+  top:3px;
+  left:3px;
+  transition:left 0.2s;
+  box-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+.scan-card-back-pill.active .scan-card-back-pill-knob{
+  left:21px;
+}
+.scan-card-back-actions{
+  display:flex;
+  gap:6px;
+  margin-top:auto;
+}
+.scan-card-back-btn{
+  flex:1;
+  min-height:44px;
+  font-size:12px;
+  font-weight:var(--weight-semibold,600);
+  padding:10px 8px;
+  border-radius:var(--radius-md,12px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  cursor:pointer;
+}
+.btn-ghost.scan-card-back-btn{
+  background:var(--bg-input);
+  color:var(--text-secondary);
+  border:1px solid var(--border);
+}

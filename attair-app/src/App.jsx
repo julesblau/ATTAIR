@@ -380,6 +380,17 @@ const API = {
   },
 };
 
+// ─── Relative date formatting helper ──────────────────────────
+function relativeDate(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffH = Math.floor((now - d) / 3600000);
+  if (diffH < 1) return "Just now";
+  if (diffH < 24) return `${diffH}h ago`;
+  if (diffH < 48) return "Yesterday";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ANALYTICS
 // ═══════════════════════════════════════════════════════════════
@@ -1549,6 +1560,15 @@ export default function App() {
   const [likesCategoryFilter, setLikesCategoryFilter] = useState("all"); // category chip filter
   const [savedSearchQuery, setSavedSearchQuery] = useState(""); // search within saved items
   const [likesBudgetExpanded, setLikesBudgetExpanded] = useState(false); // budget tracker toggle
+  const [flippedScans, setFlippedScans] = useState(new Set()); // which scan cards are flipped
+  const [scanSearchQuery, setScanSearchQuery] = useState(""); // search within scan history
+
+  // Load scan history when Saved tab is opened
+  useEffect(() => {
+    if (tab === "likes" && authed && history.length === 0) {
+      API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
+    }
+  }, [tab, authed]);
 
   // ─── Profile redesign ──────────────────────────────────────
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
@@ -3546,47 +3566,143 @@ export default function App() {
           {/* History tab removed — scan history is integrated in Profile grid.
              Dead code (~430 lines) was removed in the Run 6 quality sweep. */}
 
-          {/* ─── Saved tab (clean Pinterest grid) ─────────── */}
+          {/* ─── Saved tab (Scan History Library with Card Flip) ─────────── */}
           {tab === "likes" && (() => {
-            // Derive unique categories from all saved items
-            const categories = [...new Set(saved.map(s => (s.item_data || s).category).filter(Boolean))];
-
-            // Apply category + search filter
-            let allSavedItems = likesCategoryFilter === "all"
-              ? saved
-              : saved.filter(s => (s.item_data || s).category === likesCategoryFilter);
-            if (savedSearchQuery.trim()) {
-              const q = savedSearchQuery.toLowerCase();
-              allSavedItems = allSavedItems.filter(s => {
-                const item = s.item_data || s;
-                return (item.name || "").toLowerCase().includes(q) || (item.brand || "").toLowerCase().includes(q) || (item.category || "").toLowerCase().includes(q);
+            // Filter scans by search query
+            let filteredScans = history;
+            if (scanSearchQuery.trim()) {
+              const q = scanSearchQuery.toLowerCase();
+              filteredScans = history.filter(scan => {
+                const nameMatch = (scan.scan_name || "").toLowerCase().includes(q);
+                const summaryMatch = (scan.summary || "").toLowerCase().includes(q);
+                const itemMatch = (scan.items || []).some(it =>
+                  (it.name || "").toLowerCase().includes(q) ||
+                  (it.category || "").toLowerCase().includes(q) ||
+                  (it.brand || "").toLowerCase().includes(q)
+                );
+                return nameMatch || summaryMatch || itemMatch;
               });
             }
 
             // Split into 2 columns for masonry
             const col1 = [], col2 = [];
-            allSavedItems.forEach((s, i) => (i % 2 === 0 ? col1 : col2).push(s));
+            filteredScans.forEach((s, i) => (i % 2 === 0 ? col1 : col2).push(s));
 
-            const renderCard = (s) => {
-              const item = s.item_data || s;
+            const toggleFlip = (scanId) => {
+              setFlippedScans(prev => {
+                const next = new Set(prev);
+                if (next.has(scanId)) next.delete(scanId);
+                else next.add(scanId);
+                return next;
+              });
+            };
+
+            const toggleVisibility = async (e, scan) => {
+              e.stopPropagation();
+              const newVis = scan.visibility === "public" ? "private" : "public";
+              // Optimistic update
+              setHistory(prev => prev.map(s => s.id === scan.id ? { ...s, visibility: newVis } : s));
+              try {
+                await API.updateScanVisibility(scan.id, newVis);
+              } catch {
+                // Revert on failure
+                setHistory(prev => prev.map(s => s.id === scan.id ? { ...s, visibility: scan.visibility } : s));
+              }
+            };
+
+            const viewScanResults = (e, scan) => {
+              e.stopPropagation();
+              const hsItems = scan.items || [];
+              setResults({ gender: scan.detected_gender || "male", summary: scan.summary || "", items: hsItems.map(it => ({ ...it, status: scan.tiers ? "verified" : "identified", tiers: null })) });
+              if (scan.tiers && Array.isArray(scan.tiers)) {
+                setResults(prev => prev ? { ...prev, items: prev.items.map((item, idx) => { const sr = scan.tiers.find(t2 => t2.item_index === idx); return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev);
+              }
+              setImg(scan.image_url || scan.image_thumbnail || null);
+              setScanId(scan.id); setSelIdx(0); setPickedItems(new Set((scan.tiers || []).map(t2 => t2.item_index))); setPhase("done"); setTab("scan");
+            };
+
+            const shareScan = async (e, scan) => {
+              e.stopPropagation();
+              const shareUrl = `${window.location.origin}/scan/${scan.id}`;
+              if (navigator.share) {
+                try { await navigator.share({ title: scan.scan_name || "ATTAIR Scan", url: shareUrl }); } catch {}
+              } else {
+                try { await navigator.clipboard.writeText(shareUrl); } catch {}
+              }
+            };
+
+            const renderScanCard = (scan) => {
+              const isFlipped = flippedScans.has(scan.id);
+              const scanImg = scan.image_url || scan.image_thumbnail;
+              const scanItems = scan.items || [];
+              const scanName = scan.scan_name || scan.summary || "Outfit Scan";
+              const isPublic = scan.visibility === "public";
+
               return (
-                <div key={s.id} className="likes-v2-card card-press" onClick={() => { if (item.url) window.open(item.url, "_blank"); }} style={{ cursor: item.url ? "pointer" : "default" }}>
-                  <div style={{ position: "relative" }}>
-                    {item.image_url ? (
-                      <img className="likes-v2-card-img" style={{ aspectRatio: "3/4", objectFit: "cover" }} src={item.image_url} alt={item.name} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
-                    ) : (
-                      <div className="likes-v2-card-img-placeholder" style={{ aspectRatio: "3/4" }}>
-                        {{ shoes: "\uD83D\uDC5F", accessory: "\u231A", bag: "\uD83D\uDC5C", outerwear: "\uD83E\uDDE5", top: "\uD83D\uDC55", bottom: "\uD83D\uDC56", dress: "\uD83D\uDC57" }[item.category] || "\u2726"}
+                <div key={scan.id} className="scan-card-flip" onClick={() => toggleFlip(scan.id)} aria-label={`Scan card: ${scanName}. Tap to ${isFlipped ? "see image" : "see details"}`}>
+                  <div className={`scan-card-inner${isFlipped ? " flipped" : ""}`}>
+                    {/* Front face */}
+                    <div className="scan-card-front">
+                      {scanImg ? (
+                        <img className="scan-card-img" src={scanImg} alt={scanName} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                      ) : (
+                        <div className="scan-card-img-placeholder">
+                          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
+                        </div>
+                      )}
+                      {/* Overlay at bottom */}
+                      <div className="scan-card-overlay">
+                        <div className="scan-card-title">{scanName}</div>
+                        <div className="scan-card-meta">
+                          {scanItems.length > 0 && <span className="scan-card-badge">{scanItems.length} item{scanItems.length !== 1 ? "s" : ""}</span>}
+                          <span className="scan-card-date">{relativeDate(scan.created_at)}</span>
+                        </div>
                       </div>
-                    )}
-                    <button className="likes-v2-heart" aria-label={`Remove ${item.name} from saved`} onClick={async (e) => { e.stopPropagation(); await API.deleteSaved(s.id).catch(() => {}); setSaved(prev => prev.filter(x => x.id !== s.id)); refreshStatus(); }}>
-                      <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                    </button>
-                  </div>
-                  <div className="likes-v2-card-body">
-                    {item.brand && item.brand !== "Unidentified" && <div className="likes-v2-card-brand">{item.brand}</div>}
-                    <div className="likes-v2-card-name" style={{ WebkitLineClamp: 1 }}>{item.name}</div>
-                    {item.price && <div className="likes-v2-card-price">{item.price}</div>}
+                      {/* Visibility indicator */}
+                      {isPublic && (
+                        <div className="scan-card-vis-badge" aria-label="Public scan">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Back face */}
+                    <div className="scan-card-back">
+                      <div className="scan-card-back-header">Scan Details</div>
+                      {scan.summary && <div className="scan-card-back-summary">{scan.summary}</div>}
+
+                      {/* Identified items list */}
+                      {scanItems.length > 0 && (
+                        <div className="scan-card-back-items">
+                          {scanItems.slice(0, 4).map((it, idx) => (
+                            <div key={idx} className="scan-card-back-item">
+                              <span className="scan-card-back-item-icon">{{ shoes: "\uD83D\uDC5F", accessory: "\u231A", bag: "\uD83D\uDC5C", outerwear: "\uD83E\uDDE5", top: "\uD83D\uDC55", bottom: "\uD83D\uDC56", dress: "\uD83D\uDC57" }[it.category] || "\u2726"}</span>
+                              <span className="scan-card-back-item-name">{it.name || it.category || "Item"}</span>
+                            </div>
+                          ))}
+                          {scanItems.length > 4 && <div className="scan-card-back-more">+{scanItems.length - 4} more</div>}
+                        </div>
+                      )}
+
+                      {/* Public/Private toggle */}
+                      <div className="scan-card-back-toggle" onClick={(e) => toggleVisibility(e, scan)} role="switch" aria-checked={isPublic} aria-label={`Scan is ${isPublic ? "public" : "private"}. Tap to toggle.`}>
+                        <span className="scan-card-back-toggle-label">{isPublic ? "Public" : "Private"}</span>
+                        <div className={`scan-card-back-pill${isPublic ? " active" : ""}`}>
+                          <div className="scan-card-back-pill-knob" />
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="scan-card-back-actions">
+                        <button className="btn-primary scan-card-back-btn" onClick={(e) => viewScanResults(e, scan)} aria-label="View scan results">
+                          View Results
+                        </button>
+                        <button className="btn-ghost scan-card-back-btn" onClick={(e) => shareScan(e, scan)} aria-label="Share this scan">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                          Share
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -3594,72 +3710,46 @@ export default function App() {
 
             return (
               <div className="likes-v2 animate-fade-in">
-                {/* Price Drop Alerts Banner */}
-                {priceAlertCount > 0 && (
-                  <button onClick={() => { setShowPriceAlerts(true); API.priceAlerts().then(d => setPriceAlerts(d.alerts || d || [])).catch(() => {}); }}
-                    aria-label={`${priceAlertCount} price drops on saved items`}
-                    style={{
-                      width: "calc(100% - 32px)", margin: "12px 16px 0", padding: "12px 16px",
-                      background: "linear-gradient(135deg, rgba(76,175,80,.1), rgba(76,175,80,.05))",
-                      border: "1px solid rgba(76,175,80,.25)", borderRadius: "var(--radius-sm)",
-                      display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
-                      color: "var(--text-primary)", fontSize: 14, fontWeight: 600, fontFamily: "var(--font-sans)"
-                    }}>
-                    <span style={{ fontSize: 20 }}>&#x1F4B0;</span>
-                    <span>{priceAlertCount} price drop{priceAlertCount !== 1 ? "s" : ""} on your saved items!</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: "auto" }}><polyline points="9 18 15 12 9 6"/></svg>
-                  </button>
-                )}
-
                 {/* Header */}
                 <div style={{ padding: "16px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Saved</h2>
-                  {saved.length > 0 && <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{saved.length} item{saved.length !== 1 ? "s" : ""}</span>}
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>My Scans</h2>
+                  {history.length > 0 && <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{history.length} scan{history.length !== 1 ? "s" : ""}</span>}
                 </div>
 
                 {/* Search bar */}
-                {saved.length > 0 && (
+                {history.length > 0 && (
                   <div style={{ padding: "8px 16px 0" }}>
                     <div style={{ position: "relative" }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                       <input
-                        placeholder="Search saved items..."
-                        value={savedSearchQuery}
-                        onChange={e => setSavedSearchQuery(e.target.value)}
+                        placeholder="Search scans..."
+                        value={scanSearchQuery}
+                        onChange={e => setScanSearchQuery(e.target.value)}
+                        aria-label="Search your scan history"
                         style={{ width: "100%", padding: "10px 12px 10px 36px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: "var(--radius-full)", color: "var(--text-primary)", fontSize: 14, fontFamily: "var(--font-sans)", outline: "none", minHeight: 44, boxSizing: "border-box" }}
                       />
                     </div>
                   </div>
                 )}
 
-                {/* Filter Chips */}
-                {saved.length > 0 && (
-                  <div className="likes-v2-chips scroll-x" role="tablist" aria-label="Filter saved items">
-                    <button className={`chip${likesCategoryFilter === "all" ? " active" : ""}`} onClick={() => setLikesCategoryFilter("all")} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>All</button>
-                    {categories.map(cat => (
-                      <button key={cat} className={`chip${likesCategoryFilter === cat ? " active" : ""}`} onClick={() => setLikesCategoryFilter(cat)} style={{ whiteSpace: "nowrap", flexShrink: 0, textTransform: "capitalize" }}>{cat}</button>
-                    ))}
-                  </div>
-                )}
-
                 {/* Content */}
-                {allSavedItems.length === 0 ? (
+                {filteredScans.length === 0 ? (
                   <div style={{ padding: "80px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.12, marginBottom: 8 }}>
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                      <rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/>
                     </svg>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{saved.length === 0 ? "No saved items yet" : "No items match this filter"}</div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{history.length === 0 ? "No scans yet" : "No scans match your search"}</div>
                     <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 240 }}>
-                      {saved.length === 0 ? "Scan outfits and save items you love" : "Try a different category"}
+                      {history.length === 0 ? "Scan your first outfit to build your style library" : "Try different keywords"}
                     </div>
-                    {saved.length === 0 && (
-                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => fileRef.current?.click()}>Scan an Outfit</button>
+                    {history.length === 0 && (
+                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => fileRef.current?.click()} aria-label="Scan your first outfit">Scan an Outfit</button>
                     )}
                   </div>
                 ) : (
                   <div className="likes-v2-masonry">
-                    <div className="likes-v2-col">{col1.map(renderCard)}</div>
-                    <div className="likes-v2-col">{col2.map(renderCard)}</div>
+                    <div className="likes-v2-col">{col1.map(renderScanCard)}</div>
+                    <div className="likes-v2-col">{col2.map(renderScanCard)}</div>
                   </div>
                 )}
               </div>
