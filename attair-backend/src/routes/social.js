@@ -383,16 +383,33 @@ router.get("/feed", requireAuth, async (req, res) => {
     const { data: scans, error } = await query;
     if (error) throw error;
 
-    // Enrich with user info
+    // Enrich with user info and save counts
     if (scans && scans.length > 0) {
       const userIds = [...new Set(scans.map(s => s.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, display_name, bio")
-        .in("id", userIds);
+      const scanIds = scans.map(s => s.id);
+
+      // Fetch profiles and save counts in parallel
+      const [{ data: profiles }, { data: saveRows }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id, display_name, bio")
+          .in("id", userIds),
+        supabase
+          .from("saved_items")
+          .select("scan_id")
+          .in("scan_id", scanIds),
+      ]);
 
       const profileMap = {};
       (profiles || []).forEach(p => { profileMap[p.id] = p; });
+
+      // Build a save count map: scan_id -> number of saves
+      const saveCountMap = {};
+      (saveRows || []).forEach(row => {
+        if (row.scan_id) {
+          saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
+        }
+      });
 
       const enriched = scans.map(s => ({
         id: s.id,
@@ -400,6 +417,7 @@ router.get("/feed", requireAuth, async (req, res) => {
         summary: s.summary,
         item_count: Array.isArray(s.items) ? s.items.length : 0,
         created_at: s.created_at,
+        save_count: saveCountMap[s.id] || 0,
         user: profileMap[s.user_id] || { display_name: "Anonymous" }
       }));
 
