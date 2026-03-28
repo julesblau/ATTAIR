@@ -69,17 +69,19 @@ CONTEXT: React 19 + Vite, Node/Express on Railway, Supabase, Claude AI vision, S
 ACTIONS YOU CAN TRIGGER:
 Include the action tag in your response. The system will execute it and strip the tag.
 
-- [ACTION:RUN_ARMY] — Start the agent army (build/ship/go/run it)
-- [ACTION:RUN_ARMY:--overnight] — Start army in overnight/autonomous mode (no permission prompts)
-- [ACTION:STOP_ARMY] — Stop the running army
+- [ACTION:RUN_ARMY] — Start the full agent army (build/ship/go/run it)
+- [ACTION:RUN_ARMY:--overnight] — Start army in overnight/autonomous mode
+- [ACTION:RUN_AGENT:agent-name] — Run a single agent. Available agents: backend, uiux, scan, results, profile, saved, brand, security, testing, creative, quant, ai-prompt
+- [ACTION:STOP_ARMY] — Stop a running army or agent
 - [ACTION:WRITE_REQS:content here] — Write requirements/today.md
 - [ACTION:BACKLOG:idea here] — Add to creative backlog
-- [ACTION:STATUS] — Check army status
+- [ACTION:STATUS] — Check army/agent status
 - [ACTION:KILL_STALE] — Kill stale/orphaned processes
 
-You can combine actions with text. Example: "On it. [ACTION:RUN_ARMY]"
+Combine actions with text. Example: "On it. [ACTION:RUN_ARMY]"
+Individual agents: "run the brand agent" = [ACTION:RUN_AGENT:brand]. "kick off security scan" = [ACTION:RUN_AGENT:security].
 
-Be smart about intent. "let's build this" = run army. "save for later" = backlog. "lock it in" = write reqs. No magic words needed.`;
+Be smart about intent. "let's build this" = run army. "save for later" = backlog. "lock it in" = write reqs. "run the X agent" = run agent. No magic words needed.`;
 
 // ─── Helper: Send to channel (handles 2000 char limit, mobile-friendly) ─────
 async function sendToChannel(channel, text) {
@@ -262,11 +264,88 @@ async function startArmy(chatChannel, logsChannel, flags = "") {
 
 function stopArmy(chatChannel) {
   if (!armyProcess) {
-    chatChannel.send("No army is currently running.");
+    chatChannel.send("No army or agent is running.");
     return;
   }
   armyProcess.kill("SIGTERM");
-  chatChannel.send("Sent stop signal to the agent army.");
+  chatChannel.send("Sent stop signal.");
+}
+
+// ─── Individual Agent Runner ────────────────────────────────────────────────
+const AGENT_PROMPTS = {
+  backend: "You are the backend engineer for ATTAIRE. Work in attair-backend/src/. Fix bugs, add features, optimize routes. Do NOT touch frontend files.",
+  uiux: "You are the UI/UX engineer for ATTAIRE. Work in attair-app/src/. Improve the React frontend. Follow the design system in index.css and App.css.",
+  scan: "You are the scan flow specialist for ATTAIRE. Improve the camera, upload, preview, and circle-to-search experience in App.jsx.",
+  results: "You are the results screen specialist for ATTAIRE. Improve item cards, price tiers, verdict system, and budget slider in App.jsx.",
+  profile: "You are the profile page specialist for ATTAIRE. Improve the TikTok/IG-style profile, stats, scan grid, and settings sheet.",
+  saved: "You are the Saved tab specialist for ATTAIRE. Improve the Pinterest-style product grid, filter chips, and budget tracker.",
+  brand: "You are the brand identity designer for ATTAIRE. Work on logo, naming, favicon, colors, and brand DNA. Gold accent #C9A96E, dark-first.",
+  security: "You are the security engineer for ATTAIRE. Audit the full codebase for vulnerabilities (XSS, injection, auth bypass, etc). REPORT ONLY — do not change code.",
+  testing: "You are the QA engineer for ATTAIRE. Run vitest tests, write new tests for uncovered code, and report results. Work in attair-backend/src/__tests__/.",
+  creative: "You are the product strategist for ATTAIRE. Analyze the app deeply and propose bold, specific ideas for growth, monetization, and user delight. READ ONLY.",
+  quant: "You are the search algorithm specialist for ATTAIRE. Work ONLY on attair-backend/src/services/products.js. Improve accuracy without changing function signatures.",
+  "ai-prompt": "You are the AI prompt engineer for ATTAIRE. Tune Claude prompts in attair-backend/src/services/claude.js for better clothing identification quality.",
+};
+
+async function startSingleAgent(chatChannel, logsChannel, agentName, extraContext = "") {
+  if (armyProcess) {
+    await chatChannel.send("Something is already running. Say `stop` first.");
+    return;
+  }
+
+  const prompt = AGENT_PROMPTS[agentName];
+  if (!prompt) {
+    await chatChannel.send(`Unknown agent: ${agentName}. Available: ${Object.keys(AGENT_PROMPTS).join(", ")}`);
+    return;
+  }
+
+  await chatChannel.send(`Running ${agentName} agent...`);
+
+  const fullPrompt = [
+    prompt,
+    "",
+    "REPO ROOT: " + REPO_ROOT,
+    "TECH STACK: React 19 + Vite frontend, Node/Express + Supabase backend, Claude AI vision, SerpAPI.",
+    extraContext ? `\nADDITIONAL CONTEXT FROM JULES:\n${extraContext}` : "",
+    "",
+    "Read the relevant files first to understand current state, then make your improvements.",
+    "Commit your changes when done with message: 'feat: [agent-name] — [summary] — single agent run'",
+  ].filter(Boolean).join("\n");
+
+  armyProcess = spawn("claude", [
+    "-p", "--model", "opus", "--output-format", "text",
+    "--allowedTools",
+    "Read", "Write", "Edit", "Glob", "Grep",
+    "Bash(git *)", "Bash(npm *)", "Bash(node *)", "Bash(npx *)", "Bash(cat *)", "Bash(ls *)", "Bash(wc *)",
+  ], {
+    stdio: ["pipe", "pipe", "pipe"],
+    cwd: REPO_ROOT,
+    env: { ...process.env },
+  });
+
+  let logBuffer = "";
+  const flushLogs = async () => {
+    if (logBuffer.trim() && logsChannel) {
+      const toSend = logBuffer.slice(0, 1900);
+      logBuffer = logBuffer.slice(1900);
+      try { await logsChannel.send("```\n" + toSend + "\n```"); } catch {}
+    }
+  };
+  const logInterval = setInterval(flushLogs, 3000);
+
+  armyProcess.stdout.on("data", (d) => { logBuffer += d.toString(); });
+  armyProcess.stderr.on("data", (d) => { logBuffer += d.toString(); });
+
+  armyProcess.on("close", async (code) => {
+    clearInterval(logInterval);
+    await flushLogs();
+    armyProcess = null;
+    const status = code === 0 ? "done" : `exited (code ${code})`;
+    if (chatChannel) await chatChannel.send(`${agentName} agent ${status}.`);
+  });
+
+  armyProcess.stdin.write(fullPrompt);
+  armyProcess.stdin.end();
 }
 
 // ─── Bridge Watcher (mid-run agent questions + notifications → Discord) ──────
@@ -435,6 +514,16 @@ async function executeActions(reply, channel) {
     await startArmy(channel, logsChannel, flags.trim());
   }
 
+  // [ACTION:RUN_AGENT:name] or [ACTION:RUN_AGENT:name:extra context]
+  const agentMatch = text.match(/\[ACTION:RUN_AGENT:([a-z-]+)(?::([^\]]*))?\]/);
+  if (agentMatch) {
+    const agentName = agentMatch[1];
+    const extraContext = agentMatch[2] || "";
+    text = text.replace(/\[ACTION:RUN_AGENT:[^\]]*\]/g, "").trim();
+    const logsChannel = LOGS_CHANNEL_ID ? await client.channels.fetch(LOGS_CHANNEL_ID).catch(() => null) : null;
+    await startSingleAgent(channel, logsChannel, agentName, extraContext);
+  }
+
   // [ACTION:STOP_ARMY]
   if (text.includes("[ACTION:STOP_ARMY]")) {
     text = text.replace(/\[ACTION:STOP_ARMY\]/g, "").trim();
@@ -444,7 +533,7 @@ async function executeActions(reply, channel) {
   // [ACTION:STATUS]
   if (text.includes("[ACTION:STATUS]")) {
     text = text.replace(/\[ACTION:STATUS\]/g, "").trim();
-    const status = armyProcess ? "Army is currently running." : "No army running.";
+    const status = armyProcess ? "Something is running." : "Nothing running.";
     text = text ? `${text}\n${status}` : status;
   }
 
