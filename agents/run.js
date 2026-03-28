@@ -5,7 +5,10 @@
  * a standup report for you to review when you get home.
  *
  * USAGE:
- *   node run.js
+ *   node run.js                    — daytime mode (agents can ask Jules questions)
+ *   node run.js --overnight        — autonomous mode (no human prompts, best-judgment calls)
+ *   node run.js --auto             — alias for --overnight
+ *   node run.js --autonomous       — alias for --overnight
  *
  * REQUIREMENTS:
  *   1. Drop your requirements for today in: ATTAIR/requirements/today.md
@@ -33,6 +36,13 @@ import pg from "pg";
 
 // Load agents/.env for test credentials
 config({ path: join(dirname(fileURLToPath(import.meta.url)), ".env") });
+
+// ─── OVERNIGHT / AUTONOMOUS MODE FLAG ────────────────────────────────────────
+// Pass --overnight, --auto, or --autonomous to run without blocking on
+// human questions. Agents make their best judgment and keep going.
+const OVERNIGHT_MODE = process.argv.includes("--overnight")
+  || process.argv.includes("--auto")
+  || process.argv.includes("--autonomous");
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -467,6 +477,62 @@ LESSONS FROM PREVIOUS RUN — DO NOT REPEAT THESE MISTAKES
 
   GENERAL RULE: If something is working, do not "improve" it in a way that
   could break it. Security hardening that breaks the app is not hardening.
+
+${OVERNIGHT_MODE ? `
+═══════════════════════════════════════════════════════════════════
+OVERNIGHT / AUTONOMOUS MODE — CRITICAL: READ THIS FIRST
+═══════════════════════════════════════════════════════════════════
+
+You are running in OVERNIGHT MODE. Jules is asleep or unavailable.
+
+MANDATORY BEHAVIOR CHANGES:
+
+  1. DO NOT use notify-cli.js "ask" — EVER.
+     Jules cannot reply. Blocking for a human response will hang the
+     entire run. Convert every "ask" call to "notify" instead, or skip
+     the notification entirely if it is low-value.
+
+     INSTEAD OF: node notify-cli.js ask "Should we use coral or blue?"
+     DO THIS:    Make the decision yourself. Use "notify" to log what you chose.
+                 node notify-cli.js notify "Decided to use coral accent — proceeding."
+
+  2. DO NOT use notify-cli.js "followup" — same reason as above.
+
+  3. Make ALL design and product decisions autonomously.
+     When you would normally ask Jules for input, use this decision framework:
+       - Match the existing design language and patterns already in the codebase
+       - Prefer conservative, safe choices over experimental ones
+       - When in doubt: do less, not more
+       - Document every autonomous decision in the standup under "Decisions Made"
+
+  4. Creative agent proposals: run the creative agent and write all ideas to
+     creative-backlog.md (do NOT ask Jules for approval — mark them as
+     "Pending Jules review" in the standup). Jules will review them when he wakes up.
+
+  5. If you discover something risky or ambiguous, note it in the standup under
+     "Needs Your Review" — do NOT block on it. Make a safe call and move on.
+
+  6. Inbox check: still run notify-cli.js inbox at the usual checkpoints,
+     but do NOT wait for replies to any items. Acknowledge and incorporate
+     what is already there, then continue.
+
+  7. Pass --dangerously-skip-permissions when spawning any subagent processes
+     that accept that flag.
+
+  OVERNIGHT DECISION DEFAULTS:
+    - Design ambiguity → match existing style, document in standup
+    - Feature scope unclear → implement the minimal safe interpretation
+    - Conflict between two valid approaches → pick the one that is easier to revert
+    - Something looks broken → fix it conservatively, note in standup
+    - New package needed → only add it if clearly necessary and well-maintained
+` : `
+═══════════════════════════════════════════════════════════════════
+DAYTIME MODE — Jules is available
+═══════════════════════════════════════════════════════════════════
+
+You are running in DAYTIME MODE. Jules can reply to questions on his phone.
+Use notify-cli.js "ask" for design decisions and creative proposals as normal.
+`}
 `;
 
 // ─── SPECIALIST AGENT DEFINITIONS ────────────────────────────────────────────
@@ -2719,7 +2785,20 @@ async function main() {
   console.log("\n╔══════════════════════════════════════════════════╗");
   console.log("║           🤖 ATTAIR AGENT ARMY                  ║");
   console.log(`║           ${today}                         ║`);
+  if (OVERNIGHT_MODE) {
+    console.log("║        🌙 OVERNIGHT / AUTONOMOUS MODE            ║");
+  } else {
+    console.log("║        ☀️  DAYTIME MODE (interactive)             ║");
+  }
   console.log("╚══════════════════════════════════════════════════╝\n");
+
+  if (OVERNIGHT_MODE) {
+    console.log("🌙 OVERNIGHT MODE: agents will make autonomous decisions — no human prompts will block the run.");
+    console.log("   Flags accepted: --overnight | --auto | --autonomous\n");
+  } else {
+    console.log("☀️  DAYTIME MODE: agents may ask Jules questions via Discord.");
+    console.log("   To run without interruptions, use: node run.js --overnight\n");
+  }
 
   // Ensure GitHub labels exist for the communication system
   try {
@@ -2746,10 +2825,11 @@ async function main() {
 
   // Notify Jules that the army is starting
   try {
+    const modeLabel = OVERNIGHT_MODE ? "OVERNIGHT (autonomous)" : "daytime (interactive)";
     const startMsg = sessionId
-      ? `Agent army RESUMING interrupted session.\nPicking up where we left off.`
-      : `Agent army starting for ${today}.\n\nRequirements loaded: ${existsSync(reqPath) ? "yes" : "defaults"}\nBranch: ${branchName}\n\nI'll send updates as I go. Reply to any issue if you have feedback.`;
-    notifyHuman(startMsg, { title: `[Agent] ${sessionId ? "Resuming" : "Starting"} — ${today}` });
+      ? `Agent army RESUMING interrupted session.\nMode: ${modeLabel}\nPicking up where we left off.`
+      : `Agent army starting for ${today}.\n\nMode: ${modeLabel}\nRequirements loaded: ${existsSync(reqPath) ? "yes" : "defaults"}\nBranch: ${branchName}\n\n${OVERNIGHT_MODE ? "Running autonomously — will not ask questions. Check the standup when done." : "I'll send updates as I go. Reply to any issue if you have feedback."}`;
+    notifyHuman(startMsg, { title: `[Agent] ${sessionId ? "Resuming" : "Starting"} ${OVERNIGHT_MODE ? "🌙 Overnight" : "☀️ Daytime"} — ${today}` });
   } catch (e) {
     console.log(`⚠️  Could not send startup notification: ${e.message}`);
   }
@@ -2805,6 +2885,8 @@ ${PM_PROMPT}`
         env: {
           ...process.env,
           GH_TOKEN: process.env.GH_TOKEN ?? "",
+          // Overnight mode — child processes can check this env var
+          OVERNIGHT_MODE: OVERNIGHT_MODE ? "true" : "false",
           ...(process.env.DISCORD_BRIDGE === "true" ? {
             DISCORD_BRIDGE: "true",
             DISCORD_BRIDGE_DIR: process.env.DISCORD_BRIDGE_DIR ?? "",
