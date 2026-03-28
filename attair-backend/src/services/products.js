@@ -984,6 +984,18 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
     queries.push(item.product_line ? `${brand} ${item.product_line}` : `${brand} ${item.name}`);
   }
 
+  // ── Query B2: alt_search — Claude's brand-agnostic alternative ──
+  // This is a separate search query Claude generates specifically for finding
+  // similar items regardless of brand. Useful when brand search fails or when
+  // the brand is unidentified.
+  if (item.alt_search && item.alt_search !== item.search_query) {
+    const altCleaned = stripShoppingNoise(cleanForSearch(item.alt_search));
+    const altQ = hasGenderPrefix(altCleaned) ? altCleaned : `${g} ${altCleaned}`;
+    if (altQ.length <= MAX_QUERY_LEN && !queries.some(q => q.toLowerCase() === altQ.toLowerCase())) {
+      queries.push(altQ);
+    }
+  }
+
   // ── Queries C/D/E: buildShoppingQueries — short, Shopping-indexed fallbacks ──
   //
   // buildShoppingQueries() generates up to 4 progressively broader queries:
@@ -1174,17 +1186,35 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   const cat = (item.category || "").toLowerCase();
   if (cat && title.includes(cat)) score += 8;
 
-  // Brand match
+  // Brand match — check exact brand, partial brand words, and product line
   const brand = (item.brand || "").toLowerCase();
   if (brand && brand !== "unidentified") {
-    if (title.includes(brand) || source.includes(brand)) score += 30;
+    if (title.includes(brand) || source.includes(brand)) {
+      score += 30; // exact brand match
+    } else {
+      // Partial brand match for multi-word brands (e.g. "Ralph Lauren" → check "Ralph" and "Lauren")
+      const brandWords = brand.split(/\s+/).filter(w => w.length > 3);
+      if (brandWords.length > 1 && brandWords.some(w => title.includes(w) || source.includes(w))) {
+        score += 15; // partial brand word match
+      }
+    }
     const line = (item.product_line || "").toLowerCase();
     if (line && line.length > 2 && title.includes(line)) score += 20;
   }
 
-  // Color match
+  // Color match — check full color and individual color words
   const color = (item.color || "").toLowerCase();
-  if (color && color.length > 2 && title.includes(color)) score += 12;
+  if (color && color.length > 2) {
+    if (title.includes(color)) {
+      score += 12; // exact color match (e.g. "heather grey")
+    } else {
+      // Multi-word color: "heather grey" → check "heather" and "grey" independently
+      const colorWords = color.split(/\s+/).filter(w => w.length > 2);
+      const colorMatches = colorWords.filter(w => title.includes(w)).length;
+      if (colorMatches >= 2) score += 10;
+      else if (colorMatches === 1 && colorWords.length <= 2) score += 6; // single match on a short color
+    }
+  }
 
   // Material match — check individual material words for compound materials
   const material = (item.material || "").toLowerCase();

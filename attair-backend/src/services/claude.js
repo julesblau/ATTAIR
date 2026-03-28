@@ -104,7 +104,11 @@ export async function refineItem(originalItem, userMessage, chatHistory = []) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
 
-  const systemPrompt = `You are refining a clothing identification. The user is correcting or adjusting what was initially detected in their photo. Update the item JSON to reflect the correction. Return ONLY valid JSON in this exact format (no markdown, no backticks):
+  const systemPrompt = `You are refining a clothing identification. The user is correcting or adjusting what was initially detected in their photo. Update the item JSON to reflect the correction.
+
+SEARCH QUERY RULES: The search_query goes directly into Google Shopping. Keep under 60 chars. Start with "men's" or "women's". If brand is known, include it. NO adjectives like "stylish" or "elegant". Use product terms only.
+
+Return ONLY valid JSON in this exact format (no markdown, no backticks):
 {
   "updated_item": {
     "name": "...",
@@ -114,12 +118,13 @@ export async function refineItem(originalItem, userMessage, chatHistory = []) {
     "product_line": "...",
     "category": "outerwear|top|bottom|shoes|accessory|dress|bag",
     "subcategory": "...",
-    "color": "...",
-    "material": "...",
-    "fit": "slim|regular|relaxed|oversized|cropped",
-    "search_query": "best Google Shopping search for this item",
-    "style_keywords": ["..."],
-    "alt_search": "brand-agnostic alternative search"
+    "color": "specific color (e.g. 'heather grey' not just 'grey')",
+    "material": "specific material with type (e.g. 'cotton french terry', 'stretch denim')",
+    "fit": "slim|regular|relaxed|oversized|cropped|tailored|boxy",
+    "construction_details": "notable details (e.g. 'contrast stitching, raw hem')",
+    "search_query": "Google Shopping query under 60 chars following rules above",
+    "style_keywords": ["vibe keywords like 'streetwear', 'minimalist', 'preppy'"],
+    "alt_search": "brand-agnostic alternative: [gender] [color] [material] [subcategory]"
   },
   "ai_message": "Brief friendly confirmation of what you updated, 1-2 sentences."
 }`;
