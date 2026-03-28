@@ -11,24 +11,20 @@
 **Effort:** S
 
 ### Discord Bot UX Improvements
-**Status:** CRITICAL — terser responses, individual agent dispatch
+**Status:** DONE (Run 5, 2026-03-28) — terser responses, individual agent dispatch
 **Effort:** M (2 agents)
-**Summary:** (1) Accept shorter/terser responses from Jules — less typing on mobile. (2) Ability to deploy individual agents for side tasks (e.g. "run the brand agent") instead of only launching the full army.
 
 ### Discord Bot Formatting Cleanup
-**Status:** CRITICAL — Fix formatting for mobile
+**Status:** DONE (Run 5, 2026-03-28) — mobile formatting fixed
 **Effort:** S (1 agent)
-**Summary:** Fix message formatting issues — newlines, markdown rendering on mobile. Make messages easier to read in Discord on phone.
 
 ### SQL Access via Claude CLI
-**Status:** CRITICAL — Give Claude direct DB access
+**Status:** DONE (Run 5, 2026-03-28) — agents/db-query.js, needs service role key
 **Effort:** S (1 agent)
-**Summary:** Give Claude Code direct access to query the Supabase database (read/write) so agents and chat can inspect data, debug issues, run queries.
 
 ### Overnight / Autonomous Mode
-**Status:** CRITICAL — Build immediately
+**Status:** DONE (Run 5, 2026-03-28) — --overnight flag on run.js
 **Effort:** S (1 agent)
-**Summary:** `--overnight` flag on run.js — agents make best judgment calls instead of blocking on permission prompts. Daytime runs keep current behavior.
 
 ## HIGH
 
@@ -86,6 +82,48 @@
 **Status:** DEFERRED (needs data volume)
 **Effort:** S (1 agent)
 
+## Approved — Creative Run 5 Proposals (2026-03-28)
+
+### Retailer Spotlight
+**Status:** Approved — backlogged
+**Effort:** S
+**Summary:** Replace placeholder interstitial ad with real retailer branding + affiliate CTA. Highest revenue/effort ratio, unblocks brand deals.
+
+### Dupe Alert
+**Status:** Approved — backlogged
+**Effort:** S
+**Summary:** "Dupe found — $47 at Zara" pill on results when budget tier is 40%+ cheaper. Viral, frontend-only, uses existing tier data.
+
+### Trending Feed
+**Status:** Approved — backlogged
+**Effort:** M
+**Summary:** Add trending score (saves × recency) + "Trending" tab to Home feed. Fixes empty state for new users.
+
+### Interactive Share Link
+**Status:** Approved — backlogged
+**Effort:** M
+**Summary:** Shareable URL with OG meta + styled landing page per scan. Viral acquisition loop.
+
+### Style Match Score
+**Status:** Approved — backlogged
+**Effort:** M
+**Summary:** "92% your style" pill on results using Style DNA compatibility. Cool moat, needs Style DNA adoption.
+
+### Complete the Look
+**Status:** Approved — backlogged
+**Effort:** M
+**Summary:** Group saved items by scan, show progress + "Buy All" batch affiliate link.
+
+### Scan History Replay
+**Status:** Approved — backlogged
+**Effort:** L
+**Summary:** Weekly "price dropped since you scanned this" notifications. Needs SerpAPI budget increase.
+
+### Style Challenge
+**Status:** Approved — backlogged
+**Effort:** L
+**Summary:** Weekly AI-verified outfit challenges with voting + winner badges. Needs critical mass of users.
+
 ## Priority 2 — Later Runs
 
 ### Style DNA Feed
@@ -132,3 +170,7 @@
 
 ### Run 5 (2026-03-28)
 - ATTAIRE rename across codebase
+
+### 2026-03-28 — Jules via Discord
+Retailer Spotlight — replace placeholder interstitial ad with real retailer branding + affiliate CTA (size S, recommended)
+**Status:** Pending review
