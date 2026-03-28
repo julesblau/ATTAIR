@@ -457,10 +457,10 @@ function resizeImage(dataUrl, maxDim = 1024) {
 
 const StatusPill = ({ status }) => {
   const cfg = {
-    identified: { text: "AI IDENTIFIED", bg: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.35)", dot: "rgba(255,255,255,0.25)" },
-    searching: { text: "SEARCHING…", bg: "rgba(201,169,110,0.08)", color: "#C9A96E", dot: "#C9A96E", pulse: true },
-    verified: { text: "WEB VERIFIED", bg: "rgba(201,169,110,0.1)", color: "#C9A96E", dot: "#C9A96E" },
-    failed: { text: "AI ONLY", bg: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.25)", dot: "rgba(255,255,255,0.15)" },
+    identified: { text: "AI IDENTIFIED", bg: "var(--bg-input)", color: "var(--text-tertiary)", dot: "var(--text-tertiary)" },
+    searching: { text: "SEARCHING…", bg: "var(--accent-bg)", color: "var(--accent)", dot: "var(--accent)", pulse: true },
+    verified: { text: "WEB VERIFIED", bg: "rgba(201,169,110,0.1)", color: "var(--accent)", dot: "var(--accent)" },
+    failed: { text: "AI ONLY", bg: "var(--bg-input)", color: "var(--text-tertiary)", dot: "var(--text-tertiary)" },
   }[status] || {};
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 4, background: cfg.bg, fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: cfg.color }}>
@@ -479,28 +479,28 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
   return (
     <a href={href} target="_blank" rel="noopener noreferrer"
       onClick={() => track("product_clicked", { tier, brand: data.brand, price: data.price, is_fallback: isFallback }, scanId, "scan")}
-      style={{ padding: 16, background: isFallback ? "rgba(255,255,255,0.01)" : "rgba(255,255,255,0.02)", border: `1px solid ${data.is_identified_brand ? "rgba(201,169,110,0.3)" : isFallback ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.05)"}`, borderRadius: 14, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 8, transition: "all 0.2s" }}>
+      style={{ padding: 16, background: "var(--bg-card)", border: `1px solid ${data.is_identified_brand ? "var(--accent-border)" : "var(--border)"}`, borderRadius: 14, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 8, transition: "all 0.2s" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: isFallback ? "rgba(255,255,255,.2)" : tierCfg.accent, textTransform: "uppercase" }}>{tierCfg.icon} {tierCfg.label}</span>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: isFallback ? "var(--text-tertiary)" : tierCfg.accent, textTransform: "uppercase" }}>{tierCfg.icon} {tierCfg.label}</span>
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          {data.is_identified_brand && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(201,169,110,0.12)", color: "#C9A96E" }}>ORIGINAL</span>}
+          {data.is_identified_brand && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(201,169,110,0.12)", color: "var(--accent)" }}>ORIGINAL</span>}
           {data.is_resale && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(120,200,120,0.12)", color: "#7BC87B" }}>RESALE</span>}
-          {data.is_product_page && !data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: .5, padding: "2px 6px", borderRadius: 3, background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.3)" }}>Product page</span>}
+          {data.is_product_page && !data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: .5, padding: "2px 6px", borderRadius: 3, background: "var(--bg-input)", color: "var(--text-tertiary)" }}>Product page</span>}
         </div>
       </div>
       {isFallback ? (
         <>
-          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, color: "rgba(255,255,255,.35)" }}>No exact match found</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,.2)" }}>{data.price}</div>
-          <div style={{ marginTop: "auto", padding: "10px 0 2px", fontSize: 12, fontWeight: 700, color: tierCfg.accent, textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.04)" }}>Search Google Shopping →</div>
+          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, color: "var(--text-tertiary)" }}>No exact match found</div>
+          <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{data.price}</div>
+          <div style={{ marginTop: "auto", padding: "10px 0 2px", fontSize: 12, fontWeight: 700, color: tierCfg.accent, textAlign: "center", borderTop: "1px solid var(--border)" }}>Search Google Shopping →</div>
         </>
       ) : (
         <>
           <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{data.product_name || "Loading…"}</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{data.brand}</div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: tierCfg.accent, fontFamily: "'Outfit'" }}>{data.price}</div>
-          {data.why && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", lineHeight: 1.4, fontStyle: "italic" }}>{data.why}</div>}
-          <div style={{ marginTop: "auto", padding: "10px 0 2px", fontSize: 12, fontWeight: 700, color: tierCfg.accent, textAlign: "center", borderTop: `1px solid rgba(255,255,255,0.04)` }}>Shop →</div>
+          <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{data.brand}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: tierCfg.accent, fontFamily: "var(--font-sans)" }}>{data.price}</div>
+          {data.why && <div style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.4, fontStyle: "italic" }}>{data.why}</div>}
+          <div style={{ marginTop: "auto", padding: "10px 0 2px", fontSize: 12, fontWeight: 700, color: tierCfg.accent, textAlign: "center", borderTop: "1px solid var(--border)" }}>Shop →</div>
         </>
       )}
     </a>
@@ -523,20 +523,20 @@ const MiniCard = ({ tier, data, scanId, itemIndex, onSave, isSavedItem }) => {
     <div style={{ position: "relative" }}>
       <a href={href} target="_blank" rel="noopener noreferrer"
         onClick={() => track("product_clicked", { tier, brand: data.brand, price: data.price, is_fallback: isFallback }, scanId, "scan")}
-        style={{ padding: 12, background: isFallback ? "rgba(255,255,255,.01)" : "rgba(255,255,255,.02)", border: `1px solid ${data.is_identified_brand ? "rgba(201,169,110,0.25)" : "rgba(255,255,255,.05)"}`, borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 6, transition: "all 0.2s", minWidth: 0 }}>
+        style={{ padding: 12, background: "var(--bg-card)", border: `1px solid ${data.is_identified_brand ? "var(--accent-border)" : "var(--border)"}`, borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 6, transition: "all 0.2s", minWidth: 0 }}>
         {data.image_url && (
-          <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "rgba(255,255,255,.04)", marginBottom: 2 }}>
+          <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "var(--bg-input)", marginBottom: 2 }}>
             <img src={data.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
           </div>
         )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          {data.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "#C9A96E" }}>ORIG</span>}
+          {data.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)" }}>ORIG</span>}
           {data.is_resale && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(123,196,127,.12)", color: "#7BC47F" }}>RESALE</span>}
-          {!data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 7, color: "rgba(255,255,255,.15)" }}>{data.brand?.slice(0, 14)}</span>}
+          {!data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 7, color: "var(--text-tertiary)" }}>{data.brand?.slice(0, 14)}</span>}
           <span style={{ fontSize: 13, fontWeight: 700, color: tierCfg.accent }}>{isFallback ? "Search →" : data.price}</span>
         </div>
-        {!isFallback && <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,.7)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{data.product_name}</div>}
-        {isFallback && <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)", lineHeight: 1.3 }}>No match — tap to search</div>}
+        {!isFallback && <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{data.product_name}</div>}
+        {isFallback && <div style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.3 }}>No match — tap to search</div>}
       </a>
       {onSave && (
         <button
@@ -581,31 +581,27 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
             <div className="pw-f" key={i}><div className="pw-ck">✓</div>{f}</div>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <div
-            onClick={() => setPlan("yearly")}
-            style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "yearly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "yearly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s", position: "relative" }}>
-            <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", fontSize: 8, fontWeight: 800, padding: "2px 8px", borderRadius: 100, letterSpacing: 1, whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(255,107,53,0.5), 0 0 16px rgba(255,107,53,0.2), 0 4px 16px rgba(201,169,110,.5)" }}>SAVE 50%</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$30<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/yr</span></div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$2.50/mo</div>
+        <div className="pw-plans">
+          <div className={`pw-p${plan === "yearly" ? " sel" : ""}`} onClick={() => setPlan("yearly")} style={{ textAlign: "center" }}>
+            <div className="pw-ptag">SAVE 50%</div>
+            <div className="pw-pp">$30<span className="pw-pd">/yr</span></div>
+            <div className="pw-pw">$2.50/mo</div>
           </div>
-          <div
-            onClick={() => setPlan("monthly")}
-            style={{ flex: 1, textAlign: "center", padding: "12px 8px", borderRadius: 12, border: `1.5px solid ${plan === "monthly" ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.06)"}`, background: plan === "monthly" ? "rgba(201,169,110,.06)" : "rgba(255,255,255,.01)", cursor: "pointer", transition: "all .2s" }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>$5<span style={{ fontSize: 13, color: "rgba(255,255,255,.35)" }}>/mo</span></div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>$1.15/week</div>
+          <div className={`pw-p${plan === "monthly" ? " sel" : ""}`} onClick={() => setPlan("monthly")} style={{ textAlign: "center" }}>
+            <div className="pw-pp">$5<span className="pw-pd">/mo</span></div>
+            <div className="pw-pw">$1.15/week</div>
           </div>
         </div>
         <button className="cta" onClick={handleCta} disabled={loadingPlan} style={{ opacity: loadingPlan ? 0.7 : 1 }}>
           {loadingPlan ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(12,12,14,.3)", borderTopColor: "#0C0C0E", borderRadius: "50%", animation: "spin .7s linear infinite" }} />Processing…</span> : m.cta}
         </button>
-        <button className="modal-later" onClick={() => onStartTrial && onStartTrial()} style={{ color: "#C9A96E", fontSize: 12, marginTop: -4 }}>
+        <button className="modal-later" onClick={() => onStartTrial && onStartTrial()} style={{ color: "var(--accent)", fontSize: 12, marginTop: -4 }}>
           Or start a 7-day free trial →
         </button>
         <button className="modal-later" onClick={onClose}>Maybe later</button>
         {userStatus?.tier === "free" && !userStatus?.trial_ends_at && (
-          <div style={{ textAlign: "center", marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.06)" }}>
-            <button onClick={() => onStartTrial && onStartTrial()} style={{ background: "transparent", border: "1px solid rgba(255,107,53,.35)", color: "#FF6B35", padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", width: "100%" }}>
+          <div style={{ textAlign: "center", marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+            <button onClick={() => onStartTrial && onStartTrial()} style={{ background: "transparent", border: "1px solid rgba(255,107,53,.35)", color: "#FF6B35", padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", width: "100%" }}>
               Start 7-day free trial — no card required
             </button>
           </div>
@@ -634,9 +630,9 @@ const InterstitialAd = ({ onClose }) => {
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>&#128247;</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 6, fontFamily: "'Outfit'" }}>New Arrivals</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 6, fontFamily: "var(--font-sans)" }}>New Arrivals</div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginBottom: 16 }}>Discover this season's top looks</div>
-              <button onClick={() => { API.logAdEvent("interstitial", "post_scan", "click"); onClose(); }} style={{ display: "inline-block", padding: "10px 24px", background: "#C9A96E", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "#0C0C0E", fontFamily: "'Outfit'", border: "none", cursor: "pointer" }}>Shop Now</button>
+              <button onClick={() => { API.logAdEvent("interstitial", "post_scan", "click"); onClose(); }} style={{ display: "inline-block", padding: "10px 24px", background: "#C9A96E", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "#0C0C0E", fontFamily: "var(--font-sans)", border: "none", cursor: "pointer" }}>Shop Now</button>
             </div>
           </div>
           <div style={{ padding: "8px 12px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,.06)" }}>
@@ -646,7 +642,7 @@ const InterstitialAd = ({ onClose }) => {
         <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)" }}>Upgrade to Pro to remove ads</div>
         {timer > 0
           ? <div style={{ position: "absolute", top: 16, right: 16, fontSize: 12, color: "rgba(255,255,255,.25)" }}>Skip in {timer}s</div>
-          : <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,.08)", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: "#fff", cursor: "pointer", fontFamily: "'Outfit'" }}>Skip →</button>
+          : <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,.08)", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: "#fff", cursor: "pointer", fontFamily: "var(--font-sans)" }}>Skip →</button>
         }
       </div>
     </div>
@@ -1423,8 +1419,8 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
         onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
       />
       <div style={{ position: "absolute", bottom: 12, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 10, zIndex: 11 }}>
-        <button onClick={clear} aria-label="Clear circle selection" style={{ padding: "8px 18px", background: "rgba(0,0,0,.7)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 100, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44, minWidth: 44 }}>Clear</button>
-        {confirmed && <button onClick={onCancel} aria-label="Confirm circle selection" style={{ padding: "8px 18px", background: "rgba(201,169,110,.9)", border: "none", borderRadius: 100, color: "#0C0C0E", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44, minWidth: 44 }}>Done</button>}
+        <button onClick={clear} aria-label="Clear circle selection" style={{ padding: "8px 18px", background: "rgba(0,0,0,.7)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 100, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 44, minWidth: 44 }}>Clear</button>
+        {confirmed && <button onClick={onCancel} aria-label="Confirm circle selection" style={{ padding: "8px 18px", background: "rgba(201,169,110,.9)", border: "none", borderRadius: 100, color: "#0C0C0E", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 44, minWidth: 44 }}>Done</button>}
       </div>
     </div>
   );
@@ -2337,7 +2333,7 @@ export default function App() {
               </div>
             )}
             {step.type === "info" && <button className="cta" onClick={() => obNext()}>{step.cta}</button>}
-            {obIdx === 0 && <button style={{background:"none",border:"none",color:"rgba(255,255,255,.25)",fontSize:13,cursor:"pointer",fontFamily:"'Outfit'",padding:"12px 0",marginTop:8}} onClick={() => { setScreen("auth"); setAuthScreen("login"); }}>Already have an account? Log in</button>}
+            {obIdx === 0 && <button style={{background:"none",border:"none",color:"var(--text-tertiary)",fontSize:13,cursor:"pointer",fontFamily:"var(--font-sans)",padding:"12px 0",marginTop:8,minHeight:44}} onClick={() => { setScreen("auth"); setAuthScreen("login"); }}>Already have an account? Log in</button>}
           </div>
         </div>
       )}
@@ -2381,12 +2377,12 @@ export default function App() {
           </div>
 
           {/* OAuth buttons */}
-          <button onClick={() => API.oauthLogin("google")} style={{ width: "100%", padding: "14px 18px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-primary)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8, transition: "all .2s" }}>
+          <button onClick={() => API.oauthLogin("google")} style={{ width: "100%", padding: "14px 18px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8, transition: "all .2s" }}>
             <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
             Continue with Google
           </button>
           {import.meta.env.VITE_APPLE_AUTH_ENABLED === "true" && (
-            <button onClick={() => API.oauthLogin("apple")} style={{ width: "100%", padding: "14px 18px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-primary)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8, transition: "all .2s" }}>
+            <button onClick={() => API.oauthLogin("apple")} style={{ width: "100%", padding: "14px 18px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8, transition: "all .2s" }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
               Continue with Apple
             </button>
@@ -2410,7 +2406,7 @@ export default function App() {
           <input type="email" placeholder="Email address" value={authEmail} onChange={e => setAuthEmail(e.target.value)} autoComplete="email" />
           <div style={{ position: "relative" }}>
             <input type={showPass ? "text" : "password"} placeholder="Password" value={authPass} onChange={e => setAuthPass(e.target.value)} onKeyDown={e => e.key === "Enter" && authEmail && authPass.length >= 6 && handleAuth()} autoComplete={authScreen === "signup" ? "new-password" : "current-password"} style={{ paddingRight: 48 }} />
-            <button onClick={() => setShowPass(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "rgba(255,255,255,.2)", fontSize: 12, cursor: "pointer", fontFamily: "'Outfit'", padding: "4px" }}>{showPass ? "Hide" : "Show"}</button>
+            <button onClick={() => setShowPass(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 12, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px", minHeight: 44, minWidth: 44 }}>{showPass ? "Hide" : "Show"}</button>
           </div>
           {authScreen === "signup" && authPass.length > 0 && authPass.length < 6 && (
             <div style={{ fontSize: 11, color: "rgba(255,150,100,.5)", marginTop: -4, marginBottom: 4 }}>Password must be at least 6 characters</div>
@@ -2478,7 +2474,7 @@ export default function App() {
                 return (
                   <button key={v}
                     onClick={() => setSelectedInterests(prev => on ? prev.filter(x => x !== v) : prev.length < 5 ? [...prev, v] : prev)}
-                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 100, border: `1px solid ${on ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.02)", color: on ? "#C9A96E" : "rgba(255,255,255,.5)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .2s", minHeight: 44 }}>
+                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 100, border: `1px solid ${on ? "rgba(201,169,110,.5)" : "var(--border)"}`, background: on ? "rgba(201,169,110,.1)" : "var(--bg-input)", color: on ? "var(--accent)" : "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .2s", minHeight: 44 }}>
                     <span style={{ fontSize: 16 }}>{icon}</span>{l}
                   </button>
                 );
@@ -2500,14 +2496,14 @@ export default function App() {
 
       {/* ─── UPGRADE SUCCESS BANNER ──────────────────────── */}
       {upgradeSuccess && (
-        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
+        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "var(--accent)", color: "var(--text-inverse)", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
           Welcome to ATTAIRE Pro!
         </div>
       )}
 
       {/* ─── TRIAL SUCCESS BANNER ────────────────────────── */}
       {trialSuccess && (
-        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "#C9A96E", color: "#0C0C0E", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)", whiteSpace: "nowrap" }}>
+        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "var(--accent)", color: "var(--text-inverse)", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)", whiteSpace: "nowrap" }}>
           ✓ 7-day free trial started!
         </div>
       )}
@@ -2523,7 +2519,7 @@ export default function App() {
             }
             {userStatus?.tier === "trial" && userStatus?.trial_ends_at && (() => {
               const daysLeft = Math.max(0, Math.ceil((new Date(userStatus.trial_ends_at) - new Date()) / 86400000));
-              return <div style={{ fontSize: 10, color: "#C9A96E", padding: "2px 8px", background: "rgba(201,169,110,.1)", borderRadius: 100, border: "1px solid rgba(201,169,110,.3)" }}>{daysLeft}d trial</div>;
+              return <div style={{ fontSize: 10, color: "var(--accent)", padding: "2px 8px", background: "var(--accent-bg)", borderRadius: 100, border: "1px solid var(--accent-border)" }}>{daysLeft}d trial</div>;
             })()}
             {(tab === "home" || tab === "scan") && (
               <button onClick={() => { setShowUserSearch(true); setUserSearchQuery(""); setUserSearchResults([]); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Search users">
@@ -2540,9 +2536,9 @@ export default function App() {
             <div className="animate-fade-in" style={{ paddingBottom: 80 }}>
               {/* For You / Following tabs directly under header */}
               {/* For You / Following toggle */}
-              <div style={{ display: "flex", justifyContent: "center", gap: 0, padding: "4px 16px 12px", position: "sticky", top: 0, zIndex: 10, background: "var(--bg-primary)" }}>
-                <button onClick={() => { setFeedTab("foryou"); setFeedPage(1); }} style={{ flex: 1, maxWidth: 160, padding: "10px 0", minHeight: 44, background: "none", border: "none", borderBottom: feedTab === "foryou" ? "3px solid var(--accent)" : "3px solid transparent", color: feedTab === "foryou" ? "var(--text-primary)" : "var(--text-tertiary)", fontFamily: "'Outfit'", fontWeight: feedTab === "foryou" ? 700 : 500, fontSize: 15, cursor: "pointer", transition: "all .2s ease" }}>For You</button>
-                <button onClick={() => { setFeedTab("following"); setFeedPage(1); }} style={{ flex: 1, maxWidth: 160, padding: "10px 0", minHeight: 44, background: "none", border: "none", borderBottom: feedTab === "following" ? "3px solid var(--accent)" : "3px solid transparent", color: feedTab === "following" ? "var(--text-primary)" : "var(--text-tertiary)", fontFamily: "'Outfit'", fontWeight: feedTab === "following" ? 700 : 500, fontSize: 15, cursor: "pointer", transition: "all .2s ease" }}>Following</button>
+              <div className="feed-tabs-wrap">
+                <button className={`feed-tab${feedTab === "foryou" ? " active" : ""}`} onClick={() => { setFeedTab("foryou"); setFeedPage(1); }}>For You</button>
+                <button className={`feed-tab${feedTab === "following" ? " active" : ""}`} onClick={() => { setFeedTab("following"); setFeedPage(1); }}>Following</button>
               </div>
 
               {/* Skeleton loading */}
@@ -2558,60 +2554,61 @@ export default function App() {
 
               {/* Empty states */}
               {!feedLoading && feedScans.length === 0 && (
-                <div className="animate-slide-up" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 32px", textAlign: "center" }}>
+                <div className="empty animate-slide-up" style={{ padding: "80px 32px" }}>
                   <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 20, opacity: 0.5 }}><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
-                  <div style={{ fontFamily: "'Outfit'", fontWeight: 700, fontSize: 18, color: "var(--text-primary)", marginBottom: 8 }}>
+                  <div className="empty-t">
                     {feedTab === "following" ? "Follow people to see their scans here" : "Scan your first outfit to discover styles"}
                   </div>
-                  <div style={{ fontSize: 14, color: "var(--text-tertiary)", marginBottom: 24, lineHeight: 1.5 }}>
+                  <div className="empty-s" style={{ marginBottom: 24, lineHeight: 1.5 }}>
                     {feedTab === "following" ? "Find friends and style inspiration in the search tab." : "Point your camera at any outfit and we will identify every piece."}
                   </div>
                   {feedTab === "following"
-                    ? <button className="btn-primary" onClick={() => { setTab("search"); setShowUserSearch(true); }} style={{ padding: "12px 32px", borderRadius: 100, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Explore People</button>
-                    : <button className="btn-primary" onClick={() => { setShowScanSheet(true); }} style={{ padding: "12px 32px", borderRadius: 100, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>Scan an Outfit</button>
+                    ? <button className="btn-primary" onClick={() => { setTab("search"); setShowUserSearch(true); }} style={{ padding: "12px 32px", borderRadius: 100 }}>Explore People</button>
+                    : <button className="btn-primary" onClick={() => { setShowScanSheet(true); }} style={{ padding: "12px 32px", borderRadius: 100 }}>Scan an Outfit</button>
                   }
                 </div>
               )}
 
               {/* Feed cards */}
               {feedScans.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "0 16px" }}>
+                <div className="feed-list">
                   {feedScans.map((scan, idx) => {
                     const u = scan.user || {};
                     const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                    const isSaved = saved.some(s => s.scan_id === scan.id);
                     return (
-                      <div key={scan.id || idx} className="card card-enter" style={{ borderRadius: 16, overflow: "hidden", cursor: "pointer", position: "relative", animationDelay: `${idx * 0.06}s` }} onClick={() => setFeedDetailScan(scan)}>
-                        {scan.image_url
-                          ? <img src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", display: "block" }} />
-                          : <div style={{ width: "100%", aspectRatio: "4/5", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
+                      <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => setFeedDetailScan(scan)}>
+                        <div style={{ position: "relative" }}>
+                          {scan.image_url
+                            ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" style={{ aspectRatio: "4/5" }} />
+                            : <div className="feed-card-img" style={{ aspectRatio: "4/5", background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
+                              </div>
+                          }
+                          {scan.save_count > 0 && (
+                            <div className="feed-card-pill">
+                              <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                              {scan.save_count}
                             </div>
-                        }
-                        {/* Social proof pill */}
-                        {scan.save_count > 0 && (
-                          <div style={{ position: "absolute", top: 12, right: 12, padding: "4px 10px", borderRadius: 100, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontFamily: "'Outfit'", fontWeight: 600, color: "#fff" }}>
-                            <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                            {scan.save_count}
-                          </div>
-                        )}
-                        {/* Bottom gradient overlay */}
-                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "48px 16px 16px", background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%)", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit'", fontWeight: 700, fontSize: 13, color: "#0C0C0E", flexShrink: 0 }}>{ini}</div>
-                            <div style={{ minWidth: 0 }}>
-                              <div style={{ fontFamily: "'Outfit'", fontWeight: 700, fontSize: 14, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.display_name || "Anonymous"}</div>
-                              {scan.summary && <div style={{ fontFamily: "'Outfit'", fontSize: 12, color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{scan.summary}</div>}
+                          )}
+                          <div className="feed-card-overlay">
+                            <div className="feed-card-user">
+                              <div className="feed-card-avatar">{ini}</div>
+                              <div className="feed-card-info">
+                                <div className="feed-card-name">{u.display_name || "Anonymous"}</div>
+                                {scan.summary && <div className="feed-card-summary">{scan.summary}</div>}
+                              </div>
                             </div>
+                            <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
+                              <svg viewBox="0 0 24 24" width="22" height="22" fill={isSaved ? "var(--accent)" : "none"} stroke={isSaved ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            </button>
                           </div>
-                          <button style={{ background: "none", border: "none", cursor: "pointer", padding: 8, flexShrink: 0 }} onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
-                            <svg viewBox="0 0 24 24" width="22" height="22" fill={saved.some(s => s.scan_id === scan.id) ? "var(--accent)" : "none"} stroke={saved.some(s => s.scan_id === scan.id) ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                          </button>
                         </div>
                       </div>
                     );
                   })}
                   {feedHasMore && (
-                    <button onClick={() => loadFeed(feedPage + 1, true)} disabled={feedLoading} className="btn-secondary" style={{ padding: "14px 0", borderRadius: 14, fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer", width: "100%", minHeight: 44, opacity: feedLoading ? 0.5 : 1 }}>
+                    <button onClick={() => loadFeed(feedPage + 1, true)} disabled={feedLoading} className="btn-secondary" style={{ padding: "14px 0", borderRadius: 14, width: "100%", opacity: feedLoading ? 0.5 : 1 }}>
                       {feedLoading ? "Loading..." : "Load more"}
                     </button>
                   )}
@@ -2632,11 +2629,11 @@ export default function App() {
                     onFocus={() => { if (!showUserSearch) setShowUserSearch(true); }}
                     placeholder="Search people..."
                     autoFocus
-                    style={{ flex: 1, background: "none", border: "none", outline: "none", padding: "12px 0", fontFamily: "'Outfit'", fontSize: 15, color: "var(--text-primary)", minHeight: 44 }}
+                    style={{ flex: 1, background: "none", border: "none", outline: "none", padding: "12px 0", fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--text-primary)", minHeight: 44 }}
                   />
                   {userSearchQuery && (
-                    <button onClick={() => { setUserSearchQuery(""); setUserSearchResults([]); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "var(--text-tertiary)" }}>
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    <button onClick={() => { setUserSearchQuery(""); setUserSearchResults([]); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 10, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)" }}>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     </button>
                   )}
                 </div>
@@ -2647,7 +2644,7 @@ export default function App() {
                 {!userSearchLoading && !userSearchQuery.trim() && (
                   <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-tertiary)" }}>
                     <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 12, opacity: 0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                    <div style={{ fontFamily: "'Outfit'", fontWeight: 600, fontSize: 15 }}>Search for people to follow</div>
+                    <div style={{ fontFamily: "var(--font-sans)", fontWeight: 600, fontSize: 15 }}>Search for people to follow</div>
                     <div style={{ fontSize: 13, marginTop: 6, opacity: 0.7 }}>Discover outfit inspiration from other users</div>
                   </div>
                 )}
@@ -2655,17 +2652,16 @@ export default function App() {
                   const ini = (usr.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
                   const isFlw = followingSet.has(usr.id);
                   return (
-                    <div key={usr.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--border)" }} >
-                      <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit'", fontWeight: 700, fontSize: 16, color: "#0C0C0E", flexShrink: 0 }}>{ini}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: "'Outfit'", fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>{usr.display_name}</div>
-                        {usr.bio && <div style={{ fontSize: 13, color: "var(--text-tertiary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{usr.bio}</div>}
-                        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>{usr.follower_count || 0} follower{(usr.follower_count || 0) !== 1 ? "s" : ""}</div>
+                    <div key={usr.id} className="user-search-row">
+                      <div className="user-search-avatar">{ini}</div>
+                      <div className="user-search-info">
+                        <div className="user-search-name">{usr.display_name}</div>
+                        {usr.bio && <div className="user-search-bio">{usr.bio}</div>}
+                        <div className="user-search-followers">{usr.follower_count || 0} follower{(usr.follower_count || 0) !== 1 ? "s" : ""}</div>
                       </div>
                       <button
-                        className={isFlw ? "btn-ghost" : "btn-primary"}
+                        className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
                         onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(usr.id); }}
-                        style={{ padding: "8px 20px", borderRadius: 100, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 13, cursor: "pointer", minHeight: 36, flexShrink: 0 }}
                       >{isFlw ? "Following" : "Follow"}</button>
                     </div>
                   );
@@ -2689,17 +2685,17 @@ export default function App() {
 
               {isFree && scansLeft != null && (
                 <div style={{ marginBottom: 24 }}>
-                  <div className="scan-counter" style={{ display: "inline-block" }}>{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong> of {scansLimit} scans used</> : <>No scans left &middot; <span style={{color:"#C9A96E",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
+                  <div className="scan-counter" style={{ display: "inline-block" }}>{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong> of {scansLimit} scans used</> : <>No scans left &middot; <span style={{color:"var(--accent)",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
                 </div>
               )}
 
               {/* Action buttons */}
               <div style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12 }}>
-                <button className="btn-primary" onClick={camStart} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
+                <button className="btn-primary" onClick={camStart} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
                   Take Photo
                 </button>
-                <button className="btn-secondary" onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "'Outfit'", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
+                <button className="btn-secondary" onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
                   Upload from Gallery
                 </button>
@@ -2718,13 +2714,13 @@ export default function App() {
               {/* Centered content panel */}
               <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(201,169,110,.15)", maxWidth: 300 }}>
                 {/* ATTAIRE wordmark */}
-                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 24, fontStyle: "italic", color: "var(--text-primary)", letterSpacing: 1 }}>A<span style={{ color: "#C9A96E" }}>TT</span>AIRE</div>
+                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 24, fontStyle: "italic", color: "var(--text-primary)", letterSpacing: 1 }}>A<span style={{ color: "var(--accent)" }}>TT</span>AIRE</div>
                 {/* Gold scan ring spinner */}
                 <div className="scan-ring scan-ring--lg" />
                 {/* Animated status text */}
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2.5, color: "rgba(201,169,110,.5)", textTransform: "uppercase", marginBottom: 8 }}>Identifying outfit</div>
-                  <div className="serif" style={{ fontSize: 18, color: "#fff", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0, minHeight: 28 }}>{SCAN_MESSAGES[loadMsgIdx]}</div>
+                  <div className="serif" style={{ fontSize: 18, color: "var(--text-primary)", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0, minHeight: 28 }}>{SCAN_MESSAGES[loadMsgIdx]}</div>
                 </div>
                 <div className="ld-dots"><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
               </div>
@@ -2733,10 +2729,10 @@ export default function App() {
 
           {/* ─── Error ─────────────────────────────────── */}
           {tab === "scan" && error && phase === "idle" && (
-            <div>
+            <div className="animate-slide-up">
               {img && <img src={img} style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)"}} alt="" />}
               <div className="err">{error}</div>
-              <div style={{padding:"0 20px",marginTop:12}}><button className="btn ghost" style={{width:"100%"}} onClick={reset}>Try again</button></div>
+              <div style={{padding:"0 20px",marginTop:12}}><button className="btn-secondary" style={{width:"100%"}} onClick={reset}>Try again</button></div>
             </div>
           )}
 
@@ -2746,12 +2742,12 @@ export default function App() {
               <div className="v-banner">
                 <div className="v-steps">
                   <div className="v-step">
-                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: "100%", background: "#C9A96E" }} /></div>
-                    <div className="v-step-l" style={{ color: "#C9A96E" }}>✓ Identified</div>
+                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: "100%", background: "var(--accent)" }} /></div>
+                    <div className="v-step-l" style={{ color: "var(--accent)" }}>✓ Identified</div>
                   </div>
                   <div className="v-step">
-                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: "0%", background: "rgba(255,255,255,.08)" }} /></div>
-                    <div className="v-step-l" style={{ color: "rgba(255,255,255,.2)" }}>Select items</div>
+                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: "0%", background: "var(--border)" }} /></div>
+                    <div className="v-step-l" style={{ color: "var(--text-tertiary)" }}>Select items</div>
                   </div>
                 </div>
               </div>
@@ -2776,20 +2772,20 @@ export default function App() {
 
               {/* Prompt */}
               <div style={{ padding: "16px 20px 6px", textAlign: "center" }}>
-                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 22, color: "#fff", marginBottom: 6 }}>What do you want to shop?</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>Tap items on the image or below</div>
+                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 22, color: "var(--text-primary)", marginBottom: 6 }}>What do you want to shop?</div>
+                <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>Tap items on the image or below</div>
                 {/* Gender badge — prominent, tappable */}
                 <div style={{ display: "flex", justifyContent: "center", marginTop: 12 }}>
-                  <div style={{ display: "inline-flex", background: "rgba(255,255,255,.04)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden" }}>
+                  <div style={{ display: "inline-flex", background: "var(--bg-input)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden" }}>
                     <button
                       aria-label="Switch to Men's"
                       onClick={() => { if (results.gender !== "male") setResults(prev => prev ? { ...prev, gender: "male" } : prev); }}
-                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 36, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "rgba(255,255,255,.3)", borderRight: "1px solid var(--border)" }}
+                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 36, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "var(--text-tertiary)", borderRight: "1px solid var(--border)" }}
                     >Men's</button>
                     <button
                       aria-label="Switch to Women's"
                       onClick={() => { if (results.gender !== "female") setResults(prev => prev ? { ...prev, gender: "female" } : prev); }}
-                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 36, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "rgba(255,255,255,.3)" }}
+                      style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 36, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "var(--text-tertiary)" }}
                     >Women's</button>
                   </div>
                 </div>
@@ -2807,22 +2803,22 @@ export default function App() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "#fff" : "rgba(255,255,255,.5)", transition: "color .2s" }}>{item.name}</span>
-                          {item.priority && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 100, color: "#C9A96E", letterSpacing: .5, flexShrink: 0 }}>&#11044; Circled</span>}
+                          <span style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "var(--text-primary)" : "var(--text-secondary)", transition: "color .2s" }}>{item.name}</span>
+                          {item.priority && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, flexShrink: 0 }}>&#11044; Circled</span>}
                         </div>
-                        <div style={{ fontSize: 11, color: isPicked ? "rgba(201,169,110,.6)" : "rgba(255,255,255,.15)", transition: "color .2s" }}>
+                        <div style={{ fontSize: 11, color: isPicked ? "rgba(201,169,110,.6)" : "var(--text-tertiary)", transition: "color .2s" }}>
                           {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
-                          {item.identification_confidence ? <span style={{ marginLeft: 4, color: "rgba(255,255,255,.25)" }}>· {item.identification_confidence}%</span> : null}
+                          {item.identification_confidence ? <span style={{ marginLeft: 4, color: "var(--text-tertiary)" }}>· {item.identification_confidence}%</span> : null}
                         </div>
                       </div>
                       {ov?.budgetMin != null
                         ? <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "#C9A96E", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 7, padding: "4px 9px", whiteSpace: "nowrap" }}>${ov.budgetMin}–${ov.budgetMax ?? ov.budgetMin * 2}</div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 7, padding: "4px 9px", whiteSpace: "nowrap" }}>${ov.budgetMin}–${ov.budgetMax ?? ov.budgetMin * 2}</div>
                             <div style={{ fontSize: 9, color: "rgba(201,169,110,.5)", letterSpacing: .3 }}>tap to edit</div>
                           </div>
                         : <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 10, flexShrink: 0, cursor: "pointer" }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A96E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="#C9A96E" stroke="none"/><circle cx="16" cy="12" r="2" fill="#C9A96E" stroke="none"/><circle cx="10" cy="18" r="2" fill="#C9A96E" stroke="none"/></svg>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: "#C9A96E" }}>Set prefs</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Set prefs</span>
                           </div>
                       }
                     </div>
@@ -2832,7 +2828,7 @@ export default function App() {
 
               {/* Occasion Filter */}
               <div style={{ padding: "4px 20px 0" }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "rgba(255,255,255,.2)", marginBottom: 8 }}>Occasion</div>
+                <div className="item-opts-label">Occasion</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {[
                     { v: "casual",    l: "Casual",   icon: "☀️" },
@@ -2842,21 +2838,16 @@ export default function App() {
                     { v: "formal",    l: "Formal",    icon: "✨" },
                     { v: "outdoor",   l: "Outdoor",   icon: "🌲" },
                   ].map(({ v, l, icon }) => (
-                    <button key={v} onClick={() => { setOccasion(o => o === v ? null : v); setShowCustomOccasion(false); }}
-                      style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${occasion === v ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: occasion === v ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.02)", color: occasion === v ? "#C9A96E" : "rgba(255,255,255,.4)", fontSize: 11, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s", display: "flex", alignItems: "center", gap: 4 }}>
+                    <button key={v} className={`scan-vis-chip${occasion === v ? " active" : ""}`} onClick={() => { setOccasion(o => o === v ? null : v); setShowCustomOccasion(false); }}>
                       <span style={{ fontSize: 13 }}>{icon}</span>{l}
                     </button>
                   ))}
-                  {/* Recent custom occasions */}
                   {recentOccasions.map((ro, i) => (
-                    <button key={`recent-${i}`} onClick={() => { setOccasion(o => o === ro ? null : ro); setShowCustomOccasion(false); }}
-                      style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${occasion === ro ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: occasion === ro ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.02)", color: occasion === ro ? "#C9A96E" : "rgba(255,255,255,.4)", fontSize: 11, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s" }}>
+                    <button key={`recent-${i}`} className={`scan-vis-chip${occasion === ro ? " active" : ""}`} onClick={() => { setOccasion(o => o === ro ? null : ro); setShowCustomOccasion(false); }}>
                       {ro}
                     </button>
                   ))}
-                  {/* Custom occasion chip */}
-                  <button onClick={() => setShowCustomOccasion(v => !v)}
-                    style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${showCustomOccasion ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.08)"}`, background: showCustomOccasion ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.02)", color: showCustomOccasion ? "#C9A96E" : "rgba(255,255,255,.4)", fontSize: 11, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s", display: "flex", alignItems: "center", gap: 4 }}>
+                  <button className={`scan-vis-chip${showCustomOccasion ? " active" : ""}`} onClick={() => setShowCustomOccasion(v => !v)}>
                     <span style={{ fontSize: 13 }}>+</span>{t("custom_occasion")}
                   </button>
                 </div>
@@ -2878,7 +2869,7 @@ export default function App() {
                         }
                       }}
                       placeholder="e.g. rooftop brunch, job interview"
-                      style={{ flex: 1, padding: "8px 12px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(201,169,110,.3)", borderRadius: 10, color: "#fff", fontFamily: "'Outfit'", fontSize: 12, outline: "none" }}
+                      style={{ flex: 1, padding: "8px 12px", background: "var(--bg-input)", border: "1px solid var(--accent-border)", borderRadius: 10, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 12, outline: "none", minHeight: 44 }}
                     />
                     <button onClick={() => {
                       const val = customOccasionInput.trim();
@@ -2889,7 +2880,7 @@ export default function App() {
                       const updated = [val, ...recentOccasions.filter(x => x !== val)].slice(0, 5);
                       setRecentOccasions(updated);
                       localStorage.setItem("attair_recent_occasions", JSON.stringify(updated));
-                    }} style={{ padding: "8px 14px", background: "#C9A96E", border: "none", borderRadius: 10, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    }} style={{ padding: "8px 14px", background: "var(--accent)", border: "none", borderRadius: 10, color: "var(--text-inverse)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
                       Set
                     </button>
                   </div>
@@ -2903,22 +2894,21 @@ export default function App() {
                   onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
                   placeholder={t("search_notes_placeholder")}
                   rows={2}
-                  style={{ width: "100%", padding: "10px 14px", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12, color: "rgba(255,255,255,.7)", fontSize: 12, fontFamily: "'Outfit'", resize: "none", outline: "none", lineHeight: 1.5, boxSizing: "border-box", transition: "border-color .2s" }}
-                  onFocus={e => e.target.style.borderColor = "rgba(201,169,110,.3)"}
-                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.06)"}
+                  className="refine-input"
+                  style={{ width: "100%", fontSize: 12 }}
                 />
               </div>
 
               {/* Search CTA */}
               <div className="pick-cta">
                 <button
-                  style={{ background: pickedItems.size > 0 ? "#C9A96E" : "rgba(255,255,255,.06)", color: pickedItems.size > 0 ? "#0C0C0E" : "rgba(255,255,255,.2)" }}
+                  style={{ background: pickedItems.size > 0 ? "var(--accent)" : "var(--accent-bg)", color: pickedItems.size > 0 ? "var(--text-inverse)" : "var(--text-tertiary)" }}
                   onClick={runProductSearch}
                   disabled={pickedItems.size === 0}
                 >
                   {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` · ${["casual","work","night_out","athletic","formal","outdoor"].find(v=>v===occasion) ? {casual:"Casual",work:"Work",night_out:"Night Out",athletic:"Athletic",formal:"Formal",outdoor:"Outdoor"}[occasion] : ""}` : ""}`}
                 </button>
-                <button style={{ width: "100%", padding: 12, background: "none", border: "none", color: "rgba(255,255,255,.2)", fontSize: 12, fontFamily: "'Outfit'", cursor: "pointer", marginTop: 4 }}
+                <button className="btn-ghost" style={{ width: "100%", fontSize: 12, marginTop: 4 }}
                   onClick={() => { setPickedItems(new Set(results.items.map((_, i) => i))); }}>
                   Select all
                 </button>
@@ -2933,11 +2923,11 @@ export default function App() {
               {phase === "searching" && isResearch && (
                 <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", borderBottom: "1px solid rgba(201,169,110,.15)", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                    <div className="ld-dot" style={{ background: "#C9A96E" }} />
-                    <div className="ld-dot" style={{ background: "#C9A96E", animationDelay: ".15s" }} />
-                    <div className="ld-dot" style={{ background: "#C9A96E", animationDelay: ".3s" }} />
+                    <div className="ld-dot" style={{ background: "var(--accent)" }} />
+                    <div className="ld-dot" style={{ background: "var(--accent)", animationDelay: ".15s" }} />
+                    <div className="ld-dot" style={{ background: "var(--accent)", animationDelay: ".3s" }} />
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#C9A96E", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0.3 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0.3 }}>
                     {RESEARCH_MESSAGES[loadMsgIdx % RESEARCH_MESSAGES.length]}
                   </div>
                 </div>
@@ -2947,12 +2937,12 @@ export default function App() {
               <div className="v-banner">
                 <div className="v-steps">
                   <div className="v-step">
-                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: "100%", background: "#C9A96E" }} /></div>
-                    <div className="v-step-l" style={{ color: "#C9A96E" }}>Identified</div>
+                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: "100%", background: "var(--accent)" }} /></div>
+                    <div className="v-step-l" style={{ color: "var(--accent)" }}>Identified</div>
                   </div>
                   <div className="v-step">
-                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: phase === "searching" ? "40%" : "100%", background: phase === "done" ? (results.items.some(it => it.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.15)") : "rgba(201,169,110,.4)", transition: phase === "searching" ? "width 12s linear" : "width .5s ease" }} /></div>
-                    <div className="v-step-l" style={{ color: phase === "searching" ? "rgba(201,169,110,.5)" : results.items.some(it => it.status === "verified") ? "#C9A96E" : "rgba(255,255,255,.2)", transition: "opacity .35s ease", opacity: phase === "searching" ? (loadMsgVisible ? 1 : 0.3) : 1 }}>
+                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: phase === "searching" ? "40%" : "100%", background: phase === "done" ? (results.items.some(it => it.status === "verified") ? "var(--accent)" : "var(--text-tertiary)") : "rgba(201,169,110,.4)", transition: phase === "searching" ? "width 12s linear" : "width .5s ease" }} /></div>
+                    <div className="v-step-l" style={{ color: phase === "searching" ? "rgba(201,169,110,.5)" : results.items.some(it => it.status === "verified") ? "var(--accent)" : "var(--text-tertiary)", transition: "opacity .35s ease", opacity: phase === "searching" ? (loadMsgVisible ? 1 : 0.3) : 1 }}>
                       {phase === "searching"
                         ? (isResearch ? RESEARCH_MESSAGES[loadMsgIdx % RESEARCH_MESSAGES.length] : SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length])
                         : results.items.some(it => it.status === "verified") ? "Products found" : "Search complete"}
@@ -2972,10 +2962,10 @@ export default function App() {
                   </div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {results.summary && <div style={{ fontSize: 13, color: "rgba(255,255,255,.6)", lineHeight: 1.5, marginBottom: 8 }}>{results.summary}</div>}
+                  {results.summary && <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 8 }}>{results.summary}</div>}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,.35)", textTransform: "uppercase" }}>{pickedItems.size} items</span>
-                    <div style={{ display: "inline-flex", background: "rgba(255,255,255,.04)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden", marginLeft: "auto" }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "var(--text-tertiary)", textTransform: "uppercase" }}>{pickedItems.size} items</span>
+                    <div style={{ display: "inline-flex", background: "var(--bg-input)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden", marginLeft: "auto" }}>
                       <button
                         aria-label="Switch to Men's results"
                         onClick={() => {
@@ -2984,7 +2974,7 @@ export default function App() {
                             if (phase === "done" && pickedItems.size > 0) setTimeout(() => runProductSearch(), 100);
                           }
                         }}
-                        style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 28, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "rgba(255,255,255,.3)", borderRight: "1px solid var(--border)" }}
+                        style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 28, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "var(--text-tertiary)", borderRight: "1px solid var(--border)" }}
                       >Men's</button>
                       <button
                         aria-label="Switch to Women's results"
@@ -2994,7 +2984,7 @@ export default function App() {
                             if (phase === "done" && pickedItems.size > 0) setTimeout(() => runProductSearch(), 100);
                           }
                         }}
-                        style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "'Outfit'", transition: "all var(--transition-fast)", minHeight: 28, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "rgba(255,255,255,.3)" }}
+                        style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 28, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "var(--text-tertiary)" }}
                       >Women's</button>
                     </div>
                   </div>
@@ -3006,12 +2996,12 @@ export default function App() {
                 <div style={{ padding: "0 20px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "rgba(201,169,110,.4)", textTransform: "uppercase", marginBottom: 2 }}>Found in this photo</div>
                   {identPreview.slice(0, 4).map((item, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "rgba(255,255,255,.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,.04)" }}>
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#C9A96E", flexShrink: 0 }} />
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--accent-bg)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>{item.name}</span>
-                        {item.brand && item.brand !== "Unidentified" && <span style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginLeft: 6 }}>{item.brand}</span>}
-                        {item.color && <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)", marginLeft: 4 }}>· {item.color}</span>}
+                        <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 600 }}>{item.name}</span>
+                        {item.brand && item.brand !== "Unidentified" && <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginLeft: 6 }}>{item.brand}</span>}
+                        {item.color && <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginLeft: 4 }}>· {item.color}</span>}
                       </div>
                     </div>
                   ))}
@@ -3056,12 +3046,12 @@ export default function App() {
                         style={{
                           flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                           padding: "10px 8px", minHeight: 44,
-                          background: isActive ? v.bg : "rgba(255,255,255,.02)",
-                          border: `1px solid ${isActive ? v.border : "rgba(255,255,255,.06)"}`,
+                          background: isActive ? v.bg : "var(--bg-card)",
+                          border: `1px solid ${isActive ? v.border : "var(--border)"}`,
                           borderRadius: "var(--radius-md)", cursor: "pointer",
                           transition: "all var(--transition-fast)",
                           animation: isAnimating && v.key === "not_for_me" ? "verdictShake 0.4s ease" : isAnimating ? "verdictPop 0.4s ease" : "none",
-                          fontFamily: "'Outfit'",
+                          fontFamily: "var(--font-sans)",
                         }}
                       >
                         <span style={{ fontSize: 18, fontWeight: 700, color: isActive ? v.color : "rgba(255,255,255,.25)", transition: "color var(--transition-fast)" }}>{v.icon}</span>
@@ -3074,14 +3064,14 @@ export default function App() {
 
               {/* ─── Banner ad slot (free users) ─── */}
               {showAds && (
-                <div className="ad-slot ad-banner" style={{ margin: "0 20px 8px", height: "auto", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,.05)", background: "linear-gradient(135deg, rgba(201,169,110,.06) 0%, rgba(255,255,255,.02) 100%)" }}>
+                <div className="ad-slot ad-banner" style={{ margin: "0 20px 8px", height: "auto", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", background: "var(--accent-bg)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
                     <div style={{ width: 38, height: 38, borderRadius: 8, background: "rgba(201,169,110,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✦</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 2 }}>Trending This Week</div>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)" }}>Discover curated styles from top brands</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>Trending This Week</div>
+                      <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>Discover curated styles from top brands</div>
                     </div>
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,.15)", letterSpacing: .5, textTransform: "uppercase", flexShrink: 0 }}>Sponsored</div>
+                    <div style={{ fontSize: 9, color: "var(--text-tertiary)", letterSpacing: .5, textTransform: "uppercase", flexShrink: 0 }}>Sponsored</div>
                   </div>
                 </div>
               )}
@@ -3097,7 +3087,7 @@ export default function App() {
                   const allTierProducts = item.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(item.tiers[tk]).map(p => ({ ...p, _tier: tk }))) : [];
 
                   return (
-                    <div key={i} style={{ borderBottom: "1px solid rgba(255,255,255,.04)" }}>
+                    <div key={i} style={{ borderBottom: "1px solid var(--border)" }}>
                       {/* Item header — tap to expand/collapse */}
                       <button
                         onClick={() => {
@@ -3111,24 +3101,24 @@ export default function App() {
                         style={{
                           width: "100%", display: "flex", alignItems: "center", gap: 10,
                           padding: "14px 20px", background: "none", border: "none",
-                          cursor: "pointer", fontFamily: "'Outfit'", textAlign: "left",
+                          cursor: "pointer", fontFamily: "var(--font-sans)", textAlign: "left",
                           transition: "background .15s",
                         }}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: "#fff", lineHeight: 1.3 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
                             {item.name}
-                            {item.priority && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", borderRadius: 100, color: "#C9A96E", letterSpacing: .5, verticalAlign: "middle" }}>Circled</span>}
+                            {item.priority && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, verticalAlign: "middle" }}>Circled</span>}
                           </div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,.35)", marginTop: 2 }}>
+                          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
                             {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
                           </div>
                         </div>
-                        {item.status === "searching" && <div className="ld-dot" style={{ width: 8, height: 8, background: "#C9A96E", flexShrink: 0 }} />}
+                        {item.status === "searching" && <div className="ld-dot" style={{ width: 8, height: 8, background: "var(--accent)", flexShrink: 0 }} />}
                         {item.status === "verified" && allTierProducts.length > 0 && (
-                          <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,.25)", flexShrink: 0 }}>{allTierProducts.length} products</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-tertiary)", flexShrink: 0 }}>{allTierProducts.length} products</span>
                         )}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform .2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform .2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>
                           <polyline points="6 9 12 15 18 9"/>
                         </svg>
                       </button>
@@ -3145,9 +3135,9 @@ export default function App() {
 
                           {/* Failed state */}
                           {item.status === "failed" && !item.tiers && (
-                            <div style={{ padding: "12px 20px", textAlign: "center", color: "rgba(255,255,255,.25)", fontSize: 12 }}>
+                            <div style={{ padding: "12px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 12 }}>
                               No products found.{" "}
-                              <span style={{ color: "#C9A96E", cursor: "pointer" }} onClick={() => { setSelIdx(i); setItemViewModes(m => ({ ...m, [i]: "id" })); }}>Correct the AI</span>
+                              <span style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => { setSelIdx(i); setItemViewModes(m => ({ ...m, [i]: "id" })); }}>Correct the AI</span>
                             </div>
                           )}
 
@@ -3171,20 +3161,20 @@ export default function App() {
                                       <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
                                         <a href={href} target="_blank" rel="noopener noreferrer"
                                           onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback }, scanId, "scan")}
-                                          style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "rgba(255,255,255,.02)", border: `1px solid ${p.is_identified_brand ? "rgba(201,169,110,.25)" : "rgba(255,255,255,.05)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
+                                          style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
                                           {p.image_url && (
-                                            <div style={{ width: "100%", aspectRatio: "1", background: "rgba(255,255,255,.04)", overflow: "hidden" }}>
+                                            <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
                                               <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                                             </div>
                                           )}
                                           <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
-                                            {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "#C9A96E", alignSelf: "flex-start" }}>ORIGINAL</span>}
-                                            <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,.7)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                                            {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>ORIGINAL</span>}
+                                            <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                                               {isFallback ? "Search results" : (p.product_name || "Product")}
                                             </div>
-                                            <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
+                                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
                                             <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : p.price}</div>
-                                            <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid rgba(255,255,255,.04)" }}>Shop</div>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
                                           </div>
                                         </a>
                                         {/* Save heart */}
@@ -3215,13 +3205,13 @@ export default function App() {
                                 {item.alt_search && (
                                   <button
                                     onClick={() => { setSearchNotes(item.alt_search); setTimeout(() => runProductSearch(), 100); track("alt_search_clicked", { item_name: item.name, alt_search: item.alt_search }, scanId, "scan"); }}
-                                    style={{ padding: "8px 14px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 10, color: "var(--accent)", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                                    style={{ padding: "8px 14px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 10, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                                     Try alternate search
                                   </button>
                                 )}
                                 <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`} target="_blank" rel="noopener noreferrer"
                                   onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
-                                  style={{ padding: "8px 14px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  style={{ padding: "8px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
                                   Google Shopping
                                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                                 </a>
@@ -3246,8 +3236,8 @@ export default function App() {
                     style={{
                       width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                       padding: "12px 0", background: "none", border: "none",
-                      cursor: "pointer", fontFamily: "'Outfit'",
-                      color: "rgba(255,255,255,.35)", fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
+                      cursor: "pointer", fontFamily: "var(--font-sans)",
+                      color: "var(--text-tertiary)", fontSize: 12, fontWeight: 600, letterSpacing: 0.3,
                     }}
                   >
                     Refine Search
@@ -3262,7 +3252,7 @@ export default function App() {
 
                       {/* Search notes */}
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase", marginBottom: 6 }}>Search Notes</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 6 }}>Search Notes</div>
                         {searchNotes ? (
                           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-full)", cursor: "pointer", marginBottom: 6 }}
                             onClick={() => { const el = document.getElementById("adv-search-notes"); if (el) el.focus(); }}>
@@ -3279,18 +3269,18 @@ export default function App() {
                           placeholder="Tell us more... (brand, color, style)"
                           style={{
                             width: "100%", padding: "10px 14px",
-                            background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)",
+                            background: "var(--bg-input)", border: "1px solid var(--border)",
                             borderRadius: "var(--radius-md)", color: "var(--text-secondary)", fontSize: "var(--text-sm)",
-                            fontFamily: "'Outfit'", outline: "none", boxSizing: "border-box", minHeight: 44,
+                            fontFamily: "var(--font-sans)", outline: "none", boxSizing: "border-box", minHeight: 44,
                           }}
-                          onFocus={e => e.target.style.borderColor = "rgba(201,169,110,.3)"}
-                          onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.06)"}
+                          onFocus={e => e.target.style.borderColor = "var(--border-focus)"}
+                          onBlur={e => e.target.style.borderColor = "var(--border)"}
                         />
                       </div>
 
                       {/* Budget presets + range */}
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase", marginBottom: 8 }}>Budget Range</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 8 }}>Budget Range</div>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                           {[
                             { l: "$ Under $50", min: 0, max: 50 },
@@ -3303,10 +3293,10 @@ export default function App() {
                               <button key={preset.l}
                                 onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); }}
                                 style={{
-                                  padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, fontFamily: "'Outfit'", cursor: "pointer", transition: "all .2s",
-                                  background: isActive ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.03)",
-                                  border: `1px solid ${isActive ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.06)"}`,
-                                  color: isActive ? "#C9A96E" : "rgba(255,255,255,.4)",
+                                  padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, fontFamily: "var(--font-sans)", cursor: "pointer", transition: "all .2s",
+                                  background: isActive ? "rgba(201,169,110,.12)" : "var(--bg-input)",
+                                  border: `1px solid ${isActive ? "rgba(201,169,110,.4)" : "var(--border)"}`,
+                                  color: isActive ? "var(--accent)" : "var(--text-tertiary)",
                                 }}>
                                 {preset.l}
                               </button>
@@ -3315,18 +3305,18 @@ export default function App() {
                         </div>
                         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 9, color: "rgba(255,255,255,.2)", marginBottom: 4 }}>MIN</div>
-                            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 10, padding: "8px 12px" }}>
-                              <span style={{ color: "rgba(255,255,255,.3)", fontSize: 14, marginRight: 4 }}>$</span>
-                              <input type="number" value={budgetMin} onChange={e => setBudgetMin(Math.max(0, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, width: "100%", outline: "none" }} />
+                            <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginBottom: 4 }}>MIN</div>
+                            <div style={{ display: "flex", alignItems: "center", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 12px" }}>
+                              <span style={{ color: "var(--text-tertiary)", fontSize: 14, marginRight: 4 }}>$</span>
+                              <input type="number" value={budgetMin} onChange={e => setBudgetMin(Math.max(0, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, width: "100%", outline: "none" }} />
                             </div>
                           </div>
-                          <span style={{ color: "rgba(255,255,255,.15)", fontSize: 14, marginTop: 16 }}>--</span>
+                          <span style={{ color: "var(--text-tertiary)", fontSize: 14, marginTop: 16 }}>--</span>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 9, color: "rgba(255,255,255,.2)", marginBottom: 4 }}>MAX</div>
-                            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 10, padding: "8px 12px" }}>
-                              <span style={{ color: "rgba(255,255,255,.3)", fontSize: 14, marginRight: 4 }}>$</span>
-                              <input type="number" value={budgetMax} onChange={e => setBudgetMax(Math.max(budgetMin + 1, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, width: "100%", outline: "none" }} />
+                            <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginBottom: 4 }}>MAX</div>
+                            <div style={{ display: "flex", alignItems: "center", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 12px" }}>
+                              <span style={{ color: "var(--text-tertiary)", fontSize: 14, marginRight: 4 }}>$</span>
+                              <input type="number" value={budgetMax} onChange={e => setBudgetMax(Math.max(budgetMin + 1, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, width: "100%", outline: "none" }} />
                             </div>
                           </div>
                         </div>
@@ -3337,8 +3327,8 @@ export default function App() {
                         onClick={() => { setPrefs(p => ({ ...p, budget_min: budgetMin, budget_max: budgetMax })); runProductSearch(); }}
                         style={{
                           width: "100%", padding: "12px 0",
-                          background: "#C9A96E", color: "#0C0C0E", border: "none",
-                          borderRadius: "var(--radius-md)", fontFamily: "'Outfit'",
+                          background: "var(--accent)", color: "var(--text-inverse)", border: "none",
+                          borderRadius: "var(--radius-md)", fontFamily: "var(--font-sans)",
                           fontSize: 14, fontWeight: 700, cursor: "pointer",
                         }}>
                         Update Search
@@ -3347,7 +3337,7 @@ export default function App() {
                       {/* Complete the Look */}
                       {results?.items?.length > 0 && (
                         <div>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.25)", textTransform: "uppercase", marginBottom: 8 }}>{t("complete_look")}</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 8 }}>{t("complete_look")}</div>
                           {!pairings && !pairingsLoading && (
                             <button
                               onClick={async () => {
@@ -3359,12 +3349,12 @@ export default function App() {
                                 } catch { setPairings([]); }
                                 setPairingsLoading(false);
                               }}
-                              style={{ width: "100%", padding: "12px 0", background: "rgba(201,169,110,.07)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                              style={{ width: "100%", padding: "12px 0", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                               Complete the Look
                             </button>
                           )}
                           {pairingsLoading && (
-                            <div style={{ padding: "14px", textAlign: "center", color: "rgba(255,255,255,.3)", fontSize: 12 }}>
+                            <div style={{ padding: "14px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 12 }}>
                               <div className="ld-dots" style={{ justifyContent: "center", marginBottom: 6 }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
                               Finding complementary pieces...
                             </div>
@@ -3384,9 +3374,9 @@ export default function App() {
                                         authFetch(`${API_BASE}/api/suggest-pairings/track-click`, { method: "POST", body: JSON.stringify({ pairing_product_url: shopUrl, item_name: p.name }) }).catch(() => {});
                                       }}
                                       className="card-press"
-                                      style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "rgba(201,169,110,.04)", border: "1px solid rgba(201,169,110,.1)", borderRadius: 12, textDecoration: "none", color: "inherit", overflow: "hidden" }}>
+                                      style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, textDecoration: "none", color: "inherit", overflow: "hidden" }}>
                                       {prod?.image_url ? (
-                                        <div style={{ width: "100%", aspectRatio: "1", background: "rgba(255,255,255,.04)", overflow: "hidden" }}>
+                                        <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
                                           <img src={prod.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                                         </div>
                                       ) : (
@@ -3395,20 +3385,20 @@ export default function App() {
                                         </div>
                                       )}
                                       <div style={{ padding: "8px 10px" }}>
-                                        <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,.7)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod?.product_name || p.name || "Item"}</div>
-                                        {(prod?.brand || p.brand) && <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)" }}>{prod?.brand || p.brand}</div>}
-                                        {(prod?.price || p.price) && <div style={{ fontSize: 13, fontWeight: 700, color: "#C9A96E", marginTop: 2 }}>{prod?.price || p.price}</div>}
-                                        <div style={{ fontSize: 11, fontWeight: 600, color: "#C9A96E", textAlign: "center", paddingTop: 4, borderTop: "1px solid rgba(255,255,255,.04)" }}>Shop</div>
+                                        <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod?.product_name || p.name || "Item"}</div>
+                                        {(prod?.brand || p.brand) && <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{prod?.brand || p.brand}</div>}
+                                        {(prod?.price || p.price) && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", marginTop: 2 }}>{prod?.price || p.price}</div>}
+                                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
                                       </div>
                                     </a>
                                   );
                                 })}
                               </div>
-                              <button onClick={() => setPairings(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,.15)", fontFamily: "'Outfit'", fontSize: 11, cursor: "pointer", padding: "4px 0" }}>Dismiss</button>
+                              <button onClick={() => setPairings(null)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", fontSize: 11, cursor: "pointer", padding: "4px 0" }}>Dismiss</button>
                             </div>
                           )}
                           {pairings && pairings.length === 0 && (
-                            <div style={{ fontSize: 12, color: "rgba(255,255,255,.2)", textAlign: "center", padding: "12px 0" }}>Outfit looks complete.</div>
+                            <div style={{ fontSize: 12, color: "var(--text-tertiary)", textAlign: "center", padding: "12px 0" }}>Outfit looks complete.</div>
                           )}
                         </div>
                       )}
@@ -3435,9 +3425,9 @@ export default function App() {
                             style={{
                               flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                               padding: "12px 16px", minHeight: 44,
-                              background: "rgba(255,255,255,.04)", color: "rgba(255,255,255,.5)",
-                              border: "1px solid rgba(255,255,255,.08)", borderRadius: "var(--radius-md)",
-                              fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                              background: "var(--bg-input)", color: "var(--text-secondary)",
+                              border: "1px solid var(--border)", borderRadius: "var(--radius-md)",
+                              fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer",
                             }}
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -3477,9 +3467,9 @@ export default function App() {
                             style={{
                               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                               padding: "12px 16px", minHeight: 44,
-                              background: "rgba(255,255,255,.04)", color: "rgba(255,255,255,.5)",
-                              border: "1px solid rgba(255,255,255,.08)", borderRadius: "var(--radius-md)",
-                              fontFamily: "'Outfit'", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                              background: "var(--bg-input)", color: "var(--text-secondary)",
+                              border: "1px solid var(--border)", borderRadius: "var(--radius-md)",
+                              fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer",
                               opacity: shareCardLoading ? 0.6 : 1,
                             }}
                           >
@@ -3550,7 +3540,7 @@ export default function App() {
                       background: "linear-gradient(135deg, rgba(76,175,80,.1), rgba(76,175,80,.05))",
                       border: "1px solid rgba(76,175,80,.25)", borderRadius: "var(--radius-sm)",
                       display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
-                      color: "var(--text-primary)", fontSize: 14, fontWeight: 600, fontFamily: "'Outfit'"
+                      color: "var(--text-primary)", fontSize: 14, fontWeight: 600, fontFamily: "var(--font-sans)"
                     }}>
                     <span style={{ fontSize: 20 }}>&#x1F4B0;</span>
                     <span>{priceAlertCount} price drop{priceAlertCount !== 1 ? "s" : ""} on your saved items!</span>
@@ -3604,32 +3594,30 @@ export default function App() {
             return (
             <div className="profile-v2">
               {/* Top bar: username left, gear icon right (Instagram style) */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0", position: "relative", zIndex: 2 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.5, color: "var(--text-primary)", fontFamily: "'Outfit'" }}>{authName || authEmail?.split("@")[0] || "User"}</div>
-                <button className="profile-v2-gear" style={{ position: "relative", top: 0, right: 0 }} aria-label="Open settings" onClick={() => setProfileSettingsOpen(true)}>
+              <div className="profile-v2-topbar">
+                <div className="profile-v2-username">{authName || authEmail?.split("@")[0] || "User"}</div>
+                <button className="profile-v2-gear" aria-label="Open settings" onClick={() => setProfileSettingsOpen(true)}>
                   <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
               </div>
 
               {/* Profile info row: avatar left, stats right (Instagram layout) */}
-              <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "20px 20px 0" }}>
-                {/* Avatar */}
-                <div style={{ width: 80, height: 80, borderRadius: "50%", background: "var(--accent-bg)", border: "3px solid var(--accent-border)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: "var(--accent)", fontSize: 30, fontFamily: "'Outfit'", flexShrink: 0 }} aria-label="Profile avatar">
+              <div className="profile-v2-row">
+                <div className="profile-v2-avatar" aria-label="Profile avatar">
                   {(authName || authEmail || "U")[0].toUpperCase()}
                 </div>
-                {/* Stats row next to avatar */}
-                <div style={{ flex: 1, display: "flex", justifyContent: "space-around" }} role="list" aria-label="Profile statistics">
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }} role="listitem">
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{profileScansCount}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>Scans</div>
+                <div className="profile-v2-stats" role="list" aria-label="Profile statistics">
+                  <div className="profile-v2-stat" role="listitem">
+                    <div className="profile-stat-val">{profileScansCount}</div>
+                    <div className="profile-stat-lbl">Scans</div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: "pointer" }} role="listitem" onClick={() => { /* follower list - future */ }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{profileStats?.followers_count ?? 0}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>Followers</div>
+                  <div className="profile-v2-stat" role="listitem">
+                    <div className="profile-stat-val">{profileStats?.followers_count ?? 0}</div>
+                    <div className="profile-stat-lbl">Followers</div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, cursor: "pointer" }} role="listitem" onClick={() => { /* following list - future */ }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{profileStats?.following_count ?? 0}</div>
-                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>Following</div>
+                  <div className="profile-v2-stat" role="listitem">
+                    <div className="profile-stat-val">{profileStats?.following_count ?? 0}</div>
+                    <div className="profile-stat-lbl">Following</div>
                   </div>
                 </div>
               </div>
@@ -3667,7 +3655,7 @@ export default function App() {
                     width: "100%", marginTop: 8, padding: "12px 0", fontSize: 14, fontWeight: 600,
                     borderRadius: "var(--radius-sm)", background: "linear-gradient(135deg, rgba(201,169,110,.12), rgba(201,169,110,.04))",
                     border: "1px solid rgba(201,169,110,.25)", color: "var(--accent)",
-                    cursor: "pointer", fontFamily: "'Outfit'", letterSpacing: 0.3,
+                    cursor: "pointer", fontFamily: "var(--font-sans)", letterSpacing: 0.3,
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8
                   }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
@@ -3677,7 +3665,7 @@ export default function App() {
                   <div style={{
                     width: "100%", marginTop: 8, padding: "10px 16px", fontSize: 13,
                     borderRadius: "var(--radius-sm)", background: "var(--bg-card)", border: "1px solid var(--border)",
-                    color: "var(--text-tertiary)", textAlign: "center", fontFamily: "'Outfit'"
+                    color: "var(--text-tertiary)", textAlign: "center", fontFamily: "var(--font-sans)"
                   }}>
                     {styleDna.message}
                   </div>
@@ -3815,7 +3803,7 @@ export default function App() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>Refer a friend</div>
                       <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 10, lineHeight: 1.4 }}>Share your code. Both of you get $5 credit.</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ flex: 1, padding: "8px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-sm)", fontWeight: 800, color: "var(--accent)", letterSpacing: 2, fontSize: 14, fontFamily: "'Outfit'" }}>{referralCode}</div>
+                        <div style={{ flex: 1, padding: "8px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-sm)", fontWeight: 800, color: "var(--accent)", letterSpacing: 2, fontSize: 14, fontFamily: "var(--font-sans)" }}>{referralCode}</div>
                         <button className="btn-secondary" style={{ padding: "8px 14px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => {
                           navigator.clipboard.writeText(referralCode).then(() => { setReferralCopied(true); setTimeout(() => setReferralCopied(false), 2000); }).catch(() => {});
                         }}>{referralCopied ? "Copied" : "Copy"}</button>
@@ -3864,15 +3852,15 @@ export default function App() {
                 <div className="item-opts-handle" />
                 {/* Header */}
                 <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 3 }}>{item.name}</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)" }}>{item.subcategory || item.category}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 3 }}>{item.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{item.subcategory || item.category}</div>
                 </div>
 
                 {/* Include toggle */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.06)", borderRadius: 12, marginBottom: 20 }}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 12, marginBottom: 20 }}
                   onClick={() => setPickedItems(prev => { const n = new Set(prev); if (n.has(idx)) n.delete(idx); else n.add(idx); return n; })}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.6)" }}>Include in search</span>
-                  <div style={{ width: 42, height: 24, borderRadius: 12, background: isPicked ? "#C9A96E" : "rgba(255,255,255,.08)", position: "relative", transition: "background .2s", cursor: "pointer" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Include in search</span>
+                  <div style={{ width: 42, height: 24, borderRadius: 12, background: isPicked ? "var(--accent)" : "var(--border)", position: "relative", transition: "background .2s", cursor: "pointer" }}>
                     <div style={{ position: "absolute", top: 3, left: isPicked ? 21 : 3, width: 18, height: 18, borderRadius: 9, background: "#fff", transition: "left .2s" }} />
                   </div>
                 </div>
@@ -3889,10 +3877,10 @@ export default function App() {
                       const on = (ov.marketPref || "both") === o.v;
                       return (
                         <div key={o.v}
-                          style={{ flex: 1, padding: "8px 6px", textAlign: "center", background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.03)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.07)"}`, borderRadius: 10, cursor: "pointer", transition: "all .2s" }}
+                          style={{ flex: 1, padding: "8px 6px", textAlign: "center", background: on ? "rgba(201,169,110,.1)" : "var(--bg-input)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "var(--border)"}`, borderRadius: 10, cursor: "pointer", transition: "all .2s" }}
                           onClick={() => setOv(o2 => ({ ...(o2 || ov), marketPref: o.v }))}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: on ? "#C9A96E" : "rgba(255,255,255,.45)", marginBottom: 2 }}>{o.l}</div>
-                          <div style={{ fontSize: 9, color: on ? "rgba(201,169,110,.55)" : "rgba(255,255,255,.2)", lineHeight: 1.3 }}>{o.desc}</div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: on ? "var(--accent)" : "var(--text-secondary)", marginBottom: 2 }}>{o.l}</div>
+                          <div style={{ fontSize: 9, color: on ? "rgba(201,169,110,.55)" : "var(--text-tertiary)", lineHeight: 1.3 }}>{o.desc}</div>
                         </div>
                       );
                     })}
@@ -3905,7 +3893,7 @@ export default function App() {
 
                   {/* Dual range slider */}
                   <div style={{ position: "relative", height: 40, marginBottom: 8 }}>
-                    <div style={{ position: "absolute", top: 18, left: 0, right: 0, height: 4, background: "rgba(255,255,255,.06)", borderRadius: 2 }} />
+                    <div style={{ position: "absolute", top: 18, left: 0, right: 0, height: 4, background: "var(--border)", borderRadius: 2 }} />
                     <div style={{ position: "absolute", top: 18, left: `${Math.max(0, (bMin / 1000) * 100)}%`, right: `${Math.max(0, 100 - (bMax / 1000) * 100)}%`, height: 4, background: "var(--accent)", borderRadius: 2, transition: "left var(--transition-fast), right var(--transition-fast)" }} />
                     <input
                       type="range" min="0" max="1000" step="10" value={bMin}
@@ -3950,18 +3938,18 @@ export default function App() {
                           onClick={() => setOv(o2 => ({ ...(o2 || ov), budgetMin: preset.min, budgetMax: preset.max }))}
                           style={{
                             flex: 1, padding: "8px 6px", minHeight: 44,
-                            background: isPresetActive ? "var(--accent-bg)" : "rgba(255,255,255,.03)",
-                            border: `1px solid ${isPresetActive ? "var(--accent-border)" : "rgba(255,255,255,.07)"}`,
+                            background: isPresetActive ? "var(--accent-bg)" : "var(--bg-input)",
+                            border: `1px solid ${isPresetActive ? "var(--accent-border)" : "var(--border)"}`,
                             borderRadius: "var(--radius-sm)", cursor: "pointer",
-                            fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600,
-                            color: isPresetActive ? "var(--accent)" : "rgba(255,255,255,.4)",
+                            fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600,
+                            color: isPresetActive ? "var(--accent)" : "var(--text-tertiary)",
                             transition: "all var(--transition-fast)",
                           }}
                         >{preset.label}</button>
                       );
                     })}
                   </div>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 8, textAlign: "center" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 8, textAlign: "center" }}>
                     Budget: under ${bMin} · Mid: ${bMin}–${bMax} · Premium: ${bMax}+
                   </div>
                 </div>
@@ -3972,7 +3960,7 @@ export default function App() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                     {[{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"}].map(o => {
                       const on = (spVal.body_type||[]).includes(o.v);
-                      return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"rgba(255,255,255,.03)", border:`1px solid ${on?"rgba(201,169,110,.4)":"rgba(255,255,255,.07)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"#C9A96E":"rgba(255,255,255,.45)", transition:"all .2s" }}
+                      return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"var(--bg-input)", border:`1px solid ${on?"rgba(201,169,110,.4)":"var(--border)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"var(--accent)":"var(--text-secondary)", transition:"all .2s" }}
                         onClick={() => { const a=spVal.body_type||[]; setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, body_type: a.includes(o.v)?a.filter(x=>x!==o.v):[...a,o.v] } })); }}>{o.l}</div>;
                     })}
                   </div>
@@ -3984,7 +3972,7 @@ export default function App() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                     {[{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"}].map(o => {
                       const on = (spVal.fit||[]).includes(o.v);
-                      return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"rgba(255,255,255,.03)", border:`1px solid ${on?"rgba(201,169,110,.4)":"rgba(255,255,255,.07)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"#C9A96E":"rgba(255,255,255,.45)", transition:"all .2s" }}
+                      return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"var(--bg-input)", border:`1px solid ${on?"rgba(201,169,110,.4)":"var(--border)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"var(--accent)":"var(--text-secondary)", transition:"all .2s" }}
                         onClick={() => { const a=spVal.fit||[]; setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, fit: a.includes(o.v)?a.filter(x=>x!==o.v):[...a,o.v] } })); }}>{o.l}</div>;
                     })}
                   </div>
@@ -3995,7 +3983,7 @@ export default function App() {
                   <div style={{ marginTop: 0 }}>
                     <div className="item-opts-label">{sizeInfo.label}</div>
                     <select value={spVal.sizes?.[sizeInfo.key]||""} onChange={e => setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, sizes: { ...((o2||ov).sizePrefs?.sizes||{}), [sizeInfo.key]: e.target.value||null } } }))}
-                      style={{ width:"100%", background:"rgba(255,255,255,.04)", border:"1px solid rgba(255,255,255,.08)", borderRadius:10, color: spVal.sizes?.[sizeInfo.key]?"#fff":"rgba(255,255,255,.3)", fontSize:14, padding:"12px 14px", fontFamily:"'Outfit'", cursor:"pointer", outline:"none" }}>
+                      style={{ width:"100%", background:"var(--bg-input)", border:"1px solid var(--border)", borderRadius:10, color: spVal.sizes?.[sizeInfo.key]?"var(--text-primary)":"var(--text-tertiary)", fontSize:14, padding:"12px 14px", fontFamily:"var(--font-sans)", cursor:"pointer", outline:"none", minHeight:44 }}>
                       <option value="" style={{color:"#111",background:"#fff"}}>Not set</option>
                       {sizeInfo.opts.map(o=><option key={o} value={o} style={{color:"#111",background:"#fff"}}>{o}</option>)}
                     </select>
@@ -4003,7 +3991,7 @@ export default function App() {
                 )}
 
                 <button onClick={() => setItemSettingsIdx(null)}
-                  style={{ width:"100%", marginTop:22, padding:15, background:"#C9A96E", color:"#0C0C0E", border:"none", borderRadius:14, fontFamily:"'Outfit'", fontSize:15, fontWeight:700, cursor:"pointer" }}>
+                  className="btn-primary" style={{ width:"100%", marginTop:22 }}>
                   Done
                 </button>
               </div>
@@ -4062,35 +4050,25 @@ export default function App() {
         )}
 
         {/* ─── FAB (visible on all tabs) ─────────────────── */}
-        <button className="fab" onClick={() => { track("fab_scan", {}); setShowScanSheet(true); }} aria-label="Scan outfit" style={{ position: "fixed", bottom: "calc(60px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 1001, width: 56, height: 56, borderRadius: "50%", background: "var(--accent)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 20px rgba(201,169,110,0.4)" }}>
+        <button className="fab" onClick={() => { track("fab_scan", {}); setShowScanSheet(true); }} aria-label="Scan outfit">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#0C0C0E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
         </button>
 
         {/* ─── Scan bottom sheet ─────────────────────── */}
         {showScanSheet && (
           <>
-            <div className="bottom-sheet-overlay animate-fade-in" onClick={() => setShowScanSheet(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1100 }} />
-            <div className="bottom-sheet animate-slide-up" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1101, background: "var(--bg-card, #1A1A1E)", borderRadius: "20px 20px 0 0", padding: "12px 20px calc(20px + env(safe-area-inset-bottom, 0px))" }}>
-              <div className="bottom-sheet-handle" style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,.15)", margin: "0 auto 20px" }} />
-              <button
-                onClick={() => { setShowScanSheet(false); setTab("scan"); camStart(); }}
-                style={{ width: "100%", padding: "16px 0", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, color: "#fff", fontFamily: "'Outfit'", fontSize: 16, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52, marginBottom: 10 }}
-              >
+            <div className="bottom-sheet-overlay" onClick={() => setShowScanSheet(false)} />
+            <div className="bottom-sheet">
+              <div className="bottom-sheet-handle" />
+              <button className="scan-sheet-btn" onClick={() => { setShowScanSheet(false); setTab("scan"); camStart(); }}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
                 Take Photo
               </button>
-              <button
-                onClick={() => { setShowScanSheet(false); setTab("scan"); fileRef.current?.click(); }}
-                style={{ width: "100%", padding: "16px 0", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, color: "#fff", fontFamily: "'Outfit'", fontSize: 16, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52, marginBottom: 10 }}
-              >
+              <button className="scan-sheet-btn" onClick={() => { setShowScanSheet(false); setTab("scan"); fileRef.current?.click(); }}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
                 Choose from Gallery
               </button>
-              <button
-                onClick={() => setShowScanSheet(false)}
-                className="btn-ghost"
-                style={{ width: "100%", padding: "14px 0", borderRadius: 14, fontFamily: "'Outfit'", fontSize: 15, fontWeight: 600, cursor: "pointer", minHeight: 48, color: "rgba(255,255,255,.7)" }}
-              >
+              <button className="btn-ghost scan-sheet-cancel" onClick={() => setShowScanSheet(false)}>
                 Cancel
               </button>
             </div>
@@ -4098,31 +4076,27 @@ export default function App() {
         )}
 
         {/* ─── Tab bar (5 sections: Home, Search, [FAB gap], Saved, Profile) ── */}
-        <div className="tb" style={{ background: "var(--bg-secondary)", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0", position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000 }}>
-          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px 0 4px", minHeight: 48, gap: 2 }} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); }} aria-label="Home">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill={tab==="home"?"currentColor":"none"} stroke={tab==="home"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
-            <span style={{ fontSize: 10, fontWeight: 600, color: tab==="home" ? "var(--accent)" : "var(--text-tertiary)", marginTop: 2, fontFamily: "'Outfit'" }}>Home</span>
+        <div className="tb">
+          <button className={`tab${tab==="home"?" on":""}`} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); }} aria-label="Home">
+            <svg viewBox="0 0 24 24" fill={tab==="home"?"currentColor":"none"}><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
+            <span className="tab-l">Home</span>
           </button>
-          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px 0 4px", minHeight: 48, gap: 2 }} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); setShowUserSearch(false); }} aria-label="Search">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke={tab==="search"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <span style={{ fontSize: 10, fontWeight: 600, color: tab==="search" ? "var(--accent)" : "var(--text-tertiary)", marginTop: 2, fontFamily: "'Outfit'" }}>Search</span>
+          <button className={`tab${tab==="search"?" on":""}`} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); setShowUserSearch(false); }} aria-label="Search">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <span className="tab-l">Search</span>
           </button>
           {/* FAB spacer */}
           <div style={{ flex: 1 }} />
-          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px 0 4px", minHeight: 48, gap: 2, position: "relative" }} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label="Saved">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill={tab==="likes"?"currentColor":"none"} stroke={tab==="likes"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            <span style={{ fontSize: 10, fontWeight: 600, color: tab==="likes" ? "var(--accent)" : "var(--text-tertiary)", marginTop: 2, fontFamily: "'Outfit'" }}>Saved</span>
+          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label="Saved">
+            <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span className="tab-l">Saved</span>
             {priceAlertCount > 0 && (
-              <span style={{
-                position: "absolute", top: 4, right: "calc(50% - 16px)",
-                width: 8, height: 8, borderRadius: "50%",
-                background: "#FF5252", border: "2px solid var(--bg-primary)"
-              }} />
+              <span className="tab-badge" />
             )}
           </button>
-          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px 0 4px", minHeight: 48, gap: 2 }} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }} aria-label="Profile">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill={tab==="profile"?"currentColor":"none"} stroke={tab==="profile"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
-            <span style={{ fontSize: 10, fontWeight: 600, color: tab==="profile" ? "var(--accent)" : "var(--text-tertiary)", marginTop: 2, fontFamily: "'Outfit'" }}>Profile</span>
+          <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }} aria-label="Profile">
+            <svg viewBox="0 0 24 24" fill={tab==="profile"?"currentColor":"none"}><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
+            <span className="tab-l">Profile</span>
           </button>
         </div>
       </>)}
@@ -4178,14 +4152,14 @@ export default function App() {
                     setCircleConfirmed(false);
                     setCircleSearchActive(true);
                   }}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.4)", borderRadius: 100, color: "#C9A96E", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit'", minHeight: 44 }}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "var(--accent-bg)", border: "1px solid rgba(201,169,110,.4)", borderRadius: 100, color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 44 }}
                   aria-label="Clear circled item"
                 >
                   ✓ Item circled — Clear
                 </button>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 100 }}>
-                  <span style={{ fontSize: 11, color: "rgba(201,169,110,.7)", fontFamily: "'Outfit'", fontWeight: 600 }}>
+                  <span style={{ fontSize: 11, color: "rgba(201,169,110,.7)", fontFamily: "var(--font-sans)", fontWeight: 600 }}>
                     ✏ Draw a circle around any item to prioritize it
                   </span>
                 </div>
@@ -4195,16 +4169,16 @@ export default function App() {
           <div className="crop-bar">
             {cropMode ? (
               <>
-                <button onClick={() => setCropMode(false)} style={{ flex: 1, padding: "14px 0", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, color: "rgba(255,255,255,.55)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={() => setCropMode(false)} style={{ flex: 1, padding: "14px 0", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                   Back
                 </button>
-                <button onClick={applyCrop} style={{ flex: 2, padding: "14px 0", background: "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                <button onClick={applyCrop} style={{ flex: 2, padding: "14px 0", background: "var(--accent)", border: "none", borderRadius: 12, color: "var(--text-inverse)", fontFamily: "var(--font-sans)", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
                   Apply crop
                 </button>
               </>
             ) : (
               <>
-                <button onClick={retakeCrop} style={{ flex: 1, padding: "14px 0", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, color: "rgba(255,255,255,.55)", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                <button onClick={retakeCrop} style={{ flex: 1, padding: "14px 0", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                   Re-take
                 </button>
                 <button onClick={() => {
@@ -4214,13 +4188,13 @@ export default function App() {
                     setCompletedCrop(cropPending.lastCrop);
                   }
                   setCropMode(true);
-                }} style={{ flex: 1, padding: "14px 0", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 12, color: "#C9A96E", fontFamily: "'Outfit'", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                }} style={{ flex: 1, padding: "14px 0", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                   Crop
                 </button>
                 <button
                   onClick={skipCrop}
                   aria-label={priorityRegionBase64 ? "Scan circled item" : "Scan this outfit"}
-                  style={{ flex: 2, padding: "14px 0", background: priorityRegionBase64 ? "rgba(201,169,110,.9)" : "#C9A96E", border: "none", borderRadius: 12, color: "#0C0C0E", fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 48, boxShadow: "0 4px 16px rgba(201,169,110,.35)", transition: "all var(--transition-fast)" }}
+                  style={{ flex: 2, padding: "14px 0", background: priorityRegionBase64 ? "rgba(201,169,110,.9)" : "var(--accent)", border: "none", borderRadius: 12, color: "var(--text-inverse)", fontFamily: "var(--font-sans)", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 48, boxShadow: "0 4px 16px rgba(201,169,110,.35)", transition: "all var(--transition-fast)" }}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0C0C0E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                   {priorityRegionBase64 ? "Scan Circled Item" : "Scan This"}
@@ -4235,22 +4209,22 @@ export default function App() {
       {publicScanView && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-secondary, #0C0C0E)", display: "flex", flexDirection: "column", overflow: "auto" }}>
           {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
-            <div className="logo" style={{ fontFamily: "'Instrument Serif'", fontSize: 22, fontStyle: "italic", color: "var(--text-primary)" }}>A<span style={{ color: "#C9A96E" }}>TT</span>AIRE</div>
-            <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} style={{ background: "none", border: "none", color: "rgba(255,255,255,.4)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
+            <div className="logo" style={{ fontFamily: "'Instrument Serif'", fontSize: 22, fontStyle: "italic", color: "var(--text-primary)" }}>A<span style={{ color: "var(--accent)" }}>TT</span>AIRE</div>
+            <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
           </div>
 
           {publicScanView.loading && (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
               <div className="ld-dots" style={{ justifyContent: "center" }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,.3)" }}>Loading scan...</div>
+              <div style={{ fontSize: 13, color: "var(--text-tertiary)" }}>Loading scan...</div>
             </div>
           )}
 
           {publicScanView.error && (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16, padding: 32 }}>
-              <div style={{ fontSize: 32, color: "rgba(255,255,255,.15)" }}>404</div>
-              <div style={{ fontSize: 14, color: "rgba(255,255,255,.4)", textAlign: "center" }}>{publicScanView.error}</div>
+              <div style={{ fontSize: 32, color: "var(--text-tertiary)" }}>404</div>
+              <div style={{ fontSize: 14, color: "var(--text-secondary)", textAlign: "center" }}>{publicScanView.error}</div>
               <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} className="cta" style={{ width: "auto", padding: "14px 32px" }}>Go to ATTAIRE</button>
             </div>
           )}
@@ -4270,14 +4244,14 @@ export default function App() {
                 <div style={{ padding: "16px 20px", flex: 1 }}>
                   {/* User name */}
                   {ps.user?.display_name && (
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,.35)", marginBottom: 8, fontWeight: 600 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 8, fontWeight: 600 }}>
                       Scanned by {ps.user.display_name}
                     </div>
                   )}
 
                   {/* Summary */}
                   {ps.summary && (
-                    <div style={{ fontSize: 15, color: "rgba(255,255,255,.65)", fontStyle: "italic", lineHeight: 1.5, marginBottom: 16 }}>
+                    <div style={{ fontSize: 15, color: "var(--text-secondary)", fontStyle: "italic", lineHeight: 1.5, marginBottom: 16 }}>
                       {ps.summary}
                     </div>
                   )}
@@ -4285,14 +4259,14 @@ export default function App() {
                   {/* Items list */}
                   {ps.items && ps.items.length > 0 && (
                     <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "rgba(255,255,255,.25)", textTransform: "uppercase", marginBottom: 10 }}>{ps.items.length} item{ps.items.length !== 1 ? "s" : ""} identified</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 10 }}>{ps.items.length} item{ps.items.length !== 1 ? "s" : ""} identified</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {ps.items.map((item, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "rgba(255,255,255,.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,.06)" }}>
-                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#C9A96E", flexShrink: 0 }} />
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg-input)", borderRadius: 10, border: "1px solid var(--border)" }}>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: 14, color: "#fff", fontWeight: 600 }}>{item.name || item.category}</div>
-                              {item.brand && item.brand !== "Unidentified" && <div style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginTop: 2 }}>{item.brand}</div>}
+                              <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 600 }}>{item.name || item.category}</div>
+                              {item.brand && item.brand !== "Unidentified" && <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>{item.brand}</div>}
                             </div>
                           </div>
                         ))}
@@ -4315,8 +4289,8 @@ export default function App() {
                     }}
                     style={{
                       width: "100%", padding: "16px 0", minHeight: 52,
-                      background: "#C9A96E", color: "#0C0C0E", border: "none", borderRadius: 14,
-                      fontFamily: "'Outfit'", fontSize: 16, fontWeight: 700, cursor: "pointer",
+                      background: "var(--accent)", color: "var(--text-inverse)", border: "none", borderRadius: 14,
+                      fontFamily: "var(--font-sans)", fontSize: 16, fontWeight: 700, cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       boxShadow: "0 4px 20px rgba(201,169,110,.4)",
                     }}
@@ -4325,7 +4299,7 @@ export default function App() {
                     Find my version
                   </button>
 
-                  <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: "rgba(255,255,255,.2)" }}>
+                  <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: "var(--text-tertiary)" }}>
                     Powered by ATTAIRE AI Fashion Scanner
                   </div>
                 </div>
@@ -4344,26 +4318,26 @@ export default function App() {
             padding: "24px 24px 32px", animation: "slideUp .35s ease forwards",
           }}>
             {/* Handle */}
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: "rgba(255,255,255,.12)", margin: "0 auto 20px" }} />
+            <div className="bottom-sheet-handle" />
 
-            <h2 style={{ fontFamily: "'Instrument Serif'", fontSize: 24, color: "#fff", marginBottom: 6, textAlign: "center" }}>Personalize Your Experience</h2>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,.4)", textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>Help us find better matches for you.</p>
+            <h2 style={{ fontFamily: "'Instrument Serif'", fontSize: 24, color: "var(--text-primary)", marginBottom: 6, textAlign: "center" }}>Personalize Your Experience</h2>
+            <p style={{ fontSize: 13, color: "var(--text-tertiary)", textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>Help us find better matches for you.</p>
 
             {/* Budget range */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 10 }}>Budget per item</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 10 }}>Budget per item</div>
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "12px 14px" }}>
-                    <span style={{ color: "rgba(255,255,255,.3)", fontSize: 16, fontWeight: 600, marginRight: 4 }}>$</span>
-                    <input type="number" value={prefSheetBudgetMin} onChange={e => setPrefSheetBudgetMin(Math.max(0, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 16, fontWeight: 600, width: "100%", outline: "none" }} />
+                  <div style={{ display: "flex", alignItems: "center", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px" }}>
+                    <span style={{ color: "var(--text-tertiary)", fontSize: 16, fontWeight: 600, marginRight: 4 }}>$</span>
+                    <input type="number" value={prefSheetBudgetMin} onChange={e => setPrefSheetBudgetMin(Math.max(0, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 16, fontWeight: 600, width: "100%", outline: "none" }} />
                   </div>
                 </div>
-                <span style={{ color: "rgba(255,255,255,.15)", fontSize: 14 }}>to</span>
+                <span style={{ color: "var(--text-tertiary)", fontSize: 14 }}>to</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "12px 14px" }}>
-                    <span style={{ color: "rgba(255,255,255,.3)", fontSize: 16, fontWeight: 600, marginRight: 4 }}>$</span>
-                    <input type="number" value={prefSheetBudgetMax} onChange={e => setPrefSheetBudgetMax(Math.max(prefSheetBudgetMin + 1, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 16, fontWeight: 600, width: "100%", outline: "none" }} />
+                  <div style={{ display: "flex", alignItems: "center", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px" }}>
+                    <span style={{ color: "var(--text-tertiary)", fontSize: 16, fontWeight: 600, marginRight: 4 }}>$</span>
+                    <input type="number" value={prefSheetBudgetMax} onChange={e => setPrefSheetBudgetMax(Math.max(prefSheetBudgetMin + 1, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 16, fontWeight: 600, width: "100%", outline: "none" }} />
                   </div>
                 </div>
               </div>
@@ -4371,7 +4345,7 @@ export default function App() {
 
             {/* Fit preference chips */}
             <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 10 }}>Fit preference</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 10 }}>Fit preference</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {["Slim", "Regular", "Relaxed", "Oversized"].map(fit => {
                   const isOn = prefSheetFit.includes(fit.toLowerCase());
@@ -4379,11 +4353,11 @@ export default function App() {
                     <button key={fit} onClick={() => setPrefSheetFit(prev => isOn ? prev.filter(f => f !== fit.toLowerCase()) : [...prev, fit.toLowerCase()])}
                       style={{
                         padding: "10px 20px", minHeight: 44,
-                        background: isOn ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.03)",
-                        border: `1px solid ${isOn ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.08)"}`,
+                        background: isOn ? "rgba(201,169,110,.12)" : "var(--bg-input)",
+                        border: `1px solid ${isOn ? "rgba(201,169,110,.4)" : "var(--border)"}`,
                         borderRadius: 100, cursor: "pointer",
-                        fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600,
-                        color: isOn ? "#C9A96E" : "rgba(255,255,255,.45)",
+                        fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600,
+                        color: isOn ? "var(--accent)" : "var(--text-secondary)",
                         transition: "all .2s",
                       }}
                     >{fit}</button>
@@ -4411,13 +4385,13 @@ export default function App() {
               }}
               style={{
                 width: "100%", padding: "16px 0", minHeight: 48,
-                background: "#C9A96E", color: "#0C0C0E", border: "none", borderRadius: 14,
-                fontFamily: "'Outfit'", fontSize: 15, fontWeight: 700, cursor: "pointer",
+                background: "var(--accent)", color: "var(--text-inverse)", border: "none", borderRadius: 14,
+                fontFamily: "var(--font-sans)", fontSize: 15, fontWeight: 700, cursor: "pointer",
                 marginBottom: 8,
               }}
             >Save Preferences</button>
             <button onClick={() => { setShowPrefSheet(false); setShowStyleFingerprint(true); setTimeout(() => setShowStyleFingerprint(false), 3500); }}
-              style={{ width: "100%", padding: "12px 0", background: "none", border: "none", color: "rgba(255,255,255,.3)", fontFamily: "'Outfit'", fontSize: 13, cursor: "pointer", minHeight: 44 }}>
+              style={{ width: "100%", padding: "12px 0", background: "none", border: "none", color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", fontSize: 13, cursor: "pointer", minHeight: 44 }}>
               Skip for now
             </button>
           </div>
@@ -4441,24 +4415,24 @@ export default function App() {
               background: "linear-gradient(105deg, transparent 40%, rgba(201,169,110,.06) 45%, rgba(201,169,110,.12) 50%, rgba(201,169,110,.06) 55%, transparent 60%)",
               backgroundSize: "200% 100%", animation: "searchPulse 2s ease infinite",
             }} />
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "#C9A96E", textTransform: "uppercase", marginBottom: 12 }}>Your Style Fingerprint</div>
-            <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "#fff", marginBottom: 20 }}>Looking good.</div>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "var(--accent)", textTransform: "uppercase", marginBottom: 12 }}>Your Style Fingerprint</div>
+            <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "var(--text-primary)", marginBottom: 20 }}>Looking good.</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 16 }}>
               <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, textAlign: "center" }}>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Budget</div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#C9A96E" }}>${prefSheetBudgetMin}-${prefSheetBudgetMax}</div>
+                <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Budget</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>${prefSheetBudgetMin}-${prefSheetBudgetMax}</div>
               </div>
               {prefSheetFit.length > 0 && (
                 <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, textAlign: "center" }}>
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Fit</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#C9A96E", textTransform: "capitalize" }}>{prefSheetFit.join(", ")}</div>
+                  <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Fit</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", textTransform: "capitalize" }}>{prefSheetFit.join(", ")}</div>
                 </div>
               )}
             </div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,.25)", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>
               {history.length > 0 ? `${history.length} outfit${history.length !== 1 ? "s" : ""} scanned` : "First scan complete!"}
             </div>
-            <div style={{ marginTop: 16, fontSize: 11, color: "rgba(255,255,255,.15)" }}>Tap anywhere to dismiss</div>
+            <div style={{ marginTop: 16, fontSize: 11, color: "var(--text-tertiary)" }}>Tap anywhere to dismiss</div>
           </div>
         </div>
       )}
@@ -4485,15 +4459,15 @@ export default function App() {
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, color: "var(--accent)", textTransform: "uppercase", marginBottom: 6 }}>YOUR STYLE DNA</div>
 
             {/* Archetype */}
-            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, color: "#fff", marginBottom: 8, lineHeight: 1.2 }}>{styleDna.archetype}</div>
+            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, color: "var(--text-primary)", marginBottom: 8, lineHeight: 1.2 }}>{styleDna.archetype}</div>
 
             {/* Description */}
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,.6)", lineHeight: 1.6, marginBottom: 20, maxWidth: 320, margin: "0 auto 20px" }}>{styleDna.description}</div>
+            <div style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 20, maxWidth: 320, margin: "0 auto 20px" }}>{styleDna.description}</div>
 
             {/* Traits */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 20 }}>
               {styleDna.traits?.map((trait, i) => (
-                <span key={i} style={{ padding: "6px 14px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.15)", borderRadius: 20, fontSize: 12, color: "rgba(255,255,255,.7)", fontWeight: 500 }}>{trait}</span>
+                <span key={i} style={{ padding: "6px 14px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 20, fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>{trait}</span>
               ))}
             </div>
 
@@ -4507,10 +4481,10 @@ export default function App() {
                   { label: "Budget", label2: "Luxury", key: "budget_vs_luxury" }
                 ].map(({ label, label2, key }) => (
                   <div key={key} style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "rgba(255,255,255,.35)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>
                       <span>{label}</span><span>{label2}</span>
                     </div>
-                    <div style={{ height: 4, background: "rgba(255,255,255,.08)", borderRadius: 2, position: "relative" }}>
+                    <div style={{ height: 4, background: "var(--border)", borderRadius: 2, position: "relative" }}>
                       <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${(styleDna.style_score[key] || 5) * 10}%`, background: "var(--accent)", borderRadius: 2, transition: "width 1s ease" }} />
                     </div>
                   </div>
@@ -4521,7 +4495,7 @@ export default function App() {
             {/* Stats row */}
             <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20, flexWrap: "wrap" }}>
               {styleDna.stats?.dominant_colors?.slice(0, 3).map((color, i) => (
-                <span key={i} style={{ padding: "6px 12px", background: "rgba(255,255,255,.05)", borderRadius: 8, fontSize: 11, color: "rgba(255,255,255,.5)" }}>{color}</span>
+                <span key={i} style={{ padding: "6px 12px", background: "var(--bg-input)", borderRadius: 8, fontSize: 11, color: "var(--text-secondary)" }}>{color}</span>
               ))}
               {styleDna.stats?.price_tier && (
                 <span style={{ padding: "6px 12px", background: "rgba(201,169,110,.1)", borderRadius: 8, fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>{styleDna.stats.price_tier}</span>
@@ -4530,7 +4504,7 @@ export default function App() {
 
             {/* Top brands */}
             {styleDna.stats?.top_brands?.length > 0 && (
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>
                 Top brands: {styleDna.stats.top_brands.slice(0, 3).join(" \u00B7 ")}
               </div>
             )}
@@ -4554,9 +4528,9 @@ export default function App() {
               } catch {}
               setStyleDnaShareLoading(false);
             }} aria-label="Share your Style DNA card" style={{
-              width: "100%", padding: "14px 0", background: "var(--accent)", color: "#000",
+              width: "100%", padding: "14px 0", background: "var(--accent)", color: "var(--text-inverse)",
               border: "none", borderRadius: "var(--radius-sm)", fontSize: 15, fontWeight: 700,
-              cursor: "pointer", fontFamily: "'Outfit'", letterSpacing: 0.3,
+              cursor: "pointer", fontFamily: "var(--font-sans)", letterSpacing: 0.3,
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               opacity: styleDnaShareLoading ? 0.6 : 1, minHeight: 44
             }}>
@@ -4565,7 +4539,7 @@ export default function App() {
             </button>
 
             {/* Scan count */}
-            <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,.2)" }}>Based on {styleDna.stats?.total_scans || 0} scans</div>
+            <div style={{ marginTop: 12, fontSize: 11, color: "var(--text-tertiary)" }}>Based on {styleDna.stats?.total_scans || 0} scans</div>
           </div>
         </div>
       )}
