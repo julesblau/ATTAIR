@@ -252,8 +252,10 @@ For each candidate, score 0-100 on how well it matches the target item:
 
 Consider: brand tier match, material quality match, style/aesthetic match, silhouette match, and color match. A $15 fast-fashion dupe of a $500 designer item should score 30-50 (right look, wrong tier). A same-tier same-vibe alternative should score 70+.
 
+IMPORTANT: You MUST return a score for EVERY candidate idx listed above. Do not skip any.
+
 Return JSON only — no markdown, no backticks:
-{ "scores": [ { "idx": 0, "score": 75, "reason": "brief reason" } ] }`;
+{ "scores": [ { "idx": 0, "score": 75, "reason": "brief reason" }, { "idx": 1, "score": 60, "reason": "brief reason" } ] }`;
 
   try {
     const res = await fetch(ANTHROPIC_URL, {

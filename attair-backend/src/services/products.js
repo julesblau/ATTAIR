@@ -579,54 +579,68 @@ async function googleLensSearch(imageUrl) {
 }
 
 /**
- * Per-item Google Lens search using the item's search_query as a text+image hybrid.
- * SerpAPI's Google Lens supports a `q` parameter for text context alongside the image.
- * This helps Lens focus on the specific item rather than the whole outfit.
+ * Extended text search — runs additional query variants for deeper coverage.
+ * Used in "extended" search mode to supplement the standard 3-query text search.
  *
- * Only used in "extended" search mode to avoid burning extra API calls on fast searches.
+ * Generates queries the standard search doesn't:
+ *   - alt_search (brand-agnostic fallback from Claude)
+ *   - Brand + retailer-specific queries (e.g. "Nordstrom Ralph Lauren polo")
+ *   - Material + subcategory (e.g. "men's cotton piqué polo")
+ *   - Construction detail queries (e.g. "men's half-zip mock neck sweater")
  */
-async function perItemLensSearch(imageUrl, item) {
-  if (!imageUrl || !process.env.SERPAPI_KEY) return [];
+async function extendedTextSearch(item, gender, tierBounds) {
+  const g = gender === "female" ? "women's" : "men's";
+  const queries = [];
 
-  const itemQuery = `${item.subcategory || item.category} ${item.color || ""}`.trim();
-  const cacheKey = crypto.createHash("md5").update(`lens-item:${imageUrl}:${itemQuery}`).digest("hex");
-  const cached = await getCache(cacheKey);
-  if (cached) {
-    console.log(`[cache] HIT: ${cacheKey} (per-item lens)`);
-    return cached;
+  // alt_search — Claude's brand-agnostic fallback (not used in standard search)
+  if (item.alt_search) {
+    const alt = stripShoppingNoise(cleanForSearch(item.alt_search));
+    const q = hasGenderPrefix(alt) ? alt : `${g} ${alt}`;
+    if (q.length <= 80) queries.push(q);
   }
 
-  console.log(`[Lens-Item] "${item.name}" → searching with context: "${itemQuery}"`);
-
-  const params = new URLSearchParams({
-    engine: "google_lens",
-    url: imageUrl,
-    api_key: process.env.SERPAPI_KEY,
-  });
-  // Add text context to help Lens focus on the specific item
-  if (itemQuery) params.set("q", itemQuery);
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-
-  try {
-    const res = await fetch(`${SERPAPI_URL}?${params}`, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (!res.ok) return [];
-
-    const data = await res.json();
-    const visualMatches = data.visual_matches || [];
-    console.log(`[Lens-Item] "${item.name}" → ${visualMatches.length} visual matches`);
-
-    if (visualMatches.length > 0) {
-      await setCache(cacheKey, visualMatches);
+  // Material + subcategory — finds items by fabric rather than brand
+  const material = (item.material || "").toLowerCase();
+  const sub = (item.subcategory || "").trim();
+  if (material && sub) {
+    // Extract the most specific material word (skip "heavyweight", "lightweight", etc.)
+    const matWords = material.split(/\s+/).filter(w => w.length > 3 && !["lightweight", "heavyweight", "midweight"].includes(w));
+    const keyMaterial = matWords.slice(-2).join(" "); // last 2 words tend to be the fabric type
+    if (keyMaterial) {
+      const matQuery = `${g} ${keyMaterial} ${sub}`.slice(0, 80);
+      queries.push(matQuery);
     }
-    return visualMatches;
-  } catch (err) {
-    clearTimeout(timeout);
-    console.error(`[Lens-Item] "${item.name}" error: ${err.message}`);
-    return [];
   }
+
+  // Construction detail query — finds items by specific features
+  const construction = (item.construction_details || "").toLowerCase();
+  if (construction && sub) {
+    const constructionWords = construction.split(/[,]+/).map(s => s.trim()).filter(s => s.length > 3);
+    if (constructionWords.length > 0) {
+      const detailQuery = `${g} ${constructionWords[0]} ${sub}`.slice(0, 80);
+      queries.push(detailQuery);
+    }
+  }
+
+  // Brand + top retailer query (if brand is known)
+  const brand = item.brand && item.brand !== "Unidentified" ? item.brand.trim() : "";
+  if (brand && (item.brand_confidence === "confirmed" || item.brand_confidence === "high")) {
+    const retailers = ["Nordstrom", "SSENSE", "Farfetch"];
+    const retailerQuery = `${retailers[0]} ${brand} ${sub || item.category}`.slice(0, 80);
+    queries.push(retailerQuery);
+  }
+
+  // Deduplicate
+  const uniqueQueries = [...new Set(queries.filter(Boolean))].slice(0, 3);
+  if (uniqueQueries.length === 0) return [];
+
+  console.log(`[ExtendedText] "${item.name}" → ${uniqueQueries.map(q => `"${q}"`).join(" | ")}`);
+
+  const priceCeil = tierBounds.max > DEFAULT_BUDGET.max ? tierBounds.max : null;
+  const allResults = [];
+  const batches = await Promise.all(uniqueQueries.map(q => textSearch(q, null, priceCeil).catch(() => [])));
+  for (const batch of batches) allResults.push(...batch);
+  return allResults;
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -1543,43 +1557,35 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     console.log(`[Match] "${items[i].name}" ← ${itemPools[i].lens.length} Lens matches`);
   }
 
-  // ── Step 3: Text search + extended per-item Lens for items with few USEFUL Lens matches
+  // ── Step 3: Text search fallback for items with few USEFUL Lens matches
   const textPromises = items.map(async (item, i) => {
-    // Count Lens results that actually have prices
     const pricedLens = itemPools[i].lens.filter(r => {
       const p = extractPrice(r.price) || extractPrice(r.extracted_price);
       return p !== null;
     });
 
-    // Extended mode: run per-item Lens search for items with < 3 Lens matches
-    // This sends the full image + item context query to Lens, helping it focus on the specific item
-    if (searchMode === "extended" && pricedLens.length < 3 && imageUrl) {
-      const perItemResults = await perItemLensSearch(imageUrl, item);
-      for (const result of perItemResults) {
-        // Only add results that actually relate to this item (verify match)
-        const matchIdx = matchLensResultToItem(result, [item]);
-        if (matchIdx >= 0) {
-          const url = result.link || result.product_link || result.url || "";
-          const alreadyHave = itemPools[i].lens.some(r => (r.link || r.product_link || r.url || "") === url);
-          if (!alreadyHave) {
-            itemPools[i].lens.push(result);
-          }
-        }
-      }
-      console.log(`[Lens-Item] "${item.name}" → total Lens matches after per-item: ${itemPools[i].lens.length}`);
-    }
-
-    // Text search if we have fewer than 3 priced Lens results (recount after per-item Lens)
-    const pricedLensAfter = itemPools[i].lens.filter(r => {
-      const p = extractPrice(r.price) || extractPrice(r.extracted_price);
-      return p !== null;
-    });
-    if (pricedLensAfter.length < 3) {
+    // Standard text search if < 3 priced Lens results
+    if (pricedLens.length < 3) {
       const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
       itemPools[i].text = textResults;
-      // Record that text search ran for this item (used in telemetry)
       itemPools[i].textQueryCount = Math.min(3, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0) + 1);
-      console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLensAfter.length} with price)`);
+      console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
+    }
+
+    // Extended mode: run additional query variants (alt_search, material-based, construction-based, retailer-specific)
+    if (searchMode === "extended") {
+      const extResults = await extendedTextSearch(item, gender, getItemTierBounds(item));
+      if (extResults.length > 0) {
+        // Merge into text pool, dedup by URL
+        const existingUrls = new Set(itemPools[i].text.map(r => r.link || r.product_link || ""));
+        const newResults = extResults.filter(r => {
+          const url = r.link || r.product_link || "";
+          return url && !existingUrls.has(url);
+        });
+        itemPools[i].text.push(...newResults);
+        itemPools[i].textQueryCount += 3;
+        console.log(`[ExtendedText] "${item.name}" ← ${newResults.length} new results (${extResults.length} total, ${extResults.length - newResults.length} dupes)`);
+      }
     }
   });
   await Promise.all(textPromises);
