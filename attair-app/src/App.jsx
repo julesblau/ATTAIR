@@ -5130,10 +5130,10 @@ export default function App() {
             </div>
             {wishlists.length > 0 && wishlists.map(wl => (
               <button key={wl.id} onClick={async () => {
-                const scanId = wishlistPickerScan.scan_id || wishlistPickerScan.id;
-                if (scanId) {
-                  await API.addToWishlist(wl.id, scanId).catch(() => {});
-                  setAddToListConfirm({ savedItemId: scanId, wishlistName: wl.name });
+                const itemId = wishlistPickerScan.id;
+                if (itemId) {
+                  await API.addToWishlist(wl.id, itemId).catch(() => {});
+                  setAddToListConfirm({ savedItemId: itemId, wishlistName: wl.name });
                   setTimeout(() => setAddToListConfirm(null), 2000);
                   // Instant refresh
                   API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
@@ -5156,9 +5156,9 @@ export default function App() {
                     API.createWishlist(newWishlistName.trim()).then(async d => {
                       if (d?.wishlist) {
                         setWishlists(prev => [...prev, d.wishlist]);
-                        const scanId = wishlistPickerScan.scan_id || wishlistPickerScan.id;
-                        if (scanId) await API.addToWishlist(d.wishlist.id, scanId).catch(() => {});
-                        setAddToListConfirm({ savedItemId: scanId, wishlistName: d.wishlist.name });
+                        const itemId = wishlistPickerScan.id;
+                        if (itemId) await API.addToWishlist(d.wishlist.id, itemId).catch(() => {});
+                        setAddToListConfirm({ savedItemId: itemId, wishlistName: d.wishlist.name });
                         setTimeout(() => setAddToListConfirm(null), 2000);
                         // Instant refresh: re-fetch wishlists + saved items
                         API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
@@ -5177,9 +5177,9 @@ export default function App() {
                   API.createWishlist(newWishlistName.trim()).then(async d => {
                     if (d?.wishlist) {
                       setWishlists(prev => [...prev, d.wishlist]);
-                      const scanId = wishlistPickerScan.scan_id || wishlistPickerScan.id;
-                      if (scanId) await API.addToWishlist(d.wishlist.id, scanId).catch(() => {});
-                      setAddToListConfirm({ savedItemId: scanId, wishlistName: d.wishlist.name });
+                      const itemId = wishlistPickerScan.id;
+                      if (itemId) await API.addToWishlist(d.wishlist.id, itemId).catch(() => {});
+                      setAddToListConfirm({ savedItemId: itemId, wishlistName: d.wishlist.name });
                       setTimeout(() => setAddToListConfirm(null), 2000);
                       // Instant refresh: re-fetch wishlists + saved items
                       API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
