@@ -15,15 +15,7 @@ import { createServer } from "http";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────
 
-// Use the real auth middleware behaviour: no Authorization header → 401
-vi.mock("../middleware/auth.js", async () => {
-  const { default: real } = await vi.importActual("../middleware/auth.js");
-  return { requireAuth: real.requireAuth ?? real };
-});
-
-// Override the above — we need a controllable auth mock that returns 401
-// without a token but passes with one, without hitting Supabase.
-// We achieve this with a simple header check.
+// Single vi.mock for auth — simple header check, no Supabase calls.
 vi.mock("../middleware/auth.js", () => ({
   requireAuth: (req, res, next) => {
     const auth = req.headers?.authorization;
@@ -31,6 +23,10 @@ vi.mock("../middleware/auth.js", () => ({
       return res.status(401).json({ error: "Missing or invalid token" });
     }
     req.userId = "user-authed";
+    next();
+  },
+  optionalAuth: (req, res, next) => {
+    req.userId = null;
     next();
   },
 }));
