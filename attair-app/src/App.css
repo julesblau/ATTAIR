@@ -1367,6 +1367,15 @@
 .app[data-theme='light'] [style*="rgba(255,255,255,.04)"][style*="borderRadius: 5"]{background:rgba(0,0,0,.05)!important}
 .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="borderRadius: 5"]{color:rgba(0,0,0,.35)!important}
 
+/* ─── Light mode: primary CTA buttons ────────────── */
+.app[data-theme='light'] .cta,
+.app[data-theme='light'] .btn-primary{background:#C9A96E;color:#fff}
+.app[data-theme='light'] .cta:hover,
+.app[data-theme='light'] .btn-primary:hover{background:#B8944F}
+/* ─── Light mode: secondary buttons (outlined) ───── */
+.app[data-theme='light'] .btn-secondary{background:transparent;border:1.5px solid rgba(0,0,0,.15);color:#1A1816}
+.app[data-theme='light'] .btn-secondary:hover{background:rgba(0,0,0,.03);border-color:#C9A96E;color:#C9A96E}
+
 /* ─── Social profile CSS classes ──────────────────── */
 .profile-bio-area{width:100%;padding:10px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;color:var(--text-primary);font-family:'Outfit';font-size:13px;resize:none;outline:none;line-height:1.5;box-sizing:border-box;transition:border-color .2s}
 .profile-bio-area::placeholder{color:var(--text-tertiary)}
@@ -1545,7 +1554,7 @@
 .user-search-input{flex:1;height:44px;padding:0 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:9999px;color:var(--text-primary);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:border-color .15s}
 .user-search-input:focus{border-color:rgba(201,169,110,.5)}
 .user-search-input::placeholder{color:var(--text-tertiary)}
-.user-search-cancel{background:none;border:none;color:var(--accent);font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;padding:8px;min-height:44px;min-width:44px}
+.user-search-cancel{background:none;border:none;color:var(--accent);font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;padding:10px 16px;min-height:44px;min-width:44px}
 .user-search-list{flex:1;overflow-y:auto;padding:0 16px}
 .user-search-row{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);min-height:60px}
 .user-search-avatar{width:44px;height:44px;border-radius:50%;background:rgba(201,169,110,.08);border:1px solid rgba(201,169,110,.3);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--accent);flex-shrink:0}

@@ -1129,14 +1129,14 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
     const labels = { would_wear: "Would Wear", on_the_fence: "On the Fence", not_for_me: "Not for Me" };
     const colors = { would_wear: "#4CAF50", on_the_fence: "#FFB74D", not_for_me: "#FF5252" };
     ctx.fillStyle = colors[verdict] || "#C9A96E";
-    ctx.font = "bold 48px system-ui";
+    ctx.font = "bold 48px 'Outfit', system-ui";
     ctx.textAlign = "center";
     ctx.fillText(labels[verdict] || "", 540, verdictY);
   }
 
   // Summary
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "600 36px system-ui";
+  ctx.font = "600 36px 'Outfit', system-ui";
   ctx.textAlign = "center";
   const summaryText = summary?.substring(0, 60) || "";
   if (summaryText) ctx.fillText(summaryText, 540, 1460);
@@ -1144,23 +1144,23 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
   // Items count
   const itemCount = items?.length || 0;
   ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.font = "400 28px system-ui";
+  ctx.font = "400 28px 'Outfit', system-ui";
   ctx.fillText(`${itemCount} item${itemCount !== 1 ? "s" : ""} identified`, 540, 1520);
 
   // User name
   if (userName) {
     ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.font = "400 24px system-ui";
+    ctx.font = "400 24px 'Outfit', system-ui";
     ctx.fillText(`Scanned by ${userName}`, 540, 1580);
   }
 
   // ATTAIRE watermark
   ctx.fillStyle = "#C9A96E";
-  ctx.font = "bold 56px system-ui";
+  ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
   ctx.fillText("ATTAIRE", 540, 1800);
   ctx.fillStyle = "rgba(201,169,110,0.5)";
-  ctx.font = "400 24px system-ui";
+  ctx.font = "400 24px 'Outfit', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1850);
 
   return canvas.toDataURL("image/png");
@@ -1189,18 +1189,18 @@ async function generateStyleDnaCard(dna, userName) {
 
   // "YOUR STYLE DNA" header
   ctx.fillStyle = "#C9A96E";
-  ctx.font = "bold 28px system-ui";
+  ctx.font = "bold 28px 'Outfit', system-ui";
   ctx.textAlign = "center";
   ctx.fillText("YOUR STYLE DNA", 540, 300);
 
   // Archetype - big and bold
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 72px system-ui";
+  ctx.font = "bold 72px 'Outfit', system-ui";
   ctx.fillText(dna.archetype || "", 540, 500);
 
   // Description
   ctx.fillStyle = "rgba(255,255,255,0.6)";
-  ctx.font = "400 32px system-ui";
+  ctx.font = "400 32px 'Outfit', system-ui";
   const descWords = (dna.description || "").split(" ");
   let descLine = "", descY = 600;
   for (const word of descWords) {
@@ -1217,7 +1217,7 @@ async function generateStyleDnaCard(dna, userName) {
 
   // Trait pills
   const traitY = descY + 80;
-  ctx.font = "500 28px system-ui";
+  ctx.font = "500 28px 'Outfit', system-ui";
   (dna.traits || []).forEach((trait, i) => {
     const ty = traitY + i * 56;
     const tw = ctx.measureText(trait).width + 48;
@@ -1243,7 +1243,7 @@ async function generateStyleDnaCard(dna, userName) {
   ];
   dims.forEach(({ label, label2, key }, i) => {
     const y = barY + i * 70;
-    ctx.font = "600 22px system-ui";
+    ctx.font = "600 22px 'Outfit', system-ui";
     ctx.fillStyle = "rgba(255,255,255,0.3)";
     ctx.textAlign = "left";
     ctx.fillText(label, 100, y);
@@ -1266,17 +1266,17 @@ async function generateStyleDnaCard(dna, userName) {
   if (userName) {
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(255,255,255,0.35)";
-    ctx.font = "400 26px system-ui";
+    ctx.font = "400 26px 'Outfit', system-ui";
     ctx.fillText(userName, 540, 1700);
   }
 
   // ATTAIRE watermark
   ctx.fillStyle = "#C9A96E";
-  ctx.font = "bold 56px system-ui";
+  ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
   ctx.fillText("ATTAIRE", 540, 1810);
   ctx.fillStyle = "rgba(201,169,110,0.5)";
-  ctx.font = "400 24px system-ui";
+  ctx.font = "400 24px 'Outfit', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1860);
 
   return canvas.toDataURL("image/png");
@@ -3605,7 +3605,7 @@ export default function App() {
             <div className="profile-v2">
               {/* Top bar: username left, gear icon right (Instagram style) */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0", position: "relative", zIndex: 2 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.5, color: "var(--text-primary)", fontFamily: "'Outfit'" }}>{authName || authEmail?.split("@")[0] || "Profile"}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.5, color: "var(--text-primary)", fontFamily: "'Outfit'" }}>{authName || authEmail?.split("@")[0] || "User"}</div>
                 <button className="profile-v2-gear" style={{ position: "relative", top: 0, right: 0 }} aria-label="Open settings" onClick={() => setProfileSettingsOpen(true)}>
                   <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
