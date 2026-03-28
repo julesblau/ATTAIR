@@ -2666,7 +2666,6 @@ export default function App() {
                       onChange={e => { setUserSearchQuery(e.target.value); if (!showUserSearch) setShowUserSearch(true); }}
                       onFocus={() => { if (!showUserSearch) setShowUserSearch(true); }}
                       placeholder="Search people..."
-                      autoFocus
                       style={{ flex: 1, background: "none", border: "none", outline: "none", padding: "12px 0", fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--text-primary)", minHeight: 44 }}
                     />
                   ) : (
@@ -2674,7 +2673,6 @@ export default function App() {
                       value={productSearchQuery}
                       onChange={e => setProductSearchQuery(e.target.value)}
                       placeholder="Search products, brands..."
-                      autoFocus
                       style={{ flex: 1, background: "none", border: "none", outline: "none", padding: "12px 0", fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--text-primary)", minHeight: 44 }}
                     />
                   )}
