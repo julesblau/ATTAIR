@@ -22,13 +22,14 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, unlinkSync, readdirSync } from "fs";
 import { execSync, spawn } from "child_process";
 import { createInterface } from "readline";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { config } from "dotenv";
 import { notifyHuman } from "./notify.js";
+import pg from "pg";
 
 // Load agents/.env for test credentials
 config({ path: join(dirname(fileURLToPath(import.meta.url)), ".env") });
@@ -2660,6 +2661,58 @@ function ensureGitHubLabels() {
   }
 }
 
+// ─── SQL MIGRATION RUNNER ─────────────────────────────────────────────────────
+async function runNewSQLMigrations() {
+  const DATABASE_URL = process.env.DATABASE_URL;
+  if (!DATABASE_URL) {
+    console.log("⚠️  DATABASE_URL not set in agents/.env — skipping SQL migrations");
+    return;
+  }
+
+  const sqlDir = join(REPO_ROOT, "attair-backend", "sql");
+  if (!existsSync(sqlDir)) return;
+
+  // Find SQL files that were added or modified in the current branch
+  let changedFiles;
+  try {
+    changedFiles = execSync(`git diff --name-only main -- "attair-backend/sql/*.sql"`, {
+      cwd: REPO_ROOT, encoding: "utf-8",
+    }).trim().split("\n").filter(Boolean);
+  } catch {
+    // If git diff fails (e.g. no main branch), fall back to all SQL files
+    changedFiles = [];
+  }
+
+  if (changedFiles.length === 0) {
+    console.log("📦 No new SQL migrations to run.");
+    return;
+  }
+
+  // Sort by filename so they run in order (001, 002, ...)
+  changedFiles.sort();
+
+  console.log(`\n📦 Running ${changedFiles.length} new/modified SQL migration(s)...`);
+
+  const client = new pg.Client(DATABASE_URL);
+  try {
+    await client.connect();
+    for (const file of changedFiles) {
+      const fullPath = join(REPO_ROOT, file);
+      if (!existsSync(fullPath)) continue;
+      const sql = readFileSync(fullPath, "utf-8");
+      console.log(`  ▶ ${file}`);
+      try {
+        await client.query(sql);
+        console.log(`    ✅ OK`);
+      } catch (err) {
+        console.log(`    ⚠️  ${err.message}`);
+      }
+    }
+  } finally {
+    await client.end();
+  }
+}
+
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -2815,6 +2868,14 @@ ${PM_PROMPT}`
           console.log(message.result);
           clearCheckpoint();
           gotResult = true;
+
+          // Run any new SQL migrations the agents created
+          try {
+            await runNewSQLMigrations();
+          } catch (e) {
+            console.log(`⚠️  SQL migration step failed: ${e.message}`);
+          }
+
           // Notify Jules that the army is done
           try {
             notifyHuman(`Agent army completed for ${today}.\n\nCheck the standup report at standups/${today}.md and review the pushed changes on main.`, { title: `[Agent] ✅ Complete — ${today}` });
