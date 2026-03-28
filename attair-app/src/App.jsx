@@ -2604,10 +2604,10 @@ export default function App() {
 
               {/* Skeleton loading */}
               {feedLoading && feedScans.length === 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "0 16px" }}>
-                  {[0,1,2].map(i => (
-                    <div key={i} className="skeleton" style={{ borderRadius: 16, overflow: "hidden" }}>
-                      <div className="skeleton-image" style={{ width: "100%", aspectRatio: "4/5" }} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "4px 12px" }}>
+                  {[0,1,2,3].map(i => (
+                    <div key={i} className="skeleton" style={{ borderRadius: 12, overflow: "hidden" }}>
+                      <div className="skeleton-image" style={{ width: "100%", aspectRatio: "3/4" }} />
                     </div>
                   ))}
                 </div>
@@ -3788,8 +3788,6 @@ export default function App() {
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                             {shareCardLoading ? "..." : "Share Card"}
                           </button>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -4002,6 +4000,11 @@ export default function App() {
 
             const shareScan = async (e, scan) => {
               e.stopPropagation();
+              // Auto-set scan to public when sharing
+              API.updateScanVisibility(scan.id, "public").catch(() => {});
+              setHistory(prev => prev.map(s => s.id === scan.id ? { ...s, visibility: "public" } : s));
+              setSharePublicToast(true);
+              setTimeout(() => setSharePublicToast(false), 2500);
               const shareUrl = `${window.location.origin}/scan/${scan.id}`;
               if (navigator.share) {
                 try { await navigator.share({ title: scan.scan_name || "ATTAIR Scan", url: shareUrl }); } catch {}
