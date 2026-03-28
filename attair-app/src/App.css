@@ -1557,6 +1557,19 @@
 .feed-card-pill{position:absolute;top:12px;right:12px;padding:4px 10px;border-radius:100px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;gap:4px;font-size:12px;font-family:var(--font-sans);font-weight:600;color:#fff;z-index:1}
 .feed-card-heart{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
 .feed-card-heart:active{transform:scale(0.9)}
+
+/* ─── Feed Suggested Users (Following empty state) ─── */
+.feed-suggested-users{display:flex;flex-direction:column;gap:0}
+.feed-suggested-row{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--border);animation:feedSuggestedFadeIn .35s ease both}
+.feed-suggested-row:last-child{border-bottom:none}
+@keyframes feedSuggestedFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.feed-suggested-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#000;flex-shrink:0;border:1.5px solid rgba(255,255,255,.12)}
+.feed-suggested-info{flex:1;min-width:0}
+.feed-suggested-name{font-size:15px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-suggested-meta{font-size:12px;color:var(--text-tertiary);margin-top:2px}
+.feed-suggested-follow-btn{padding:8px 20px;border-radius:100px;border:1.5px solid var(--accent);background:none;color:var(--accent);font-family:var(--font-sans);font-size:13px;font-weight:700;cursor:pointer;min-height:44px;min-width:44px;transition:all .15s ease;-webkit-tap-highlight-color:transparent;flex-shrink:0}
+.feed-suggested-follow-btn:active{background:var(--accent);color:#000;transform:scale(0.96)}
+
 .feed-skeleton{border-radius:16px;background:var(--bg-card);overflow:hidden}
 .feed-skeleton-img{width:100%;aspect-ratio:1/1;max-height:400px;background:linear-gradient(110deg,var(--bg-card) 30%,rgba(255,255,255,.04) 50%,var(--bg-card) 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
 @keyframes skeletonShimmer{from{background-position:200% 0}to{background-position:-200% 0}}

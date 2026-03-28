@@ -2484,17 +2484,92 @@ export default function App() {
                 </div>
               )}
 
-              {/* Empty states */}
-              {!feedLoading && feedScans.length === 0 && (
-                <div className="empty animate-slide-up" style={{ padding: "80px 32px" }}>
-                  <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 20, opacity: 0.5 }}><path d="M12 2l2.09 6.26L20.18 9l-5.09 3.74L16.18 19 12 15.27 7.82 19l1.09-6.26L3.82 9l6.09-.74z" /></svg>
-                  <div className="empty-t">
-                    {feedTab === "following" ? "Follow people to see their outfits here" : "Your feed is empty"}
+              {/* Empty state — For You: pre-seeded trending content */}
+              {!feedLoading && feedScans.length === 0 && feedTab === "foryou" && (
+                <div className="animate-slide-up" style={{ padding: "0 16px 100px" }}>
+                  {/* Section header */}
+                  <div style={{ padding: "20px 0 14px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.3 }}>Trending on ATTAIR</span>
                   </div>
-                  <div className="empty-s" style={{ marginBottom: 24, lineHeight: 1.5 }}>
-                    {feedTab === "following" ? "Find friends and style inspiration in the search tab." : "Follow people to see their outfits and style inspiration here."}
+
+                  {/* Pre-seeded placeholder cards */}
+                  <div className="feed-list" style={{ padding: 0 }}>
+                    {[
+                      { gradient: "linear-gradient(135deg, #2D1B4E 0%, #1A1A2E 50%, #C9A96E 100%)", label: "Scanned 4 items", title: "Street Style NYC", user: "StyleGuru", initials: "SG" },
+                      { gradient: "linear-gradient(135deg, #1A2A1A 0%, #0D1B2A 50%, #8B6914 100%)", label: "Scanned 3 items", title: "Minimal Summer Look", user: "FashionFinder", initials: "FF" },
+                      { gradient: "linear-gradient(135deg, #2A1A1A 0%, #1B1025 50%, #C9A96E 100%)", label: "Scanned 5 items", title: "Evening Out Fit Check", user: "OutfitDaily", initials: "OD" },
+                      { gradient: "linear-gradient(135deg, #0D1B2A 0%, #1A1A2E 50%, #A8884A 100%)", label: "Scanned 2 items", title: "Cozy Layered Look", user: "TrendWatch", initials: "TW" },
+                    ].map((card, idx) => (
+                      <div key={idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.08}s`, opacity: 0.85, pointerEvents: "none" }} aria-label={`Example outfit: ${card.title}`}>
+                        <div style={{ position: "relative" }}>
+                          <div className="feed-card-img" style={{ aspectRatio: "4/5", background: card.gradient, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.35)", letterSpacing: 1, textTransform: "uppercase" }}>{card.label}</span>
+                          </div>
+                          <div className="feed-card-overlay">
+                            <div className="feed-card-user">
+                              <div className="feed-card-avatar">{card.initials}</div>
+                              <div className="feed-card-info">
+                                <div className="feed-card-name">{card.user}</div>
+                                <div className="feed-card-summary">{card.title}</div>
+                              </div>
+                            </div>
+                            <div className="feed-card-heart" style={{ pointerEvents: "none" }}>
+                              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <button className="btn-primary" onClick={() => { setTab("search"); setShowUserSearch(true); }} style={{ padding: "12px 32px", borderRadius: 100 }}>Discover People</button>
+
+                  {/* Subtle CTA text */}
+                  <div style={{ textAlign: "center", padding: "28px 16px 0" }}>
+                    <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.6 }}>
+                      Follow people and scan outfits to fill your feed with personalized style inspiration.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state — Following: suggested users to follow */}
+              {!feedLoading && feedScans.length === 0 && feedTab === "following" && (
+                <div className="animate-slide-up" style={{ padding: "0 16px 100px" }}>
+                  {/* Prompt header */}
+                  <div style={{ textAlign: "center", padding: "32px 16px 8px" }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>Follow people you like</div>
+                    <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 260, margin: "0 auto" }}>See their outfits and scans right here when you follow them.</div>
+                  </div>
+
+                  {/* Suggested for You section */}
+                  <div style={{ padding: "20px 0 0" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 12, paddingLeft: 4 }}>Suggested for you</div>
+                    <div className="feed-suggested-users" role="list" aria-label="Suggested users to follow">
+                      {[
+                        { name: "StyleGuru", handle: "@styleguru", initials: "SG", followers: "12.4k", color: "#C9A96E" },
+                        { name: "FashionFinder", handle: "@fashionfinder", initials: "FF", followers: "8.1k", color: "#A8884A" },
+                        { name: "OutfitDaily", handle: "@outfitdaily", initials: "OD", followers: "23.7k", color: "#8B6914" },
+                        { name: "TrendWatch", handle: "@trendwatch", initials: "TW", followers: "5.9k", color: "#D4B978" },
+                        { name: "StreetLooks", handle: "@streetlooks", initials: "SL", followers: "15.2k", color: "#B8965A" },
+                        { name: "MinimalFit", handle: "@minimalfit", initials: "MF", followers: "9.8k", color: "#C9A96E" },
+                      ].map((user, idx) => (
+                        <div key={idx} className="feed-suggested-row" role="listitem" style={{ animationDelay: `${idx * 0.05}s` }} aria-label={`Suggested user ${user.name}`}>
+                          <div className="feed-suggested-avatar" style={{ background: user.color }}>{user.initials}</div>
+                          <div className="feed-suggested-info">
+                            <div className="feed-suggested-name">{user.name}</div>
+                            <div className="feed-suggested-meta">{user.followers} followers</div>
+                          </div>
+                          <button className="feed-suggested-follow-btn" aria-label={`Follow ${user.name}`}>Follow</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Discover People button */}
+                  <div style={{ textAlign: "center", padding: "24px 0 0" }}>
+                    <button className="btn-primary" onClick={() => { setTab("search"); setShowUserSearch(true); }} style={{ padding: "14px 36px", borderRadius: 100, fontSize: 15, minHeight: 48 }} aria-label="Discover more people to follow">Discover People</button>
+                  </div>
                 </div>
               )}
 
