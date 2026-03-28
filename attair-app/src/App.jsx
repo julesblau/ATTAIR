@@ -360,6 +360,23 @@ const API = {
     const res = await fetch(`${API_BASE}/api/scan/${scanId}/public`);
     return res.json();
   },
+
+  async styleDna() {
+    const res = await authFetch(`${API_BASE}/api/user/style-dna`);
+    return res.json();
+  },
+
+  async priceAlertCount() {
+    const res = await authFetch(`${API_BASE}/api/price-alerts/count`);
+    return res.json();
+  },
+  async priceAlerts() {
+    const res = await authFetch(`${API_BASE}/api/price-alerts`);
+    return res.json();
+  },
+  async priceAlertSeen(id) {
+    await authFetch(`${API_BASE}/api/price-alerts/${id}/seen`, { method: "PATCH" });
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1148,6 +1165,122 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
   return canvas.toDataURL("image/png");
 }
 
+// ─── Style DNA share card generator ──────────────────────────
+async function generateStyleDnaCard(dna, userName) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const ctx = canvas.getContext("2d");
+
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, 1920);
+  grad.addColorStop(0, "#0C0C0E");
+  grad.addColorStop(0.5, "#151518");
+  grad.addColorStop(1, "#0C0C0E");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1080, 1920);
+
+  // Subtle gold accent circle in background
+  ctx.beginPath();
+  ctx.arc(540, 600, 300, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(201,169,110,0.03)";
+  ctx.fill();
+
+  // "YOUR STYLE DNA" header
+  ctx.fillStyle = "#C9A96E";
+  ctx.font = "bold 28px system-ui";
+  ctx.textAlign = "center";
+  ctx.fillText("YOUR STYLE DNA", 540, 300);
+
+  // Archetype - big and bold
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "bold 72px system-ui";
+  ctx.fillText(dna.archetype || "", 540, 500);
+
+  // Description
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.font = "400 32px system-ui";
+  const descWords = (dna.description || "").split(" ");
+  let descLine = "", descY = 600;
+  for (const word of descWords) {
+    const test = descLine + word + " ";
+    if (ctx.measureText(test).width > 900) {
+      ctx.fillText(descLine.trim(), 540, descY);
+      descLine = word + " ";
+      descY += 44;
+    } else {
+      descLine = test;
+    }
+  }
+  if (descLine.trim()) ctx.fillText(descLine.trim(), 540, descY);
+
+  // Trait pills
+  const traitY = descY + 80;
+  ctx.font = "500 28px system-ui";
+  (dna.traits || []).forEach((trait, i) => {
+    const ty = traitY + i * 56;
+    const tw = ctx.measureText(trait).width + 48;
+    const tx = 540 - tw / 2;
+    ctx.fillStyle = "rgba(201,169,110,0.1)";
+    ctx.beginPath();
+    ctx.roundRect(tx, ty - 20, tw, 44, 22);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(201,169,110,0.2)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.fillText(trait, 540, ty + 8);
+  });
+
+  // Style score bars
+  const barY = traitY + (dna.traits?.length || 0) * 56 + 60;
+  const dims = [
+    { label: "Classic", label2: "Trendy", key: "classic_vs_trendy" },
+    { label: "Minimal", label2: "Maximal", key: "minimal_vs_maximal" },
+    { label: "Casual", label2: "Formal", key: "casual_vs_formal" },
+    { label: "Budget", label2: "Luxury", key: "budget_vs_luxury" }
+  ];
+  dims.forEach(({ label, label2, key }, i) => {
+    const y = barY + i * 70;
+    ctx.font = "600 22px system-ui";
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.textAlign = "left";
+    ctx.fillText(label, 100, y);
+    ctx.textAlign = "right";
+    ctx.fillText(label2, 980, y);
+    // Bar background
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.beginPath();
+    ctx.roundRect(100, y + 12, 880, 8, 4);
+    ctx.fill();
+    // Bar fill
+    const pct = ((dna.style_score?.[key] || 5) / 10) * 880;
+    ctx.fillStyle = "#C9A96E";
+    ctx.beginPath();
+    ctx.roundRect(100, y + 12, pct, 8, 4);
+    ctx.fill();
+  });
+
+  // User name
+  if (userName) {
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.font = "400 26px system-ui";
+    ctx.fillText(userName, 540, 1700);
+  }
+
+  // ATTAIRE watermark
+  ctx.fillStyle = "#C9A96E";
+  ctx.font = "bold 56px system-ui";
+  ctx.textAlign = "center";
+  ctx.fillText("ATTAIRE", 540, 1810);
+  ctx.fillStyle = "rgba(201,169,110,0.5)";
+  ctx.font = "400 24px system-ui";
+  ctx.fillText("AI Fashion Scanner", 540, 1860);
+
+  return canvas.toDataURL("image/png");
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ─── Loading message arrays ──────────────────────────────────
 const SCAN_MESSAGES = [
@@ -1397,6 +1530,17 @@ export default function App() {
   // ─── Style fingerprint card ────────────────────────────────
   const [showStyleFingerprint, setShowStyleFingerprint] = useState(false);
 
+  // ─── Style DNA ────────────────────────────────────────────
+  const [styleDna, setStyleDna] = useState(null);
+  const [styleDnaLoading, setStyleDnaLoading] = useState(false);
+  const [showStyleDna, setShowStyleDna] = useState(false);
+  const [styleDnaShareLoading, setStyleDnaShareLoading] = useState(false);
+
+  // ─── Price Drop Alerts ────────────────────────────────────
+  const [priceAlertCount, setPriceAlertCount] = useState(0);
+  const [priceAlerts, setPriceAlerts] = useState([]);
+  const [showPriceAlerts, setShowPriceAlerts] = useState(false);
+
   // ─── Wishlists ────────────────────────────────────────────
   const [wishlists, setWishlists] = useState([]);       // [{ id, name, created_at }]
   const [activeWishlist, setActiveWishlist] = useState(null); // { id, name } | null
@@ -1590,6 +1734,11 @@ export default function App() {
       API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
       API.getWishlists().then(d => setWishlists(d.wishlists || [])).catch(() => {});
       API.getStreak().then(s => { if (s?.streak > 0) setScanStreak(s.streak); }).catch(() => {});
+      API.priceAlertCount().then(d => setPriceAlertCount(d.unseen_count || 0)).catch(() => {});
+      if (!styleDna && !styleDnaLoading) {
+        setStyleDnaLoading(true);
+        API.styleDna().then(data => setStyleDna(data)).catch(() => {}).finally(() => setStyleDnaLoading(false));
+      }
       if (screen === "onboarding") setScreen("app");
 
       // Handle post-Stripe-checkout redirect
@@ -4578,6 +4727,23 @@ export default function App() {
 
             return (
               <div className="likes-v2 animate-fade-in">
+                {/* Price Drop Alerts Banner */}
+                {priceAlertCount > 0 && (
+                  <button onClick={() => { setShowPriceAlerts(true); API.priceAlerts().then(d => setPriceAlerts(d.alerts || d || [])).catch(() => {}); }}
+                    aria-label={`${priceAlertCount} price drops on saved items`}
+                    style={{
+                      width: "calc(100% - 32px)", margin: "12px 16px 0", padding: "12px 16px",
+                      background: "linear-gradient(135deg, rgba(76,175,80,.1), rgba(76,175,80,.05))",
+                      border: "1px solid rgba(76,175,80,.25)", borderRadius: "var(--radius-sm)",
+                      display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
+                      color: "var(--text-primary)", fontSize: 14, fontWeight: 600, fontFamily: "'Outfit'"
+                    }}>
+                    <span style={{ fontSize: 20 }}>&#x1F4B0;</span>
+                    <span>{priceAlertCount} price drop{priceAlertCount !== 1 ? "s" : ""} on your saved items!</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: "auto" }}><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                )}
+
                 {/* Header */}
                 <div style={{ padding: "16px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Saved</h2>
@@ -4680,6 +4846,28 @@ export default function App() {
                 )}
                 {/* Edit Profile button */}
                 <button className="btn-secondary" style={{ width: "100%", marginTop: 12, padding: "8px 0", fontSize: 14, fontWeight: 600, borderRadius: "var(--radius-sm)" }} onClick={() => setProfileBioEditing(true)}>Edit Profile</button>
+
+                {/* Style DNA button */}
+                {styleDna?.ready ? (
+                  <button onClick={() => setShowStyleDna(true)} aria-label="View your Style DNA report" style={{
+                    width: "100%", marginTop: 8, padding: "12px 0", fontSize: 14, fontWeight: 600,
+                    borderRadius: "var(--radius-sm)", background: "linear-gradient(135deg, rgba(201,169,110,.12), rgba(201,169,110,.04))",
+                    border: "1px solid rgba(201,169,110,.25)", color: "var(--accent)",
+                    cursor: "pointer", fontFamily: "'Outfit'", letterSpacing: 0.3,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+                  }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                    Your Style DNA: {styleDna.archetype}
+                  </button>
+                ) : styleDna && !styleDna.ready ? (
+                  <div style={{
+                    width: "100%", marginTop: 8, padding: "10px 16px", fontSize: 13,
+                    borderRadius: "var(--radius-sm)", background: "var(--bg-card)", border: "1px solid var(--border)",
+                    color: "var(--text-tertiary)", textAlign: "center", fontFamily: "'Outfit'"
+                  }}>
+                    {styleDna.message}
+                  </div>
+                ) : null}
               </div>
 
               {/* Trial banner */}
@@ -5388,8 +5576,15 @@ export default function App() {
           </button>
           {/* FAB spacer */}
           <div style={{ flex: 1 }} />
-          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44 }} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label="Saved">
+          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44, position: "relative" }} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label="Saved">
             <svg viewBox="0 0 24 24" width="24" height="24" fill={tab==="likes"?"currentColor":"none"} stroke={tab==="likes"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            {priceAlertCount > 0 && (
+              <span style={{
+                position: "absolute", top: 4, right: "calc(50% - 16px)",
+                width: 8, height: 8, borderRadius: "50%",
+                background: "#FF5252", border: "2px solid var(--bg-primary)"
+              }} />
+            )}
           </button>
           <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44 }} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }} aria-label="Profile">
             <svg viewBox="0 0 24 24" width="24" height="24" fill={tab==="profile"?"currentColor":"none"} stroke={tab==="profile"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
@@ -5694,7 +5889,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ═══ STYLE FINGERPRINT CARD ═══════════════════════════ */}
+      {/* ═══ STYLE FINGERPRINT CARD (legacy) ═══════════════════ */}
       {showStyleFingerprint && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9997, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.5)", backdropFilter: "blur(6px)" }}
           onClick={() => setShowStyleFingerprint(false)}>
@@ -5706,23 +5901,18 @@ export default function App() {
             animation: "slideIn .4s ease forwards", overflow: "hidden",
             boxShadow: "0 20px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(201,169,110,.08)",
           }}>
-            {/* Shimmer overlay */}
             <div style={{
               position: "absolute", inset: 0, borderRadius: 20, overflow: "hidden", pointerEvents: "none",
               background: "linear-gradient(105deg, transparent 40%, rgba(201,169,110,.06) 45%, rgba(201,169,110,.12) 50%, rgba(201,169,110,.06) 55%, transparent 60%)",
               backgroundSize: "200% 100%", animation: "searchPulse 2s ease infinite",
             }} />
-
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "#C9A96E", textTransform: "uppercase", marginBottom: 12 }}>Your Style Fingerprint</div>
             <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "#fff", marginBottom: 20 }}>Looking good.</div>
-
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 16 }}>
-              {/* Budget badge */}
               <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Budget</div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "#C9A96E" }}>${prefSheetBudgetMin}-${prefSheetBudgetMax}</div>
               </div>
-              {/* Fit badge */}
               {prefSheetFit.length > 0 && (
                 <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, textAlign: "center" }}>
                   <div style={{ fontSize: 10, color: "rgba(255,255,255,.3)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Fit</div>
@@ -5730,13 +5920,158 @@ export default function App() {
                 </div>
               )}
             </div>
-
-            {/* Scan count */}
             <div style={{ fontSize: 12, color: "rgba(255,255,255,.25)", lineHeight: 1.5 }}>
               {history.length > 0 ? `${history.length} outfit${history.length !== 1 ? "s" : ""} scanned` : "First scan complete!"}
             </div>
-
             <div style={{ marginTop: 16, fontSize: 11, color: "rgba(255,255,255,.15)" }}>Tap anywhere to dismiss</div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ STYLE DNA CARD MODAL ═══════════════════════════════ */}
+      {showStyleDna && styleDna?.ready && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9997, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.6)", backdropFilter: "blur(8px)" }}
+          onClick={() => setShowStyleDna(false)} role="dialog" aria-label="Style DNA report" aria-modal="true">
+          <div onClick={e => e.stopPropagation()} style={{
+            position: "relative", width: "calc(100% - 32px)", maxWidth: 400,
+            background: "linear-gradient(165deg, #1A1A1C 0%, #0C0C0E 100%)",
+            border: "1px solid rgba(201,169,110,.2)", borderRadius: 24,
+            padding: "32px 24px 24px", textAlign: "center",
+            animation: "slideIn .4s var(--ease-spring) forwards",
+            boxShadow: "0 24px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(201,169,110,.1)",
+            overflow: "hidden", maxHeight: "90vh", overflowY: "auto"
+          }}>
+            {/* Shimmer overlay */}
+            <div style={{ position: "absolute", inset: 0, borderRadius: 24, overflow: "hidden", pointerEvents: "none",
+              background: "linear-gradient(105deg, transparent 40%, rgba(201,169,110,.05) 45%, rgba(201,169,110,.1) 50%, rgba(201,169,110,.05) 55%, transparent 60%)",
+              backgroundSize: "200% 100%", animation: "searchPulse 3s ease infinite" }} />
+
+            {/* Header */}
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, color: "var(--accent)", textTransform: "uppercase", marginBottom: 6 }}>YOUR STYLE DNA</div>
+
+            {/* Archetype */}
+            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, color: "#fff", marginBottom: 8, lineHeight: 1.2 }}>{styleDna.archetype}</div>
+
+            {/* Description */}
+            <div style={{ fontSize: 14, color: "rgba(255,255,255,.6)", lineHeight: 1.6, marginBottom: 20, maxWidth: 320, margin: "0 auto 20px" }}>{styleDna.description}</div>
+
+            {/* Traits */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 20 }}>
+              {styleDna.traits?.map((trait, i) => (
+                <span key={i} style={{ padding: "6px 14px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.15)", borderRadius: 20, fontSize: 12, color: "rgba(255,255,255,.7)", fontWeight: 500 }}>{trait}</span>
+              ))}
+            </div>
+
+            {/* Style scores - horizontal bars */}
+            {styleDna.style_score && (
+              <div style={{ marginBottom: 20, textAlign: "left" }}>
+                {[
+                  { label: "Classic", label2: "Trendy", key: "classic_vs_trendy" },
+                  { label: "Minimal", label2: "Maximal", key: "minimal_vs_maximal" },
+                  { label: "Casual", label2: "Formal", key: "casual_vs_formal" },
+                  { label: "Budget", label2: "Luxury", key: "budget_vs_luxury" }
+                ].map(({ label, label2, key }) => (
+                  <div key={key} style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "rgba(255,255,255,.35)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>
+                      <span>{label}</span><span>{label2}</span>
+                    </div>
+                    <div style={{ height: 4, background: "rgba(255,255,255,.08)", borderRadius: 2, position: "relative" }}>
+                      <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${(styleDna.style_score[key] || 5) * 10}%`, background: "var(--accent)", borderRadius: 2, transition: "width 1s ease" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Stats row */}
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20, flexWrap: "wrap" }}>
+              {styleDna.stats?.dominant_colors?.slice(0, 3).map((color, i) => (
+                <span key={i} style={{ padding: "6px 12px", background: "rgba(255,255,255,.05)", borderRadius: 8, fontSize: 11, color: "rgba(255,255,255,.5)" }}>{color}</span>
+              ))}
+              {styleDna.stats?.price_tier && (
+                <span style={{ padding: "6px 12px", background: "rgba(201,169,110,.1)", borderRadius: 8, fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>{styleDna.stats.price_tier}</span>
+              )}
+            </div>
+
+            {/* Top brands */}
+            {styleDna.stats?.top_brands?.length > 0 && (
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 16 }}>
+                Top brands: {styleDna.stats.top_brands.slice(0, 3).join(" \u00B7 ")}
+              </div>
+            )}
+
+            {/* Share button */}
+            <button onClick={async (e) => {
+              e.stopPropagation();
+              setStyleDnaShareLoading(true);
+              try {
+                const cardUrl = await generateStyleDnaCard(styleDna, authName);
+                if (navigator.share) {
+                  const blob = await (await fetch(cardUrl)).blob();
+                  const file = new File([blob], "style-dna.png", { type: "image/png" });
+                  await navigator.share({ files: [file], title: "My Style DNA \u2014 ATTAIRE" });
+                } else {
+                  const a = document.createElement("a");
+                  a.href = cardUrl;
+                  a.download = "style-dna.png";
+                  a.click();
+                }
+              } catch {}
+              setStyleDnaShareLoading(false);
+            }} aria-label="Share your Style DNA card" style={{
+              width: "100%", padding: "14px 0", background: "var(--accent)", color: "#000",
+              border: "none", borderRadius: "var(--radius-sm)", fontSize: 15, fontWeight: 700,
+              cursor: "pointer", fontFamily: "'Outfit'", letterSpacing: 0.3,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              opacity: styleDnaShareLoading ? 0.6 : 1, minHeight: 44
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              {styleDnaShareLoading ? "Generating..." : "Share Your Style DNA"}
+            </button>
+
+            {/* Scan count */}
+            <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,.2)" }}>Based on {styleDna.stats?.total_scans || 0} scans</div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ PRICE ALERTS BOTTOM SHEET ═══════════════════════════ */}
+      {showPriceAlerts && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9996, background: "rgba(0,0,0,.5)", backdropFilter: "blur(4px)" }}
+          onClick={() => setShowPriceAlerts(false)} role="dialog" aria-label="Price drop alerts" aria-modal="true">
+          <div onClick={e => e.stopPropagation()} style={{
+            position: "absolute", bottom: 0, left: 0, right: 0,
+            background: "var(--bg-primary)", borderRadius: "20px 20px 0 0",
+            maxHeight: "70vh", overflowY: "auto",
+            padding: "20px 16px calc(20px + env(safe-area-inset-bottom, 0px))",
+            animation: "slideIn .3s var(--ease-spring) forwards"
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)", margin: "0 auto 16px" }} />
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 }}>Price Drops</div>
+            {priceAlerts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 24, color: "var(--text-tertiary)" }}>Loading alerts...</div>
+            ) : priceAlerts.map((alert, i) => (
+              <div key={alert.id || i} style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "12px 0",
+                borderBottom: i < priceAlerts.length - 1 ? "1px solid var(--border)" : "none"
+              }}>
+                <div style={{ width: 44, height: 44, borderRadius: "var(--radius-sm)", background: "rgba(76,175,80,.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }} aria-hidden="true">&#x1F4C9;</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{alert.product_name || "Saved item"}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{alert.brand}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                    <span style={{ fontSize: 13, color: "var(--text-tertiary)", textDecoration: "line-through" }}>${alert.original_price}</span>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "#4CAF50" }}>${alert.current_price}</span>
+                    <span style={{ fontSize: 11, padding: "2px 6px", background: "rgba(76,175,80,.15)", color: "#4CAF50", borderRadius: 4, fontWeight: 600 }}>-{Math.round(alert.drop_percentage)}%</span>
+                  </div>
+                </div>
+                <a href={alert.product_url} target="_blank" rel="noopener" onClick={() => { API.priceAlertSeen(alert.id).catch(() => {}); setPriceAlertCount(c => Math.max(0, c - 1)); }}
+                  aria-label={`Shop ${alert.product_name || "item"} at new price`}
+                  style={{ padding: "8px 14px", background: "var(--accent)", color: "#000", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", minHeight: 44, display: "flex", alignItems: "center" }}>
+                  Shop
+                </a>
+              </div>
+            ))}
           </div>
         </div>
       )}

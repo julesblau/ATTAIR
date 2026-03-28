@@ -19,6 +19,8 @@ import nearbyStoresRouter from "./routes/nearbyStores.js";
 import wishlistsRouter from "./routes/wishlists.js";
 import paymentsRouter from "./routes/payments.js";
 import socialRouter from "./routes/social.js";
+import styleDnaRouter from "./routes/styleDna.js";
+import priceAlertsRouter from "./routes/priceAlerts.js";
 
 // ─── Validate required env vars ─────────────────────────────
 const REQUIRED_ENV = [
@@ -106,6 +108,7 @@ app.use("/api/auth/", authLimiter);
 app.use("/api/auth", authRouter);
 app.use("/api/identify", identifyRouter);
 app.use("/api/find-products", findProductsRouter);
+app.use("/api/user/style-dna", styleDnaRouter);
 app.use("/api/user", userRouter);
 app.use("/api/go", affiliateRouter);
 app.use("/api/ad-events", adEventsRouter);
@@ -116,6 +119,7 @@ app.use("/api/seen-on", seenOnRouter);
 app.use("/api/nearby-stores", nearbyStoresRouter);
 app.use("/api/wishlists", wishlistsRouter);
 app.use("/api/payments", paymentsRouter);
+app.use("/api/price-alerts", priceAlertsRouter);
 app.use("/api", socialRouter);
 
 // Health check

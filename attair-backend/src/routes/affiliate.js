@@ -5,9 +5,40 @@ import supabase from "../lib/supabase.js";
 
 const router = Router();
 
-// Amazon affiliate tag mapping
+// ---------------------------------------------------------------------------
+// Affiliate tag / ID configuration
+//
+// Each retailer uses a different affiliate network. The network and the
+// parameter name that carries our publisher ID are noted inline.
+//
+// Network reference:
+//   Amazon Associates — amazon.com + shopbop.com — param: tag
+//   Rakuten Advertising — nordstrom, revolve, madewell, anthropologie, UO — param: mid
+//   AWIN — asos, lululemon — param: affid
+//   CJ Affiliate (Commission Junction) — zappos — params: AID + PID
+//   ShareASale — ssense — param: sscid
+// ---------------------------------------------------------------------------
 const AFFILIATE_TAGS = {
+  // Amazon Associates (covers amazon.com and shopbop.com)
   amazon: process.env.AMAZON_AFFILIATE_TAG || "attair-20",
+
+  // Rakuten Advertising publisher IDs
+  nordstrom:     process.env.RAKUTEN_NORDSTROM_MID     || "attair-rakuten-nordstrom-id",
+  revolve:       process.env.RAKUTEN_REVOLVE_MID       || "attair-rakuten-revolve-id",
+  madewell:      process.env.RAKUTEN_MADEWELL_MID      || "attair-rakuten-madewell-id",
+  anthropologie: process.env.RAKUTEN_ANTHROPOLOGIE_MID || "attair-rakuten-anthropologie-id",
+  urbanoutfitters: process.env.RAKUTEN_UO_MID          || "attair-rakuten-uo-id",
+
+  // AWIN publisher IDs
+  asos:      process.env.AWIN_ASOS_AFFID      || "attair-awin-asos-id",
+  lululemon: process.env.AWIN_LULULEMON_AFFID || "attair-awin-lululemon-id",
+
+  // CJ Affiliate — Zappos requires both an advertiser ID (AID) and publisher ID (PID)
+  zapposAid: process.env.CJ_ZAPPOS_AID || "attair-cj-zappos-aid",
+  zapposPid: process.env.CJ_ZAPPOS_PID || "attair-cj-zappos-pid",
+
+  // ShareASale — SSENSE
+  ssense: process.env.SHAREASALE_SSENSE_SSCID || "attair-shareasale-ssense-id",
 };
 
 /**
@@ -26,30 +57,87 @@ function isSafeUrl(url) {
 
 /**
  * Appends affiliate parameters to a product URL based on the retailer.
- * Returns null for URLs that are not http/https to prevent open redirects.
+ * Returns an object: { url: string|null, tagged: boolean }
+ *   url    — the (possibly modified) destination URL, or null if unsafe
+ *   tagged — true when affiliate params were successfully appended
+ *
+ * SECURITY: Only http/https URLs are accepted. javascript:, data:, and other
+ * schemes can be exploited for XSS or phishing via an open redirect.
  */
-function tagUrl(url, retailer) {
-  if (!url) return null;
+function tagUrl(url) {
+  if (!url) return { url: null, tagged: false };
 
-  // SECURITY: Only allow http/https URLs. javascript:, data:, and other schemes
-  // can be exploited for XSS or phishing when used as a redirect target.
-  if (!isSafeUrl(url)) return null;
+  if (!isSafeUrl(url)) return { url: null, tagged: false };
 
   try {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
 
-    // Amazon Associates
-    if (host.includes("amazon")) {
+    // Amazon Associates — amazon.com (all TLDs) + shopbop.com
+    if (host.includes("amazon") || host.includes("shopbop")) {
       u.searchParams.set("tag", AFFILIATE_TAGS.amazon);
-      return u.toString();
+      return { url: u.toString(), tagged: true };
     }
 
-    // Future: CJ Affiliate, ShareASale, Rakuten, etc.
-    // For now, pass through other URLs unmodified
-    return url;
+    // Rakuten Advertising — Nordstrom
+    if (host.includes("nordstrom")) {
+      u.searchParams.set("mid", AFFILIATE_TAGS.nordstrom);
+      return { url: u.toString(), tagged: true };
+    }
+
+    // Rakuten Advertising — Revolve
+    if (host.includes("revolve")) {
+      u.searchParams.set("mid", AFFILIATE_TAGS.revolve);
+      return { url: u.toString(), tagged: true };
+    }
+
+    // Rakuten Advertising — Madewell
+    if (host.includes("madewell")) {
+      u.searchParams.set("mid", AFFILIATE_TAGS.madewell);
+      return { url: u.toString(), tagged: true };
+    }
+
+    // Rakuten Advertising — Anthropologie
+    if (host.includes("anthropologie")) {
+      u.searchParams.set("mid", AFFILIATE_TAGS.anthropologie);
+      return { url: u.toString(), tagged: true };
+    }
+
+    // Rakuten Advertising — Urban Outfitters
+    if (host.includes("urbanoutfitters")) {
+      u.searchParams.set("mid", AFFILIATE_TAGS.urbanoutfitters);
+      return { url: u.toString(), tagged: true };
+    }
+
+    // AWIN — ASOS
+    if (host.includes("asos")) {
+      u.searchParams.set("affid", AFFILIATE_TAGS.asos);
+      return { url: u.toString(), tagged: true };
+    }
+
+    // AWIN — Lululemon
+    if (host.includes("lululemon")) {
+      u.searchParams.set("affid", AFFILIATE_TAGS.lululemon);
+      return { url: u.toString(), tagged: true };
+    }
+
+    // CJ Affiliate — Zappos (requires both AID and PID)
+    if (host.includes("zappos")) {
+      u.searchParams.set("AID", AFFILIATE_TAGS.zapposAid);
+      u.searchParams.set("PID", AFFILIATE_TAGS.zapposPid);
+      return { url: u.toString(), tagged: true };
+    }
+
+    // ShareASale — SSENSE
+    if (host.includes("ssense")) {
+      u.searchParams.set("sscid", AFFILIATE_TAGS.ssense);
+      return { url: u.toString(), tagged: true };
+    }
+
+    // Unrecognised retailer — pass through unmodified
+    return { url, tagged: false };
   } catch {
-    return null;
+    return { url: null, tagged: false };
   }
 }
 
@@ -77,7 +165,7 @@ router.post("/:click_id", clickLimiter, optionalAuth, async (req, res) => {
     return res.status(400).json({ error: "Missing product_url" });
   }
 
-  const affiliateUrl = tagUrl(product_url, retailer);
+  const { url: affiliateUrl, tagged } = tagUrl(product_url);
   if (!affiliateUrl) {
     return res.status(400).json({ error: "Invalid product_url: must be an http or https URL" });
   }
@@ -93,6 +181,7 @@ router.post("/:click_id", clickLimiter, optionalAuth, async (req, res) => {
       retailer: retailer || null,
       product_url,
       affiliate_url: affiliateUrl,
+      tag_applied: tagged,
     })
     .then(({ error }) => {
       if (error) console.error("Click log error:", error.message);
@@ -113,7 +202,7 @@ router.get("/:click_id", clickLimiter, optionalAuth, async (req, res) => {
     return res.status(400).json({ error: "Missing url query parameter" });
   }
 
-  const affiliateUrl = tagUrl(url, retailer);
+  const { url: affiliateUrl, tagged } = tagUrl(url);
   if (!affiliateUrl) {
     return res.status(400).json({ error: "Invalid url: must be an http or https URL" });
   }
@@ -129,6 +218,7 @@ router.get("/:click_id", clickLimiter, optionalAuth, async (req, res) => {
       retailer: retailer || null,
       product_url: url,
       affiliate_url: affiliateUrl,
+      tag_applied: tagged,
     })
     .then(({ error }) => {
       if (error) console.error("Click log error:", error.message);
