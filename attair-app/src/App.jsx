@@ -680,11 +680,11 @@ const STRINGS = {
     copied: "Copied!",
     share: "Share",
     streak: "day streak!",
-    likes: "Likes",
+    likes: "Saved",
     collections: "Collections",
     add_to_collection: "Add to collection",
     create_collection: "Create collection",
-    no_likes: "No liked items yet",
+    no_likes: "No saved items yet",
     find_nearby: "Find Near Me",
     no_stores_nearby: "No stores nearby",
     location_denied: "Location access needed",
@@ -2724,14 +2724,14 @@ export default function App() {
       .likes-v2{display:flex;flex-direction:column;min-height:100%}
       .likes-v2-chips{display:flex;gap:6px;padding:12px 16px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
       .likes-v2-chips::-webkit-scrollbar{display:none}
-      .likes-v2-masonry{display:flex;gap:10px;padding:0 16px 80px}
-      .likes-v2-col{display:flex;flex-direction:column;gap:10px;flex:1;min-width:0}
+      .likes-v2-masonry{display:flex;gap:8px;padding:4px 12px 80px}
+      .likes-v2-col{display:flex;flex-direction:column;gap:8px;flex:1;min-width:0}
       .likes-v2-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg,16px);overflow:hidden;box-shadow:var(--shadow-card);position:relative;break-inside:avoid}
-      .likes-v2-card-img{width:100%;display:block;background:var(--accent-bg)}
-      .likes-v2-card-img-placeholder{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--accent-bg);font-size:32px;opacity:.3}
-      .likes-v2-card-body{padding:10px 12px 12px}
-      .likes-v2-card-brand{font-size:var(--text-xs,12px);color:var(--text-tertiary);font-weight:var(--weight-medium,500);margin-bottom:2px}
-      .likes-v2-card-name{font-size:var(--text-sm,14px);font-weight:var(--weight-semibold,600);color:var(--text-primary);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3;margin-bottom:4px}
+      .likes-v2-card-img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:var(--accent-bg);border-radius:var(--radius-lg,16px) var(--radius-lg,16px) 0 0}
+      .likes-v2-card-img-placeholder{width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;background:var(--accent-bg);font-size:32px;opacity:.3}
+      .likes-v2-card-body{padding:8px 10px 10px}
+      .likes-v2-card-brand{font-size:11px;color:var(--text-tertiary);font-weight:var(--weight-bold,700);margin-bottom:1px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.3px}
+      .likes-v2-card-name{font-size:13px;font-weight:var(--weight-medium,500);color:var(--text-primary);overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;line-height:1.3;margin-bottom:2px}
       .likes-v2-card-price{font-size:var(--text-sm,14px);font-weight:var(--weight-bold,700);color:var(--accent)}
       .likes-v2-heart{position:absolute;top:4px;right:4px;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all var(--transition-fast)}
       .likes-v2-heart:active{transform:scale(.88)}
@@ -4537,34 +4537,15 @@ export default function App() {
                 </div>;
           })()}
 
-          {/* ─── Likes tab (Pinterest-style) ─────────────── */}
+          {/* ─── Saved tab (clean Pinterest grid) ─────────── */}
           {tab === "likes" && (() => {
-            // Filter by collection first
-            const collFiltered = likesCollectionFilter === "all"
-              ? saved
-              : saved.filter(s => s.wishlist_id === likesCollectionFilter);
-
-            // Derive unique categories
-            const categories = [...new Set(collFiltered.map(s => (s.item_data || s).category).filter(Boolean))];
+            // Derive unique categories from all saved items
+            const categories = [...new Set(saved.map(s => (s.item_data || s).category).filter(Boolean))];
 
             // Apply category filter
             const allSavedItems = likesCategoryFilter === "all"
-              ? collFiltered
-              : collFiltered.filter(s => (s.item_data || s).category === likesCategoryFilter);
-
-            // Budget tracker data
-            const budgetTierTotals = { budget: 0, mid: 0, premium: 0 };
-            collFiltered.forEach(s => {
-              const item = s.item_data || s;
-              const priceNum = parseFloat((item.price || "").replace(/[^0-9.]/g, ""));
-              if (!isNaN(priceNum)) {
-                if (priceNum < budgetMin) budgetTierTotals.budget += priceNum;
-                else if (priceNum <= budgetMax) budgetTierTotals.mid += priceNum;
-                else budgetTierTotals.premium += priceNum;
-              }
-            });
-            const budgetTotal = budgetTierTotals.budget + budgetTierTotals.mid + budgetTierTotals.premium;
-            const budgetMaxBar = Math.max(budgetTierTotals.budget, budgetTierTotals.mid, budgetTierTotals.premium, 1);
+              ? saved
+              : saved.filter(s => (s.item_data || s).category === likesCategoryFilter);
 
             // Split into 2 columns for masonry
             const col1 = [], col2 = [];
@@ -4573,18 +4554,22 @@ export default function App() {
             const renderCard = (s) => {
               const item = s.item_data || s;
               return (
-                <div key={s.id} className="likes-v2-card">
-                  {item.image_url ? (
-                    <img className="likes-v2-card-img" src={item.image_url} alt={item.name} loading="lazy" onError={e => e.target.style.display = "none"} />
-                  ) : (
-                    <div className="likes-v2-card-img-placeholder">{{ shoes: "\uD83D\uDC5F", accessory: "\u231A", bag: "\uD83D\uDC5C", outerwear: "\uD83E\uDDE5", top: "\uD83D\uDC55", bottom: "\uD83D\uDC56", dress: "\uD83D\uDC57" }[item.category] || "\u2726"}</div>
-                  )}
-                  <button className="likes-v2-heart" aria-label={`Unlike ${item.name}`} onClick={async () => { await API.deleteSaved(s.id).catch(() => {}); setSaved(prev => prev.filter(x => x.id !== s.id)); refreshStatus(); }}>
-                    <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                  </button>
+                <div key={s.id} className="likes-v2-card card-press" onClick={() => { if (item.url) window.open(item.url, "_blank"); }} style={{ cursor: item.url ? "pointer" : "default" }}>
+                  <div style={{ position: "relative" }}>
+                    {item.image_url ? (
+                      <img className="likes-v2-card-img" style={{ aspectRatio: "3/4", objectFit: "cover" }} src={item.image_url} alt={item.name} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                    ) : (
+                      <div className="likes-v2-card-img-placeholder" style={{ aspectRatio: "3/4" }}>
+                        {{ shoes: "\uD83D\uDC5F", accessory: "\u231A", bag: "\uD83D\uDC5C", outerwear: "\uD83E\uDDE5", top: "\uD83D\uDC55", bottom: "\uD83D\uDC56", dress: "\uD83D\uDC57" }[item.category] || "\u2726"}
+                      </div>
+                    )}
+                    <button className="likes-v2-heart" aria-label={`Remove ${item.name} from saved`} onClick={async (e) => { e.stopPropagation(); await API.deleteSaved(s.id).catch(() => {}); setSaved(prev => prev.filter(x => x.id !== s.id)); refreshStatus(); }}>
+                      <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    </button>
+                  </div>
                   <div className="likes-v2-card-body">
                     {item.brand && item.brand !== "Unidentified" && <div className="likes-v2-card-brand">{item.brand}</div>}
-                    <div className="likes-v2-card-name">{item.name}</div>
+                    <div className="likes-v2-card-name" style={{ WebkitLineClamp: 1 }}>{item.name}</div>
                     {item.price && <div className="likes-v2-card-price">{item.price}</div>}
                   </div>
                 </div>
@@ -4592,74 +4577,36 @@ export default function App() {
             };
 
             return (
-              <div className="likes-v2">
-                {/* Budget Tracker (PRO) */}
-                <div className="budget-tracker">
-                  <div className="budget-tracker-header" onClick={() => setLikesBudgetExpanded(!likesBudgetExpanded)} aria-label="Toggle budget tracker" role="button">
-                    <span>Budget Tracker</span>
-                    <span className="budget-tracker-chevron" style={{ transform: likesBudgetExpanded ? "rotate(180deg)" : "rotate(0)" }}>{"\u25BE"}</span>
-                  </div>
-                  {likesBudgetExpanded && (
-                    isPro ? (
-                      <div className="budget-tracker-body">
-                        <div className="budget-tracker-bar">
-                          <span className="budget-tracker-bar-label">Budget</span>
-                          <div className="budget-tracker-bar-track"><div className="budget-tracker-bar-fill" style={{ width: `${(budgetTierTotals.budget / budgetMaxBar) * 100}%`, background: "var(--success)" }} /></div>
-                          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", minWidth: 50, textAlign: "right" }}>${budgetTierTotals.budget.toFixed(0)}</span>
-                        </div>
-                        <div className="budget-tracker-bar">
-                          <span className="budget-tracker-bar-label">Mid</span>
-                          <div className="budget-tracker-bar-track"><div className="budget-tracker-bar-fill" style={{ width: `${(budgetTierTotals.mid / budgetMaxBar) * 100}%`, background: "var(--accent)" }} /></div>
-                          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", minWidth: 50, textAlign: "right" }}>${budgetTierTotals.mid.toFixed(0)}</span>
-                        </div>
-                        <div className="budget-tracker-bar">
-                          <span className="budget-tracker-bar-label">Premium</span>
-                          <div className="budget-tracker-bar-track"><div className="budget-tracker-bar-fill" style={{ width: `${(budgetTierTotals.premium / budgetMaxBar) * 100}%`, background: "var(--warning,#F5A623)" }} /></div>
-                          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)", minWidth: 50, textAlign: "right" }}>${budgetTierTotals.premium.toFixed(0)}</span>
-                        </div>
-                        <div className="budget-tracker-total">
-                          <span className="total-label">Running total</span>
-                          <span className="total-value">${budgetTotal.toFixed(0)}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="budget-tracker-locked">
-                        <p>Go Pro to track spending across all your saved items</p>
-                        <button className="btn-primary" style={{ fontSize: 12, padding: "8px 16px" }} onClick={() => setUpgradeModal("general")}>Go Pro to track your budget</button>
-                      </div>
-                    )
-                  )}
+              <div className="likes-v2 animate-fade-in">
+                {/* Header */}
+                <div style={{ padding: "16px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Saved</h2>
+                  {saved.length > 0 && <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{saved.length} item{saved.length !== 1 ? "s" : ""}</span>}
                 </div>
 
-                {/* Filter Chips: Collections + Categories */}
-                <div className="likes-v2-chips" role="tablist" aria-label="Filter saved items">
-                  {[{ id: "all", name: "All" }, ...wishlists].map(col => (
-                    <button key={col.id} className={`chip${likesCollectionFilter === col.id ? " active" : ""}`} onClick={() => { setLikesCollectionFilter(col.id); setLikesCategoryFilter("all"); }} role="tab" aria-selected={likesCollectionFilter === col.id} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
-                      {col.name}
-                      {col.id !== "all" && <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.6 }}>{saved.filter(s => s.wishlist_id === col.id).length}</span>}
-                    </button>
-                  ))}
-                </div>
-                {categories.length > 1 && (
-                  <div className="likes-v2-chips" style={{ paddingTop: 0 }} role="tablist" aria-label="Filter by category">
-                    <button className={`chip${likesCategoryFilter === "all" ? " active" : ""}`} onClick={() => setLikesCategoryFilter("all")} style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: 12 }}>All</button>
+                {/* Filter Chips */}
+                {saved.length > 0 && (
+                  <div className="likes-v2-chips scroll-x" role="tablist" aria-label="Filter saved items">
+                    <button className={`chip${likesCategoryFilter === "all" ? " active" : ""}`} onClick={() => setLikesCategoryFilter("all")} style={{ whiteSpace: "nowrap", flexShrink: 0 }}>All</button>
                     {categories.map(cat => (
-                      <button key={cat} className={`chip${likesCategoryFilter === cat ? " active" : ""}`} onClick={() => setLikesCategoryFilter(cat)} style={{ whiteSpace: "nowrap", flexShrink: 0, fontSize: 12, textTransform: "capitalize" }}>{cat}</button>
+                      <button key={cat} className={`chip${likesCategoryFilter === cat ? " active" : ""}`} onClick={() => setLikesCategoryFilter(cat)} style={{ whiteSpace: "nowrap", flexShrink: 0, textTransform: "capitalize" }}>{cat}</button>
                     ))}
                   </div>
                 )}
 
-                {/* Content — Pinterest masonry 2-col */}
+                {/* Content */}
                 {allSavedItems.length === 0 ? (
-                  <div className="empty" style={{ padding: "60px 24px", textAlign: "center" }}>
-                    <div className="empty-i">
-                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.2 }}>
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                      </svg>
+                  <div style={{ padding: "80px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.12, marginBottom: 8 }}>
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{saved.length === 0 ? "No saved items yet" : "No items match this filter"}</div>
+                    <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 240 }}>
+                      {saved.length === 0 ? "Scan outfits and save items you love" : "Try a different category"}
                     </div>
-                    <div className="empty-t" style={{ marginTop: 12 }}>{t("no_likes")}</div>
-                    <div className="empty-s" style={{ marginTop: 6 }}>Start scanning to save items you love</div>
-                    <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setTab("scan")}>Scan Now</button>
+                    {saved.length === 0 && (
+                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setTab("scan")}>Start Scanning</button>
+                    )}
                   </div>
                 ) : (
                   <div className="likes-v2-masonry">
@@ -4667,179 +4614,6 @@ export default function App() {
                     <div className="likes-v2-col">{col2.map(renderCard)}</div>
                   </div>
                 )}
-
-                {/* Legacy likes rendering (hidden) */}
-                {false && (
-                  <div style={{ padding: "12px 16px 80px" }}>
-                    {Object.entries(
-                      allSavedItems.reduce((groups, s) => {
-                        const key = s.scan_id || "unsorted";
-                        if (!groups[key]) groups[key] = [];
-                        groups[key].push(s);
-                        return groups;
-                      }, {})
-                    ).map(([scanKey, items]) => {
-                      const scanThumbMap = {};
-                      history.forEach(h => { if (h.id) scanThumbMap[h.id] = h.image_thumbnail || h.image_url; });
-                      const thumb = scanThumbMap[scanKey];
-                      const scanEntry = history.find(h => h.id === scanKey);
-                      return (
-                        <div key={scanKey} style={{ marginBottom: 24 }}>
-                          {/* Scan group header */}
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                            {thumb ? (
-                              <img src={thumb} alt="" style={{ width: 40, height: 52, borderRadius: 6, objectFit: "cover", flexShrink: 0, border: "1px solid rgba(255,255,255,.06)" }} onError={e => e.target.style.display = "none"} />
-                            ) : (
-                              <div style={{ width: 40, height: 52, borderRadius: 6, background: "rgba(255,255,255,.04)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-                                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,.2)" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                              </div>
-                            )}
-                            <div>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.6)" }}>
-                                {scanEntry?.scan_name || (scanEntry?.items?.slice(0, 2).map(x => x.name).join(", ")) || "Saved items"}
-                              </div>
-                              <div style={{ fontSize: 10, color: "rgba(255,255,255,.25)" }}>
-                                {items.length} item{items.length !== 1 ? "s" : ""}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 2-col product grid */}
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                            {items.map(s => {
-                              const item = s.item_data || s;
-                              const assignedList = wishlists.find(wl => wl.id === s.wishlist_id);
-                              return (
-                                <div
-                                  key={s.id}
-                                  className="likes-card"
-                                  onContextMenu={e => { e.preventDefault(); setLikesLongPressItem(s); }}
-                                  style={{ position: "relative", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.05)", borderRadius: 12, overflow: "hidden" }}
-                                >
-                                  {/* Thumbnail */}
-                                  {item.image_url ? (
-                                    <div style={{ aspectRatio: "1", overflow: "hidden", background: "rgba(255,255,255,.04)" }}>
-                                      <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => e.target.style.display = "none"} />
-                                    </div>
-                                  ) : (
-                                    <div style={{ aspectRatio: "1", background: "rgba(255,255,255,.03)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
-                                      {{ shoes: "👟", accessory: "⌚", bag: "👜", outerwear: "🧥", top: "👕", bottom: "👖", dress: "👗" }[item.category] || "✦"}
-                                    </div>
-                                  )}
-                                  {/* Info */}
-                                  <div style={{ padding: "8px 10px 10px" }}>
-                                    <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,.85)", lineHeight: 1.3, marginBottom: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{item.name}</div>
-                                    {item.brand && item.brand !== "Unidentified" && (
-                                      <div style={{ fontSize: 10, color: "rgba(255,255,255,.35)", marginBottom: 2 }}>{item.brand}</div>
-                                    )}
-                                    {item.price && <div style={{ fontSize: 12, fontWeight: 700, color: "#C9A96E", marginBottom: 2 }}>{item.price}</div>}
-                                    <div style={{ fontSize: 9, color: "rgba(255,255,255,.2)", marginTop: 4 }}>{relTime(s.created_at)}</div>
-                                    {assignedList && (
-                                      <div style={{ marginTop: 5, display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 100, background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", color: "#C9A96E" }}>
-                                        {assignedList.name}
-                                      </div>
-                                    )}
-                                  </div>
-                                  {/* Remove heart */}
-                                  <button
-                                    aria-label={`Remove ${item.name} from Likes`}
-                                    onClick={async () => {
-                                      await API.deleteSaved(s.id).catch(() => {});
-                                      setSaved(prev => prev.filter(x => x.id !== s.id));
-                                      refreshStatus();
-                                    }}
-                                    style={{ position: "absolute", top: 6, right: 6, width: 28, height: 28, borderRadius: "50%", background: "rgba(255,60,80,.85)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)" }}>
-                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="#fff" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                                    </svg>
-                                  </button>
-                                  {/* Long-press / add to collection button */}
-                                  <button
-                                    aria-label={`Add ${item.name} to collection`}
-                                    onClick={() => setLikesLongPressItem(s)}
-                                    style={{ position: "absolute", bottom: 8, right: 8, width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,.5)", border: "1px solid rgba(255,255,255,.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", fontSize: 11 }}>
-                                    +
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {/* end legacy likes */}
-
-                {/* Add-to-collection bottom sheet */}
-                {likesLongPressItem && (() => {
-                  const s = likesLongPressItem;
-                  const item = s.item_data || s;
-                  return (
-                    <>
-                      <div style={{ position: "fixed", inset: 0, zIndex: 299, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)" }} onClick={() => setLikesLongPressItem(null)} />
-                      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 300, background: "#18181C", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "16px 0 32px", animation: "slideUp .25s ease" }}>
-                        <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,.12)", margin: "0 auto 16px" }} />
-                        <div style={{ padding: "0 20px 14px", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 2 }}>{item.name}</div>
-                          <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)" }}>{t("add_to_collection")}</div>
-                        </div>
-                        <div style={{ maxHeight: 220, overflowY: "auto", padding: "8px 0" }}>
-                          {wishlists.map(wl => (
-                            <button key={wl.id} onClick={async () => {
-                              const ok = await API.addToWishlist(wl.id, s.id);
-                              if (ok) setSaved(prev => prev.map(x => x.id === s.id ? { ...x, wishlist_id: wl.id } : x));
-                              setLikesLongPressItem(null);
-                            }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "12px 20px", background: s.wishlist_id === wl.id ? "rgba(201,169,110,.08)" : "none", border: "none", color: s.wishlist_id === wl.id ? "#C9A96E" : "rgba(255,255,255,.7)", fontFamily: "'Outfit'", fontSize: 14, cursor: "pointer", textAlign: "left" }}>
-                              {wl.name}
-                              {s.wishlist_id === wl.id && <span style={{ color: "#C9A96E", fontSize: 14 }}>✓</span>}
-                            </button>
-                          ))}
-                        </div>
-                        {/* Create new collection */}
-                        <div style={{ padding: "8px 20px 0", borderTop: "1px solid rgba(255,255,255,.06)" }}>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <input
-                              value={likesCollectionInput}
-                              onChange={e => setLikesCollectionInput(e.target.value)}
-                              placeholder={t("create_collection")}
-                              onKeyDown={async e => {
-                                if (e.key === "Enter" && likesCollectionInput.trim()) {
-                                  setLikesCollectionCreating(true);
-                                  try {
-                                    const wl = await API.createWishlist(likesCollectionInput.trim());
-                                    setWishlists(w => [wl, ...w]);
-                                    const ok = await API.addToWishlist(wl.id, s.id);
-                                    if (ok) setSaved(prev => prev.map(x => x.id === s.id ? { ...x, wishlist_id: wl.id } : x));
-                                    setLikesCollectionInput("");
-                                    setLikesLongPressItem(null);
-                                  } catch {}
-                                  setLikesCollectionCreating(false);
-                                }
-                              }}
-                              style={{ flex: 1, padding: "10px 14px", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 10, color: "#fff", fontFamily: "'Outfit'", fontSize: 13, outline: "none" }}
-                            />
-                            <button onClick={async () => {
-                              if (!likesCollectionInput.trim()) return;
-                              setLikesCollectionCreating(true);
-                              try {
-                                const wl = await API.createWishlist(likesCollectionInput.trim());
-                                setWishlists(w => [wl, ...w]);
-                                const ok = await API.addToWishlist(wl.id, s.id);
-                                if (ok) setSaved(prev => prev.map(x => x.id === s.id ? { ...x, wishlist_id: wl.id } : x));
-                                setLikesCollectionInput("");
-                                setLikesLongPressItem(null);
-                              } catch {}
-                              setLikesCollectionCreating(false);
-                            }} disabled={likesCollectionCreating || !likesCollectionInput.trim()} style={{ padding: "10px 16px", background: likesCollectionInput.trim() ? "#C9A96E" : "rgba(255,255,255,.06)", border: "none", borderRadius: 10, color: likesCollectionInput.trim() ? "#0C0C0E" : "rgba(255,255,255,.2)", fontFamily: "'Outfit'", fontSize: 13, fontWeight: 700, cursor: likesCollectionInput.trim() ? "pointer" : "default" }}>
-                              {likesCollectionCreating ? "…" : "+ New"}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
               </div>
             );
           })()}
