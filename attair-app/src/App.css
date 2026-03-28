@@ -242,8 +242,8 @@
 }
 
 
-/* ── Floating Action Button ── */
-
+/* ── Floating Action Button (removed — now an inline Scan tab) ── */
+/*
 .fab {
   position: fixed;
   bottom: calc(80px + env(safe-area-inset-bottom, 0px));
@@ -266,6 +266,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 .fab:active { transform: translateX(-50%) scale(0.92); }
+*/
 
 
 /* ── Section Header ── */
@@ -415,7 +416,8 @@
 }
 
 .card-press:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
+  transition: transform 100ms ease;
 }
 
 .card-enter {
@@ -693,8 +695,8 @@
 }
 
 
-/* ── 9. FAB Enhancements ── */
-
+/* ── 9. FAB Enhancements (removed — now an inline Scan tab) ── */
+/*
 .fab {
   animation: pulseGlow 3s ease-in-out infinite;
 }
@@ -702,6 +704,7 @@
 .fab:active {
   animation: none;
 }
+*/
 
 @keyframes pulseGlow {
   0%, 100% {
@@ -941,18 +944,31 @@
 .auth-err{background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.12);border-radius:10px;padding:12px;font-size:13px;color:var(--error);margin-bottom:12px;text-align:center;animation:slideDown 200ms ease forwards}
 
 .as{flex:1;display:flex;flex-direction:column;padding-bottom:80px}
-.hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg-secondary) 92%,transparent);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+/* ─── Header ─── */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg-secondary) 92%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
 .logo{font-family:'Instrument Serif';font-size:22px;color:var(--text-primary);font-style:italic;letter-spacing:0.04em}.logo span{color:var(--accent)}
+.logo-img{height:22px;width:auto;display:block}
 .pro{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--accent);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
 .free-badge{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-tertiary);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
 .scan-counter{font-size:11px;color:var(--text-tertiary);text-align:center;margin-top:-8px;margin-bottom:8px}
 .scan-counter strong{color:var(--accent)}
-.tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;background:var(--bg-card);backdrop-filter:blur(24px);border-top:1px solid var(--border);padding:6px 0 0;padding-bottom:max(6px,env(safe-area-inset-bottom));z-index:100}
-.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0 4px;cursor:pointer;background:none;border:none;color:var(--text-tertiary);transition:color .2s;font-family:var(--font-sans);min-height:44px;position:relative}.tab.on{color:var(--accent)}
-.tab.on::before{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:20px;height:2px;background:var(--accent);border-radius:2px}
-.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}.tab.on svg{stroke-width:2}
+
+/* ─── Tab Bar (Instagram/TikTok style) ─── */
+.tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;align-items:flex-end;background:rgba(12,12,14,.92);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-top:1px solid rgba(255,255,255,.06);padding:4px 0 0;padding-bottom:max(4px,env(safe-area-inset-bottom));z-index:100}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;cursor:pointer;background:none;border:none;color:var(--text-tertiary);transition:color .2s,transform .1s;font-family:var(--font-sans);min-height:48px;position:relative;-webkit-tap-highlight-color:transparent}
+.tab:active{transform:scale(0.92)}
+.tab.on{color:var(--text-primary)}
+.tab.on::before{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:20px;height:2px;background:var(--accent);border-radius:2px}
+.tab svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.5;transition:all .2s}
+.tab.on svg{stroke-width:2}
 .tab-l{font-size:10px;font-weight:500;letter-spacing:.3px;margin-top:1px}.tab.on .tab-l{font-weight:700}
-.tab-badge{position:absolute;top:4px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:#FF5252;border:2px solid var(--bg-primary)}
+.tab-badge{position:absolute;top:4px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:#FF5252;border:2px solid rgba(12,12,14,.92)}
+
+/* ─── Scan Tab — Primary Action (center "+" button like TikTok) ─── */
+.tab-scan{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px 0 4px;cursor:pointer;background:none;border:none;-webkit-tap-highlight-color:transparent;position:relative;min-height:48px}
+.tab-scan-icon{width:44px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent) 0%,#B8944F 100%);display:flex;align-items:center;justify-content:center;color:#000;box-shadow:0 2px 12px rgba(201,169,110,.35);transition:transform .15s,box-shadow .15s}
+.tab-scan:active .tab-scan-icon{transform:scale(.90);box-shadow:0 1px 6px rgba(201,169,110,.2)}
+.tab-scan-icon svg{stroke:#000;stroke-width:2.5}
 
 /* ─── Scan Sheet Buttons ─────────────────────── */
 .scan-sheet-btn{width:100%;padding:16px 0;background:var(--accent-bg);border:1px solid var(--border);border-radius:14px;color:var(--text-primary);font-family:var(--font-sans);font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;margin-bottom:10px;transition:all var(--transition-fast);-webkit-tap-highlight-color:transparent}
@@ -969,15 +985,7 @@
 .btn.ghost{background:var(--accent-bg);color:var(--text-secondary);border:1px solid var(--border)}
 .btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
 
-.cam{position:fixed;inset:0;z-index:200;background:#000;display:flex;flex-direction:column;overflow:hidden}
-.cam video{flex:1;object-fit:cover;min-height:0}
-.cam-corners{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:260px;height:340px;pointer-events:none}
-.cc{position:absolute;width:28px;height:28px;border-color:var(--accent);border-style:solid}
-.cc.tl{top:0;left:0;border-width:2px 0 0 2px;border-radius:6px 0 0 0}.cc.tr{top:0;right:0;border-width:2px 2px 0 0;border-radius:0 6px 0 0}
-.cc.bl{bottom:0;left:0;border-width:0 0 2px 2px;border-radius:0 0 0 6px}.cc.br{bottom:0;right:0;border-width:0 2px 2px 0;border-radius:0 0 6px 0}
-.cam-bar{flex-shrink:0;padding:24px;display:flex;align-items:center;justify-content:center;gap:36px;background:rgba(0,0,0,.85);backdrop-filter:blur(16px);padding-bottom:max(24px,env(safe-area-inset-bottom))}
-.cam-x{background:none;border:none;color:#fff;font-family:var(--font-sans);font-size:15px;cursor:pointer;min-height:44px;min-width:44px}
-.shutter{width:64px;height:64px;border-radius:50%;background:var(--accent);border:4px solid var(--accent-border);cursor:pointer;transition:transform .15s}.shutter:active{transform:scale(.88)}
+/* Camera CSS removed — native file picker only */
 
 .ld-wrap{flex:1;display:flex;flex-direction:column}
 .ld-img-wrap{position:relative;width:100%;aspect-ratio:3/4;max-height:55vh;overflow:hidden}

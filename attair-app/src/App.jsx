@@ -140,7 +140,7 @@ const API = {
     if (!res.ok) {
       let data = {};
       try { data = await res.json(); } catch { data = { message: `HTTP ${res.status} (non-JSON body)` }; }
-      console.error("[ATTAIRE] /api/identify response:", res.status, data);
+      console.error("[ATTAIR] /api/identify response:", res.status, data);
       throw new Error(data.message || data.error || `API error ${res.status}`);
     }
     return await res.json();
@@ -573,7 +573,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e => e.stopPropagation()} style={{ overflowY: "auto", maxHeight: "90vh" }}>
         <button className="modal-x" onClick={onClose}>✕</button>
-        <div className="pw-badge">✦ ATTAIRE PRO</div>
+        <div className="pw-badge">✦ ATTAIR PRO</div>
         <h2 className="modal-title">{m.title}</h2>
         <p className="modal-sub">{m.sub}</p>
         <div className="pw-fs" style={{ marginBottom: 24 }}>
@@ -1150,7 +1150,7 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
     ctx.fillText(`Scanned by ${userName}`, 540, 1580);
   }
 
-  // ATTAIRE watermark
+  // ATTAIR watermark
   ctx.fillStyle = "#C9A96E";
   ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
@@ -1266,7 +1266,7 @@ async function generateStyleDnaCard(dna, userName) {
     ctx.fillText(userName, 540, 1700);
   }
 
-  // ATTAIRE watermark
+  // ATTAIR watermark
   ctx.fillStyle = "#C9A96E";
   ctx.font = "bold 56px 'Outfit', system-ui";
   ctx.textAlign = "center";
@@ -1482,12 +1482,7 @@ export default function App() {
   const [referralCopied, setReferralCopied] = useState(false);
 
   const fileRef = useRef(null);
-  const vidRef = useRef(null);
-  const canRef = useRef(null);
-  const streamRef = useRef(null);
-  const [camOn, setCamOn] = useState(false);
-  const [camReady, setCamReady] = useState(false);
-  const [camFacing, setCamFacing] = useState("environment"); // "environment" (back) | "user" (front)
+  // Camera refs/state removed — native file picker only
   const [showScanSheet, setShowScanSheet] = useState(false); // bottom sheet for scan options
 
   // ─── Per-item overrides (reset each new scan) ─────────────
@@ -1552,6 +1547,7 @@ export default function App() {
   const [likesCollectionInput, setLikesCollectionInput] = useState("");
   const [likesCollectionCreating, setLikesCollectionCreating] = useState(false);
   const [likesCategoryFilter, setLikesCategoryFilter] = useState("all"); // category chip filter
+  const [savedSearchQuery, setSavedSearchQuery] = useState(""); // search within saved items
   const [likesBudgetExpanded, setLikesBudgetExpanded] = useState(false); // budget tracker toggle
 
   // ─── Profile redesign ──────────────────────────────────────
@@ -1611,6 +1607,9 @@ export default function App() {
   const [userSearchLoading, setUserSearchLoading] = useState(false);
   const [followingSet, setFollowingSet] = useState(new Set()); // user ids we follow
   const userSearchTimerRef = useRef(null);
+  const [searchSubTab, setSearchSubTab] = useState("people"); // "people" | "products"
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [productSearchResults, setProductSearchResults] = useState([]);
 
   // ─── Theme (dark / light) ─────────────────────────────────
   const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
@@ -1775,7 +1774,7 @@ export default function App() {
       setFeedHasMore(data.has_more || false);
       setFeedPage(page);
     } catch (err) {
-      console.error("[ATTAIRE] Feed load error:", err);
+      console.error("[ATTAIR] Feed load error:", err);
     } finally {
       setFeedLoading(false);
     }
@@ -1946,52 +1945,7 @@ export default function App() {
     setAuthLoading(false);
   };
 
-  // Camera
-  const camStart = async (facing) => {
-    const mode = facing || camFacing;
-    track("camera_opened", {}, null, "scan");
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode, width: { ideal: 1280 } } });
-      streamRef.current = s;
-      if (vidRef.current) { vidRef.current.srcObject = s; vidRef.current.onloadedmetadata = () => setCamReady(true); }
-      setCamOn(true);
-    } catch { setError("Camera denied. Upload a photo instead."); }
-  };
-  const camFlip = async () => {
-    const newFacing = camFacing === "environment" ? "user" : "environment";
-    setCamFacing(newFacing);
-    setCamReady(false);
-    // Stop current stream
-    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
-    // Start new stream with flipped camera — attach directly to existing video element
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: newFacing, width: { ideal: 1280 } } });
-      streamRef.current = s;
-      if (vidRef.current) { vidRef.current.srcObject = s; vidRef.current.onloadedmetadata = () => setCamReady(true); }
-    } catch { setError("Could not switch camera."); }
-  };
-  const camCapture = async () => {
-    if (!vidRef.current || !canRef.current) return;
-    const v = vidRef.current, c = canRef.current;
-    c.width = v.videoWidth; c.height = v.videoHeight;
-    const ctx = c.getContext("2d");
-    // For front-facing camera: the video preview is CSS-mirrored but the captured
-    // image should NOT be mirrored — flip the canvas context before drawing
-    if (camFacing === "user") {
-      ctx.translate(c.width, 0);
-      ctx.scale(-1, 1);
-    }
-    ctx.drawImage(v, 0, 0);
-    camStop();
-    const r = await resizeImage(c.toDataURL("image/jpeg", 0.85));
-    openCrop(r, "camera");
-  };
-  const camStop = () => {
-    if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
-    setCamOn(false); setCamReady(false);
-    // Return to home feed when canceling camera (not the old scan idle state)
-    if (phase === "idle" && !img && !results) setTab("home");
-  };
+  // Camera functions removed — native file picker only (via fileRef)
 
   // File upload
   const handleFile = useCallback((file) => {
@@ -2045,11 +1999,8 @@ export default function App() {
     const source = cropPending?.source;
     setCropPending(null);
     setCropMode(false);
-    if (source === "camera") {
-      camStart();
-    } else {
-      fileRef.current?.click();
-    }
+    // Always open native file picker for retake (camera code removed)
+    fileRef.current?.click();
   };
 
   const onCropImageLoad = (e) => {
@@ -2147,7 +2098,7 @@ export default function App() {
       } else if (err.message.includes("fetch") || err.message.includes("network") || err.message.includes("Failed")) {
         setError("Couldn't connect to the server. Check your internet connection and try again.");
       } else {
-        console.error("[ATTAIRE] Identify error:", err.message);
+        console.error("[ATTAIR] Identify error:", err.message);
         setError("Something went wrong analyzing the photo. Please try again.");
       }
     }
@@ -2420,21 +2371,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ─── CAMERA ──────────────────────────────────────── */}
-      {camOn && (
-        <div className="cam">
-          <video ref={(el) => { vidRef.current = el; if (el && streamRef.current && !el.srcObject) { el.srcObject = streamRef.current; el.onloadedmetadata = () => setCamReady(true); } }} autoPlay playsInline muted style={camFacing === "user" ? {transform:"scaleX(-1)"} : undefined} />
-          <div className="cam-corners"><div className="cc tl" /><div className="cc tr" /><div className="cc bl" /><div className="cc br" /></div>
-          <canvas ref={canRef} className="hid" />
-          <div className="cam-bar">
-            <button className="cam-x" onClick={camStop}>Cancel</button>
-            <button className="shutter" onClick={camCapture} style={{opacity:camReady?1:.3}} disabled={!camReady} />
-            <button onClick={camFlip} style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,.15)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}} title="Flip camera">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 3h5v5"/><path d="M21 3l-7 7"/><path d="M8 21H3v-5"/><path d="M3 21l7-7"/></svg>
-            </button>
-          </div>
-        </div>
-      )}
+      {/* ─── CAMERA removed — native file picker only ─── */}
 
       {/* ─── INTERSTITIAL AD (free users, post-scan) ─────── */}
       {showInterstitial && showAds && (
@@ -2497,7 +2434,7 @@ export default function App() {
       {/* ─── UPGRADE SUCCESS BANNER ──────────────────────── */}
       {upgradeSuccess && (
         <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "var(--accent)", color: "var(--text-inverse)", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
-          Welcome to ATTAIRE Pro!
+          Welcome to ATTAIR Pro!
         </div>
       )}
 
@@ -2511,7 +2448,7 @@ export default function App() {
       {/* ─── MAIN APP ────────────────────────────────────── */}
       {screen === "app" && (<>
         <div className="hdr">
-          <div className="logo"><span>ATT</span>AIRE</div>
+          <img src="/logo-option-3.svg" alt="ATTAIR" className="logo-img" />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {isPro
               ? <div className="pro">PRO</div>
@@ -2521,15 +2458,10 @@ export default function App() {
               const daysLeft = Math.max(0, Math.ceil((new Date(userStatus.trial_ends_at) - new Date()) / 86400000));
               return <div style={{ fontSize: 10, color: "var(--accent)", padding: "2px 8px", background: "var(--accent-bg)", borderRadius: 100, border: "1px solid var(--accent-border)" }}>{daysLeft}d trial</div>;
             })()}
-            {(tab === "home" || tab === "scan") && (
-              <button onClick={() => { setShowUserSearch(true); setUserSearchQuery(""); setUserSearchResults([]); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Search users">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              </button>
-            )}
           </div>
         </div>
         <div className="as">
-          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
+          <input ref={fileRef} type="file" accept="image/*,.heic,.heif" capture="environment" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
 
           {/* ─── Home Feed (TikTok/Instagram style) ────── */}
           {tab === "home" && (
@@ -2555,17 +2487,14 @@ export default function App() {
               {/* Empty states */}
               {!feedLoading && feedScans.length === 0 && (
                 <div className="empty animate-slide-up" style={{ padding: "80px 32px" }}>
-                  <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 20, opacity: 0.5 }}><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
+                  <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 20, opacity: 0.5 }}><path d="M12 2l2.09 6.26L20.18 9l-5.09 3.74L16.18 19 12 15.27 7.82 19l1.09-6.26L3.82 9l6.09-.74z" /></svg>
                   <div className="empty-t">
-                    {feedTab === "following" ? "Follow people to see their scans here" : "Scan your first outfit to discover styles"}
+                    {feedTab === "following" ? "Follow people to see their outfits here" : "Your feed is empty"}
                   </div>
                   <div className="empty-s" style={{ marginBottom: 24, lineHeight: 1.5 }}>
-                    {feedTab === "following" ? "Find friends and style inspiration in the search tab." : "Point your camera at any outfit and we will identify every piece."}
+                    {feedTab === "following" ? "Find friends and style inspiration in the search tab." : "Follow people to see their outfits and style inspiration here."}
                   </div>
-                  {feedTab === "following"
-                    ? <button className="btn-primary" onClick={() => { setTab("search"); setShowUserSearch(true); }} style={{ padding: "12px 32px", borderRadius: 100 }}>Explore People</button>
-                    : <button className="btn-primary" onClick={() => { setShowScanSheet(true); }} style={{ padding: "12px 32px", borderRadius: 100 }}>Scan an Outfit</button>
-                  }
+                  <button className="btn-primary" onClick={() => { setTab("search"); setShowUserSearch(true); }} style={{ padding: "12px 32px", borderRadius: 100 }}>Discover People</button>
                 </div>
               )}
 
@@ -2620,53 +2549,109 @@ export default function App() {
           {/* ─── Search Tab ──────────────────────────────── */}
           {tab === "search" && (
             <div className="animate-fade-in" style={{ paddingBottom: 80 }}>
+              {/* People / Products sub-tabs */}
+              <div className="feed-tabs-wrap">
+                <button className={`feed-tab${searchSubTab === "people" ? " active" : ""}`} onClick={() => setSearchSubTab("people")}>People</button>
+                <button className={`feed-tab${searchSubTab === "products" ? " active" : ""}`} onClick={() => setSearchSubTab("products")}>Products</button>
+              </div>
+
+              {/* Search input */}
               <div style={{ padding: "8px 16px 0" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--bg-card)", borderRadius: 12, padding: "0 14px", border: "1px solid var(--border)" }}>
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                  <input
-                    value={userSearchQuery}
-                    onChange={e => { setUserSearchQuery(e.target.value); if (!showUserSearch) setShowUserSearch(true); }}
-                    onFocus={() => { if (!showUserSearch) setShowUserSearch(true); }}
-                    placeholder="Search people..."
-                    autoFocus
-                    style={{ flex: 1, background: "none", border: "none", outline: "none", padding: "12px 0", fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--text-primary)", minHeight: 44 }}
-                  />
-                  {userSearchQuery && (
+                  {searchSubTab === "people" ? (
+                    <input
+                      value={userSearchQuery}
+                      onChange={e => { setUserSearchQuery(e.target.value); if (!showUserSearch) setShowUserSearch(true); }}
+                      onFocus={() => { if (!showUserSearch) setShowUserSearch(true); }}
+                      placeholder="Search people..."
+                      autoFocus
+                      style={{ flex: 1, background: "none", border: "none", outline: "none", padding: "12px 0", fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--text-primary)", minHeight: 44 }}
+                    />
+                  ) : (
+                    <input
+                      value={productSearchQuery}
+                      onChange={e => setProductSearchQuery(e.target.value)}
+                      placeholder="Search products, brands..."
+                      autoFocus
+                      style={{ flex: 1, background: "none", border: "none", outline: "none", padding: "12px 0", fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--text-primary)", minHeight: 44 }}
+                    />
+                  )}
+                  {searchSubTab === "people" && userSearchQuery && (
                     <button onClick={() => { setUserSearchQuery(""); setUserSearchResults([]); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 10, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)" }}>
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                  )}
+                  {searchSubTab === "products" && productSearchQuery && (
+                    <button onClick={() => { setProductSearchQuery(""); setProductSearchResults([]); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 10, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)" }}>
                       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                     </button>
                   )}
                 </div>
               </div>
-              <div style={{ padding: "12px 16px" }}>
-                {userSearchLoading && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Searching...</div>}
-                {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>No users found</div>}
-                {!userSearchLoading && !userSearchQuery.trim() && (
-                  <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-tertiary)" }}>
-                    <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 12, opacity: 0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                    <div style={{ fontFamily: "var(--font-sans)", fontWeight: 600, fontSize: 15 }}>Search for people to follow</div>
-                    <div style={{ fontSize: 13, marginTop: 6, opacity: 0.7 }}>Discover outfit inspiration from other users</div>
-                  </div>
-                )}
-                {userSearchResults.map(usr => {
-                  const ini = (usr.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
-                  const isFlw = followingSet.has(usr.id);
-                  return (
-                    <div key={usr.id} className="user-search-row">
-                      <div className="user-search-avatar">{ini}</div>
-                      <div className="user-search-info">
-                        <div className="user-search-name">{usr.display_name}</div>
-                        {usr.bio && <div className="user-search-bio">{usr.bio}</div>}
-                        <div className="user-search-followers">{usr.follower_count || 0} follower{(usr.follower_count || 0) !== 1 ? "s" : ""}</div>
-                      </div>
-                      <button
-                        className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
-                        onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(usr.id); }}
-                      >{isFlw ? "Following" : "Follow"}</button>
+
+              {/* ─── People search results ─── */}
+              {searchSubTab === "people" && (
+                <div style={{ padding: "12px 16px" }}>
+                  {userSearchLoading && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Searching...</div>}
+                  {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>No users found</div>}
+                  {!userSearchLoading && !userSearchQuery.trim() && (
+                    <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-tertiary)" }}>
+                      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 12, opacity: 0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                      <div style={{ fontFamily: "var(--font-sans)", fontWeight: 600, fontSize: 15 }}>Search for people to follow</div>
+                      <div style={{ fontSize: 13, marginTop: 6, opacity: 0.7 }}>Discover outfit inspiration from other users</div>
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                  {userSearchResults.map(usr => {
+                    const ini = (usr.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                    const isFlw = followingSet.has(usr.id);
+                    return (
+                      <div key={usr.id} className="user-search-row">
+                        <div className="user-search-avatar">{ini}</div>
+                        <div className="user-search-info">
+                          <div className="user-search-name">{usr.display_name}</div>
+                          {usr.bio && <div className="user-search-bio">{usr.bio}</div>}
+                          <div className="user-search-followers">{usr.follower_count || 0} follower{(usr.follower_count || 0) !== 1 ? "s" : ""}</div>
+                        </div>
+                        <button
+                          className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
+                          onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(usr.id); }}
+                        >{isFlw ? "Following" : "Follow"}</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ─── Product search results ─── */}
+              {searchSubTab === "products" && (
+                <div style={{ padding: "12px 16px" }}>
+                  {productSearchQuery.trim() && productSearchResults.length === 0 && (
+                    <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>No products found</div>
+                  )}
+                  {!productSearchQuery.trim() && (
+                    <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-tertiary)" }}>
+                      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 12, opacity: 0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                      <div style={{ fontFamily: "var(--font-sans)", fontWeight: 600, fontSize: 15 }}>Search for clothing items, brands, or styles</div>
+                      <div style={{ fontSize: 13, marginTop: 6, opacity: 0.7 }}>Find products from your favorite brands</div>
+                    </div>
+                  )}
+                  {productSearchResults.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+                      {productSearchResults.map((product, idx) => (
+                        <div key={product.id || idx} style={{ background: "var(--bg-card)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+                          {product.image_url && <img src={product.image_url} alt={product.name || ""} style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} />}
+                          <div style={{ padding: 10 }}>
+                            {product.brand && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{product.brand}</div>}
+                            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1.3 }}>{product.name}</div>
+                            {product.price && <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginTop: 4 }}>{product.price}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -2680,7 +2665,7 @@ export default function App() {
               {/* Title */}
               <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "var(--text-primary)", marginBottom: 8 }}>Scan an Outfit</div>
               <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.6, maxWidth: 280, marginBottom: 32 }}>
-                Point your camera at any outfit to find where to buy it
+                Upload a photo of any outfit to find where to buy it
               </div>
 
               {isFree && scansLeft != null && (
@@ -2689,15 +2674,11 @@ export default function App() {
                 </div>
               )}
 
-              {/* Action buttons */}
+              {/* Scan action — triggers native file picker (camera/gallery) */}
               <div style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12 }}>
-                <button className="btn-primary" onClick={camStart} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
+                <button className="btn-primary" onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
-                  Take Photo
-                </button>
-                <button className="btn-secondary" onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                  Upload from Gallery
+                  Tap to Scan an Outfit
                 </button>
               </div>
             </div>
@@ -2713,8 +2694,8 @@ export default function App() {
               </div>
               {/* Centered content panel */}
               <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(201,169,110,.15)", maxWidth: 300 }}>
-                {/* ATTAIRE wordmark */}
-                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 24, fontStyle: "italic", color: "var(--text-primary)", letterSpacing: 1 }}>A<span style={{ color: "var(--accent)" }}>TT</span>AIRE</div>
+                {/* ATTAIR wordmark */}
+                <img src="/logo-option-3.svg" alt="ATTAIR" style={{ height: 24, width: "auto" }} />
                 {/* Gold scan ring spinner */}
                 <div className="scan-ring scan-ring--lg" />
                 {/* Animated status text */}
@@ -3495,10 +3476,17 @@ export default function App() {
             // Derive unique categories from all saved items
             const categories = [...new Set(saved.map(s => (s.item_data || s).category).filter(Boolean))];
 
-            // Apply category filter
-            const allSavedItems = likesCategoryFilter === "all"
+            // Apply category + search filter
+            let allSavedItems = likesCategoryFilter === "all"
               ? saved
               : saved.filter(s => (s.item_data || s).category === likesCategoryFilter);
+            if (savedSearchQuery.trim()) {
+              const q = savedSearchQuery.toLowerCase();
+              allSavedItems = allSavedItems.filter(s => {
+                const item = s.item_data || s;
+                return (item.name || "").toLowerCase().includes(q) || (item.brand || "").toLowerCase().includes(q) || (item.category || "").toLowerCase().includes(q);
+              });
+            }
 
             // Split into 2 columns for masonry
             const col1 = [], col2 = [];
@@ -3554,6 +3542,21 @@ export default function App() {
                   {saved.length > 0 && <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{saved.length} item{saved.length !== 1 ? "s" : ""}</span>}
                 </div>
 
+                {/* Search bar */}
+                {saved.length > 0 && (
+                  <div style={{ padding: "8px 16px 0" }}>
+                    <div style={{ position: "relative" }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                      <input
+                        placeholder="Search saved items..."
+                        value={savedSearchQuery}
+                        onChange={e => setSavedSearchQuery(e.target.value)}
+                        style={{ width: "100%", padding: "10px 12px 10px 36px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: "var(--radius-full)", color: "var(--text-primary)", fontSize: 14, fontFamily: "var(--font-sans)", outline: "none", minHeight: 44, boxSizing: "border-box" }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Filter Chips */}
                 {saved.length > 0 && (
                   <div className="likes-v2-chips scroll-x" role="tablist" aria-label="Filter saved items">
@@ -3575,7 +3578,7 @@ export default function App() {
                       {saved.length === 0 ? "Scan outfits and save items you love" : "Try a different category"}
                     </div>
                     {saved.length === 0 && (
-                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setShowScanSheet(true)}>Start Scanning</button>
+                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => fileRef.current?.click()}>Scan an Outfit</button>
                     )}
                   </div>
                 ) : (
@@ -3687,8 +3690,8 @@ export default function App() {
                   <div className="empty" style={{ padding: "48px 20px" }}>
                     <div style={{ fontSize: 40, opacity: 0.15, marginBottom: 12 }}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg></div>
                     <div className="empty-t">No scans yet</div>
-                    <div className="empty-s">Scan outfits to fill your grid</div>
-                    <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setShowScanSheet(true)}>Scan your first outfit</button>
+                    <div className="empty-s">Your outfit scans will appear here</div>
+                    <button className="btn-primary" style={{ marginTop: 12, opacity: 0.85 }} onClick={() => setTab("home")}>Start exploring</button>
                   </div>
                 ) : (
                   <div className="profile-v2-grid">
@@ -4049,53 +4052,31 @@ export default function App() {
           </div>
         )}
 
-        {/* ─── FAB (visible on all tabs) ─────────────────── */}
-        <button className="fab" onClick={() => { track("fab_scan", {}); setShowScanSheet(true); }} aria-label="Scan outfit">
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#0C0C0E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
-        </button>
-
-        {/* ─── Scan bottom sheet ─────────────────────── */}
-        {showScanSheet && (
-          <>
-            <div className="bottom-sheet-overlay" onClick={() => setShowScanSheet(false)} />
-            <div className="bottom-sheet">
-              <div className="bottom-sheet-handle" />
-              <button className="scan-sheet-btn" onClick={() => { setShowScanSheet(false); setTab("scan"); camStart(); }}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
-                Take Photo
-              </button>
-              <button className="scan-sheet-btn" onClick={() => { setShowScanSheet(false); setTab("scan"); fileRef.current?.click(); }}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                Choose from Gallery
-              </button>
-              <button className="btn-ghost scan-sheet-cancel" onClick={() => setShowScanSheet(false)}>
-                Cancel
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* ─── Tab bar (5 sections: Home, Search, [FAB gap], Saved, Profile) ── */}
+        {/* ─── Tab bar (5 tabs: Feed, Search, Scan, Saved, Profile) ── */}
         <div className="tb">
-          <button className={`tab${tab==="home"?" on":""}`} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); }} aria-label="Home">
-            <svg viewBox="0 0 24 24" fill={tab==="home"?"currentColor":"none"}><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
-            <span className="tab-l">Home</span>
+          <button className={`tab${tab==="home"?" on":""}`} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); setShowUserSearch(false); }} aria-label="Feed">
+            <svg viewBox="0 0 24 24" fill={tab==="home"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
+            <span className="tab-l">Feed</span>
           </button>
           <button className={`tab${tab==="search"?" on":""}`} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); setShowUserSearch(false); }} aria-label="Search">
-            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <span className="tab-l">Search</span>
           </button>
-          {/* FAB spacer */}
-          <div style={{ flex: 1 }} />
-          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label="Saved">
-            <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <button className="tab-scan" onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); setShowUserSearch(false); fileRef.current?.click(); }} aria-label="Scan outfit">
+            <div className="tab-scan-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <span className="tab-l">Scan</span>
+          </button>
+          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); }} aria-label="Saved">
+            <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             <span className="tab-l">Saved</span>
             {priceAlertCount > 0 && (
               <span className="tab-badge" />
             )}
           </button>
-          <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }} aria-label="Profile">
-            <svg viewBox="0 0 24 24" fill={tab==="profile"?"currentColor":"none"}><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
+          <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); setShowUserSearch(false); }} aria-label="Profile">
+            <svg viewBox="0 0 24 24" fill={tab==="profile"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
             <span className="tab-l">Profile</span>
           </button>
         </div>
@@ -4210,7 +4191,7 @@ export default function App() {
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-secondary, #0C0C0E)", display: "flex", flexDirection: "column", overflow: "auto" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
-            <div className="logo" style={{ fontFamily: "'Instrument Serif'", fontSize: 22, fontStyle: "italic", color: "var(--text-primary)" }}>A<span style={{ color: "var(--accent)" }}>TT</span>AIRE</div>
+            <img src="/logo-option-3.svg" alt="ATTAIR" className="logo-img" />
             <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
           </div>
 
@@ -4300,7 +4281,7 @@ export default function App() {
                   </button>
 
                   <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: "var(--text-tertiary)" }}>
-                    Powered by ATTAIRE AI Fashion Scanner
+                    Powered by ATTAIR AI Fashion Scanner
                   </div>
                 </div>
               </div>
