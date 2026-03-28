@@ -1681,8 +1681,12 @@ export default function App() {
   // ─── Re-search indicator ──────────────────────────────────
   const [isResearch, setIsResearch] = useState(false); // true when re-running a search (not first run)
 
+  // ─── Searching screen staggered reveal ────────────────────
+  const [revealedSearchItems, setRevealedSearchItems] = useState(new Set()); // items revealed during search takeover
+
   // ─── Advanced section toggle (results screen) ─────────────
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAllPickItems, setShowAllPickItems] = useState(false);
 
   // ─── Expanded items in results ────────────────────────────
   const [expandedItems, setExpandedItems] = useState(new Set()); // which item indices are expanded
@@ -2227,6 +2231,7 @@ export default function App() {
     // Detect re-search: phase was "done" meaning we already had results once
     const wasAlreadySearched = phase === "done";
     setIsResearch(wasAlreadySearched);
+    setRevealedSearchItems(new Set()); // Reset staggered reveals
     setPhase("searching");
     setResults(prev => prev ? {
       ...prev,
@@ -2234,6 +2239,7 @@ export default function App() {
     } : prev);
     setSelIdx(pickedIndices[0]); // Auto-select first picked item
 
+    let searchFailed = false;
     try {
       const searchResults = await API.findProducts(picked, results.gender, scanId, occasion, searchNotes || null);
       setResults(prev => {
@@ -2247,10 +2253,21 @@ export default function App() {
         return { ...prev, items: updated };
       });
     } catch (err) {
+      searchFailed = true;
       console.error("Product search failed:", err);
       setResults(prev => prev ? { ...prev, items: prev.items.map(it => it.status === "searching" ? { ...it, status: "failed" } : it) } : prev);
       setError(t("search_failed") || "Search failed. Please try refining your items and searching again.");
     }
+
+    // Staggered reveal for first-time search takeover (not re-search)
+    if (!wasAlreadySearched && !searchFailed) {
+      for (let k = 0; k < pickedIndices.length; k++) {
+        await new Promise(r => setTimeout(r, 400));
+        setRevealedSearchItems(prev => new Set([...prev, pickedIndices[k]]));
+      }
+      await new Promise(r => setTimeout(r, 800));
+    }
+
     setPhase("done");
     setIsResearch(false);
     // Auto-expand first picked item in results
@@ -2931,13 +2948,17 @@ export default function App() {
               </div>
               {/* Centered content panel — fixed width to prevent layout shift */}
               <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 24, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(201,169,110,.15)", width: 300 }}>
-                {/* Branded logo spinner — dual orbit rings + floating logo */}
+                {/* Branded logo spinner — triple orbit rings + floating logo + particles */}
                 <div className="identify-logo-container">
+                  <div className="identify-orbit-outer" />
                   <div className="identify-orbit" />
                   <div className="identify-orbit-inner" />
                   <div className="identify-progress-arc" />
                   <div className="identify-glow" />
                   <div className="identify-scan-line" />
+                  <div className="identify-particle" />
+                  <div className="identify-particle" />
+                  <div className="identify-particle" />
                   <img src="/logo-option-3.svg" alt="ATTAIRE" className="identify-logo-img" />
                 </div>
 
@@ -3097,22 +3118,7 @@ export default function App() {
                 })}
               </div>
 
-              {/* Search CTA */}
-              <div className="pick-cta">
-                <button
-                  style={{ background: pickedItems.size > 0 ? "var(--accent)" : "var(--accent-bg)", color: pickedItems.size > 0 ? "var(--text-inverse)" : "var(--text-tertiary)" }}
-                  onClick={runProductSearch}
-                  disabled={pickedItems.size === 0}
-                >
-                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` \u00b7 ${({casual:"Casual",work:"Work",night_out:"Night Out",date_night:"Date Night",business_casual:"Business Casual",formal:"Formal",athletic:"Athletic",athleisure:"Athleisure",streetwear:"Streetwear",brunch:"Brunch",vacation:"Vacation",outdoor:"Outdoor",festival:"Festival",wedding_guest:"Wedding Guest",lounge:"Lounge",travel:"Travel"})[occasion] || occasion}` : ""}`}
-                </button>
-                <button className="btn-ghost" style={{ width: "100%", fontSize: 12, marginTop: 4 }}
-                  onClick={() => { setPickedItems(new Set(results.items.map((_, i) => i))); }}>
-                  Select all
-                </button>
-              </div>
-
-              {/* Advanced filters — collapsed by default */}
+              {/* Advanced filters — collapsed by default, above search CTA */}
               <div style={{ padding: "0 20px 8px" }}>
                 <button
                   className="advanced-toggle"
@@ -3236,11 +3242,85 @@ export default function App() {
                   </div>
                 )}
               </div>
+
+              {/* Search CTA */}
+              <div className="pick-cta">
+                <button
+                  style={{ background: pickedItems.size > 0 ? "var(--accent)" : "var(--accent-bg)", color: pickedItems.size > 0 ? "var(--text-inverse)" : "var(--text-tertiary)" }}
+                  onClick={runProductSearch}
+                  disabled={pickedItems.size === 0}
+                >
+                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` \u00b7 ${({casual:"Casual",work:"Work",night_out:"Night Out",date_night:"Date Night",business_casual:"Business Casual",formal:"Formal",athletic:"Athletic",athleisure:"Athleisure",streetwear:"Streetwear",brunch:"Brunch",vacation:"Vacation",outdoor:"Outdoor",festival:"Festival",wedding_guest:"Wedding Guest",lounge:"Lounge",travel:"Travel"})[occasion] || occasion}` : ""}`}
+                </button>
+                <button className="btn-ghost" style={{ width: "100%", fontSize: 12, marginTop: 4 }}
+                  onClick={() => { setPickedItems(new Set(results.items.map((_, i) => i))); }}>
+                  Select all
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Search Takeover (A+B combo: branded full-screen + item cards) ── */}
+          {tab === "scan" && results && phase === "searching" && !isResearch && (
+            <div className="search-takeover">
+              {/* Blurred photo background */}
+              <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 0 }}>
+                <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "blur(16px) brightness(0.25)", transform: "scale(1.1)" }} />
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
+              </div>
+
+              {/* Content */}
+              <div className="search-takeover-content">
+                {/* Logo + spinner */}
+                <img src="/logo-option-3.svg" alt="ATTAIRE" style={{ height: 20, width: "auto", opacity: 0.7, marginBottom: 8 }} />
+
+                <div className="search-takeover-ring-wrap">
+                  <div className="search-takeover-ring" />
+                  <img src="/logo-option-3.svg" alt="" className="search-takeover-ring-logo" />
+                </div>
+
+                {/* Cycling status text */}
+                <div className="search-takeover-status" style={{ opacity: loadMsgVisible ? 1 : 0.3 }}>
+                  {SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length]}
+                </div>
+
+                {/* Item cards */}
+                <div className="search-takeover-cards">
+                  {results.items.map((item, i) => {
+                    if (!pickedItems.has(i)) return null;
+                    const isRevealed = revealedSearchItems.has(i);
+                    const productCount = item.tiers ? ["budget", "mid", "premium", "resale"].reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) : 0;
+                    return (
+                      <div key={i} className={`search-takeover-card${isRevealed ? " revealed" : ""}`}>
+                        {!isRevealed ? (
+                          <>
+                            <div className="search-takeover-card-spinner" />
+                            <div className="search-takeover-card-info">
+                              <div className="search-takeover-card-name">{item.name}</div>
+                              <div className="search-takeover-card-detail">{item.brand && item.brand !== "Unidentified" ? item.brand : item.color} · {item.category}</div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="search-takeover-card-check">
+                              <svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 8.5L6.5 12L13 4" fill="none" stroke="#C9A96E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </div>
+                            <div className="search-takeover-card-info">
+                              <div className="search-takeover-card-name">{item.name}</div>
+                              <div className="search-takeover-card-matches">{productCount > 0 ? `${productCount} matches found` : "No matches"}</div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
           {/* ─── Results (Minimalist Redesign) ───────────────────────────────── */}
-          {tab === "scan" && results && (phase === "searching" || phase === "done") && (
+          {tab === "scan" && results && (phase === "done" || (phase === "searching" && isResearch)) && (
             <div className="res">
               {/* Re-search banner */}
               {phase === "searching" && isResearch && (

@@ -873,8 +873,8 @@
 /* ── Identifying screen: branded logo spinner ── */
 .identify-logo-container {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -894,7 +894,7 @@
 
 .identify-orbit-inner {
   position: absolute;
-  inset: 8px;
+  inset: 10px;
   border-radius: 50%;
   border: 1.5px solid transparent;
   border-bottom-color: rgba(201,169,110,.4);
@@ -902,13 +902,24 @@
   animation: identifyOrbit 3s linear infinite reverse;
 }
 
+/* Third orbit ring for extra sophistication */
+.identify-orbit-outer {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  border-top-color: rgba(201,169,110,.15);
+  border-left-color: rgba(201,169,110,.08);
+  animation: identifyOrbit 5s linear infinite;
+}
+
 /* Glow backdrop behind logo */
 .identify-glow {
   position: absolute;
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(201,169,110,.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(201,169,110,.25) 0%, rgba(201,169,110,.05) 50%, transparent 70%);
   animation: identifyGlowPulse 3s ease-in-out infinite;
 }
 
@@ -916,30 +927,43 @@
 .identify-logo-img {
   position: relative;
   z-index: 1;
-  height: 22px;
+  height: 38px;
   width: auto;
-  filter: drop-shadow(0 0 8px rgba(201,169,110,.3));
+  filter: drop-shadow(0 0 12px rgba(201,169,110,.4));
   animation: identifyLogoFloat 4s ease-in-out infinite;
 }
 
 /* Progress arc (the gold sweep) */
 .identify-progress-arc {
   position: absolute;
-  inset: -4px;
+  inset: -6px;
   border-radius: 50%;
   border: 2.5px solid transparent;
   border-top-color: var(--accent);
   animation: identifyOrbit 1.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(201,169,110,.5));
+  filter: drop-shadow(0 0 8px rgba(201,169,110,.5));
 }
+
+/* Particle dots that orbit */
+.identify-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+  filter: blur(0.5px);
+}
+.identify-particle:nth-child(1) { animation: identifyParticle1 3s ease-in-out infinite; }
+.identify-particle:nth-child(2) { animation: identifyParticle2 4s ease-in-out infinite 0.5s; }
+.identify-particle:nth-child(3) { animation: identifyParticle3 3.5s ease-in-out infinite 1s; }
 
 /* Scanning line that sweeps down */
 .identify-scan-line {
   position: absolute;
-  left: 10%;
-  right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(201,169,110,.6), transparent);
+  left: 5%;
+  right: 5%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(201,169,110,.7), transparent);
   animation: identifyScanLine 2.5s ease-in-out infinite;
 }
 
@@ -949,12 +973,12 @@
 
 @keyframes identifyGlowPulse {
   0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.15); }
+  50% { opacity: 1; transform: scale(1.2); }
 }
 
 @keyframes identifyLogoFloat {
-  0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 8px rgba(201,169,110,.3)); }
-  50% { transform: translateY(-2px) scale(1.03); filter: drop-shadow(0 0 16px rgba(201,169,110,.5)) drop-shadow(0 0 30px rgba(201,169,110,.15)); }
+  0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 12px rgba(201,169,110,.4)); }
+  50% { transform: translateY(-3px) scale(1.05); filter: drop-shadow(0 0 20px rgba(201,169,110,.6)) drop-shadow(0 0 40px rgba(201,169,110,.2)); }
 }
 
 @keyframes identifyScanLine {
@@ -962,6 +986,28 @@
   10% { opacity: 1; }
   90% { opacity: 1; }
   100% { top: 85%; opacity: 0; }
+}
+
+@keyframes identifyParticle1 {
+  0%, 100% { top: 10%; left: 50%; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  50% { top: 50%; left: 95%; }
+  100% { top: 90%; left: 50%; opacity: 0; }
+}
+@keyframes identifyParticle2 {
+  0%, 100% { top: 50%; left: 5%; opacity: 0; }
+  20% { opacity: .7; }
+  80% { opacity: .7; }
+  50% { top: 10%; left: 50%; }
+  100% { top: 50%; left: 95%; opacity: 0; }
+}
+@keyframes identifyParticle3 {
+  0%, 100% { top: 90%; left: 50%; opacity: 0; }
+  20% { opacity: .5; }
+  80% { opacity: .5; }
+  50% { top: 50%; left: 5%; }
+  100% { top: 10%; left: 50%; opacity: 0; }
 }
 
 /* Shimmer effect on status text */
@@ -996,6 +1042,160 @@
   background: var(--accent);
   box-shadow: 0 0 8px rgba(201,169,110,.4);
   transform: scale(1.3);
+}
+
+/* ── Searching screen: full-screen branded experience (A+B combo) ── */
+.search-takeover {
+  position: relative;
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.search-takeover-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 48px 24px 32px;
+  width: 100%;
+  max-width: 360px;
+}
+
+/* Central spinner ring with logo inside */
+.search-takeover-ring-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.search-takeover-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2.5px solid rgba(201,169,110,.15);
+  border-top-color: var(--accent);
+  border-right-color: rgba(201,169,110,.4);
+  animation: spin 1.2s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(201,169,110,.3));
+}
+.search-takeover-ring::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px dashed rgba(201,169,110,.12);
+  animation: spin 3s linear infinite reverse;
+}
+.search-takeover-ring-logo {
+  width: 40px;
+  height: auto;
+  animation: identifyLogoFloat 3s ease-in-out infinite;
+}
+
+/* Cycling status text */
+.search-takeover-status {
+  text-align: center;
+  font-family: 'Instrument Serif', serif;
+  font-size: 18px;
+  color: var(--text-primary);
+  transition: opacity .35s ease;
+  min-height: 28px;
+}
+
+/* Item cards stack */
+.search-takeover-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.search-takeover-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(12,12,14,0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(201,169,110,.1);
+  border-radius: 14px;
+  transition: all .5s ease;
+  animation: searchCardIn .4s ease-out both;
+}
+.search-takeover-card.revealed {
+  border-color: rgba(201,169,110,.35);
+  background: rgba(201,169,110,.06);
+  animation: searchCardReveal .5s ease-out;
+}
+.search-takeover-card-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(201,169,110,.15);
+  border-top-color: var(--accent);
+  animation: spin .8s linear infinite;
+  flex-shrink: 0;
+}
+.search-takeover-card-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(201,169,110,.15);
+  border: 1.5px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  animation: searchCardPop .4s ease-out;
+}
+.search-takeover-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.search-takeover-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-takeover-card-detail {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+.search-takeover-card-matches {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+@keyframes searchCardIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes searchCardReveal {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.03); box-shadow: 0 0 20px rgba(201,169,110,.2); }
+  100% { transform: scale(1); box-shadow: none; }
+}
+@keyframes searchCardPulse {
+  0%, 100% { transform: scale(1); opacity: .7; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+@keyframes searchCardPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
 }
 
 @keyframes spin {
