@@ -1528,8 +1528,8 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     const pricedRetail = retailScored.filter(s => s.price !== null && s.price >= priceFloor);
     const unpricedRetail = retailScored.filter(s => s.price === null);
 
-    // Top resale products (up to 3, already scored and deduped)
-    const resaleFormatted = resaleScored.slice(0, 3).map(s => {
+    // Top resale products (up to 6, already scored and deduped)
+    const resaleFormatted = resaleScored.slice(0, 6).map(s => {
       const isBrand = hasBrand && (
         (s.product.title || "").toLowerCase().includes(brandLower) ||
         (s.product.source || "").toLowerCase().includes(brandLower)
@@ -1601,42 +1601,42 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
         .filter(s => !usedUrls.has(getUrl(s)) && s.price != null &&
           Math.abs(s.price - (original.price || itemTierBounds.min)) / Math.max(original.price || 1, 1) < 0.5)
         .sort((a, b) => b.score - a.score);
-      tiers.mid.push(...pickTopN(midCompanions.slice(0, 5), 1, "mid"));
+      tiers.mid.push(...pickTopN(midCompanions.slice(0, 15), 5, "mid"));
 
       // Budget = best-scored retail cheaper than original
       const origPrice = original.price || itemTierBounds.min;
       const cheaper = pricedRetail
         .filter(s => !usedUrls.has(getUrl(s)) && s.price < origPrice && s.price >= origPrice * 0.15)
         .sort((a, b) => b.score - a.score);
-      tiers.budget.push(...pickTopN(cheaper, 2, "budget"));
+      tiers.budget.push(...pickTopN(cheaper, 6, "budget"));
 
       // Premium = most expensive above original
       const pricier = pricedRetail
         .filter(s => !usedUrls.has(getUrl(s)) && s.price > origPrice)
         .sort((a, b) => b.price - a.price);
-      tiers.premium.push(...pickTopN(pricier, 2, "premium"));
+      tiers.premium.push(...pickTopN(pricier, 6, "premium"));
 
       // Fill any still-empty tiers with unpriced Lens results
-      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 2, "budget"));
-      if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 2, "premium"));
+      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 6, "budget"));
+      if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 6, "premium"));
 
     } else {
-      // ── NO ORIGINAL: partition by price as before, return up to 2 per tier ──
+      // ── NO ORIGINAL: partition by price, return up to 6 per tier ──
       const budgetPool = pricedRetail.filter(s => s.price < itemTierBounds.min).sort((a, b) => b.score - a.score);
       const midPool = pricedRetail.filter(s => s.price >= itemTierBounds.min && s.price <= itemTierBounds.max).sort((a, b) => b.score - a.score);
       const premiumPool = pricedRetail.filter(s => s.price > itemTierBounds.max).sort((a, b) => b.score - a.score);
 
-      tiers.budget.push(...pickTopN(budgetPool, 2, "budget"));
-      tiers.mid.push(...pickTopN(midPool, 2, "mid"));
-      tiers.premium.push(...pickTopN(premiumPool, 2, "premium"));
+      tiers.budget.push(...pickTopN(budgetPool, 6, "budget"));
+      tiers.mid.push(...pickTopN(midPool, 6, "mid"));
+      tiers.premium.push(...pickTopN(premiumPool, 6, "premium"));
 
       // Widen budget tier only
-      if (!tiers.budget.length) tiers.budget.push(...pickTopN(pricedRetail, 2, "budget"));
-      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 2, "budget"));
+      if (!tiers.budget.length) tiers.budget.push(...pickTopN(pricedRetail, 6, "budget"));
+      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 6, "budget"));
 
       // For mid and premium: fall back to unpriced Lens results only
-      if (!tiers.mid.length) tiers.mid.push(...pickTopN(unpricedRetail, 2, "mid"));
-      if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 2, "premium"));
+      if (!tiers.mid.length) tiers.mid.push(...pickTopN(unpricedRetail, 6, "mid"));
+      if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 6, "premium"));
     }
 
     const brandVerified = item.brand && item.brand !== "Unidentified" &&

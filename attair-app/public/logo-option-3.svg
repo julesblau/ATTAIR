@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 80" fill="none">
-  <!-- OPTION 3: Hybrid — Medium-weight geometric sans-serif "ATTAIRE" -->
+  <!-- OPTION 3: Hybrid — Medium-weight geometric sans-serif "ATTAIR" -->
   <!-- Clean and modern. The dot on the I is gold (#C9A96E) — one subtle accent. -->
 
   <!-- Base text: full word in white -->
@@ -12,7 +12,7 @@
     font-size="58"
     letter-spacing="-2.5"
     fill="#FAFAFA"
-  >ATTAIRE</text>
+  >ATTAIR</text>
 
   <!-- Gold dot on the I — one small accent, not overdone -->
   <circle cx="288" cy="20" r="3.5" fill="#C9A96E"/>

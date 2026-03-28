@@ -610,6 +610,7 @@
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  position: relative;
 }
 
 .scroll-x::-webkit-scrollbar {
@@ -619,6 +620,22 @@
 .scroll-x > * {
   scroll-snap-align: start;
   flex-shrink: 0;
+}
+
+/* Right fade edge hint for scrollable areas */
+.scroll-x-fade {
+  position: relative;
+}
+.scroll-x-fade::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  background: linear-gradient(to right, transparent, var(--bg-primary));
+  pointer-events: none;
+  z-index: 1;
 }
 
 .scroll-y {
@@ -851,6 +868,25 @@
   border-width: 3px;
 }
 
+.scan-ring-monogram {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Helvetica Neue', 'Arial Black', Helvetica, Arial, sans-serif;
+  font-weight: 900;
+  font-size: 28px;
+  color: rgba(201,169,110,.85);
+  animation: monogramPulse 2s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+}
+
+@keyframes monogramPulse {
+  0%, 100% { opacity: 0.85; text-shadow: 0 0 8px rgba(201,169,110,.2); }
+  50% { opacity: 1; text-shadow: 0 0 20px rgba(201,169,110,.5), 0 0 40px rgba(201,169,110,.15); }
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -947,26 +983,26 @@
 /* ─── Header ─── */
 .hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg-secondary) 92%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
 .logo{font-family:'Instrument Serif';font-size:22px;color:var(--text-primary);font-style:italic;letter-spacing:0.04em}.logo span{color:var(--accent)}
-.logo-img{height:22px;width:auto;display:block}
+.logo-img{height:30px;width:auto;display:block}
 .pro{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--accent);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
 .free-badge{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-tertiary);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
 .scan-counter{font-size:11px;color:var(--text-tertiary);text-align:center;margin-top:-8px;margin-bottom:8px}
 .scan-counter strong{color:var(--accent)}
 
 /* ─── Tab Bar (Instagram/TikTok style) ─── */
-.tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;align-items:flex-end;background:rgba(12,12,14,.92);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-top:1px solid rgba(255,255,255,.06);padding:4px 0 0;padding-bottom:max(4px,env(safe-area-inset-bottom));z-index:100}
-.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;cursor:pointer;background:none;border:none;color:var(--text-tertiary);transition:color .2s,transform .1s;font-family:var(--font-sans);min-height:48px;position:relative;-webkit-tap-highlight-color:transparent}
+.tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;align-items:stretch;background:rgba(12,12,14,.92);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-top:1px solid rgba(255,255,255,.06);padding:0;padding-bottom:max(4px,env(safe-area-inset-bottom));z-index:100}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 0;cursor:pointer;background:none;border:none;color:var(--text-tertiary);transition:color .2s,transform .1s;font-family:var(--font-sans);min-height:50px;position:relative;-webkit-tap-highlight-color:transparent}
 .tab:active{transform:scale(0.92)}
 .tab.on{color:var(--text-primary)}
-.tab.on::before{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:20px;height:2px;background:var(--accent);border-radius:2px}
+.tab.on::before{display:none}
 .tab svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.5;transition:all .2s}
 .tab.on svg{stroke-width:2}
 .tab-l{font-size:10px;font-weight:500;letter-spacing:.3px;margin-top:1px}.tab.on .tab-l{font-weight:700}
 .tab-badge{position:absolute;top:4px;right:calc(50% - 16px);width:8px;height:8px;border-radius:50%;background:#FF5252;border:2px solid rgba(12,12,14,.92)}
 
 /* ─── Scan Tab — Primary Action (center "+" button like TikTok) ─── */
-.tab-scan{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px 0 4px;cursor:pointer;background:none;border:none;-webkit-tap-highlight-color:transparent;position:relative;min-height:48px}
-.tab-scan-icon{width:44px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent) 0%,#B8944F 100%);display:flex;align-items:center;justify-content:center;color:#000;box-shadow:0 2px 12px rgba(201,169,110,.35);transition:transform .15s,box-shadow .15s}
+.tab-scan{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 0;cursor:pointer;background:none;border:none;-webkit-tap-highlight-color:transparent;position:relative;min-height:50px;color:var(--text-tertiary);font-family:var(--font-sans)}
+.tab-scan-icon{width:38px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--accent) 0%,#B8944F 100%);display:flex;align-items:center;justify-content:center;color:#000;transition:transform .15s,box-shadow .15s}
 .tab-scan:active .tab-scan-icon{transform:scale(.90);box-shadow:0 1px 6px rgba(201,169,110,.2)}
 .tab-scan-icon svg{stroke:#000;stroke-width:2.5}
 

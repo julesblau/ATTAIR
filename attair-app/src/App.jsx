@@ -1493,6 +1493,7 @@ export default function App() {
   const [referralCopied, setReferralCopied] = useState(false);
 
   const fileRef = useRef(null);
+  const galleryRef = useRef(null);
   // Camera refs/state removed — native file picker only
   const [showScanSheet, setShowScanSheet] = useState(false); // bottom sheet for scan options
 
@@ -1551,6 +1552,8 @@ export default function App() {
   const [wishlistCreating, setWishlistCreating] = useState(false);
   const [addToListOpenId, setAddToListOpenId] = useState(null); // saved item id with open dropdown
   const [addToListConfirm, setAddToListConfirm] = useState(null); // { savedItemId, wishlistName }
+  const [wishlistPickerScan, setWishlistPickerScan] = useState(null); // scan object for wishlist picker modal
+  const [newWishlistName, setNewWishlistName] = useState("");
 
   // ─── Likes / Collections tab ──────────────────────────────
   const [likesCollectionFilter, setLikesCollectionFilter] = useState("all");
@@ -1587,7 +1590,7 @@ export default function App() {
   });
 
   // ─── Occasion filter ──────────────────────────────────────
-  const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"
+  const [occasion, setOccasion] = useState(null);       // null | "casual"|"work"|"night_out"|"athletic"|"formal"|"outdoor"|"date_night"|"vacation"|"brunch"|"streetwear"|"athleisure"|"festival"|"wedding_guest"|"business_casual"|"lounge"|"travel"
 
   // ─── Search notes ─────────────────────────────────────────
   const [searchNotes, setSearchNotes] = useState("");
@@ -2482,6 +2485,7 @@ export default function App() {
         </div>
         <div className="as">
           <input ref={fileRef} type="file" accept="image/*,.heic,.heif" capture="environment" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
+          <input ref={galleryRef} type="file" accept="image/*,.heic,.heif" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
 
           {/* ─── Home Feed (TikTok/Instagram style) ────── */}
           {tab === "home" && (
@@ -2691,10 +2695,36 @@ export default function App() {
                   {userSearchLoading && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Searching...</div>}
                   {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>No users found</div>}
                   {!userSearchLoading && !userSearchQuery.trim() && (
-                    <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-tertiary)" }}>
-                      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 12, opacity: 0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                      <div style={{ fontFamily: "var(--font-sans)", fontWeight: 600, fontSize: 15 }}>Search for people to follow</div>
-                      <div style={{ fontSize: 13, marginTop: 6, opacity: 0.7 }}>Discover outfit inspiration from other users</div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 12, paddingTop: 8 }}>Suggested for you</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                        {([
+                          { id: "s1", display_name: "Style Scout", bio: "Curating everyday looks", follower_count: 2400 },
+                          { id: "s2", display_name: "Outfit Daily", bio: "One fit per day", follower_count: 8100 },
+                          { id: "s3", display_name: "Thrift Finds", bio: "Budget fashion that slaps", follower_count: 5300 },
+                          { id: "s4", display_name: "Minimalist Closet", bio: "Less is more", follower_count: 3700 },
+                          { id: "s5", display_name: "Street Looks", bio: "City style worldwide", follower_count: 12000 },
+                          { id: "s6", display_name: "Fit Check", bio: "Rate my outfit", follower_count: 6600 },
+                        ]).map(usr => {
+                          const ini = (usr.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                          const isFlw = followingSet.has(usr.id);
+                          return (
+                            <div key={usr.id} style={{ background: "var(--bg-card)", borderRadius: 14, border: "1px solid var(--border)", padding: 16, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 8 }}>
+                              <div style={{ width: 52, height: 52, borderRadius: "50%", background: "linear-gradient(135deg, rgba(201,169,110,.2), rgba(201,169,110,.05))", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, color: "var(--accent)", letterSpacing: 1 }}>{ini}</div>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{usr.display_name}</div>
+                                {usr.bio && <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>{usr.bio}</div>}
+                                <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 4 }}>{usr.follower_count?.toLocaleString()} followers</div>
+                              </div>
+                              <button
+                                className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
+                                onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(usr.id); }}
+                                style={{ width: "100%", minHeight: 36, fontSize: 12, borderRadius: 8 }}
+                              >{isFlw ? "Following" : "Follow"}</button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                   {userSearchResults.map(usr => {
@@ -2725,10 +2755,39 @@ export default function App() {
                     <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>No products found</div>
                   )}
                   {!productSearchQuery.trim() && (
-                    <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-tertiary)" }}>
-                      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" style={{ marginBottom: 12, opacity: 0.4 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                      <div style={{ fontFamily: "var(--font-sans)", fontWeight: 600, fontSize: 15 }}>Search for clothing items, brands, or styles</div>
-                      <div style={{ fontSize: 13, marginTop: 6, opacity: 0.7 }}>Find products from your favorite brands</div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 12, paddingTop: 8 }}>Recommended for you</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                        {(saved.length > 0 ? saved.slice(0, 8).map((s, i) => ({
+                          id: s.id || `rec-${i}`,
+                          name: s.item_name || s.product_name || "Style Pick",
+                          brand: s.brand || "",
+                          image_url: s.image_url || s.product_image || "",
+                          price: s.price || "",
+                        })) : [
+                          { id: "r1", name: "Classic White Sneakers", brand: "Nike", image_url: "", price: "$95" },
+                          { id: "r2", name: "Oversized Blazer", brand: "Zara", image_url: "", price: "$89" },
+                          { id: "r3", name: "High-Rise Straight Jeans", brand: "Levi's", image_url: "", price: "$78" },
+                          { id: "r4", name: "Minimal Watch", brand: "Daniel Wellington", image_url: "", price: "$169" },
+                          { id: "r5", name: "Crossbody Bag", brand: "Coach", image_url: "", price: "$195" },
+                          { id: "r6", name: "Cotton Crew Tee", brand: "Uniqlo", image_url: "", price: "$15" },
+                        ]).map(product => (
+                          <div key={product.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
+                            {product.image_url ? (
+                              <img src={product.image_url} alt={product.name} loading="lazy" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                            ) : (
+                              <div style={{ width: "100%", aspectRatio: "3/4", background: "linear-gradient(135deg, rgba(201,169,110,.08), rgba(201,169,110,.02))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="rgba(201,169,110,.3)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                              </div>
+                            )}
+                            <div style={{ padding: 10 }}>
+                              {product.brand && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{product.brand}</div>}
+                              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1.3 }}>{product.name}</div>
+                              {product.price && <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", marginTop: 4 }}>{product.price}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {productSearchResults.length > 0 && (
@@ -2769,11 +2828,15 @@ export default function App() {
                 </div>
               )}
 
-              {/* Scan action — triggers native file picker (camera/gallery) */}
+              {/* Scan actions — camera or gallery */}
               <div style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12 }}>
                 <button className="btn-primary" onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
-                  Tap to Scan an Outfit
+                  Take Photo
+                </button>
+                <button className="btn-secondary" onClick={() => galleryRef.current?.click()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  Choose from Gallery
                 </button>
               </div>
             </div>
@@ -2791,8 +2854,11 @@ export default function App() {
               <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 20, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(201,169,110,.15)", maxWidth: 300 }}>
                 {/* ATTAIR wordmark */}
                 <img src="/logo-option-3.svg" alt="ATTAIR" style={{ height: 24, width: "auto" }} />
-                {/* Gold scan ring spinner */}
-                <div className="scan-ring scan-ring--lg" />
+                {/* Gold scan ring spinner with branded monogram */}
+                <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div className="scan-ring scan-ring--lg" />
+                  <div className="scan-ring-monogram">A</div>
+                </div>
                 {/* Animated status text */}
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2.5, color: "rgba(201,169,110,.5)", textTransform: "uppercase", marginBottom: 8 }}>Identifying outfit</div>
@@ -2941,7 +3007,7 @@ export default function App() {
                   onClick={runProductSearch}
                   disabled={pickedItems.size === 0}
                 >
-                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` \u00b7 ${["casual","work","night_out","athletic","formal","outdoor"].find(v=>v===occasion) ? {casual:"Casual",work:"Work",night_out:"Night Out",athletic:"Athletic",formal:"Formal",outdoor:"Outdoor"}[occasion] : ""}` : ""}`}
+                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` \u00b7 ${({casual:"Casual",work:"Work",night_out:"Night Out",date_night:"Date Night",business_casual:"Business Casual",formal:"Formal",athletic:"Athletic",athleisure:"Athleisure",streetwear:"Streetwear",brunch:"Brunch",vacation:"Vacation",outdoor:"Outdoor",festival:"Festival",wedding_guest:"Wedding Guest",lounge:"Lounge",travel:"Travel"})[occasion] || occasion}` : ""}`}
                 </button>
                 <button className="btn-ghost" style={{ width: "100%", fontSize: 12, marginTop: 4 }}
                   onClick={() => { setPickedItems(new Set(results.items.map((_, i) => i))); }}>
@@ -2965,19 +3031,25 @@ export default function App() {
                 </button>
                 {showAdvanced && (
                   <div className="animate-slide-down" style={{ paddingBottom: 12 }}>
-                    {/* Gender toggle */}
-                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-                      <div style={{ display: "inline-flex", background: "var(--bg-input)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden" }}>
-                        <button
-                          aria-label="Switch to Men's"
-                          onClick={() => { if (results.gender !== "male") setResults(prev => prev ? { ...prev, gender: "male" } : prev); }}
-                          style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 44, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "var(--text-tertiary)", borderRight: "1px solid var(--border)" }}
-                        >Men's</button>
-                        <button
-                          aria-label="Switch to Women's"
-                          onClick={() => { if (results.gender !== "female") setResults(prev => prev ? { ...prev, gender: "female" } : prev); }}
-                          style={{ padding: "8px 18px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 44, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "var(--text-tertiary)" }}
-                        >Women's</button>
+                    {/* Style Preference */}
+                    <div style={{ marginBottom: 12 }}>
+                      <div className="item-opts-label">Style Preference</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {[
+                          { v: "auto", l: "Auto-detect" },
+                          { v: "menswear", l: "Menswear" },
+                          { v: "womenswear", l: "Womenswear" },
+                          { v: "unisex", l: "Unisex" },
+                        ].map(({ v, l }) => {
+                          const currentPref = results.stylePref || "auto";
+                          return (
+                            <button key={v} className={`scan-vis-chip${currentPref === v ? " active" : ""}`} onClick={() => {
+                              setResults(prev => prev ? { ...prev, stylePref: v, gender: v === "menswear" ? "male" : v === "womenswear" ? "female" : prev.gender } : prev);
+                            }}>
+                              {l}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -2986,12 +3058,22 @@ export default function App() {
                       <div className="item-opts-label">Occasion</div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {[
-                          { v: "casual",    l: "Casual",   icon: "\u2600\uFE0F" },
-                          { v: "work",      l: "Work",     icon: "\uD83D\uDCBC" },
-                          { v: "night_out", l: "Night Out", icon: "\uD83C\uDF19" },
-                          { v: "athletic",  l: "Athletic",  icon: "\uD83C\uDFC3" },
-                          { v: "formal",    l: "Formal",    icon: "\u2728" },
-                          { v: "outdoor",   l: "Outdoor",   icon: "\uD83C\uDF32" },
+                          { v: "casual",          l: "Casual",          icon: "\u2600\uFE0F" },
+                          { v: "work",            l: "Work",            icon: "\uD83D\uDCBC" },
+                          { v: "night_out",       l: "Night Out",       icon: "\uD83C\uDF19" },
+                          { v: "date_night",      l: "Date Night",      icon: "\uD83D\uDC95" },
+                          { v: "business_casual", l: "Business Casual", icon: "\uD83D\uDC54" },
+                          { v: "formal",          l: "Formal",          icon: "\u2728" },
+                          { v: "athletic",        l: "Athletic",        icon: "\uD83C\uDFC3" },
+                          { v: "athleisure",      l: "Athleisure",      icon: "\uD83E\uDDD8" },
+                          { v: "streetwear",      l: "Streetwear",      icon: "\uD83D\uDD25" },
+                          { v: "brunch",          l: "Brunch",          icon: "\uD83E\uDD42" },
+                          { v: "vacation",        l: "Vacation",        icon: "\uD83C\uDFD6\uFE0F" },
+                          { v: "outdoor",         l: "Outdoor",         icon: "\uD83C\uDF32" },
+                          { v: "festival",        l: "Festival",        icon: "\uD83C\uDFB6" },
+                          { v: "wedding_guest",   l: "Wedding Guest",   icon: "\uD83D\uDC92" },
+                          { v: "lounge",          l: "Lounge",          icon: "\uD83D\uDECB\uFE0F" },
+                          { v: "travel",          l: "Travel",          icon: "\u2708\uFE0F" },
                         ].map(({ v, l, icon }) => (
                           <button key={v} className={`scan-vis-chip${occasion === v ? " active" : ""}`} onClick={() => { setOccasion(o => o === v ? null : v); setShowCustomOccasion(false); }}>
                             <span style={{ fontSize: 13 }}>{icon}</span>{l}
@@ -3080,9 +3162,9 @@ export default function App() {
               {/* Progress bar */}
               <div className="v-banner">
                 <div className="v-steps">
-                  <div className="v-step">
+                  <div className="v-step" style={{ cursor: "pointer" }} onClick={() => { setPhase("picking"); setExpandedItems(new Set()); }}>
                     <div className="v-step-bar"><div className="v-step-fill" style={{ width: "100%", background: "var(--accent)" }} /></div>
-                    <div className="v-step-l" style={{ color: "var(--accent)" }}>Identified</div>
+                    <div className="v-step-l" style={{ color: "var(--accent)" }}>&larr; Identified</div>
                   </div>
                   <div className="v-step">
                     <div className="v-step-bar"><div className="v-step-fill" style={{ width: phase === "searching" ? "40%" : "100%", background: phase === "done" ? (results.items.some(it => it.status === "verified") ? "var(--accent)" : "var(--text-tertiary)") : "rgba(201,169,110,.4)", transition: phase === "searching" ? "width 12s linear" : "width .5s ease" }} /></div>
@@ -3109,28 +3191,6 @@ export default function App() {
                   {results.summary && <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 8 }}>{results.summary}</div>}
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "var(--text-tertiary)", textTransform: "uppercase" }}>{pickedItems.size} items</span>
-                    <div style={{ display: "inline-flex", background: "var(--bg-input)", borderRadius: "var(--radius-full)", border: "1px solid var(--border)", overflow: "hidden", marginLeft: "auto" }}>
-                      <button
-                        aria-label="Switch to Men's results"
-                        onClick={() => {
-                          if (results.gender !== "male") {
-                            setResults(prev => prev ? { ...prev, gender: "male" } : prev);
-                            if (phase === "done" && pickedItems.size > 0) setTimeout(() => runProductSearch(), 100);
-                          }
-                        }}
-                        style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 28, background: results.gender === "male" ? "rgba(110,169,201,.15)" : "transparent", color: results.gender === "male" ? "#6EAEC9" : "var(--text-tertiary)", borderRight: "1px solid var(--border)" }}
-                      >Men's</button>
-                      <button
-                        aria-label="Switch to Women's results"
-                        onClick={() => {
-                          if (results.gender !== "female") {
-                            setResults(prev => prev ? { ...prev, gender: "female" } : prev);
-                            if (phase === "done" && pickedItems.size > 0) setTimeout(() => runProductSearch(), 100);
-                          }
-                        }}
-                        style={{ padding: "4px 10px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, border: "none", cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)", minHeight: 28, background: results.gender === "female" ? "rgba(201,110,169,.15)" : "transparent", color: results.gender === "female" ? "#C96EAE" : "var(--text-tertiary)" }}
-                      >Women's</button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -3219,155 +3279,6 @@ export default function App() {
                   </div>
                 </div>
               )}
-
-              {/* ═══════════════════════════════════════════════════════════
-                  CORE: Per-item collapsible sections with horizontal product scroll
-                  ═══════════════════════════════════════════════════════════ */}
-              <div style={{ padding: "0 0 8px" }}>
-                {results.items.map((item, i) => {
-                  if (!pickedItems.has(i)) return null;
-                  const isExpanded = expandedItems.has(i);
-                  const TIER_CFG = { budget: { label: "Budget", accent: "#5AC8FF" }, mid: { label: "Match", accent: "#C9A96E" }, premium: { label: "Premium", accent: "#C77DFF" }, resale: { label: "Resale", accent: "#7BC47F" } };
-                  const allTierProducts = item.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(item.tiers[tk]).map(p => ({ ...p, _tier: tk }))) : [];
-
-                  return (
-                    <div key={i} style={{ borderBottom: "1px solid var(--border)" }}>
-                      {/* Item header — tap to expand/collapse */}
-                      <button
-                        onClick={() => {
-                          setExpandedItems(prev => {
-                            const next = new Set(prev);
-                            if (next.has(i)) next.delete(i); else next.add(i);
-                            return next;
-                          });
-                          setSelIdx(i);
-                        }}
-                        style={{
-                          width: "100%", display: "flex", alignItems: "center", gap: 10,
-                          padding: "14px 20px", background: "none", border: "none",
-                          cursor: "pointer", fontFamily: "var(--font-sans)", textAlign: "left",
-                          transition: "background .15s",
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
-                            {item.name}
-                            {item.priority && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, verticalAlign: "middle" }}>Circled</span>}
-                          </div>
-                          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
-                            {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
-                          </div>
-                        </div>
-                        {item.status === "searching" && <div className="ld-dot" style={{ width: 8, height: 8, background: "var(--accent)", flexShrink: 0 }} />}
-                        {item.status === "verified" && allTierProducts.length > 0 && (
-                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-tertiary)", flexShrink: 0 }}>{allTierProducts.length} products</span>
-                        )}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform .2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>
-                          <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                      </button>
-
-                      {/* Expanded content */}
-                      {isExpanded && (
-                        <div style={{ padding: "0 0 16px", overflow: "hidden", animation: "slideDown .2s ease" }}>
-                          {/* Searching state */}
-                          {item.status === "searching" && (
-                            <div style={{ padding: "12px 20px", textAlign: "center", color: "rgba(201,169,110,.5)", fontSize: 12 }}>
-                              Finding products...
-                            </div>
-                          )}
-
-                          {/* Failed state */}
-                          {item.status === "failed" && !item.tiers && (
-                            <div style={{ padding: "12px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 12 }}>
-                              No products found.{" "}
-                              <span style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => { setSelIdx(i); setItemViewModes(m => ({ ...m, [i]: "id" })); }}>Correct the AI</span>
-                            </div>
-                          )}
-
-                          {/* Horizontal product scroll per tier */}
-                          {item.tiers && ["budget", "mid", "premium", "resale"].map(tierKey => {
-                            const products = asTierArray(item.tiers[tierKey]);
-                            if (!products.length) return null;
-                            const cfg = TIER_CFG[tierKey];
-                            return (
-                              <div key={tierKey} style={{ marginBottom: 12 }}>
-                                <div style={{ padding: "0 20px 6px", fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>
-                                  {cfg.label}
-                                </div>
-                                <div className="scroll-x" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
-                                  {products.map((p, j) => {
-                                    const isFallback = !p.is_product_page && p.brand === "Google Shopping";
-                                    const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
-                                    const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
-                                    const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
-                                    return (
-                                      <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
-                                        <a href={href} target="_blank" rel="noopener noreferrer"
-                                          onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback }, scanId, "scan")}
-                                          style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
-                                          {p.image_url && (
-                                            <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
-                                              <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
-                                            </div>
-                                          )}
-                                          <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
-                                            {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>ORIGINAL</span>}
-                                            <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                                              {isFallback ? "Search results" : (p.product_name || "Product")}
-                                            </div>
-                                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
-                                            <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : p.price}</div>
-                                            <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
-                                          </div>
-                                        </a>
-                                        {/* Save heart */}
-                                        <button
-                                          aria-label={isSavedProduct ? "Remove from Likes" : "Save to Likes"}
-                                          onClick={e => { e.preventDefault(); e.stopPropagation(); quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId); }}
-                                          style={{ position: "absolute", top: 6, right: 6, width: 28, height: 28, borderRadius: "50%", background: isSavedProduct ? "rgba(255,60,80,.9)" : "rgba(0,0,0,.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", zIndex: 2 }}>
-                                          <svg viewBox="0 0 24 24" width="12" height="12" fill={isSavedProduct ? "#fff" : "none"} stroke={isSavedProduct ? "#fff" : "rgba(255,255,255,.8)"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                                          </svg>
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {/* Not finding what you want? */}
-                          {item.tiers && (() => {
-                            const allProducts = ["budget", "mid", "premium"].flatMap(tk => asTierArray(item.tiers[tk]));
-                            const hasFallback = allProducts.some(p => !p.is_product_page && p.brand === "Google Shopping");
-                            if (!hasFallback) return null;
-                            const googleQuery = item.search_query || `${item.brand || ""} ${item.name || ""}`.trim();
-                            return (
-                              <div style={{ padding: "0 20px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-                                {item.alt_search && (
-                                  <button
-                                    onClick={() => { setSearchNotes(item.alt_search); setTimeout(() => runProductSearch(), 100); track("alt_search_clicked", { item_name: item.name, alt_search: item.alt_search }, scanId, "scan"); }}
-                                    style={{ padding: "8px 14px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 10, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                                    Try alternate search
-                                  </button>
-                                )}
-                                <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`} target="_blank" rel="noopener noreferrer"
-                                  onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
-                                  style={{ padding: "8px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                  Google Shopping
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                </a>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
 
               {/* ═══════════════════════════════════════════════════════════
                   ADVANCED / REFINE SEARCH — hidden by default
@@ -3627,6 +3538,156 @@ export default function App() {
                 </div>
               )}
 
+              {/* ═══════════════════════════════════════════════════════════
+                  CORE: Per-item collapsible sections with horizontal product scroll
+                  ═══════════════════════════════════════════════════════════ */}
+              <div style={{ padding: "0 0 8px" }}>
+                {results.items.map((item, i) => {
+                  if (!pickedItems.has(i)) return null;
+                  const isExpanded = expandedItems.has(i);
+                  const TIER_CFG = { budget: { label: "Budget", accent: "#5AC8FF" }, mid: { label: "Match", accent: "#C9A96E" }, premium: { label: "Premium", accent: "#C77DFF" }, resale: { label: "Resale", accent: "#7BC47F" } };
+                  const allTierProducts = item.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(item.tiers[tk]).map(p => ({ ...p, _tier: tk }))) : [];
+
+                  return (
+                    <div key={i} style={{ borderBottom: "1px solid var(--border)" }}>
+                      {/* Item header — tap to expand/collapse */}
+                      <button
+                        onClick={() => {
+                          setExpandedItems(prev => {
+                            const next = new Set(prev);
+                            if (next.has(i)) next.delete(i); else next.add(i);
+                            return next;
+                          });
+                          setSelIdx(i);
+                        }}
+                        style={{
+                          width: "100%", display: "flex", alignItems: "center", gap: 10,
+                          padding: "14px 20px", background: "none", border: "none",
+                          cursor: "pointer", fontFamily: "var(--font-sans)", textAlign: "left",
+                          transition: "background .15s",
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
+                            {item.name}
+                            {item.priority && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, verticalAlign: "middle" }}>Circled</span>}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
+                            {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
+                          </div>
+                        </div>
+                        {item.status === "searching" && <div className="ld-dot" style={{ width: 8, height: 8, background: "var(--accent)", flexShrink: 0 }} />}
+                        {item.status === "verified" && allTierProducts.length > 0 && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-tertiary)", flexShrink: 0 }}>{allTierProducts.length} products</span>
+                        )}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform .2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </button>
+
+                      {/* Expanded content */}
+                      {isExpanded && (
+                        <div style={{ padding: "0 0 16px", overflow: "hidden", animation: "slideDown .2s ease" }}>
+                          {/* Searching state */}
+                          {item.status === "searching" && (
+                            <div style={{ padding: "12px 20px", textAlign: "center", color: "rgba(201,169,110,.5)", fontSize: 12 }}>
+                              Finding products...
+                            </div>
+                          )}
+
+                          {/* Failed state */}
+                          {item.status === "failed" && !item.tiers && (
+                            <div style={{ padding: "12px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 12 }}>
+                              No products found.{" "}
+                              <span style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => { setSelIdx(i); setItemViewModes(m => ({ ...m, [i]: "id" })); }}>Correct the AI</span>
+                            </div>
+                          )}
+
+                          {/* Horizontal product scroll per tier */}
+                          {item.tiers && ["budget", "mid", "premium", "resale"].map(tierKey => {
+                            const products = asTierArray(item.tiers[tierKey]);
+                            if (!products.length) return null;
+                            const cfg = TIER_CFG[tierKey];
+                            return (
+                              <div key={tierKey} style={{ marginBottom: 12 }}>
+                                <div style={{ padding: "0 20px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
+                                  {products.length > 2 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
+                                </div>
+                                <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+                                  {products.map((p, j) => {
+                                    const isFallback = !p.is_product_page && p.brand === "Google Shopping";
+                                    const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
+                                    const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
+                                    const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
+                                    return (
+                                      <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
+                                        <a href={href} target="_blank" rel="noopener noreferrer"
+                                          onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback }, scanId, "scan")}
+                                          style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
+                                          {p.image_url && (
+                                            <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
+                                              <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                            </div>
+                                          )}
+                                          <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
+                                            {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>ORIGINAL</span>}
+                                            <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                                              {isFallback ? "Search results" : (p.product_name || "Product")}
+                                            </div>
+                                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
+                                            <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : p.price}</div>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
+                                          </div>
+                                        </a>
+                                        {/* Save heart */}
+                                        <button
+                                          aria-label={isSavedProduct ? "Remove from Likes" : "Save to Likes"}
+                                          onClick={e => { e.preventDefault(); e.stopPropagation(); quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId); }}
+                                          style={{ position: "absolute", top: 6, right: 6, width: 28, height: 28, borderRadius: "50%", background: isSavedProduct ? "rgba(255,60,80,.9)" : "rgba(0,0,0,.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", zIndex: 2 }}>
+                                          <svg viewBox="0 0 24 24" width="12" height="12" fill={isSavedProduct ? "#fff" : "none"} stroke={isSavedProduct ? "#fff" : "rgba(255,255,255,.8)"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                                          </svg>
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Not finding what you want? */}
+                          {item.tiers && (() => {
+                            const allProducts = ["budget", "mid", "premium"].flatMap(tk => asTierArray(item.tiers[tk]));
+                            const hasFallback = allProducts.some(p => !p.is_product_page && p.brand === "Google Shopping");
+                            if (!hasFallback) return null;
+                            const googleQuery = item.search_query || `${item.brand || ""} ${item.name || ""}`.trim();
+                            return (
+                              <div style={{ padding: "0 20px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                                {item.alt_search && (
+                                  <button
+                                    onClick={() => { setSearchNotes(item.alt_search); setTimeout(() => runProductSearch(), 100); track("alt_search_clicked", { item_name: item.name, alt_search: item.alt_search }, scanId, "scan"); }}
+                                    style={{ padding: "8px 14px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 10, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                                    Try alternate search
+                                  </button>
+                                )}
+                                <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`} target="_blank" rel="noopener noreferrer"
+                                  onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
+                                  style={{ padding: "8px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  Google Shopping
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                </a>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
               <div className="aff-note" style={{ padding: "8px 20px 16px" }}>Links may include affiliate partnerships</div>
             </div>
           )}
@@ -3765,6 +3826,13 @@ export default function App() {
                         <button className="btn-primary scan-card-back-btn" onClick={(e) => viewScanResults(e, scan)} aria-label="View scan results">
                           View Results
                         </button>
+                        <button className="btn-ghost scan-card-back-btn" onClick={(e) => {
+                          e.stopPropagation();
+                          setWishlistPickerScan(scan);
+                        }} aria-label="Add to wishlist">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                          Wishlist
+                        </button>
                         <button className="btn-ghost scan-card-back-btn" onClick={(e) => shareScan(e, scan)} aria-label="Share this scan">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                           Share
@@ -3783,6 +3851,28 @@ export default function App() {
                   <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>My Scans</h2>
                   {history.length > 0 && <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{history.length} scan{history.length !== 1 ? "s" : ""}</span>}
                 </div>
+
+                {/* Wishlist filter row */}
+                {wishlists.length > 0 && (
+                  <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "8px 16px 0", scrollbarWidth: "none" }}>
+                    <button
+                      className={`scan-vis-chip${!activeWishlist ? " active" : ""}`}
+                      onClick={() => setActiveWishlist(null)}
+                      style={{ flexShrink: 0 }}
+                    >All Scans</button>
+                    {wishlists.map(wl => (
+                      <button
+                        key={wl.id}
+                        className={`scan-vis-chip${activeWishlist?.id === wl.id ? " active" : ""}`}
+                        onClick={() => setActiveWishlist(activeWishlist?.id === wl.id ? null : wl)}
+                        style={{ flexShrink: 0 }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        {wl.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* Search bar */}
                 {history.length > 0 && (
@@ -4194,7 +4284,7 @@ export default function App() {
                 <div style={{ marginBottom: 16 }}>
                   <div className="item-opts-label">Body type</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                    {[{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"}].map(o => {
+                    {[{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"},{l:"Hourglass",v:"hourglass"},{l:"Pear",v:"pear"},{l:"Apple",v:"apple"},{l:"Rectangle",v:"rectangle"},{l:"Inverted Triangle",v:"inverted_triangle"},{l:"Long Torso",v:"long_torso"},{l:"Short Torso",v:"short_torso"}].map(o => {
                       const on = (spVal.body_type||[]).includes(o.v);
                       return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"var(--bg-input)", border:`1px solid ${on?"rgba(201,169,110,.4)":"var(--border)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"var(--accent)":"var(--text-secondary)", transition:"all .2s" }}
                         onClick={() => { const a=spVal.body_type||[]; setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, body_type: a.includes(o.v)?a.filter(x=>x!==o.v):[...a,o.v] } })); }}>{o.l}</div>;
@@ -4206,7 +4296,7 @@ export default function App() {
                 <div style={{ marginBottom: sizeInfo ? 16 : 0 }}>
                   <div className="item-opts-label">Fit style</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                    {[{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"}].map(o => {
+                    {[{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"},{l:"Tailored",v:"tailored"},{l:"Cropped",v:"cropped"},{l:"Longline",v:"longline"},{l:"Structured",v:"structured"},{l:"Draped",v:"draped"},{l:"Boxy",v:"boxy"},{l:"A-Line",v:"a_line"},{l:"Bodycon",v:"bodycon"}].map(o => {
                       const on = (spVal.fit||[]).includes(o.v);
                       return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"var(--bg-input)", border:`1px solid ${on?"rgba(201,169,110,.4)":"var(--border)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"var(--accent)":"var(--text-secondary)", transition:"all .2s" }}
                         onClick={() => { const a=spVal.fit||[]; setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, fit: a.includes(o.v)?a.filter(x=>x!==o.v):[...a,o.v] } })); }}>{o.l}</div>;
@@ -4303,7 +4393,7 @@ export default function App() {
           </button>
           <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); }} aria-label="Saved">
             <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            <span className="tab-l">Saved</span>
+            <span className="tab-l">My Scans</span>
             {priceAlertCount > 0 && (
               <span className="tab-badge" />
             )}
@@ -4561,7 +4651,7 @@ export default function App() {
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 10 }}>Fit preference</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {["Slim", "Regular", "Relaxed", "Oversized"].map(fit => {
+                {["Slim", "Regular", "Relaxed", "Oversized", "Flowy", "Tailored", "Cropped", "Longline", "Structured", "Draped", "Boxy", "A-Line", "Bodycon"].map(fit => {
                   const isOn = prefSheetFit.includes(fit.toLowerCase());
                   return (
                     <button key={fit} onClick={() => setPrefSheetFit(prev => isOn ? prev.filter(f => f !== fit.toLowerCase()) : [...prev, fit.toLowerCase()])}
@@ -4796,6 +4886,80 @@ export default function App() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+      {/* ─── Wishlist Picker Modal ─── */}
+      {wishlistPickerScan && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => { setWishlistPickerScan(null); setNewWishlistName(""); }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "relative", width: "100%", maxWidth: 400, background: "var(--bg-secondary)", borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", maxHeight: "60vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Add to Wishlist</div>
+              <button onClick={() => { setWishlistPickerScan(null); setNewWishlistName(""); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>&times;</button>
+            </div>
+            {wishlists.length > 0 && wishlists.map(wl => (
+              <button key={wl.id} onClick={async () => {
+                const scanId = wishlistPickerScan.scan_id || wishlistPickerScan.id;
+                if (scanId) {
+                  await API.addToWishlist(wl.id, scanId).catch(() => {});
+                  setAddToListConfirm({ savedItemId: scanId, wishlistName: wl.name });
+                  setTimeout(() => setAddToListConfirm(null), 2000);
+                }
+                setWishlistPickerScan(null);
+              }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", marginBottom: 8, minHeight: 48 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{wl.name}</span>
+              </button>
+            ))}
+            <div style={{ display: "flex", gap: 8, marginTop: wishlists.length > 0 ? 8 : 0 }}>
+              <input
+                value={newWishlistName}
+                onChange={e => setNewWishlistName(e.target.value)}
+                placeholder="New wishlist name..."
+                style={{ flex: 1, padding: "12px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none", minHeight: 44 }}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && newWishlistName.trim()) {
+                    API.createWishlist(newWishlistName.trim()).then(d => {
+                      if (d?.wishlist) {
+                        setWishlists(prev => [...prev, d.wishlist]);
+                        const scanId = wishlistPickerScan.scan_id || wishlistPickerScan.id;
+                        if (scanId) API.addToWishlist(d.wishlist.id, scanId).catch(() => {});
+                        setAddToListConfirm({ savedItemId: scanId, wishlistName: d.wishlist.name });
+                        setTimeout(() => setAddToListConfirm(null), 2000);
+                      }
+                      setWishlistPickerScan(null);
+                      setNewWishlistName("");
+                    }).catch(() => {});
+                  }
+                }}
+              />
+              <button
+                disabled={!newWishlistName.trim()}
+                onClick={() => {
+                  if (!newWishlistName.trim()) return;
+                  API.createWishlist(newWishlistName.trim()).then(d => {
+                    if (d?.wishlist) {
+                      setWishlists(prev => [...prev, d.wishlist]);
+                      const scanId = wishlistPickerScan.scan_id || wishlistPickerScan.id;
+                      if (scanId) API.addToWishlist(d.wishlist.id, scanId).catch(() => {});
+                      setAddToListConfirm({ savedItemId: scanId, wishlistName: d.wishlist.name });
+                      setTimeout(() => setAddToListConfirm(null), 2000);
+                    }
+                    setWishlistPickerScan(null);
+                    setNewWishlistName("");
+                  }).catch(() => {});
+                }}
+                style={{ padding: "12px 18px", background: newWishlistName.trim() ? "var(--accent)" : "var(--bg-input)", color: newWishlistName.trim() ? "#000" : "var(--text-tertiary)", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: newWishlistName.trim() ? "pointer" : "default", fontFamily: "var(--font-sans)", minHeight: 44, transition: "all .2s" }}
+              >Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wishlist added confirmation toast */}
+      {addToListConfirm && (
+        <div style={{ position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)", zIndex: 10000, background: "var(--accent)", color: "#000", padding: "10px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13, fontFamily: "var(--font-sans)", boxShadow: "0 4px 20px rgba(0,0,0,.3)", animation: "slideUp .3s ease" }}>
+          Added to {addToListConfirm.wishlistName}
         </div>
       )}
     </div>
