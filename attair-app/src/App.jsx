@@ -3208,6 +3208,67 @@ export default function App() {
                 )}
               </div>
 
+              {/* Item pick list — circle intent: only show circled items unless expanded */}
+              {(() => {
+                const hasCircled = results.items.some(it => it.priority);
+                const hiddenCount = hasCircled && !showAllPickItems ? results.items.filter(it => !it.priority).length : 0;
+                const visibleItems = hasCircled && !showAllPickItems
+                  ? results.items.map((item, i) => ({ item, i })).filter(({ item }) => item.priority)
+                  : results.items.map((item, i) => ({ item, i }));
+                return (
+                  <div className="pick-list">
+                    {hasCircled && !showAllPickItems && (
+                      <div style={{ padding: "8px 0 4px", textAlign: "center" }}>
+                        <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600 }}>Showing circled items only</span>
+                      </div>
+                    )}
+                    {visibleItems.map(({ item, i }) => {
+                      const isPicked = pickedItems.has(i);
+                      const ov = itemOverrides[i];
+                      return (
+                        <div key={i} className={`pick-item ${isPicked ? "picked" : ""}`} onClick={() => setItemSettingsIdx(i)}>
+                          <div className="pick-check" onClick={e => { e.stopPropagation(); setPickedItems(prev => { const n = new Set(prev); if (n.has(i)) n.delete(i); else n.add(i); return n; }); }}>
+                            {isPicked && <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6.5L5 9L9.5 3.5" fill="none" stroke="#0C0C0E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              <span style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "var(--text-primary)" : "var(--text-secondary)", transition: "color .2s" }}>{item.name}</span>
+                              {item.priority && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, flexShrink: 0 }}>&#11044; Circled</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: isPicked ? "rgba(201,169,110,.6)" : "var(--text-tertiary)", transition: "color .2s" }}>
+                              {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
+                              {item.identification_confidence ? <span style={{ marginLeft: 4, color: "var(--text-tertiary)" }}>· {item.identification_confidence}%</span> : null}
+                            </div>
+                          </div>
+                          {ov?.budgetMin != null
+                            ? <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 7, padding: "4px 9px", whiteSpace: "nowrap" }}>${ov.budgetMin}–${ov.budgetMax ?? ov.budgetMin * 2}</div>
+                                <div style={{ fontSize: 9, color: "rgba(201,169,110,.5)", letterSpacing: .3 }}>tap to edit</div>
+                              </div>
+                            : <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 10, flexShrink: 0, cursor: "pointer" }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A96E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="#C9A96E" stroke="none"/><circle cx="16" cy="12" r="2" fill="#C9A96E" stroke="none"/><circle cx="10" cy="18" r="2" fill="#C9A96E" stroke="none"/></svg>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Set prefs</span>
+                              </div>
+                          }
+                        </div>
+                      );
+                    })}
+                    {hasCircled && hiddenCount > 0 && (
+                      <button className="btn-ghost" style={{ width: "100%", fontSize: 12, padding: "10px 0", marginTop: 4 }}
+                        onClick={() => setShowAllPickItems(true)}>
+                        Show all {results.items.length} items ({hiddenCount} more)
+                      </button>
+                    )}
+                    {hasCircled && showAllPickItems && (
+                      <button className="btn-ghost" style={{ width: "100%", fontSize: 12, padding: "10px 0", marginTop: 4 }}
+                        onClick={() => setShowAllPickItems(false)}>
+                        Show circled only
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Search CTA */}
               <div className="pick-cta">
                 <button
