@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+import "./App.css";
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIG — Set VITE_API_BASE in Vercel env vars for production
@@ -2321,695 +2322,8 @@ export default function App() {
   const prog = ((obIdx + 1) / OB_STEPS.length) * 100;
 
   return (<>
-    <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700;800&display=swap');
-      *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-      @keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-      @keyframes fo{from{opacity:1}to{opacity:0}}
-      @keyframes scan{0%{top:5%}50%{top:92%}100%{top:5%}}
-      @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
-      @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-      @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-      @keyframes glowPulse{0%,100%{opacity:1;filter:brightness(1.5)}50%{opacity:.6;filter:brightness(2)}}
-      @keyframes circleGlow{0%,100%{opacity:0.6;filter:drop-shadow(0 0 10px rgba(201,169,110,0.4)) drop-shadow(0 0 3px rgba(201,169,110,0.6))}50%{opacity:1;filter:drop-shadow(0 0 20px rgba(201,169,110,0.7)) drop-shadow(0 0 6px rgba(201,169,110,0.9))}}
-      @keyframes searchPulse{0%,100%{background-position:200% center}50%{background-position:0% center}}
-      @keyframes verdictPop{0%{transform:scale(1)}30%{transform:scale(1.25)}60%{transform:scale(0.95)}100%{transform:scale(1)}}
-      @keyframes slideDown{0%{opacity:0;max-height:0}100%{opacity:1;max-height:2000px}}
-      .scroll-x::-webkit-scrollbar{display:none}
-      @keyframes verdictShake{0%,100%{transform:translateX(0)}15%{transform:translateX(-4px)}30%{transform:translateX(4px)}45%{transform:translateX(-3px)}60%{transform:translateX(3px)}75%{transform:translateX(-1px)}90%{transform:translateX(1px)}}
-      @keyframes highlighterPulse{0%{opacity:0.6}50%{opacity:0.9}100%{opacity:0.6}}
-      @keyframes budgetSliderPulse{0%{box-shadow:0 0 0 0 rgba(201,169,110,0.3)}70%{box-shadow:0 0 0 6px rgba(201,169,110,0)}100%{box-shadow:0 0 0 0 rgba(201,169,110,0)}}
-      .fi{animation:fi .3s ease forwards}.fo{animation:fo .22s ease forwards}
-      .app{width:100%;max-width:430px;min-height:100vh;margin:0 auto;background:var(--bg-secondary);font-family:'Outfit',sans-serif;color:var(--text-primary);display:flex;flex-direction:column;overflow-x:hidden}
-      .serif{font-family:'Instrument Serif',serif}
-
-      .ob{flex:1;display:flex;flex-direction:column;padding:20px 28px}
-      .ob-bar{height:2px;background:var(--border);border-radius:1px;margin-bottom:40px;overflow:hidden}
-      .ob-fill{height:100%;background:var(--accent);transition:width .4s ease}
-      .ob-body{flex:1;display:flex;flex-direction:column;justify-content:center}
-      .ob-icon{font-size:32px;margin-bottom:20px;color:var(--accent)}
-      .ob-title{font-family:'Instrument Serif';font-size:32px;line-height:1.15;margin-bottom:14px;white-space:pre-line;color:var(--text-primary)}
-      .ob-sub{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:36px}
-      .ob-opts{display:flex;flex-direction:column;gap:10px}
-      .ob-opt{padding:18px 22px;background:var(--accent-bg);border:1px solid var(--border);border-radius:14px;cursor:pointer;transition:all .2s;font-size:15px;font-weight:500;color:var(--text-secondary);min-height:44px}
-      .ob-opt:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
-      .ob-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-      .ob-chip{padding:9px 16px;background:var(--accent-bg);border:1px solid var(--border);border-radius:100px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-secondary);transition:all .2s;-webkit-tap-highlight-color:transparent;min-height:36px}
-      .ob-chip.on{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
-      .ob-skip{background:none;border:none;color:var(--text-tertiary);font-size:13px;cursor:pointer;font-family:'Outfit';padding:10px 0;margin-top:4px;text-align:center;width:100%;min-height:44px}
-      .ob-stats{display:flex;gap:32px;margin-bottom:36px}
-      .ob-sn{font-family:'Outfit';font-size:24px;font-weight:700;color:var(--accent)}
-      .ob-sl{font-size:11px;color:var(--text-tertiary);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
-      .cta{width:100%;padding:17px;background:var(--accent);color:var(--text-inverse);border:none;border-radius:14px;font-family:'Outfit';font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:auto;min-height:44px}.cta:hover{background:var(--accent-hover)}
-
-      .pw{flex:1;display:flex;flex-direction:column;padding:20px 28px}
-      .pw-skip{align-self:flex-end;background:none;border:none;color:var(--text-tertiary);font-size:13px;cursor:pointer;padding:8px;font-family:'Outfit';min-height:44px}
-      .pw-badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:100px;padding:7px 14px;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.8px;margin:16px 0 20px;align-self:flex-start}
-      .pw-t{font-family:'Instrument Serif';font-size:30px;line-height:1.15;margin-bottom:8px;color:var(--text-primary)}
-      .pw-st{font-size:14px;color:var(--text-secondary);line-height:1.5;margin-bottom:28px}
-      .pw-fs{display:flex;flex-direction:column;gap:12px;margin-bottom:32px}
-      .pw-f{display:flex;align-items:center;gap:11px;font-size:14px;color:var(--text-secondary)}
-      .pw-ck{width:20px;height:20px;border-radius:50%;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent);font-size:10px;font-weight:700}
-      .pw-plans{display:flex;gap:10px;margin-bottom:28px}
-      .pw-p{flex:1;padding:20px 14px;border-radius:14px;border:1.5px solid var(--border);cursor:pointer;transition:all .2s;position:relative;background:var(--bg-card)}.pw-p.sel{border-color:var(--accent-border);background:var(--accent-bg)}
-      .pw-ptag{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--text-inverse);font-size:9px;font-weight:800;padding:3px 10px;border-radius:100px;letter-spacing:1px;white-space:nowrap;box-shadow:0 4px 16px rgba(201,169,110,.5)}
-      .pw-pp{font-size:22px;font-weight:700;color:var(--text-primary)}.pw-pd{font-size:12px;color:var(--text-tertiary)}.pw-pw{font-size:11px;color:var(--text-tertiary);margin-top:4px}
-      .pw-terms{text-align:center;font-size:10px;color:var(--text-tertiary);margin-top:14px}
-
-      .auth{flex:1;display:flex;flex-direction:column;padding:20px 28px;justify-content:center}
-      .auth input{width:100%;padding:16px 18px;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;color:var(--text-primary);font-family:'Outfit';font-size:15px;outline:none;margin-bottom:10px;transition:border-color .2s;min-height:44px;box-sizing:border-box}
-      .auth input:focus{border-color:var(--border-focus)}
-      .auth input::placeholder{color:var(--text-tertiary)}
-      .auth-toggle{background:none;border:none;color:var(--accent);font-family:'Outfit';font-size:13px;cursor:pointer;padding:8px;text-align:center;width:100%;margin-top:8px;min-height:44px}
-      .auth-err{background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.12);border-radius:10px;padding:12px;font-size:13px;color:var(--error);margin-bottom:12px;text-align:center}
-
-      .as{flex:1;display:flex;flex-direction:column;padding-bottom:80px}
-      .hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg-secondary) 92%,transparent);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
-      .logo{font-family:'Instrument Serif';font-size:22px;color:var(--text-primary);font-style:italic;letter-spacing:0.04em}.logo span{color:var(--accent)}
-      .pro{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--accent);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
-      .free-badge{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-tertiary);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
-      .scan-counter{font-size:11px;color:var(--text-tertiary);text-align:center;margin-top:-8px;margin-bottom:8px}
-      .scan-counter strong{color:var(--accent)}
-      .tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;background:var(--bg-card);backdrop-filter:blur(24px);border-top:1px solid var(--border);padding:6px 0 0;padding-bottom:max(6px,env(safe-area-inset-bottom));z-index:100}
-      .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0 4px;cursor:pointer;background:none;border:none;color:var(--text-tertiary);transition:color .2s;font-family:'Outfit';min-height:44px;position:relative}.tab.on{color:var(--accent)}
-      .tab.on::before{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:20px;height:2px;background:var(--accent);border-radius:2px}
-      .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}.tab.on svg{stroke-width:2}
-      .tab-l{font-size:10px;font-weight:500;letter-spacing:.3px;margin-top:1px}.tab.on .tab-l{font-weight:700}
-
-      .shome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px;gap:28px;text-align:center}
-      .scan-ring{width:150px;height:150px;border-radius:50%;border:1.5px dashed var(--accent-border);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .3s}
-      .scan-ring:hover{border-color:rgba(201,169,110,.4);transform:scale(1.03)}
-      .scan-inner{width:110px;height:110px;border-radius:50%;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;font-size:36px}
-      .btns{display:flex;gap:10px;width:100%}
-      .btn{flex:1;padding:15px;border-radius:12px;border:none;font-family:'Outfit';font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .2s;min-height:44px}
-      .btn.gold{background:var(--accent);color:var(--text-inverse)}.btn.gold:hover{background:var(--accent-hover)}
-      .btn.ghost{background:var(--accent-bg);color:var(--text-secondary);border:1px solid var(--border)}
-      .btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
-
-      .cam{position:fixed;inset:0;z-index:200;background:#000;display:flex;flex-direction:column;overflow:hidden}
-      .cam video{flex:1;object-fit:cover;min-height:0}
-      .cam-corners{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:260px;height:340px;pointer-events:none}
-      .cc{position:absolute;width:28px;height:28px;border-color:var(--accent);border-style:solid}
-      .cc.tl{top:0;left:0;border-width:2px 0 0 2px;border-radius:6px 0 0 0}.cc.tr{top:0;right:0;border-width:2px 2px 0 0;border-radius:0 6px 0 0}
-      .cc.bl{bottom:0;left:0;border-width:0 0 2px 2px;border-radius:0 0 0 6px}.cc.br{bottom:0;right:0;border-width:0 2px 2px 0;border-radius:0 0 6px 0}
-      .cam-bar{flex-shrink:0;padding:24px;display:flex;align-items:center;justify-content:center;gap:36px;background:rgba(0,0,0,.85);backdrop-filter:blur(16px);padding-bottom:max(24px,env(safe-area-inset-bottom))}
-      .cam-x{background:none;border:none;color:#fff;font-family:'Outfit';font-size:15px;cursor:pointer;min-height:44px;min-width:44px}
-      .shutter{width:64px;height:64px;border-radius:50%;background:var(--accent);border:4px solid var(--accent-border);cursor:pointer;transition:transform .15s}.shutter:active{transform:scale(.88)}
-
-      .ld-wrap{flex:1;display:flex;flex-direction:column}
-      .ld-img-wrap{position:relative;width:100%;aspect-ratio:3/4;max-height:55vh;overflow:hidden}
-      .ld-img{width:100%;height:100%;object-fit:cover;filter:brightness(.45) saturate(.6)}
-      .ld-scanline{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent 0%,rgba(201,169,110,.2) 20%,var(--accent) 50%,rgba(201,169,110,.2) 80%,transparent 100%);animation:scan 3s ease-in-out infinite;box-shadow:0 0 30px rgba(201,169,110,.4),0 0 60px rgba(201,169,110,.15)}
-      .ld-img-wrap::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(201,169,110,.04) 0%,transparent 70%);animation:pulse 2.5s ease-in-out infinite;pointer-events:none}
-      .ld-info{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px}
-      .ld-dots{display:flex;gap:5px}.ld-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease-in-out infinite}.ld-dot:nth-child(2){animation-delay:.15s}.ld-dot:nth-child(3){animation-delay:.3s}
-
-      .res{flex:1;display:flex;flex-direction:column}
-      .res-img-sec{position:relative;width:100%}
-      .res-img{width:100%;aspect-ratio:3/4;max-height:48vh;object-fit:cover;display:block}
-      .res-grad{position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(transparent,var(--bg-secondary))}
-      .res-new{position:absolute;top:14px;right:14px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border:none;border-radius:100px;color:#0C0C0E;font-family:'Outfit';font-size:12px;font-weight:700;padding:9px 16px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.35);transition:all .2s}.res-new:hover{background:#fff;transform:scale(1.03)}
-      .res-new svg{width:13px;height:13px;stroke:#0C0C0E;fill:none;stroke-width:2.2;flex-shrink:0}
-      .res-close{position:absolute;top:14px;left:14px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:50%;cursor:pointer;transition:all .2s}.res-close:hover{background:rgba(0,0,0,.7)}
-      .res-close svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
-      .hs{position:absolute;transform:translate(-50%,-50%);cursor:pointer;transition:all .2s;z-index:10}
-      .hs-ring{width:32px;height:32px;border-radius:50%;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;background:rgba(12,12,14,.5);backdrop-filter:blur(4px);transition:all .2s}
-      .hs.on .hs-ring{background:var(--accent);transform:scale(1.15);box-shadow:0 0 0 4px rgba(201,169,110,.2)}
-      .hs-num{font-size:11px;font-weight:700;color:var(--accent);transition:color .2s}.hs.on .hs-num{color:var(--text-inverse)}
-      .hs-tag{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:4px;font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);background:rgba(12,12,14,.7);backdrop-filter:blur(8px);padding:2px 6px;border-radius:3px;white-space:nowrap}
-      .hs.picked .hs-ring{background:var(--accent);transform:scale(1.15);box-shadow:0 0 0 4px rgba(201,169,110,.2)}
-      .hs.picked .hs-num{color:var(--text-inverse)}
-      .hs.unpicked .hs-ring{border-color:rgba(255,255,255,.15);background:rgba(12,12,14,.5)}.hs.unpicked .hs-num{color:rgba(255,255,255,.25)}
-      .pick-list{padding:12px 20px;display:flex;flex-direction:column;gap:8px}
-      .pick-item{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--accent-bg);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;min-height:44px}
-      .pick-item.picked{background:var(--accent-bg);border-color:var(--accent-border)}
-      .pick-check{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--text-tertiary);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
-      .pick-item.picked .pick-check{background:var(--accent);border-color:var(--accent)}
-      .pick-cta{position:sticky;bottom:80px;padding:12px 20px;z-index:10}
-      .pick-cta button{width:100%;padding:16px;border-radius:14px;font-size:15px;font-weight:700;font-family:'Outfit';cursor:pointer;transition:all .2s;border:none}
-      .budget-input-wrap{flex:1;display:flex;align-items:center;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:12px 14px;gap:4px;transition:border-color .2s}
-      .budget-input-wrap:focus-within{border-color:var(--border-focus)}
-      .budget-input-wrap input{background:none;border:none;color:var(--text-primary);font-family:'Outfit';font-size:20px;font-weight:700;width:100%;outline:none}
-      .budget-input-wrap input::placeholder{color:var(--text-tertiary)}
-      .budget-input-wrap span{color:var(--text-tertiary);font-size:16px;font-weight:600;flex-shrink:0}
-      .budget-range-thumb::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:var(--accent);border:2px solid var(--bg-primary);cursor:pointer;pointer-events:auto;box-shadow:0 2px 6px rgba(0,0,0,0.3);transition:transform var(--transition-fast)}
-      .budget-range-thumb::-webkit-slider-thumb:active{transform:scale(1.2)}
-      .budget-range-thumb::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--accent);border:2px solid var(--bg-primary);cursor:pointer;pointer-events:auto;box-shadow:0 2px 6px rgba(0,0,0,0.3)}
-      .crop-screen{position:fixed;inset:0;z-index:400;background:#000;display:flex;flex-direction:column}
-      .crop-stage{flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:16px 16px 0}
-      .crop-stage img{max-width:100%;max-height:100%;display:block}
-      .crop-bar{flex-shrink:0;padding:16px 20px;padding-bottom:max(20px,env(safe-area-inset-bottom));background:var(--bg-secondary);display:flex;gap:12px;align-items:center;border-top:1px solid var(--border)}
-      .ReactCrop{border-radius:4px}
-      .ReactCrop__crop-selection{border:2px solid var(--accent);box-shadow:0 0 0 9999px rgba(0,0,0,.55)}
-      .ReactCrop__drag-handle::after{background:var(--accent);border:2px solid var(--bg-secondary);width:14px;height:14px;border-radius:3px}
-      .item-opts-overlay{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.65);backdrop-filter:blur(4px)}
-      .item-opts-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg-card);border-radius:20px 20px 0 0;border-top:1px solid var(--border);padding:20px 20px;padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:251;animation:slideIn .22s ease;max-height:82vh;overflow-y:auto}
-      .item-opts-handle{width:36px;height:3px;background:var(--text-tertiary);border-radius:3px;margin:0 auto 18px}
-      .item-opts-label{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:8px}
-      .pick-item{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--accent-bg);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;min-height:44px}
-      .pick-item.picked{background:var(--accent-bg);border-color:var(--accent-border)}
-
-      .v-banner{padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
-      .v-steps{display:flex;gap:6px;flex:1}
-      .v-step{flex:1;display:flex;flex-direction:column;gap:3px;align-items:center}
-      .v-step-bar{width:100%;height:2px;border-radius:1px;background:var(--border);overflow:hidden}
-      .v-step-fill{height:100%;border-radius:1px;transition:width .5s ease}
-      .v-step-l{font-size:8px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
-
-      .det{padding:20px;animation:slideIn .35s ease}
-      .det-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-      .det-name{font-family:'Instrument Serif';font-size:24px;color:var(--text-primary);line-height:1.15;flex:1}
-      .det-save{width:44px;height:44px;border-radius:50%;background:var(--accent-bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:16px;transition:all .2s}.det-save.on{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
-      .det-tags{display:flex;gap:5px;flex-wrap:wrap;margin:12px 0}
-      .det-tag{font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text-tertiary);background:var(--accent-bg);padding:4px 8px;border-radius:5px}
-      .det-conf{display:flex;align-items:center;gap:14px;padding:14px;background:var(--accent-bg);border:1px solid var(--border);border-radius:14px;margin-bottom:18px}
-      .sec-t{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-      .tiers-scroll{display:flex;flex-direction:column;gap:10px;padding:0 0 12px}
-      .tier-empty{padding:16px;border:1px dashed var(--border);border-radius:12px;text-align:center;font-size:12px;color:var(--text-tertiary);line-height:1.5}
-      .aff-note{font-size:9px;color:var(--text-tertiary);text-align:center;margin-top:12px;padding-bottom:16px}
-
-      .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 32px;gap:10px}
-      .empty-i{font-size:36px;opacity:.2;margin-bottom:6px}.empty-t{font-size:16px;font-weight:600;color:var(--text-primary)}.empty-s{font-size:12px;color:var(--text-tertiary)}
-      .hist-list{padding:16px 20px;display:flex;flex-direction:column;gap:10px}
-      .hist-card{display:flex;gap:12px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-card)}
-      .hist-thumb{width:52px;height:68px;border-radius:8px;object-fit:cover;flex-shrink:0}
-      .saved-list{padding:16px 20px;display:flex;flex-direction:column;gap:7px}
-      .saved-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-card)}
-      .err{margin:20px;padding:20px;background:rgba(255,80,80,.05);border:1px solid rgba(255,80,80,.1);border-radius:12px;color:var(--error);font-size:13px;text-align:center;line-height:1.5}
-      .hid{display:none}canvas.hid{display:none}
-      .pcard{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow-card)}
-      .rcard{background:var(--accent-bg);border:1px solid var(--accent-border);border-radius:14px;padding:20px}
-      .sitem{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;min-height:44px}
-      .ad-slot{display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.015);border:1px dashed rgba(255,255,255,.04);border-radius:10px;color:rgba(255,255,255,.08);font-size:9px;font-weight:700;letter-spacing:2px}
-      .ad-banner{height:48px;margin:0 20px 8px}
-      .ad-native{height:72px;margin:8px 0}
-
-      .modal-overlay{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px}
-      .modal-box{width:100%;max-width:380px;background:var(--bg-card);border:1px solid var(--border);border-radius:24px;padding:28px 24px;position:relative;animation:slideIn .3s ease}
-      .modal-x{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text-tertiary);font-size:18px;cursor:pointer;font-family:'Outfit';min-height:44px;min-width:44px}
-      .modal-title{font-family:'Instrument Serif';font-size:24px;color:var(--text-primary);line-height:1.15;margin-bottom:8px}
-      .modal-sub{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:24px}
-      .modal-later{background:none;border:none;color:var(--text-tertiary);font-family:'Outfit';font-size:12px;cursor:pointer;width:100%;text-align:center;padding:10px;margin-top:6px;min-height:44px}
-
-      .view-toggle{display:flex;gap:0;background:var(--accent-bg);border-radius:10px;padding:3px;margin-bottom:16px}
-      .view-tab{flex:1;padding:8px 0;border-radius:8px;border:none;font-family:'Outfit';font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
-      .view-tab.on{background:var(--accent-bg);color:var(--accent)}
-      .view-tab.off{background:transparent;color:var(--text-tertiary)}
-      .refine-chat{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
-      .refine-msg{padding:9px 13px;border-radius:10px;font-size:12px;line-height:1.5;max-width:88%}
-      .refine-msg.user{background:var(--accent-bg);color:var(--text-primary);align-self:flex-end;border:1px solid var(--accent-border)}
-      .refine-msg.ai{background:var(--bg-card);color:var(--text-secondary);align-self:flex-start;border:1px solid var(--border)}
-      .refine-input-row{display:flex;gap:8px;align-items:flex-end}
-      .refine-input{flex:1;padding:11px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;color:var(--text-primary);font-family:'Outfit';font-size:13px;outline:none;resize:none;transition:border-color .2s;line-height:1.4}
-      .refine-input:focus{border-color:var(--border-focus)}
-      .refine-input::placeholder{color:var(--text-tertiary)}
-      .refine-send{width:44px;height:44px;border-radius:10px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
-      .refine-send:disabled{opacity:.4;cursor:not-allowed}
-
-      /* ─── Light mode overrides (LEGACY SAFETY NET) ─── */
-      /* Many of these are now redundant because the CSS classes above use
-         var(--*) tokens that auto-switch via [data-theme='light'] in index.css.
-         Kept as a fallback for inline styles in JSX that still use hardcoded rgba values. */
-      .app[data-theme='light']{background:#F6F4F0;color:#1A1816}
-      .app[data-theme='light'] .hdr{background:rgba(246,244,240,.92);border-bottom-color:rgba(0,0,0,.06)}
-      .app[data-theme='light'] .logo{color:#1A1816}
-      .app[data-theme='light'] .free-badge{background:rgba(0,0,0,.04);color:rgba(0,0,0,.3)}
-      .app[data-theme='light'] .tb{background:rgba(255,255,255,.97);border-top-color:rgba(0,0,0,.08)}
-      .app[data-theme='light'] .tab{color:rgba(0,0,0,.3)}
-      .app[data-theme='light'] .tab.on{color:#C9A96E}
-      .app[data-theme='light'] .res-grad{background:linear-gradient(transparent,#F6F4F0)}
-      .app[data-theme='light'] .ob-bar{background:rgba(0,0,0,.06)}
-      .app[data-theme='light'] .ob-title{color:#1A1816}
-      .app[data-theme='light'] .ob-sub{color:rgba(0,0,0,.4)}
-      .app[data-theme='light'] .ob-opt{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.07);color:rgba(0,0,0,.7)}
-      .app[data-theme='light'] .ob-chip{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.07);color:rgba(0,0,0,.5)}
-      .app[data-theme='light'] .ob-chip.on{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
-      .app[data-theme='light'] .ob-skip{color:rgba(0,0,0,.2)}
-      .app[data-theme='light'] .auth input{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.08);color:#1A1816}
-      .app[data-theme='light'] .auth input::placeholder{color:rgba(0,0,0,.2)}
-      .app[data-theme='light'] .auth-err{background:rgba(200,0,0,.04);border-color:rgba(200,0,0,.12);color:rgba(160,0,0,.8)}
-      .app[data-theme='light'] .pick-item{background:rgba(0,0,0,.02)!important;border-color:rgba(0,0,0,.05)!important}
-      .app[data-theme='light'] .pick-item.picked{background:rgba(201,169,110,.06)!important;border-color:rgba(201,169,110,.25)!important}
-      .app[data-theme='light'] .pick-check{border-color:rgba(0,0,0,.12)}
-      .app[data-theme='light'] .hist-card{background:rgba(0,0,0,.02)!important;border-color:rgba(0,0,0,.04)!important}
-      .app[data-theme='light'] .saved-row{background:rgba(0,0,0,.02)!important;border-color:rgba(0,0,0,.04)!important}
-      .app[data-theme='light'] .item-opts-sheet{background:#EDEBE6}
-      .app[data-theme='light'] .budget-input-wrap{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.08)}
-      .app[data-theme='light'] .budget-input-wrap input{color:#1A1816}
-      .app[data-theme='light'] .err{background:rgba(200,0,0,.04);border-color:rgba(200,0,0,.1);color:rgba(140,0,0,.7)}
-      .app[data-theme='light'] .view-toggle{background:rgba(0,0,0,.05)}
-      .app[data-theme='light'] .view-tab.off{color:rgba(0,0,0,.25)}
-      .app[data-theme='light'] .refine-msg.ai{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.06);color:rgba(0,0,0,.6)}
-      .app[data-theme='light'] .refine-input{background:rgba(0,0,0,.03);border-color:rgba(0,0,0,.08);color:#1A1816}
-      .app[data-theme='light'] .sitem{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.04);color:rgba(0,0,0,.5)}
-      .app[data-theme='light'] .modal-box{background:#F6F4F0;border-color:rgba(0,0,0,.08)}
-      .app[data-theme='light'] .modal-title,.app[data-theme='light'] .modal-sub{color:#1A1816}
-      .app[data-theme='light'] .det{background:#F6F4F0;border-color:rgba(0,0,0,.06)}
-      .app[data-theme='light'] .det-name{color:#1A1816}
-      .app[data-theme='light'] .saved-row{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.05)}
-      .app[data-theme='light'] .hist-item{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.05)}
-      .app[data-theme='light'] .shome h2{color:#1A1816}
-      .app[data-theme='light'] .scan-ring{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.08)}
-      .app[data-theme='light'] .scan-inner{color:#1A1816}
-
-      /* ─── Comprehensive light mode ───────────────────── */
-      /* Cards */
-      .app[data-theme='light'] .pcard{background:#FFFFFF;border-color:rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.08)}
-      .app[data-theme='light'] .rcard{background:#FFF9F0;border-color:rgba(201,169,110,.2);box-shadow:0 1px 3px rgba(0,0,0,.06)}
-      .app[data-theme='light'] .hist-card{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-      .app[data-theme='light'] .saved-row{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-      .app[data-theme='light'] .likes-card{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-      /* Text contrast */
-      .app[data-theme='light'] .sec-t{color:#1A1816}
-      .app[data-theme='light'] .det-tags .det-tag{background:rgba(0,0,0,.04);color:#666666;border-color:rgba(0,0,0,.07)}
-      .app[data-theme='light'] .aff-note{color:rgba(0,0,0,.25)}
-      /* Search/results area */
-      .app[data-theme='light'] .res{background:#F6F4F0}
-      .app[data-theme='light'] .v-banner{background:rgba(0,0,0,.03);border-bottom-color:rgba(0,0,0,.06)}
-      .app[data-theme='light'] .v-step-bar{background:rgba(0,0,0,.06)}
-      .app[data-theme='light'] .pick-list{background:#F6F4F0}
-      .app[data-theme='light'] .pick-cta{background:linear-gradient(transparent,#F6F4F0 60%)}
-      /* Inputs and textareas */
-      .app[data-theme='light'] textarea{background:#F5F5F5;border-color:#E0E0E0;color:#1A1816}
-      .app[data-theme='light'] textarea::placeholder{color:#999999}
-      .app[data-theme='light'] input[type="number"]{color:#1A1816}
-      .app[data-theme='light'] select{background:#F5F5F5;border-color:#E0E0E0;color:#1A1816}
-      /* Tier selector pills */
-      .app[data-theme='light'] .view-tab.on{background:rgba(201,169,110,.12);color:#8B6914}
-      /* Profile section */
-      .app[data-theme='light'] .pcard *{color:#1A1816}
-      .app[data-theme='light'] .pcard .pro{color:#FFFFFF}
-      .app[data-theme='light'] .pcard .free-badge{color:rgba(0,0,0,.4)}
-      /* Modals and bottom sheets */
-      .app[data-theme='light'] .modal-box{background:#FFFFFF;border-color:rgba(0,0,0,.08);box-shadow:0 24px 80px rgba(0,0,0,.18)}
-      .app[data-theme='light'] .modal-title{color:#1A1816}
-      .app[data-theme='light'] .modal-sub{color:#666666}
-      .app[data-theme='light'] .modal-x{color:rgba(0,0,0,.3)}
-      .app[data-theme='light'] .modal-later{color:rgba(0,0,0,.3)}
-      .app[data-theme='light'] .item-opts-sheet{background:#FFFFFF;box-shadow:0 -4px 32px rgba(0,0,0,.12)}
-      .app[data-theme='light'] .item-opts-label{color:rgba(0,0,0,.4)}
-      /* Occasion chips */
-      .app[data-theme='light'] .det{background:#FFFFFF;border-color:rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.06)}
-      /* Pairings grid */
-      .app[data-theme='light'] .hist-list{background:#F6F4F0}
-      .app[data-theme='light'] .empty-t{color:#1A1816}
-      .app[data-theme='light'] .empty-s{color:#666666}
-      /* Upgrade modal specific */
-      .app[data-theme='light'] .pw-f{color:#1A1816}
-      .app[data-theme='light'] .pw-ck{color:#C9A96E}
-      /* Refine chat in light mode */
-      .app[data-theme='light'] .refine-msg.user{color:#1A1816}
-      /* History name text */
-      .app[data-theme='light'] .hist-name-row div{color:#1A1816}
-      /* Bottom sheet overlays */
-      .app[data-theme='light'] .likes-card *:not(button):not(img){color:#1A1816}
-      /* Scan home */
-      .app[data-theme='light'] .shome{background:#F6F4F0}
-      .app[data-theme='light'] .btn.ghost{background:rgba(0,0,0,.04);color:rgba(0,0,0,.6);border-color:rgba(0,0,0,.08)}
-      /* Loading screen */
-      .app[data-theme='light'] .ld-wrap{background:#F6F4F0}
-      .app[data-theme='light'] .ld-info{background:#F6F4F0}
-      /* Results screen */
-      .app[data-theme='light'] .res-grad{background:linear-gradient(transparent,#F6F4F0)}
-      .app[data-theme='light'] .v-banner{background:#F6F4F0}
-      .app[data-theme='light'] .v-step-l{color:rgba(0,0,0,.4)}
-      .app[data-theme='light'] .det-conf{background:rgba(0,0,0,.02);border-color:rgba(0,0,0,.06)}
-      .app[data-theme='light'] .tier-empty{border-color:rgba(0,0,0,.08);color:rgba(0,0,0,.3)}
-      /* TierCard + MiniCard link colors */
-      .app[data-theme='light'] .tiers-scroll a{color:#1A1816}
-      /* MiniCard text overrides for light mode — inline rgba(255,255,255,.X) is invisible on white */
-      .app[data-theme='light'] .tiers-scroll a div{color:#1A1816 !important}
-      .app[data-theme='light'] .tiers-scroll a span{color:#666 !important}
-      .app[data-theme='light'] .tiers-scroll a span[style*="fontWeight: 700"]{color:inherit !important}
-      .app[data-theme='light'] .tiers-scroll a{background:rgba(0,0,0,.02) !important;border-color:rgba(0,0,0,.08) !important}
-      /* Pick-item screen */
-      .app[data-theme='light'] .pick-cta{background:linear-gradient(transparent,#F6F4F0 60%)}
-      /* Camera overlay */
-      .app[data-theme='light'] .cam{background:#000}
-      /* Progress dots */
-      .app[data-theme='light'] .ld-dot{background:#C9A96E}
-      /* Profile page */
-      .app[data-theme='light'] .pcard div:not(.pro):not(.free-badge){color:#1A1816}
-      .app[data-theme='light'] .rcard{background:#FFF9F0}
-      .app[data-theme='light'] .rcard div{color:#1A1816}
-      /* Wishlist/collection sheet */
-      .app[data-theme='light'] .likes-card{background:#FFFFFF;border-color:rgba(0,0,0,.07)}
-      /* As-seen-on links */
-      .app[data-theme='light'] .det a{color:#1A1816}
-      /* Search re-run banner */
-      .app[data-theme='light'] .research-banner{background:rgba(201,169,110,.06);border-bottom-color:rgba(201,169,110,.12)}
-      /* Onboarding page in light mode */
-      .app[data-theme='light'] .ob{background:#F6F4F0}
-      .app[data-theme='light'] .ob-skip{color:rgba(0,0,0,.25)}
-
-      /* ─── Comprehensive light mode: scan home ─────────── */
-      .app[data-theme='light'] .shome h2{color:#1a1a1a!important}
-      .app[data-theme='light'] .shome p{color:rgba(0,0,0,.45)!important}
-      .app[data-theme='light'] .scan-counter{color:rgba(0,0,0,.35)!important}
-      .app[data-theme='light'] .shome .btn.ghost{color:rgba(0,0,0,.6)!important;background:rgba(0,0,0,.05)!important;border-color:rgba(0,0,0,.1)!important}
-
-      /* ─── Comprehensive light mode: picking / results ─── */
-      .app[data-theme='light'] .res{background:#F5F5F7}
-      .app[data-theme='light'] .pick-list [style*="rgba(255,255,255,.5)"] span[style]{color:rgba(0,0,0,.6)!important}
-      .app[data-theme='light'] .pick-list [style*="rgba(255,255,255,.15)"] span[style]{color:rgba(0,0,0,.25)!important}
-      .app[data-theme='light'] .pick-list > div > div > div:first-child{color:#1a1a1a!important}
-
-      /* Occasion section label */
-      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="letterSpacing: 1.5"][style*="textTransform"]{color:rgba(0,0,0,.35)!important}
-
-      /* Ident preview rows */
-      .app[data-theme='light'] [style*="rgba(255,255,255,.02)"][style*="borderRadius: 10"]{background:rgba(0,0,0,.03)!important;border-color:rgba(0,0,0,.06)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.04)"][style*="borderRadius: 10"]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.07)!important}
-
-      /* Loading state */
-      .app[data-theme='light'] .ld-wrap{background:#F5F5F7}
-      .app[data-theme='light'] .ld-info{background:#F5F5F7}
-      .app[data-theme='light'] .ld-info > div:nth-child(2){color:#1a1a1a!important}
-
-      /* Summary text in results */
-      .app[data-theme='light'] [style*="rgba(255,255,255,.5)"][style*="fontStyle: \"italic\""]{color:rgba(0,0,0,.55)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.35)"][style*="textTransform: \"uppercase\""][style*="pickedItems"]{color:rgba(0,0,0,.45)!important}
-
-      /* det (item detail) */
-      .app[data-theme='light'] .det-name{color:#1a1a1a!important}
-      .app[data-theme='light'] [style*="fontSize: 15"][style*="fontWeight: 700"][style*="color: \"#fff\""]{color:#1a1a1a!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.3)"][style*="marginLeft: 6"]{color:rgba(0,0,0,.35)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="marginTop: 6"][style*="fontStyle"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="textAlign: \"center\""]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.15)"][style*="No recent"]{color:rgba(0,0,0,.25)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.15)"][style*="No stores"]{color:rgba(0,0,0,.25)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.7)"][style*="lineHeight: 1.3"]{color:rgba(0,0,0,.75)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="source_name"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.7)"][style*="lineHeight: 1.3"][style*="marginBottom: 3"]{color:rgba(0,0,0,.75)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="marginTop: 1"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] .det [style*="rgba(255,255,255,.04)"][style*="display: \"flex\""][style*="justifyContent: \"center\""][style*="borderRadius: 8"]{background:rgba(0,0,0,.04)!important}
-
-      /* ID view card */
-      .app[data-theme='light'] .det [style*="rgba(255,255,255,.02)"][style*="border: \"1px solid rgba(255,255,255,.04)\""]{background:rgba(0,0,0,.03)!important;border-color:rgba(0,0,0,.06)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="AI Identification"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="width: 70"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.6)"][style*="lineHeight: 1.4"]{color:rgba(0,0,0,.65)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="Correct the AI"]{color:rgba(0,0,0,.3)!important}
-
-      /* Re-search button */
-      .app[data-theme='light'] [style*="rgba(255,255,255,.04)"][style*="borderRadius: 12"]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.5)"][style*="fontWeight: 600"][style*="borderRadius: 12"]{color:rgba(0,0,0,.5)!important}
-
-      /* Complete the Look button */
-      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="Outfit looks complete"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.15)"][style*="Dismiss"]{color:rgba(0,0,0,.2)!important}
-
-      /* Pairings cards */
-      .app[data-theme='light'] [style*="rgba(201,169,110,.04)"][style*="borderRadius: 12"]{background:rgba(201,169,110,.07)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.4)"][style*="marginBottom: 2"]{color:rgba(0,0,0,.45)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.35)"][style*="lineHeight: 1.4"]{color:rgba(0,0,0,.4)!important}
-
-      /* Rate outfit */
-      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="rate_outfit"]{color:rgba(0,0,0,.35)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.15)"][style*="fontSize: 18"]{color:rgba(0,0,0,.12)!important}
-
-      /* Native ad (free users) */
-      .app[data-theme='light'] [style*="rgba(255,255,255,.25)"][style*="Sponsored"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.4)"][style*="fontSize: 11"]{color:rgba(0,0,0,.45)!important}
-
-      /* Banner ad slot */
-      .app[data-theme='light'] [style*="rgba(255,255,255,.05)"][style*="overflow: \"hidden\""][style*="border: \"1px solid"]{border-color:rgba(0,0,0,.07)!important}
-      .app[data-theme='light'] [style*="Trending This Week"][style*="color: \"#fff\""]{color:#1a1a1a!important}
-
-      /* ─── Comprehensive light mode: history tab ─────────── */
-      .app[data-theme='light'] .hist-list{background:#F5F5F7}
-      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.03)"][style*="borderRadius: 10"]{background:rgba(0,0,0,.05)!important}
-      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.3)"][style*="fontSize: 12"]{color:rgba(0,0,0,.4)!important}
-      .app[data-theme='light'] .hist-card [style*="color: \"#fff\""][style*="fontSize: 13"]{color:#1a1a1a!important}
-      .app[data-theme='light'] .hist-card [style*="rgba(255,255,255,.2)"][style*="fontSize: 11"]{color:rgba(0,0,0,.35)!important}
-      .app[data-theme='light'] .hist-card [style*="rgba(255,255,255,.04)"][style*="borderRadius: 3"]{background:rgba(0,0,0,.06)!important;color:rgba(0,0,0,.3)!important;border:1px solid rgba(0,0,0,.06)}
-      .app[data-theme='light'] .hist-card [style*="rgba(255,255,255,.12)"][style*="flexShrink: 0"]{color:rgba(0,0,0,.2)!important}
-      .app[data-theme='light'] .hist-card [style*="rgba(255,255,255,.08)"][style*="cursor: \"pointer\""] button{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.12)"][style*="fontSize: 9"]{color:rgba(0,0,0,.25)!important}
-      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.02)"][style*="borderRadius: 12"]{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.06)"][style*="borderRadius: 12"]{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.6)"][style*="fontSize: 14"]{color:#1a1a1a!important}
-      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.25)"][style*="fontSize: 11"]{color:rgba(0,0,0,.35)!important}
-      .app[data-theme='light'] .hist-list [style*="rgba(255,255,255,.12)"][style*="userSelect"]{color:rgba(0,0,0,.2)!important}
-      .app[data-theme='light'] .hist-list input{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important;color:#1a1a1a!important}
-      .app[data-theme='light'] .hist-list input::placeholder{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.06)"][style*="borderRadius: 8"][style*="background: \"rgba(201,169,110,.06)\""]{background:rgba(201,169,110,.1)!important}
-
-      /* Visibility menu chips */
-      .app[data-theme='light'] .scan-vis-chip{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.5)!important}
-      .app[data-theme='light'] .scan-vis-chip.active{background:rgba(201,169,110,.1)!important;border-color:rgba(201,169,110,.4)!important;color:#8B6914!important}
-      .app[data-theme='light'] .profile-bio-area{background:#F0F0F2!important;color:#1a1a1a!important;border-color:rgba(0,0,0,.1)!important}
-      .app[data-theme='light'] .profile-bio-area::placeholder{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] .profile-stats-row{border-top-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] .profile-stat-val{color:#1a1a1a!important}
-      .app[data-theme='light'] .profile-stat-lbl{color:#666!important}
-      .app[data-theme='light'] .interest-chip{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.5)!important}
-      .app[data-theme='light'] .interest-chip.on{background:rgba(201,169,110,.1)!important;border-color:rgba(201,169,110,.4)!important;color:#8B6914!important}
-
-      /* ─── Comprehensive light mode: likes tab ─────────── */
-      .app[data-theme='light'] .likes-card{background:#FFFFFF!important;border-color:rgba(0,0,0,.08)!important;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.04)"]{background:rgba(0,0,0,.04)!important}
-      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.03)"]{background:rgba(0,0,0,.03)!important}
-      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.85)"]{color:#1a1a1a!important}
-      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.35)"]{color:rgba(0,0,0,.4)!important}
-      .app[data-theme='light'] .likes-card [style*="rgba(255,255,255,.2)"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.6)"][style*="fontWeight: 600"]:not(button){color:rgba(0,0,0,.7)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.06)"][style*="borderRadius: 6"]{border-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.04)"][style*="display: \"flex\""][style*="justifyContent: \"center\""][style*="fontSize: 18"]{background:rgba(0,0,0,.04)!important}
-
-      /* Add-to-collection bottom sheet */
-      .app[data-theme='light'] [style*="background: \"#18181C\""][style*="borderTopLeftRadius"]{background:#FFFFFF!important}
-      .app[data-theme='light'] [style*="fontSize: 14"][style*="fontWeight: 700"][style*="color: \"#fff\""]{color:#1a1a1a!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.06)"][style*="borderBottom: \"1px solid"]{border-bottom-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.06)"][style*="borderTop: \"1px solid"]{border-top-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.12)"][style*="borderRadius: 2"]{background:rgba(0,0,0,.1)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.7)"][style*="fontFamily"][style*="fontSize: 14"]{color:#1a1a1a!important}
-
-      /* Collections chips */
-      .app[data-theme='light'] [style*="rgba(255,255,255,.08)"][style*="borderRadius: 20"]{border-color:rgba(0,0,0,.1)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.03)"][style*="borderRadius: 20"]{background:rgba(0,0,0,.03)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.4)"][style*="fontSize: 12"][style*="fontWeight: 600"]{color:rgba(0,0,0,.45)!important}
-
-      /* ─── Comprehensive light mode: profile tab ─────────── */
-      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.25)"]{color:rgba(0,0,0,.35)!important}
-      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.3)"]{color:rgba(0,0,0,.4)!important}
-      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.2)"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.45)"]{color:rgba(0,0,0,.5)!important}
-      .app[data-theme='light'] .pcard [style*="fontWeight: 600"][style*="fontSize: 15"]{color:#1a1a1a!important}
-      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.03)"][style*="borderRadius"]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] .pcard input[style*="color: \"#fff\""]{color:#1a1a1a!important}
-      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.15)"][style*="marginTop: 8"]{color:rgba(0,0,0,.25)!important}
-      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.1)"][style*="marginTop: 18"]{color:rgba(0,0,0,.15)!important}
-      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.5)"][style*="fontSize: 12"]{color:rgba(0,0,0,.5)!important}
-      .app[data-theme='light'] .pcard [style*="rgba(255,255,255,.07)"][style*="borderRadius: 100"]{border-color:rgba(0,0,0,.1)!important}
-      .app[data-theme='light'] .pcard select{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important;color:#1a1a1a!important}
-      .app[data-theme='light'] .rcard [style*="rgba(255,255,255,.3)"]{color:rgba(0,0,0,.4)!important}
-      .app[data-theme='light'] .rcard [style*="fontWeight: 600"][style*="fontSize: 14"]{color:#1a1a1a!important}
-      .app[data-theme='light'] .sitem span[style*="rgba(255,255,255,.2)"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] .sitem [style*="rgba(255,255,255,.04)"][style*="padding: \"3px 8px\""]{background:rgba(0,0,0,.06)!important;color:rgba(0,0,0,.35)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.04)"][style*="borderRadius: 5"]{background:rgba(0,0,0,.05)!important}
-      .app[data-theme='light'] [style*="rgba(255,255,255,.2)"][style*="borderRadius: 5"]{color:rgba(0,0,0,.35)!important}
-
-      /* ─── Social profile CSS classes ──────────────────── */
-      .profile-bio-area{width:100%;padding:10px 14px;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;color:var(--text-primary);font-family:'Outfit';font-size:13px;resize:none;outline:none;line-height:1.5;box-sizing:border-box;transition:border-color .2s}
-      .profile-bio-area::placeholder{color:var(--text-tertiary)}
-      .profile-bio-area:focus{border-color:var(--border-focus)}
-      .profile-stats-row{display:flex;gap:24px;padding:12px 0;border-top:1px solid var(--border)}
-      .profile-stat-val{font-size:18px;font-weight:700;color:var(--text-primary)}
-      .profile-stat-lbl{font-size:11px;color:var(--text-tertiary);margin-top:1px}
-      .interest-chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:100px;border:1px solid var(--border);background:var(--accent-bg);color:var(--text-secondary);font-family:'Outfit';font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;min-height:44px;-webkit-tap-highlight-color:transparent}
-      .interest-chip.on{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
-      .scan-vis-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;border:1px solid var(--border);background:var(--accent-bg);color:var(--text-secondary);font-family:'Outfit';font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;min-height:32px}
-      .scan-vis-chip.active{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
-
-      /* ─── Profile Redesign (TikTok/IG style) ────────── */
-      .profile-v2{display:flex;flex-direction:column;min-height:100%}
-      .profile-v2-gear{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;cursor:pointer;border-radius:50%;transition:background var(--transition-fast);-webkit-tap-highlight-color:transparent}
-      .profile-v2-gear:hover{background:var(--accent-bg)}
-      .profile-v2-gear svg{width:22px;height:22px;stroke:var(--text-secondary);fill:none;stroke-width:1.8}
-
-      /* profile-v2-stats: now inlined in JSX for Instagram layout */
-
-      .profile-v2-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:2px}
-      .profile-v2-grid-cell{aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;background:var(--bg-card)}
-      .profile-v2-grid-cell img{width:100%;height:100%;object-fit:cover;display:block;transition:opacity var(--transition-fast)}
-      .profile-v2-grid-cell:active img{opacity:.7}
-      .profile-v2-grid-cell .grid-items-badge{position:absolute;bottom:6px;right:6px;font-size:10px;font-weight:700;background:rgba(0,0,0,.6);color:#fff;padding:2px 6px;border-radius:4px;backdrop-filter:blur(4px)}
-      .profile-v2-grid-placeholder{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:var(--accent-bg);font-size:24px;opacity:.3}
-
-      .scan-overlay{position:fixed;inset:0;z-index:var(--z-modal,200);background:var(--bg-primary);animation:slideUpSheet var(--transition-normal);overflow-y:auto;-webkit-overflow-scrolling:touch}
-      .scan-overlay-close{position:fixed;top:16px;right:16px;z-index:calc(var(--z-modal,200) + 1);width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:50%;cursor:pointer;transition:all var(--transition-fast)}
-      .scan-overlay-close svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
-      .scan-overlay-img{width:100%;max-height:50vh;object-fit:cover;display:block}
-      .scan-overlay-body{padding:20px}
-      .scan-overlay-summary{font-size:var(--text-sm,14px);color:var(--text-secondary);line-height:1.5;margin-bottom:12px}
-      .scan-overlay-meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-      .scan-overlay-tag{font-size:var(--text-xs,12px);font-weight:var(--weight-semibold,600);padding:4px 10px;border-radius:var(--radius-full,9999px);background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border)}
-
-      /* ─── Settings bottom sheet ─────────────────────── */
-      .settings-sheet-item{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border);font-size:var(--text-md,16px);color:var(--text-primary);cursor:pointer;min-height:44px;-webkit-tap-highlight-color:transparent}
-      .settings-sheet-item:last-child{border-bottom:none}
-      .settings-sheet-item .settings-label{font-weight:var(--weight-medium,500)}
-      .settings-sheet-item .settings-value{font-size:var(--text-sm,14px);color:var(--text-tertiary)}
-      .settings-sheet-item.danger{color:var(--error);justify-content:center;font-weight:var(--weight-semibold,600)}
-
-      /* ─── History Redesign ──────────────────────────── */
-      .history-v2{padding:16px;display:flex;flex-direction:column;gap:10px}
-      .history-v2-card{display:flex;gap:12px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md,12px);box-shadow:var(--shadow-card);cursor:pointer;transition:all var(--transition-fast);-webkit-tap-highlight-color:transparent;align-items:center}
-      .history-v2-card:active{transform:scale(0.98)}
-      .history-v2-thumb{width:60px;height:60px;border-radius:var(--radius-sm,8px);object-fit:cover;flex-shrink:0;background:var(--bg-card)}
-      .history-v2-thumb-placeholder{width:60px;height:60px;border-radius:var(--radius-sm,8px);background:var(--accent-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;opacity:.5}
-      .history-v2-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-      .history-v2-title{font-size:var(--text-sm,14px);font-weight:var(--weight-semibold,600);color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .history-v2-date{font-size:var(--text-xs,12px);color:var(--text-tertiary)}
-      .history-v2-summary{font-size:var(--text-xs,12px);color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .history-v2-badge{font-size:10px;font-weight:var(--weight-bold,700);padding:2px 7px;border-radius:var(--radius-sm,8px);background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent-border);white-space:nowrap;flex-shrink:0}
-      .history-v2-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
-
-      .history-v2-detail{position:fixed;inset:0;z-index:var(--z-modal,200);background:var(--bg-primary);animation:slideUpSheet var(--transition-normal);overflow-y:auto;-webkit-overflow-scrolling:touch}
-      .history-v2-detail-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:color-mix(in srgb,var(--bg-primary) 92%,transparent);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
-
-      /* ─── Likes Redesign (Pinterest masonry) ─────────── */
-      .likes-v2{display:flex;flex-direction:column;min-height:100%}
-      .likes-v2-chips{display:flex;gap:6px;padding:12px 16px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-      .likes-v2-chips::-webkit-scrollbar{display:none}
-      .likes-v2-masonry{display:flex;gap:8px;padding:4px 12px 80px}
-      .likes-v2-col{display:flex;flex-direction:column;gap:8px;flex:1;min-width:0}
-      .likes-v2-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg,16px);overflow:hidden;box-shadow:var(--shadow-card);position:relative;break-inside:avoid}
-      .likes-v2-card-img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:var(--accent-bg);border-radius:var(--radius-lg,16px) var(--radius-lg,16px) 0 0}
-      .likes-v2-card-img-placeholder{width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;background:var(--accent-bg);font-size:32px;opacity:.3}
-      .likes-v2-card-body{padding:8px 10px 10px}
-      .likes-v2-card-brand{font-size:11px;color:var(--text-tertiary);font-weight:var(--weight-bold,700);margin-bottom:1px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.3px}
-      .likes-v2-card-name{font-size:13px;font-weight:var(--weight-medium,500);color:var(--text-primary);overflow:hidden;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;line-height:1.3;margin-bottom:2px}
-      .likes-v2-card-price{font-size:var(--text-sm,14px);font-weight:var(--weight-bold,700);color:var(--accent)}
-      .likes-v2-heart{position:absolute;top:4px;right:4px;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:all var(--transition-fast)}
-      .likes-v2-heart:active{transform:scale(.88)}
-      .likes-v2-heart svg{width:16px;height:16px;fill:var(--accent);stroke:var(--accent);stroke-width:1.5}
-
-      .budget-tracker{margin:0 16px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md,12px);overflow:hidden;box-shadow:var(--shadow-card)}
-      .budget-tracker-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;min-height:44px}
-      .budget-tracker-header span{font-size:var(--text-sm,14px);font-weight:var(--weight-semibold,600);color:var(--text-primary)}
-      .budget-tracker-chevron{font-size:14px;color:var(--text-tertiary);transition:transform var(--transition-fast)}
-      .budget-tracker-body{padding:0 14px 14px}
-      .budget-tracker-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-      .budget-tracker-bar-label{font-size:var(--text-xs,12px);color:var(--text-secondary);width:70px;flex-shrink:0}
-      .budget-tracker-bar-track{flex:1;height:8px;background:var(--accent-bg);border-radius:var(--radius-full,9999px);overflow:hidden}
-      .budget-tracker-bar-fill{height:100%;border-radius:var(--radius-full,9999px);transition:width var(--transition-normal)}
-      .budget-tracker-total{display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);margin-top:4px}
-      .budget-tracker-total span{font-size:var(--text-sm,14px)}
-      .budget-tracker-total .total-label{color:var(--text-secondary)}
-      .budget-tracker-total .total-value{font-weight:var(--weight-bold,700);color:var(--accent)}
-      .budget-tracker-locked{padding:16px 14px;text-align:center}
-      .budget-tracker-locked p{font-size:var(--text-sm,14px);color:var(--text-tertiary);margin-bottom:10px}
-
-      /* ─── Light mode for new components ─────────────── */
-      .app[data-theme='light'] .profile-v2-avatar{background:rgba(201,169,110,.1);border-color:rgba(201,169,110,.3)}
-      .app[data-theme='light'] .scan-overlay{background:var(--bg-primary)}
-      .app[data-theme='light'] .scan-overlay-close{background:rgba(0,0,0,.3)}
-      .app[data-theme='light'] .history-v2-card{background:#fff;border-color:rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.06)}
-      .app[data-theme='light'] .likes-v2-card{background:#fff;border-color:rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.06)}
-      .app[data-theme='light'] .likes-v2-heart{background:rgba(255,255,255,.8)}
-      .app[data-theme='light'] .budget-tracker{background:#fff;border-color:rgba(0,0,0,.08)}
-      .app[data-theme='light'] .settings-sheet-item{border-bottom-color:rgba(0,0,0,.06)}
-
-      /* ─── Comprehensive light mode: item-opts-sheet ────── */
-      .app[data-theme='light'] .item-opts-sheet [style*="color: \"#fff\""][style*="fontSize: 16"]{color:#1a1a1a!important}
-      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.3)"][style*="fontSize: 11"]{color:rgba(0,0,0,.4)!important}
-      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.6)"][style*="fontSize: 13"]{color:rgba(0,0,0,.6)!important}
-      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.02)"][style*="border: \"1px solid rgba(255,255,255,.06)\""]{background:rgba(0,0,0,.03)!important;border-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.03)"][style*="border: \"1px solid rgba(255,255,255,.07)\""]{background:rgba(0,0,0,.03)!important;border-color:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.45)"][style*="marginBottom: 2"]{color:rgba(0,0,0,.5)!important}
-      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.2)"][style*="lineHeight: 1.3"]{color:rgba(0,0,0,.25)!important}
-      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.45)"][style*="fontSize: 12"]{color:rgba(0,0,0,.5)!important}
-      .app[data-theme='light'] .item-opts-sheet select{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important;color:#1a1a1a!important}
-      .app[data-theme='light'] .item-opts-sheet [style*="rgba(255,255,255,.2)"][style*="fontSize: 18"]{color:rgba(0,0,0,.2)!important}
-      .app[data-theme='light'] .budget-input-wrap{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important}
-      .app[data-theme='light'] .budget-input-wrap span{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] .budget-input-wrap input{color:#1a1a1a!important}
-
-      /* ─── Comprehensive light mode: auth ─────────────── */
-      .app[data-theme='light'] .auth{background:#F5F5F7}
-      .app[data-theme='light'] .auth [style*="rgba(255,255,255,.04)"][style*="border: \"1px solid rgba(255,255,255,.08)\""]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.08)!important;color:#1a1a1a!important}
-      .app[data-theme='light'] .auth [style*="rgba(255,255,255,.06)"][style*="height: 1"]{background:rgba(0,0,0,.08)!important}
-      .app[data-theme='light'] .auth [style*="rgba(255,255,255,.2)"][style*="fontWeight: 500"]{color:rgba(0,0,0,.3)!important}
-      .app[data-theme='light'] .auth button.auth-toggle{color:rgba(0,0,0,.35)!important}
-      .app[data-theme='light'] .auth [style*="right: 12"]{color:rgba(0,0,0,.3)!important}
-
-      /* ─── Comprehensive light mode: paywall ──────────── */
-      .app[data-theme='light'] .pw{background:#F5F5F7}
-      .app[data-theme='light'] .pw-t{color:#1a1a1a}
-      .app[data-theme='light'] .pw-st{color:rgba(0,0,0,.5)}
-      .app[data-theme='light'] .pw-terms{color:rgba(0,0,0,.3)}
-      .app[data-theme='light'] .pw-skip{color:rgba(0,0,0,.3)}
-      .app[data-theme='light'] .pw-f{color:#1a1a1a!important}
-      .app[data-theme='light'] .pw-p [style*="rgba(255,255,255,.35)"]{color:rgba(0,0,0,.4)!important}
-      .app[data-theme='light'] .pw-p [style*="rgba(255,255,255,.2)"]{color:rgba(0,0,0,.3)!important}
-
-      /* ─── Comprehensive light mode: crop screen ───────── */
-      .app[data-theme='light'] .crop-screen{background:#F5F5F7}
-      .app[data-theme='light'] .crop-bar [style*="rgba(255,255,255,.06)"]{background:rgba(0,0,0,.06)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.55)!important}
-
-      /* ─── Comprehensive light mode: interest modal ───── */
-      .app[data-theme='light'] .modal-box button[style*="rgba(255,255,255,.02)"]{background:rgba(0,0,0,.04)!important;border-color:rgba(0,0,0,.1)!important;color:rgba(0,0,0,.6)!important}
-      .app[data-theme='light'] .modal-box button[style*="rgba(255,255,255,.08)"]{border-color:rgba(0,0,0,.1)!important}
-      .app[data-theme='light'] .modal-box .modal-sub{color:#666666!important}
-
-      /* ─── Likes tab card styles ──────────────────────── */
-      .likes-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:default;-webkit-user-select:none;user-select:none;box-shadow:var(--shadow-card)}
-      @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-
-      /* ─── Social Feed ──────────────────────────────────── */
-      .feed-tabs{display:flex;gap:0;padding:0;margin:0 auto var(--space-sm);max-width:240px;position:relative}
-      .feed-tabs::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:var(--border);opacity:.5}
-      .feed-tab{flex:1;padding:10px 0;background:none;border:none;border-bottom:2px solid transparent;font-family:'Outfit',sans-serif;font-size:14px;font-weight:500;color:var(--text-tertiary);cursor:pointer;transition:all .2s;min-height:44px;text-align:center;letter-spacing:.2px;position:relative;z-index:1}
-      .feed-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
-      .feed-list{display:flex;flex-direction:column;gap:14px;padding:4px 16px 100px}
-      .feed-card{background:var(--bg-card);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-card);cursor:pointer;transition:transform .15s;-webkit-tap-highlight-color:transparent}
-      .feed-card:active{transform:scale(0.985)}
-      .feed-card-img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block;background:rgba(255,255,255,.04);max-height:400px}
-      .feed-card-overlay{position:absolute;bottom:0;left:0;right:0;padding:20px 14px 14px;background:linear-gradient(transparent,rgba(0,0,0,.65));display:flex;align-items:flex-end;justify-content:space-between}
-      .feed-card-user{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
-      .feed-card-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;flex-shrink:0;border:1.5px solid rgba(255,255,255,.4)}
-      .feed-card-info{min-width:0}
-      .feed-card-name{font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .feed-card-summary{font-size:11px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;margin-top:1px}
-      .feed-card-items{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px}
-      .feed-card-heart{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
-      .feed-card-heart:active{transform:scale(0.9)}
-      .feed-skeleton{border-radius:16px;background:var(--bg-card);overflow:hidden}
-      .feed-skeleton-img{width:100%;aspect-ratio:1/1;max-height:400px;background:linear-gradient(110deg,var(--bg-card) 30%,rgba(255,255,255,.04) 50%,var(--bg-card) 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
-      @keyframes skeletonShimmer{from{background-position:200% 0}to{background-position:-200% 0}}
-      .feed-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 32px;gap:12px}
-      .feed-empty-icon{font-size:48px;opacity:.15;margin-bottom:8px}
-      .feed-empty-title{font-size:18px;font-weight:600;color:var(--text-primary)}
-      .feed-empty-sub{font-size:14px;color:var(--text-tertiary);line-height:1.6;max-width:280px}
-      .user-search-overlay{position:fixed;inset:0;z-index:200;background:var(--bg-secondary);display:flex;flex-direction:column;animation:slideIn .25s ease}
-      .user-search-header{display:flex;align-items:center;gap:8px;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px))}
-      .user-search-input{flex:1;height:44px;padding:0 16px;background:var(--bg-input);border:1px solid var(--border);border-radius:9999px;color:var(--text-primary);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:border-color .15s}
-      .user-search-input:focus{border-color:rgba(201,169,110,.5)}
-      .user-search-input::placeholder{color:var(--text-tertiary)}
-      .user-search-cancel{background:none;border:none;color:var(--accent);font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;cursor:pointer;padding:8px;min-height:44px;min-width:44px}
-      .user-search-list{flex:1;overflow-y:auto;padding:0 16px}
-      .user-search-row{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);min-height:60px}
-      .user-search-avatar{width:44px;height:44px;border-radius:50%;background:rgba(201,169,110,.08);border:1px solid rgba(201,169,110,.3);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--accent);flex-shrink:0}
-      .user-search-info{flex:1;min-width:0}
-      .user-search-name{font-size:14px;font-weight:600;color:var(--text-primary)}
-      .user-search-bio{font-size:12px;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      .user-search-followers{font-size:10px;color:var(--text-tertiary);margin-top:2px}
-      .user-search-follow-btn{min-height:36px;padding:0 16px;border-radius:9999px;font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;flex-shrink:0}
-      .user-search-follow-btn.follow{background:var(--accent);color:#000;border:none}
-      .user-search-follow-btn.following{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}
-      .feed-detail-overlay{position:fixed;inset:0;z-index:250;background:var(--bg-secondary);overflow-y:auto;animation:slideIn .25s ease}
-      .feed-detail-close{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:16px;z-index:260;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);border:none;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-      .feed-detail-img{width:100%;max-height:60vh;object-fit:cover;display:block}
-      .feed-detail-body{padding:24px 16px}
-      .feed-detail-user{display:flex;align-items:center;gap:8px;margin-bottom:16px}
-      .feed-detail-name{font-size:16px;font-weight:600;color:var(--text-primary)}
-      .feed-detail-date{font-size:12px;color:var(--text-tertiary)}
-      .feed-detail-summary{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px}
-      .app[data-theme='light'] .feed-card-overlay{background:linear-gradient(transparent,rgba(0,0,0,.55))}
-      .app[data-theme='light'] .feed-skeleton-img{background:linear-gradient(110deg,#f0f0f0 30%,#e0e0e0 50%,#f0f0f0 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
-    `}</style>
+    {/* Styles moved to App.css — imported at top of file */}
+    {/* REMOVED: ~690 lines of inline <style> */}
 
     <div className="app" data-theme={theme}>
       {/* ─── ONBOARDING ──────────────────────────────────── */}
@@ -3021,69 +2335,14 @@ export default function App() {
             <h1 className="ob-title">{step.title}</h1>
             <p className="ob-sub">{step.sub}</p>
             {step.stats && <div className="ob-stats">{step.stats.map((s,i) => <div key={i}><div className="ob-sn">{s.n}</div><div className="ob-sl">{s.l}</div></div>)}</div>}
-            {step.type === "select" && <div className="ob-opts">{step.opts.map((o,i) => <div key={i} className="ob-opt" onClick={() => obNext(o.v)}>{o.l}</div>)}</div>}
-            {step.type === "budget_range" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 6 }}>Min per item</div>
-                    <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "14px 16px" }}>
-                      <span style={{ color: "rgba(255,255,255,.3)", fontSize: 18, fontWeight: 600, marginRight: 4 }}>$</span>
-                      <input type="number" value={budgetMin} onChange={e => setBudgetMin(Math.max(0, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 18, fontWeight: 600, width: "100%", outline: "none" }} />
-                    </div>
-                  </div>
-                  <span style={{ color: "rgba(255,255,255,.15)", fontSize: 16, marginTop: 22 }}>—</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 6 }}>Max per item</div>
-                    <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "14px 16px" }}>
-                      <span style={{ color: "rgba(255,255,255,.3)", fontSize: 18, fontWeight: 600, marginRight: 4 }}>$</span>
-                      <input type="number" value={budgetMax} onChange={e => setBudgetMax(Math.max(budgetMin + 1, parseInt(e.target.value) || 0))} style={{ background: "none", border: "none", color: "#fff", fontFamily: "'Outfit'", fontSize: 18, fontWeight: 600, width: "100%", outline: "none" }} />
-                    </div>
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,.25)", textAlign: "center", lineHeight: 1.5 }}>
-                  Budget tier: under ${budgetMin} · Mid tier: ${budgetMin}–${budgetMax} · Premium: ${budgetMax}+
-                </div>
-                <button className="cta" onClick={() => obNext()}>Continue</button>
-              </div>
-            )}
-            {step.type === "size_prefs" && (() => {
-              const bodyOpts = [{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"}];
-              const fitOpts = [{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"}];
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 10 }}>Body Type</div>
-                    <div className="ob-chips">
-                      {bodyOpts.map(o => { const on = (sizePrefs.body_type || []).includes(o.v); return <div key={o.v} className={`ob-chip${on ? " on" : ""}`} onClick={() => setSizePrefs(p => { const a = p.body_type || []; return { ...p, body_type: a.includes(o.v) ? a.filter(x => x !== o.v) : [...a, o.v] }; })}>{o.l}</div>; })}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "rgba(255,255,255,.3)", textTransform: "uppercase", marginBottom: 10 }}>Fit Style</div>
-                    <div className="ob-chips">
-                      {fitOpts.map(o => { const on = (sizePrefs.fit || []).includes(o.v); return <div key={o.v} className={`ob-chip${on ? " on" : ""}`} onClick={() => setSizePrefs(p => { const a = p.fit || []; return { ...p, fit: a.includes(o.v) ? a.filter(x => x !== o.v) : [...a, o.v] }; })}>{o.l}</div>; })}
-                    </div>
-                  </div>
-                  <button className="cta" onClick={() => obNext(sizePrefs)}>Continue</button>
-                  <button className="ob-skip" onClick={() => obNext({})}>Skip for now</button>
-                </div>
-              );
-            })()}
             {step.type === "first_scan" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
                 <div style={{ width: 120, height: 120, borderRadius: "50%", border: "1.5px dashed rgba(201,169,110,.4)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
                 </div>
-                <div style={{ display: "flex", gap: 12, width: "100%" }}>
-                  <button className="cta" style={{ flex: 1 }} onClick={() => { trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: "middle" }}><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
-                    Take a Photo
-                  </button>
-                  <button className="cta" style={{ flex: 1, background: "rgba(201,169,110,.12)", color: "#C9A96E" }} onClick={() => { trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6, verticalAlign: "middle" }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Upload
-                  </button>
-                </div>
+                <button className="cta" style={{ width: "100%" }} onClick={() => { trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }}>
+                  Create Account to Start Scanning
+                </button>
                 <button className="ob-skip" onClick={() => { trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }}>Skip for now</button>
               </div>
             )}
@@ -3155,7 +2414,7 @@ export default function App() {
           {/* Name + phone (signup only) */}
           {authScreen === "signup" && (<>
             <input type="text" placeholder="Full name" value={authName} onChange={e => setAuthName(e.target.value)} autoComplete="name" />
-            <input type="tel" placeholder="Phone number (optional)" value={authPhone} onChange={e => setAuthPhone(e.target.value)} autoComplete="tel" style={{ opacity: 0.7 }} />
+            <input type="tel" placeholder="Phone number (optional)" value={authPhone} onChange={e => setAuthPhone(e.target.value)} autoComplete="tel" />
           </>)}
 
           <input type="email" placeholder="Email address" value={authEmail} onChange={e => setAuthEmail(e.target.value)} autoComplete="email" />
@@ -3292,8 +2551,8 @@ export default function App() {
               {/* For You / Following tabs directly under header */}
               {/* For You / Following toggle */}
               <div style={{ display: "flex", justifyContent: "center", gap: 0, padding: "4px 16px 12px", position: "sticky", top: 0, zIndex: 10, background: "var(--bg-primary)" }}>
-                <button onClick={() => { setFeedTab("foryou"); setFeedPage(1); }} style={{ flex: 1, maxWidth: 160, padding: "10px 0", background: "none", border: "none", borderBottom: feedTab === "foryou" ? "2px solid var(--accent)" : "2px solid transparent", color: feedTab === "foryou" ? "var(--text-primary)" : "var(--text-tertiary)", fontFamily: "'Outfit'", fontWeight: feedTab === "foryou" ? 700 : 500, fontSize: 15, cursor: "pointer", transition: "all .2s ease" }}>For You</button>
-                <button onClick={() => { setFeedTab("following"); setFeedPage(1); }} style={{ flex: 1, maxWidth: 160, padding: "10px 0", background: "none", border: "none", borderBottom: feedTab === "following" ? "2px solid var(--accent)" : "2px solid transparent", color: feedTab === "following" ? "var(--text-primary)" : "var(--text-tertiary)", fontFamily: "'Outfit'", fontWeight: feedTab === "following" ? 700 : 500, fontSize: 15, cursor: "pointer", transition: "all .2s ease" }}>Following</button>
+                <button onClick={() => { setFeedTab("foryou"); setFeedPage(1); }} style={{ flex: 1, maxWidth: 160, padding: "10px 0", minHeight: 44, background: "none", border: "none", borderBottom: feedTab === "foryou" ? "3px solid var(--accent)" : "3px solid transparent", color: feedTab === "foryou" ? "var(--text-primary)" : "var(--text-tertiary)", fontFamily: "'Outfit'", fontWeight: feedTab === "foryou" ? 700 : 500, fontSize: 15, cursor: "pointer", transition: "all .2s ease" }}>For You</button>
+                <button onClick={() => { setFeedTab("following"); setFeedPage(1); }} style={{ flex: 1, maxWidth: 160, padding: "10px 0", minHeight: 44, background: "none", border: "none", borderBottom: feedTab === "following" ? "3px solid var(--accent)" : "3px solid transparent", color: feedTab === "following" ? "var(--text-primary)" : "var(--text-tertiary)", fontFamily: "'Outfit'", fontWeight: feedTab === "following" ? 700 : 500, fontSize: 15, cursor: "pointer", transition: "all .2s ease" }}>Following</button>
               </div>
 
               {/* Skeleton loading */}
@@ -4248,8 +3507,8 @@ export default function App() {
             </div>
           )}
 
-          {/* ─── History (Redesigned) ─────────────────────── */}
-          {tab === "history" && (() => {
+          {/* ─── History tab removed — scan history is now in Profile grid ── */}
+          {false && tab === "history" && (() => {
             const filteredHistory = history;
             const loadScan = (h) => {
               const items = h.items || [];
@@ -4778,7 +4037,7 @@ export default function App() {
                       {saved.length === 0 ? "Scan outfits and save items you love" : "Try a different category"}
                     </div>
                     {saved.length === 0 && (
-                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setTab("scan")}>Start Scanning</button>
+                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => setShowScanSheet(true)}>Start Scanning</button>
                     )}
                   </div>
                 ) : (
@@ -4798,7 +4057,7 @@ export default function App() {
             <div className="profile-v2">
               {/* Top bar: username left, gear icon right (Instagram style) */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 0", position: "relative", zIndex: 2 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.5, color: "var(--text-primary)", fontFamily: "'Outfit'" }}>{authName || "Profile"}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: 0.5, color: "var(--text-primary)", fontFamily: "'Outfit'" }}>{authName || authEmail?.split("@")[0] || "Profile"}</div>
                 <button className="profile-v2-gear" style={{ position: "relative", top: 0, right: 0 }} aria-label="Open settings" onClick={() => setProfileSettingsOpen(true)}>
                   <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
@@ -4831,7 +4090,7 @@ export default function App() {
               <div style={{ padding: "12px 20px 0" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
-                    {authName || (isPro ? "Pro Member" : "Free Account")}
+                    {authName || authEmail?.split("@")[0] || "User"}
                   </div>
                   {isPro && <span className="pro" style={{ verticalAlign: "middle" }}>PRO</span>}
                 </div>
@@ -4976,7 +4235,7 @@ export default function App() {
                     <span className="settings-label">Language</span>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {[["en","EN"],["es","ES"],["fr","FR"],["de","DE"],["zh","\u4E2D"],["ja","\u65E5"],["ko","\uD55C"],["pt","PT"]].map(([l, label]) => (
-                        <button key={l} className={`chip${lang === l ? " active" : ""}`} onClick={() => { setLang(l); localStorage.setItem("attair_lang", l); }} style={{ padding: "4px 10px", fontSize: 12, minHeight: 32 }}>{label}</button>
+                        <button key={l} className={`chip${lang === l ? " active" : ""}`} onClick={() => { setLang(l); localStorage.setItem("attair_lang", l); }} style={{ padding: "6px 12px", fontSize: 12, minHeight: 36 }}>{label}</button>
                       ))}
                     </div>
                   </div>
@@ -5024,289 +4283,6 @@ export default function App() {
             );
           })()}
 
-          {/* ─── Profile Legacy (hidden, preserves settings data) ── */}
-          {false && tab === "profile" && (
-            <div style={{padding:20,display:"flex",flexDirection:"column",gap:14}}>
-              <div className="sec-t" style={{marginTop:8}}>Account</div>
-              <div className="pcard">
-                <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
-                  <div style={{width:52,height:52,borderRadius:"50%",background:"rgba(201,169,110,.08)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:"#C9A96E",fontSize:20,flexShrink:0,overflow:"hidden"}}>
-                    {(authName || authEmail || "U")[0].toUpperCase()}
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:600,fontSize:15}}>{authName || (isPro ? "Pro Member" : "Free Account")}</div>
-                    <div style={{fontSize:11,color:"rgba(255,255,255,.25)"}}>{authEmail || "Not signed in"}</div>
-                  </div>
-                  {isPro ? <div className="pro" style={{marginLeft:"auto"}}>PRO</div> : <div className="free-badge" style={{marginLeft:"auto"}} onClick={() => setUpgradeModal("general")}>UPGRADE</div>}
-                </div>
-                <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.6}}>
-                  Scans this month: {isFree ? `${(scansLimit - scansLeft)}/${scansLimit}` : "Unlimited"} · Saved: {userStatus?.saved_count || saved.length}{isFree ? `/${userStatus?.saved_limit || 20}` : ""}
-                </div>
-                {userStatus?.tier === "trial" && userStatus?.trial_ends_at && (() => {
-                  const daysLeft = Math.ceil((new Date(userStatus.trial_ends_at) - Date.now()) / 86400000);
-                  return daysLeft > 0 ? (
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, fontSize: 11, padding: "4px 12px", borderRadius: 10, background: "rgba(255,107,53,.1)", border: "1px solid rgba(255,107,53,.25)", color: "#FF6B35", fontWeight: 600 }}>
-                      {daysLeft} day{daysLeft !== 1 ? "s" : ""} left in trial
-                    </div>
-                  ) : null;
-                })()}
-
-                {/* Bio field */}
-                <div style={{ marginTop: 14 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.2, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 6 }}>Bio</div>
-                  {profileBioEditing ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <textarea
-                        className="profile-bio-area"
-                        rows={3}
-                        maxLength={200}
-                        autoFocus
-                        value={profileBio}
-                        onChange={e => setProfileBio(e.target.value.slice(0, 200))}
-                        placeholder="Tell people about your style…"
-                        aria-label="Edit your bio"
-                      />
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>{profileBio.length}/200</span>
-                        <div style={{ display: "flex", gap: 6 }}>
-                          <button onClick={() => setProfileBioEditing(false)} style={{ padding: "6px 14px", background: "none", border: "1px solid rgba(255,255,255,.1)", borderRadius: 8, color: "rgba(255,255,255,.35)", fontSize: 12, fontFamily: "'Outfit'", cursor: "pointer" }}>Cancel</button>
-                          <button onClick={async () => { setProfileBioSaving(true); try { await API.updateProfile({ bio: profileBio }); } catch {} setProfileBioSaving(false); setProfileBioEditing(false); }} style={{ padding: "6px 14px", background: "#C9A96E", border: "none", borderRadius: 8, color: "#0C0C0E", fontSize: 12, fontWeight: 700, fontFamily: "'Outfit'", cursor: "pointer" }}>{profileBioSaving ? "Saving…" : "Save"}</button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div onClick={() => setProfileBioEditing(true)} style={{ fontSize: 13, color: profileBio ? "rgba(255,255,255,.6)" : "rgba(255,255,255,.2)", lineHeight: 1.5, cursor: "pointer", padding: "8px 12px", background: "rgba(255,255,255,.02)", border: "1px solid rgba(255,255,255,.05)", borderRadius: 10, minHeight: 40, display: "flex", alignItems: profileBio ? "flex-start" : "center" }}>
-                      {profileBio || <span style={{ fontStyle: "italic" }}>Add a bio…</span>}
-                    </div>
-                  )}
-                </div>
-
-                {/* Follower stats */}
-                {profileStats && (
-                  <div className="profile-stats-row">
-                    <div>
-                      <div className="profile-stat-val">{profileStats.followers_count ?? 0}</div>
-                      <div className="profile-stat-lbl">{t("followers")}</div>
-                    </div>
-                    <div>
-                      <div className="profile-stat-val">{profileStats.following_count ?? 0}</div>
-                      <div className="profile-stat-lbl">{t("following")}</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {isFree && (<>
-                <div className="sec-t">Go Pro</div>
-                <div className="rcard">
-                  <div style={{fontWeight:600,fontSize:14,marginBottom:5}}>Unlock the full experience</div>
-                  <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.5,marginBottom:12}}>Unlimited scans, no ads, price alerts, full history.</div>
-                  <button className="btn gold" style={{width:"100%"}} onClick={() => setUpgradeModal("general")}>Go Pro — $30/year</button>
-                </div>
-              </>)}
-
-              {/* ─── Style Interests ─────────────────────────── */}
-              <div className="sec-t">{t("who_inspires")}</div>
-              <div className="pcard">
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 14, lineHeight: 1.5 }}>Pick up to 5. We'll personalize your results.</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-                  {[
-                    { v: "Actors & Actresses", l: "Actors & Actresses", icon: "🎬" },
-                    { v: "Musicians & K-Pop", l: "Musicians & K-Pop", icon: "🎵" },
-                    { v: "Athletes", l: "Athletes", icon: "🏀" },
-                    { v: "TikTok Creators", l: "TikTok Creators", icon: "📱" },
-                    { v: "Instagram Influencers", l: "Instagram Influencers", icon: "📸" },
-                    { v: "Streamers & YouTubers", l: "Streamers & YouTubers", icon: "🎮" },
-                    { v: "Fashion Icons & Models", l: "Fashion Icons & Models", icon: "👗" },
-                    { v: "Street Style", l: "Street Style", icon: "🌍" },
-                  ].map(({ v, l, icon }) => {
-                    const on = selectedInterests.includes(v);
-                    return (
-                      <button
-                        key={v}
-                        className={`interest-chip${on ? " on" : ""}`}
-                        aria-pressed={on}
-                        onClick={async () => {
-                          const next = on ? selectedInterests.filter(x => x !== v) : selectedInterests.length < 5 ? [...selectedInterests, v] : selectedInterests;
-                          setSelectedInterests(next);
-                          try { await API.updateProfile({ style_interests: next }); } catch {}
-                          track("interest_toggled", { interest: v, enabled: !on });
-                        }}
-                      >
-                        <span style={{ fontSize: 15 }}>{icon}</span>{l}
-                      </button>
-                    );
-                  })}
-                </div>
-                {selectedInterests.length > 0 && (
-                  <div style={{ fontSize: 10, color: "rgba(255,255,255,.2)", marginTop: 10 }}>{selectedInterests.length}/5 selected · Saved automatically</div>
-                )}
-              </div>
-
-              <div className="sec-t">Budget per item</div>
-              <div className="pcard">
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 10 }}>Set your target spend per clothing item. We'll tailor the budget, mid, and premium tiers to match.</div>
-
-                {/* Dual range slider */}
-                <div style={{ position: "relative", height: 40, marginBottom: 8 }}>
-                  <div style={{ position: "absolute", top: 18, left: 0, right: 0, height: 4, background: "rgba(255,255,255,.06)", borderRadius: 2 }} />
-                  <div style={{ position: "absolute", top: 18, left: `${Math.max(0, (budgetMin / 1000) * 100)}%`, right: `${Math.max(0, 100 - (budgetMax / 1000) * 100)}%`, height: 4, background: "var(--accent)", borderRadius: 2, transition: "left var(--transition-fast), right var(--transition-fast)" }} />
-                  <input
-                    type="range" min="0" max="1000" step="10" value={budgetMin}
-                    aria-label="Minimum budget per item"
-                    onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) setBudgetMin(v); }}
-                    onPointerUp={() => API.updateProfile({ budget_min: budgetMin })}
-                    style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2, margin: 0 }}
-                    className="budget-range-thumb"
-                  />
-                  <input
-                    type="range" min="0" max="1000" step="10" value={budgetMax}
-                    aria-label="Maximum budget per item"
-                    onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) setBudgetMax(v); }}
-                    onPointerUp={() => API.updateProfile({ budget_max: budgetMax })}
-                    style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3, margin: 0 }}
-                    className="budget-range-thumb"
-                  />
-                </div>
-
-                <div style={{ textAlign: "center", fontSize: 14, fontWeight: 600, color: "var(--accent)", marginBottom: 10 }}>
-                  ${budgetMin} – ${budgetMax}{budgetMax >= 1000 ? "+" : ""}
-                </div>
-
-                {/* Preset chips */}
-                <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-                  {[
-                    { label: "$", min: 0, max: 50 },
-                    { label: "$$", min: 50, max: 150 },
-                    { label: "$$$", min: 150, max: 500 },
-                    { label: "$$$$", min: 500, max: 1000 },
-                  ].map(preset => {
-                    const active = budgetMin === preset.min && budgetMax === preset.max;
-                    return (
-                      <button
-                        key={preset.label}
-                        aria-label={`Set budget to ${preset.label} range`}
-                        onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); API.updateProfile({ budget_min: preset.min, budget_max: preset.max }); }}
-                        style={{
-                          flex: 1, padding: "8px 6px", minHeight: 44,
-                          background: active ? "var(--accent-bg)" : "rgba(255,255,255,.03)",
-                          border: `1px solid ${active ? "var(--accent-border)" : "rgba(255,255,255,.07)"}`,
-                          borderRadius: "var(--radius-sm)", cursor: "pointer",
-                          fontFamily: "'Outfit'", fontSize: 13, fontWeight: 600,
-                          color: active ? "var(--accent)" : "rgba(255,255,255,.4)",
-                          transition: "all var(--transition-fast)",
-                        }}
-                      >{preset.label}</button>
-                    );
-                  })}
-                </div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 8, textAlign: "center" }}>Budget: under ${budgetMin} · Mid: ${budgetMin}–${budgetMax} · Premium: ${budgetMax}+</div>
-              </div>
-
-              <div className="sec-t">Size Preferences</div>
-              <div className="pcard">
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,.3)", marginBottom: 14, lineHeight: 1.5 }}>Prioritizes search results that match your fit. Applied to all new searches.</div>
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 8 }}>Body Type</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {[{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"}].map(o => {
-                      const on = (sizePrefs.body_type || []).includes(o.v);
-                      return <div key={o.v} style={{ padding: "7px 13px", background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.03)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.07)"}`, borderRadius: 100, cursor: "pointer", fontSize: 12, fontWeight: 500, color: on ? "#C9A96E" : "rgba(255,255,255,.5)", transition: "all .2s" }} onClick={() => { const a = sizePrefs.body_type || []; const next = { ...sizePrefs, body_type: a.includes(o.v) ? a.filter(x => x !== o.v) : [...a, o.v] }; setSizePrefs(next); API.updateProfile({ size_prefs: next }); }}>{o.l}</div>;
-                    })}
-                  </div>
-                </div>
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 8 }}>Fit Style</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {[{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"}].map(o => {
-                      const on = (sizePrefs.fit || []).includes(o.v);
-                      return <div key={o.v} style={{ padding: "7px 13px", background: on ? "rgba(201,169,110,.1)" : "rgba(255,255,255,.03)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "rgba(255,255,255,.07)"}`, borderRadius: 100, cursor: "pointer", fontSize: 12, fontWeight: 500, color: on ? "#C9A96E" : "rgba(255,255,255,.5)", transition: "all .2s" }} onClick={() => { const a = sizePrefs.fit || []; const next = { ...sizePrefs, fit: a.includes(o.v) ? a.filter(x => x !== o.v) : [...a, o.v] }; setSizePrefs(next); API.updateProfile({ size_prefs: next }); }}>{o.l}</div>;
-                    })}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: "rgba(255,255,255,.2)", textTransform: "uppercase", marginBottom: 10 }}>Specific Sizes <span style={{ color: "rgba(255,255,255,.12)", fontWeight: 400, letterSpacing: 0 }}>— optional</span></div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {[
-                      { label: "Tops", key: "tops", opts: ["XS","S","M","L","XL","XXL","XXXL"] },
-                      { label: "Bottoms", key: "bottoms", opts: ["24","26","28","30","32","34","36","38","40","42"] },
-                      { label: "Jeans", key: "jeans", opts: ["24","25","26","27","28","29","30","31","32","33","34","36","38","40"] },
-                      { label: "Shorts", key: "shorts", opts: ["XS","S","M","L","XL","XXL"] },
-                      { label: "Outerwear", key: "outerwear", opts: ["XS","S","M","L","XL","XXL"] },
-                      { label: "Dresses", key: "dresses", opts: ["0","2","4","6","8","10","12","14","16","18","20","XS","S","M","L","XL"] },
-                      { label: "Shoes", key: "shoes", opts: ["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14"] },
-                      { label: "Socks", key: "socks", opts: ["S","M","L","XL"] },
-                    ].map(({ label, key, opts }) => {
-                      const val = sizePrefs.sizes?.[key] || "";
-                      return (
-                        <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span style={{ fontSize: 13, color: "rgba(255,255,255,.45)" }}>{label}</span>
-                          <select value={val} onChange={e => { const next = { ...sizePrefs, sizes: { ...(sizePrefs.sizes || {}), [key]: e.target.value || null } }; setSizePrefs(next); API.updateProfile({ size_prefs: next }); }} style={{ background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 8, color: val ? "#fff" : "rgba(255,255,255,.2)", fontSize: 13, padding: "7px 10px", fontFamily: "'Outfit'", cursor: "pointer", outline: "none", minWidth: 90 }}>
-                            <option value="" style={{ color: "#111", background: "#fff" }}>Not set</option>
-                            {opts.map(o => <option key={o} value={o} style={{ color: "#111", background: "#fff" }}>{o}</option>)}
-                          </select>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="sec-t">Refer & earn</div>
-              <div className="rcard">
-                <div style={{fontWeight:600,fontSize:14,marginBottom:5}}>Get $5 for every friend</div>
-                <div style={{fontSize:12,color:"rgba(255,255,255,.3)",lineHeight:1.5,marginBottom:12}}>Share your code. Both of you get $5 credit.</div>
-                {referralCode ? (
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"10px 14px",background:"rgba(201,169,110,.06)",border:"1px solid rgba(201,169,110,.2)",borderRadius:10}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:"rgba(201,169,110,.5)",textTransform:"uppercase",marginBottom:2}}>Your referral code</div>
-                      <div style={{fontWeight:800,color:"#C9A96E",letterSpacing:3,fontSize:16,fontFamily:"'Outfit'"}}>{referralCode}</div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(referralCode).then(() => {
-                          setReferralCopied(true);
-                          setTimeout(() => setReferralCopied(false), 2000);
-                        }).catch(() => {});
-                      }}
-                      style={{padding:"8px 14px",background:referralCopied?"rgba(100,200,120,.15)":"rgba(201,169,110,.12)",border:`1px solid ${referralCopied?"rgba(100,200,120,.4)":"rgba(201,169,110,.3)"}`,borderRadius:8,color:referralCopied?"rgb(100,200,120)":"#C9A96E",fontFamily:"'Outfit'",fontSize:12,fontWeight:700,cursor:"pointer",transition:"all .2s",minHeight:44,minWidth:60}}
-                      aria-label="Copy referral code"
-                    >{referralCopied ? "✓ Copied" : t("copy")}</button>
-                  </div>
-                ) : (
-                  <div style={{fontSize:12,color:"rgba(255,255,255,.2)",marginBottom:12}}>Loading your code…</div>
-                )}
-                <button className="btn gold" disabled={!referralCode} style={{width:"100%", opacity: referralCode ? 1 : 0.4, cursor: referralCode ? "pointer" : "default"}} onClick={async () => {
-                  const code = referralCode || "...";
-                  const text = `Check out ATTAIRE — AI that finds the exact outfit you're looking for! Use my code ${code} at attair.vercel.app`;
-                  if (navigator.share) {
-                    try { await navigator.share({ title: "ATTAIRE", text }); } catch {}
-                  } else {
-                    navigator.clipboard.writeText(text).then(() => {
-                      setReferralCopied(true);
-                      setTimeout(() => setReferralCopied(false), 2000);
-                    }).catch(() => {});
-                  }
-                }}>{t("share")} invite link</button>
-              </div>
-              <div className="sec-t">{t("settings")}</div>
-              <div className="sitem" onClick={toggleTheme}>
-                <span>{theme === "dark" ? t("light_mode") : t("dark_mode")}</span>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)", background: "rgba(255,255,255,.04)", padding: "3px 8px", borderRadius: 5 }}>{theme === "dark" ? "DARK" : "LIGHT"}</span>
-              </div>
-              <div className="sitem" style={{ alignItems: "flex-start", flexDirection: "column", gap: 8 }}>
-                <span>🌐 {t("language")}</span>
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                  {[["en","EN"],["es","ES"],["fr","FR"],["de","DE"],["zh","中"],["ja","日"],["ko","한"],["pt","PT"]].map(([l, label]) => (
-                    <span key={l} onClick={() => { setLang(l); localStorage.setItem("attair_lang", l); }} style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 5, cursor: "pointer", background: lang === l ? "rgba(201,169,110,.15)" : "rgba(255,255,255,.04)", color: lang === l ? "#C9A96E" : "rgba(255,255,255,.2)", border: lang === l ? "1px solid rgba(201,169,110,.3)" : "1px solid transparent", transition: "all .15s" }}>
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="sitem" onClick={handleLogout} style={{color:"rgba(255,100,100,.5)",justifyContent:"center"}}>{t("log_out")}</div>
-            </div>
-          )}
         </div>
 
         {/* ─── Per-item preferences popup ─────────────── */}
@@ -5487,8 +4463,8 @@ export default function App() {
           );
         })()}
 
-        {/* ─── User Search Overlay ──────────────────────── */}
-        {showUserSearch && (
+        {/* ─── User Search Overlay (hidden on Search tab — it has its own inline search) ── */}
+        {showUserSearch && tab !== "search" && (
           <div className="user-search-overlay">
             <div className="user-search-header">
               <input className="user-search-input" placeholder="Search people..." autoFocus value={userSearchQuery} onChange={e => setUserSearchQuery(e.target.value)} />
@@ -5565,7 +4541,7 @@ export default function App() {
               <button
                 onClick={() => setShowScanSheet(false)}
                 className="btn-ghost"
-                style={{ width: "100%", padding: "14px 0", borderRadius: 14, fontFamily: "'Outfit'", fontSize: 15, fontWeight: 600, cursor: "pointer", minHeight: 48, color: "rgba(255,255,255,.4)" }}
+                style={{ width: "100%", padding: "14px 0", borderRadius: 14, fontFamily: "'Outfit'", fontSize: 15, fontWeight: 600, cursor: "pointer", minHeight: 48, color: "rgba(255,255,255,.7)" }}
               >
                 Cancel
               </button>
@@ -5575,16 +4551,19 @@ export default function App() {
 
         {/* ─── Tab bar (5 sections: Home, Search, [FAB gap], Saved, Profile) ── */}
         <div className="tb" style={{ background: "var(--bg-secondary)", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0", position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1000 }}>
-          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44 }} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); }} aria-label="Home">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill={tab==="home"?"currentColor":"none"} stroke={tab==="home"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
+          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px 0 4px", minHeight: 48, gap: 2 }} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); }} aria-label="Home">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill={tab==="home"?"currentColor":"none"} stroke={tab==="home"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
+            <span style={{ fontSize: 10, fontWeight: 600, color: tab==="home" ? "var(--accent)" : "var(--text-tertiary)", marginTop: 2, fontFamily: "'Outfit'" }}>Home</span>
           </button>
-          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44 }} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); }} aria-label="Search">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke={tab==="search"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px 0 4px", minHeight: 48, gap: 2 }} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); setShowUserSearch(false); }} aria-label="Search">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke={tab==="search"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <span style={{ fontSize: 10, fontWeight: 600, color: tab==="search" ? "var(--accent)" : "var(--text-tertiary)", marginTop: 2, fontFamily: "'Outfit'" }}>Search</span>
           </button>
           {/* FAB spacer */}
           <div style={{ flex: 1 }} />
-          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44, position: "relative" }} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label="Saved">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill={tab==="likes"?"currentColor":"none"} stroke={tab==="likes"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px 0 4px", minHeight: 48, gap: 2, position: "relative" }} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); }} aria-label="Saved">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill={tab==="likes"?"currentColor":"none"} stroke={tab==="likes"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span style={{ fontSize: 10, fontWeight: 600, color: tab==="likes" ? "var(--accent)" : "var(--text-tertiary)", marginTop: 2, fontFamily: "'Outfit'" }}>Saved</span>
             {priceAlertCount > 0 && (
               <span style={{
                 position: "absolute", top: 4, right: "calc(50% - 16px)",
@@ -5593,8 +4572,9 @@ export default function App() {
               }} />
             )}
           </button>
-          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", minHeight: 44 }} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }} aria-label="Profile">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill={tab==="profile"?"currentColor":"none"} stroke={tab==="profile"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
+          <button style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "6px 0 4px", minHeight: 48, gap: 2 }} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); }} aria-label="Profile">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill={tab==="profile"?"currentColor":"none"} stroke={tab==="profile"?"var(--accent)":"var(--text-tertiary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
+            <span style={{ fontSize: 10, fontWeight: 600, color: tab==="profile" ? "var(--accent)" : "var(--text-tertiary)", marginTop: 2, fontFamily: "'Outfit'" }}>Profile</span>
           </button>
         </div>
       </>)}
