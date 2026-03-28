@@ -58,7 +58,10 @@ async function getCustomOccasionModifiers(occasionStr) {
  * Profile values are used as defaults for items without overrides.
  */
 router.post("/", requireAuth, async (req, res) => {
-  const { items, gender, scan_id, occasion: occasionRaw, search_notes: rawSearchNotes } = req.body;
+  const { items, gender, scan_id, occasion: occasionRaw, search_notes: rawSearchNotes, search_mode: rawSearchMode } = req.body;
+
+  // Search mode: "fast" (default) or "extended" (deeper search + AI re-ranking)
+  const searchMode = rawSearchMode === "extended" ? "extended" : "fast";
 
   const VALID_OCCASIONS = ["casual", "work", "night_out", "athletic", "formal", "outdoor",
                             "wedding", "date", "beach", "smart_casual", "festival"];
@@ -125,6 +128,7 @@ router.post("/", requireAuth, async (req, res) => {
       occasion,
       search_notes,
       customOccasionModifiers,
+      searchMode,
     );
 
     // Persist tier results back to the scan row

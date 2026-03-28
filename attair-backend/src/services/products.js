@@ -1,5 +1,6 @@
 import supabase from "../lib/supabase.js";
 import crypto from "crypto";
+import { rerankCandidates } from "./claude.js";
 
 /**
  * ATTAIR Product Search — v4 (Visual-first)
@@ -482,19 +483,47 @@ function extractPrice(val) {
 // ═════════════════════════════════════════════════════════════
 // STEP 1: Google Lens — Visual reverse image search
 // ═════════════════════════════════════════════════════════════
+/**
+ * Validate that a Supabase Storage URL is publicly accessible.
+ * SerpAPI needs to fetch the image without authentication.
+ * Returns true if the URL responds with 200, false otherwise.
+ */
+async function validateImageUrl(imageUrl) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(imageUrl, { method: "HEAD", signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.error(`[Lens] IMAGE URL VALIDATION FAILED: HTTP ${res.status} for ${imageUrl.slice(0, 80)}...`);
+      console.error("[Lens] This means SerpAPI cannot fetch your image. Check that:");
+      console.error("[Lens]   1. Supabase Storage bucket 'scan-images' is set to PUBLIC");
+      console.error("[Lens]   2. RLS policies allow anonymous read access");
+      console.error("[Lens]   3. The URL is not a signed/private URL");
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error(`[Lens] IMAGE URL VALIDATION ERROR: ${err.message}`);
+    return false;
+  }
+}
+
 async function googleLensSearch(imageUrl) {
   if (!imageUrl) {
-    // This is the most common cause of 0 results for user-uploaded photos.
-    // If you see this warning in production, check that:
-    //   1. Supabase Storage bucket is set to PUBLIC (not private).
-    //   2. The image upload route is returning the public URL, not a signed URL.
-    //   3. The SerpAPI Google Lens engine can fetch the URL without authentication.
-    console.warn("[Lens] WARNING: No image URL for Lens search — check Supabase Storage bucket permissions. Text-only fallback will run.");
+    console.warn("[Lens] WARNING: No image URL for Lens search — text-only fallback will run.");
+    console.warn("[Lens] Ensure Supabase Storage bucket 'scan-images' is PUBLIC and image upload completes before search.");
+    return [];
+  }
+
+  // Validate the URL is publicly accessible before wasting a SerpAPI call
+  const isAccessible = await validateImageUrl(imageUrl);
+  if (!isAccessible) {
+    console.error(`[Lens] SKIPPING Lens search — image URL is not publicly accessible. Fix Supabase Storage permissions.`);
     return [];
   }
 
   // Cache keyed on the image URL — same URL always produces the same Lens results.
-  // Using an md5 prefix so the key stays short and DB-friendly.
   const cacheKey = crypto.createHash("md5").update(`lens:${imageUrl}`).digest("hex");
   const cached = await getCache(cacheKey);
   if (cached) {
@@ -545,6 +574,57 @@ async function googleLensSearch(imageUrl) {
   } catch (err) {
     clearTimeout(timeout);
     console.error(`[Lens] Error: ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Per-item Google Lens search using the item's search_query as a text+image hybrid.
+ * SerpAPI's Google Lens supports a `q` parameter for text context alongside the image.
+ * This helps Lens focus on the specific item rather than the whole outfit.
+ *
+ * Only used in "extended" search mode to avoid burning extra API calls on fast searches.
+ */
+async function perItemLensSearch(imageUrl, item) {
+  if (!imageUrl || !process.env.SERPAPI_KEY) return [];
+
+  const itemQuery = `${item.subcategory || item.category} ${item.color || ""}`.trim();
+  const cacheKey = crypto.createHash("md5").update(`lens-item:${imageUrl}:${itemQuery}`).digest("hex");
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    console.log(`[cache] HIT: ${cacheKey} (per-item lens)`);
+    return cached;
+  }
+
+  console.log(`[Lens-Item] "${item.name}" → searching with context: "${itemQuery}"`);
+
+  const params = new URLSearchParams({
+    engine: "google_lens",
+    url: imageUrl,
+    api_key: process.env.SERPAPI_KEY,
+  });
+  // Add text context to help Lens focus on the specific item
+  if (itemQuery) params.set("q", itemQuery);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(`${SERPAPI_URL}?${params}`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    const visualMatches = data.visual_matches || [];
+    console.log(`[Lens-Item] "${item.name}" → ${visualMatches.length} visual matches`);
+
+    if (visualMatches.length > 0) {
+      await setCache(cacheKey, visualMatches);
+    }
+    return visualMatches;
+  } catch (err) {
+    clearTimeout(timeout);
+    console.error(`[Lens-Item] "${item.name}" error: ${err.message}`);
     return [];
   }
 }
@@ -1092,9 +1172,43 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   const color = (item.color || "").toLowerCase();
   if (color && color.length > 2 && title.includes(color)) score += 12;
 
-  // Material match
+  // Material match — check individual material words for compound materials
   const material = (item.material || "").toLowerCase();
-  if (material && material.length > 3 && title.includes(material)) score += 5;
+  if (material && material.length > 3) {
+    if (title.includes(material)) {
+      score += 5;
+    } else {
+      // "heavyweight cotton french terry" → check "cotton", "french terry", "terry"
+      const matWords = material.split(/\s+/).filter(w => w.length > 3);
+      const matMatches = matWords.filter(w => title.includes(w)).length;
+      if (matMatches >= 2) score += 4;
+      else if (matMatches === 1) score += 2;
+    }
+  }
+
+  // ── Style keywords match ─────────────────────────────────
+  // Claude returns style_keywords (e.g. "streetwear", "minimalist", "preppy") but
+  // these were previously unused. Now we check if the product title or source
+  // contains any of these keywords for a small relevance bonus.
+  const styleKws = Array.isArray(item.style_keywords) ? item.style_keywords : [];
+  if (styleKws.length > 0) {
+    const kwMatches = styleKws.filter(kw => {
+      const kwLower = (kw || "").toLowerCase();
+      return kwLower.length > 3 && (title.includes(kwLower) || source.includes(kwLower));
+    }).length;
+    if (kwMatches >= 2) score += 8;
+    else if (kwMatches === 1) score += 4;
+  }
+
+  // ── Construction details match ───────────────────────────
+  // New field from improved Vision prompt — check for specific construction features
+  const construction = (item.construction_details || "").toLowerCase();
+  if (construction && construction.length > 5) {
+    const constructionWords = construction.split(/[,\s]+/).filter(w => w.length > 3);
+    const constMatches = constructionWords.filter(w => title.includes(w)).length;
+    if (constMatches >= 2) score += 6;
+    else if (constMatches === 1) score += 3;
+  }
 
   // ── Trusted retailer bonus ───────────────────────────────────
   // Established retailers with clean product data and high fulfillment confidence.
@@ -1381,7 +1495,15 @@ const OCCASION_MODIFIERS = {
   festival:     "festival boho",            // v4.3 new: recognised occasion tag on ASOS/UO/PLT
 };
 
-export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null) {
+/**
+ * Main product search orchestration.
+ *
+ * @param {string} searchMode - "fast" (default, quick parallel search) or "extended" (deeper search + AI re-ranking)
+ *   Fast: Lens on full image + 3 text queries per item. ~5-10s.
+ *   Extended: Lens on full image + per-item Lens + 3 text queries + AI re-ranking. ~15-25s.
+ */
+export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null, searchMode = "fast") {
+  console.log(`[Search] Mode: ${searchMode} | Items: ${items.length} | Image: ${!!imageUrl} | Occasion: ${occasion || "none"}`);
   cleanupExpiredCache();
   const defaultTierBounds = getTierBounds(budgetMin, budgetMax);
   const defaultSizePrefs = sizePrefs;
@@ -1421,20 +1543,43 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     console.log(`[Match] "${items[i].name}" ← ${itemPools[i].lens.length} Lens matches`);
   }
 
-  // ── Step 3: Text search fallback for items with few USEFUL Lens matches
+  // ── Step 3: Text search + extended per-item Lens for items with few USEFUL Lens matches
   const textPromises = items.map(async (item, i) => {
     // Count Lens results that actually have prices
     const pricedLens = itemPools[i].lens.filter(r => {
       const p = extractPrice(r.price) || extractPrice(r.extracted_price);
       return p !== null;
     });
-    // Text search if we have fewer than 3 priced Lens results
-    if (pricedLens.length < 3) {
+
+    // Extended mode: run per-item Lens search for items with < 3 Lens matches
+    // This sends the full image + item context query to Lens, helping it focus on the specific item
+    if (searchMode === "extended" && pricedLens.length < 3 && imageUrl) {
+      const perItemResults = await perItemLensSearch(imageUrl, item);
+      for (const result of perItemResults) {
+        // Only add results that actually relate to this item (verify match)
+        const matchIdx = matchLensResultToItem(result, [item]);
+        if (matchIdx >= 0) {
+          const url = result.link || result.product_link || result.url || "";
+          const alreadyHave = itemPools[i].lens.some(r => (r.link || r.product_link || r.url || "") === url);
+          if (!alreadyHave) {
+            itemPools[i].lens.push(result);
+          }
+        }
+      }
+      console.log(`[Lens-Item] "${item.name}" → total Lens matches after per-item: ${itemPools[i].lens.length}`);
+    }
+
+    // Text search if we have fewer than 3 priced Lens results (recount after per-item Lens)
+    const pricedLensAfter = itemPools[i].lens.filter(r => {
+      const p = extractPrice(r.price) || extractPrice(r.extracted_price);
+      return p !== null;
+    });
+    if (pricedLensAfter.length < 3) {
       const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
       itemPools[i].text = textResults;
       // Record that text search ran for this item (used in telemetry)
       itemPools[i].textQueryCount = Math.min(3, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0) + 1);
-      console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
+      console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLensAfter.length} with price)`);
     }
   });
   await Promise.all(textPromises);
@@ -1651,8 +1796,62 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
         premium: tiers.premium.length ? tiers.premium : [fallbackTier(item, "premium", itemTierBounds)],
         resale: resaleFormatted,
       },
+      _item: item, // carry forward for re-ranking
     };
   });
+
+  // ── Step 5 (extended mode only): AI Re-ranking ───────────
+  // Send top candidates to Claude for style/vibe evaluation.
+  // This re-sorts within tiers based on style match, not just keyword score.
+  if (searchMode === "extended") {
+    console.log("[Rerank] Running AI re-ranking on all items...");
+    const rerankPromises = output.map(async (result) => {
+      const item = result._item;
+      if (!item) return;
+
+      // Collect all real products across tiers (skip fallback links)
+      const allProducts = [
+        ...result.tiers.budget,
+        ...result.tiers.mid,
+        ...result.tiers.premium,
+      ].filter(p => p.is_product_page !== false);
+
+      if (allProducts.length === 0) return;
+
+      // Send up to 15 candidates to Claude for re-ranking (cost control)
+      const toRerank = allProducts.slice(0, 15);
+      const reranked = await rerankCandidates(item, toRerank, occasion);
+
+      // Build a map of URL → ai_score for re-sorting within tiers
+      const aiScoreMap = new Map();
+      for (const r of reranked) {
+        if (r.url) aiScoreMap.set(r.url, { score: r.ai_score || 50, reason: r.ai_reason || "" });
+      }
+
+      // Re-sort each tier by AI score (descending), keeping fallback links at end
+      for (const tierName of ["budget", "mid", "premium"]) {
+        const tier = result.tiers[tierName];
+        if (!tier || tier.length <= 1) continue;
+        tier.sort((a, b) => {
+          const aScore = aiScoreMap.get(a.url)?.score ?? 50;
+          const bScore = aiScoreMap.get(b.url)?.score ?? 50;
+          return bScore - aScore;
+        });
+        // Annotate top result with AI reason if available
+        if (tier[0]?.url && aiScoreMap.has(tier[0].url)) {
+          const ai = aiScoreMap.get(tier[0].url);
+          if (ai.reason) tier[0].why = `${tier[0].why} · ${ai.reason}`;
+        }
+      }
+    });
+    await Promise.all(rerankPromises);
+    console.log("[Rerank] AI re-ranking complete.");
+  }
+
+  // Clean up internal fields before returning
+  for (const result of output) {
+    delete result._item;
+  }
 
   // ── Search quality telemetry ─────────────────────────────────
   // Structured log emitted after every search request. Surfaces 0-result bugs,
@@ -1661,6 +1860,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
   const lensVendorResults = lensResults.filter(r => isVendorPage(r)).length;
   const telemetry = {
     event: "search_quality",
+    searchMode,
     imageUrl: !!imageUrl,
     lensAttempted: !!imageUrl,
     lensResultsTotal: lensResults.length,

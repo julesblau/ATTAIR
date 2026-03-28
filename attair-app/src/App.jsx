@@ -146,10 +146,10 @@ const API = {
     return await res.json();
   },
 
-  async findProducts(items, gender, scanId, occasion = null, searchNotes = null) {
+  async findProducts(items, gender, scanId, occasion = null, searchNotes = null, searchMode = "fast") {
     const res = await authFetch(`${API_BASE}/api/find-products`, {
       method: "POST",
-      body: JSON.stringify({ items, gender, scan_id: scanId, occasion, ...(searchNotes ? { search_notes: searchNotes } : {}) }),
+      body: JSON.stringify({ items, gender, scan_id: scanId, occasion, ...(searchNotes ? { search_notes: searchNotes } : {}), search_mode: searchMode }),
     });
     if (!res.ok) { const data = await res.json(); throw new Error(data.message || "Product search failed"); }
     return await res.json();
@@ -1677,6 +1677,7 @@ export default function App() {
 
   // ─── Search notes ─────────────────────────────────────────
   const [searchNotes, setSearchNotes] = useState("");
+  const [searchMode, setSearchMode] = useState("fast"); // "fast" or "extended"
 
   // ─── Scan streak ──────────────────────────────────────────
   const [scanStreak, setScanStreak] = useState(0);
@@ -2277,7 +2278,7 @@ export default function App() {
 
     let searchFailed = false;
     try {
-      const searchResults = await API.findProducts(picked, results.gender, scanId, occasion, searchNotes || null);
+      const searchResults = await API.findProducts(picked, results.gender, scanId, occasion, searchNotes || null, searchMode);
       setResults(prev => {
         if (!prev) return prev;
         const updated = prev.items.map((item, idx) => {
@@ -3326,6 +3327,35 @@ export default function App() {
                 );
               })()}
 
+              {/* Search Mode Toggle */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <button
+                  onClick={() => setSearchMode("fast")}
+                  style={{
+                    flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                    border: searchMode === "fast" ? "2px solid var(--accent)" : "1px solid var(--border)",
+                    background: searchMode === "fast" ? "var(--accent-bg)" : "transparent",
+                    color: searchMode === "fast" ? "var(--accent)" : "var(--text-secondary)",
+                  }}
+                >
+                  ⚡ Fast Search
+                </button>
+                <button
+                  onClick={() => setSearchMode("extended")}
+                  style={{
+                    flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                    border: searchMode === "extended" ? "2px solid var(--accent)" : "1px solid var(--border)",
+                    background: searchMode === "extended" ? "var(--accent-bg)" : "transparent",
+                    color: searchMode === "extended" ? "var(--accent)" : "var(--text-secondary)",
+                  }}
+                >
+                  🔍 Deep Search
+                </button>
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginBottom: 8 }}>
+                {searchMode === "fast" ? "Quick results in ~5 seconds" : "AI-ranked results, deeper matching (~15-20s)"}
+              </div>
+
               {/* Search CTA */}
               <div className="pick-cta">
                 <button
@@ -3333,7 +3363,7 @@ export default function App() {
                   onClick={runProductSearch}
                   disabled={pickedItems.size === 0}
                 >
-                  {pickedItems.size === 0 ? "Select items to search" : `Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` \u00b7 ${({casual:"Casual",work:"Work",night_out:"Night Out",date_night:"Date Night",business_casual:"Business Casual",formal:"Formal",athletic:"Athletic",athleisure:"Athleisure",streetwear:"Streetwear",brunch:"Brunch",vacation:"Vacation",outdoor:"Outdoor",festival:"Festival",wedding_guest:"Wedding Guest",lounge:"Lounge",travel:"Travel"})[occasion] || occasion}` : ""}`}
+                  {pickedItems.size === 0 ? "Select items to search" : `${searchMode === "extended" ? "Deep " : ""}Search ${pickedItems.size} item${pickedItems.size > 1 ? "s" : ""}${occasion ? ` \u00b7 ${({casual:"Casual",work:"Work",night_out:"Night Out",date_night:"Date Night",business_casual:"Business Casual",formal:"Formal",athletic:"Athletic",athleisure:"Athleisure",streetwear:"Streetwear",brunch:"Brunch",vacation:"Vacation",outdoor:"Outdoor",festival:"Festival",wedding_guest:"Wedding Guest",lounge:"Lounge",travel:"Travel"})[occasion] || occasion}` : ""}`}
                 </button>
                 <button className="btn-ghost" style={{ width: "100%", fontSize: 12, marginTop: 4 }}
                   onClick={() => { setPickedItems(new Set(results.items.map((_, i) => i))); }}>
