@@ -317,27 +317,32 @@ router.post("/scan/:id/save", requireAuth, async (req, res) => {
 
     if (existing) {
       await supabase.from("saved_items").delete().eq("id", existing.id);
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("saved_count")
-        .eq("id", req.userId)
-        .single();
-      await supabase
-        .from("profiles")
-        .update({ saved_count: Math.max(0, (profile?.saved_count || 1) - 1) })
-        .eq("id", req.userId);
+      // Atomic decrement — clamps to 0, no read-modify-write race
+      await supabase.rpc("decrement_saved_count", { p_user_id: req.userId });
       return res.json({ saved: false });
     }
 
+    // Check tier before attempting the atomic increment
     const { data: profile } = await supabase
       .from("profiles")
-      .select("tier, saved_count")
+      .select("tier")
       .eq("id", req.userId)
       .single();
 
     const tier = profile?.tier || "free";
-    if ((tier === "free" || tier === "expired") && (profile.saved_count || 0) >= FREE_SAVE_LIMIT) {
-      return res.status(429).json({ error: "Save limit reached", message: `You've saved ${FREE_SAVE_LIMIT} items. Go Pro for unlimited.` });
+
+    if (tier === "free" || tier === "expired") {
+      // Atomic increment — only succeeds when saved_count < FREE_SAVE_LIMIT
+      const { data: newCount } = await supabase.rpc("try_increment_saved_count", {
+        p_user_id: req.userId,
+        p_limit: FREE_SAVE_LIMIT,
+      });
+      if (newCount == null) {
+        return res.status(429).json({ error: "Save limit reached", message: `You've saved ${FREE_SAVE_LIMIT} items. Go Pro for unlimited.` });
+      }
+    } else {
+      // Pro/trial — no limit, increment unconditionally
+      await supabase.rpc("try_increment_saved_count", { p_user_id: req.userId, p_limit: 999999 });
     }
 
     const { data: scan } = await supabase
@@ -352,11 +357,6 @@ router.post("/scan/:id/save", requireAuth, async (req, res) => {
       scan_id: id,
       item_data: scan?.items || null,
     });
-
-    await supabase
-      .from("profiles")
-      .update({ saved_count: (profile.saved_count || 0) + 1 })
-      .eq("id", req.userId);
 
     return res.json({ saved: true });
   } catch (err) {
@@ -397,19 +397,34 @@ router.post("/saved", requireAuth, async (req, res) => {
   try {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("tier, saved_count")
+      .select("tier")
       .eq("id", req.userId)
       .single();
 
     const tier = profile?.tier || "free";
-    if ((tier === "free" || tier === "expired") && (profile.saved_count || 0) >= FREE_SAVE_LIMIT) {
-      return res.status(429).json({ error: "Save limit reached", message: `You've saved ${FREE_SAVE_LIMIT} items. Go Pro for unlimited.`, upgrade_url: "/subscribe" });
+
+    if (tier === "free" || tier === "expired") {
+      // Atomic increment — only succeeds when saved_count < FREE_SAVE_LIMIT
+      const { data: newCount } = await supabase.rpc("try_increment_saved_count", {
+        p_user_id: req.userId,
+        p_limit: FREE_SAVE_LIMIT,
+      });
+      if (newCount == null) {
+        return res.status(429).json({ error: "Save limit reached", message: `You've saved ${FREE_SAVE_LIMIT} items. Go Pro for unlimited.`, upgrade_url: "/subscribe" });
+      }
+    } else {
+      // Pro/trial — no limit, increment unconditionally
+      await supabase.rpc("try_increment_saved_count", { p_user_id: req.userId, p_limit: 999999 });
     }
 
     // SECURITY: Verify scan ownership when scan_id is provided — prevents saving references to other users' scans
     if (scan_id) {
       const { data: scanRow } = await supabase.from("scans").select("id").eq("id", scan_id).eq("user_id", req.userId).single();
-      if (!scanRow) return res.status(403).json({ error: "Scan not found" });
+      if (!scanRow) {
+        // Roll back the increment we just applied
+        await supabase.rpc("decrement_saved_count", { p_user_id: req.userId });
+        return res.status(403).json({ error: "Scan not found" });
+      }
     }
 
     const { data: saved, error } = await supabase
@@ -419,8 +434,6 @@ router.post("/saved", requireAuth, async (req, res) => {
       .single();
 
     if (error) throw error;
-
-    await supabase.from("profiles").update({ saved_count: (profile.saved_count || 0) + 1 }).eq("id", req.userId);
 
     return res.json({ id: saved.id, message: "Saved" });
   } catch (err) {
@@ -436,8 +449,8 @@ router.delete("/saved/:id", requireAuth, async (req, res) => {
   const { error } = await supabase.from("saved_items").delete().eq("id", id).eq("user_id", req.userId);
   if (error) return res.status(500).json({ error: "Failed to delete saved item" });
 
-  const { data: profile } = await supabase.from("profiles").select("saved_count").eq("id", req.userId).single();
-  await supabase.from("profiles").update({ saved_count: Math.max(0, (profile?.saved_count || 1) - 1) }).eq("id", req.userId);
+  // Atomic decrement — clamps to 0, no read-modify-write race
+  await supabase.rpc("decrement_saved_count", { p_user_id: req.userId });
 
   return res.json({ message: "Removed" });
 });
