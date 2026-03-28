@@ -1575,6 +1575,8 @@ export default function App() {
 
   // ─── Profile redesign ──────────────────────────────────────
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
+  const [settingsSheetY, setSettingsSheetY] = useState(0);
+  const settingsDragRef = useRef({ startY: 0, currentY: 0, dragging: false });
   const [profileScanOverlay, setProfileScanOverlay] = useState(null); // scan object for overlay
   const [historyDetailScan, setHistoryDetailScan] = useState(null); // history item detail overlay
 
@@ -3922,7 +3924,7 @@ export default function App() {
               {/* Top bar: username left, gear icon right (Instagram style) */}
               <div className="profile-v2-topbar">
                 <div className="profile-v2-username">{authName || authEmail?.split("@")[0] || "User"}</div>
-                <button className="profile-v2-gear" aria-label="Open settings" onClick={() => setProfileSettingsOpen(true)}>
+                <button className="profile-v2-gear" aria-label="Open settings" onClick={() => { setSettingsSheetY(0); setProfileSettingsOpen(true); }}>
                   <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 </button>
               </div>
@@ -4072,7 +4074,11 @@ export default function App() {
               {/* Settings bottom sheet */}
               {profileSettingsOpen && <>
                 <div className="bottom-sheet-overlay" onClick={() => setProfileSettingsOpen(false)} />
-                <div className="bottom-sheet" role="dialog" aria-label="Settings" aria-modal="true">
+                <div className="bottom-sheet" role="dialog" aria-label="Settings" aria-modal="true"
+                  style={{ transform: settingsSheetY > 0 ? `translateY(${settingsSheetY}px)` : undefined, transition: settingsDragRef.current.dragging ? 'none' : 'transform 0.3s ease' }}
+                  onTouchStart={e => { settingsDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
+                  onTouchMove={e => { const dy = e.touches[0].clientY - settingsDragRef.current.startY; settingsDragRef.current.currentY = e.touches[0].clientY; if (dy > 0) { setSettingsSheetY(dy); } }}
+                  onTouchEnd={() => { const dy = settingsDragRef.current.currentY - settingsDragRef.current.startY; settingsDragRef.current.dragging = false; if (dy > 120) { setSettingsSheetY(window.innerHeight); setTimeout(() => { setProfileSettingsOpen(false); setSettingsSheetY(0); }, 300); } else { setSettingsSheetY(0); } }}>
                   <div className="bottom-sheet-handle" />
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                     <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>Settings</div>

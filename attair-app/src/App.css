@@ -193,6 +193,8 @@
   max-height: 90vh;
   overflow-y: auto;
   animation: slideUpSheet var(--transition-normal);
+  will-change: transform;
+  touch-action: none;
 }
 
 .bottom-sheet-handle {
