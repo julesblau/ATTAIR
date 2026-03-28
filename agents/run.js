@@ -2777,6 +2777,7 @@ ${PM_PROMPT}`
       const cliArgs = [
         "-p",
         "--model", "opus",
+        "--verbose",
         "--output-format", "stream-json",
         "--permission-mode", "bypassPermissions",
         "--max-budget-usd", "500",
