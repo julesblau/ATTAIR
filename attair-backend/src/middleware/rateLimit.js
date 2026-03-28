@@ -3,10 +3,22 @@ import supabase from "../lib/supabase.js";
 const FREE_SCAN_LIMIT = 12;
 
 /**
- * Checks and enforces the monthly scan limit.
- * - Resets scans_today if the stored reset month is before the current month (UTC).
- * - Free/expired users: 12 scans/month.
- * - Trial/pro users: unlimited.
+ * Checks and enforces the monthly scan limit using an atomic DB operation.
+ *
+ * For free/expired users, calls try_increment_scan — a single Postgres function
+ * that resets the monthly counter when needed and increments it atomically in
+ * one UPDATE ... WHERE count < limit.  If the UPDATE matches no row (limit
+ * already reached) the function returns 0 and we return 429.
+ *
+ * This eliminates the TOCTOU race that existed when the check (SELECT) and
+ * the increment (UPDATE) were separate async operations: concurrent requests
+ * can no longer both pass the check before either increments.
+ *
+ * The new scan count is attached to req.profile.scans_today so that
+ * identify.js can report the correct scans_remaining to the client without
+ * calling incrementScanCount() again.
+ *
+ * Pro/trial users bypass the limit entirely — no DB write is performed.
  * Attaches req.profile with the user's profile row.
  */
 export async function scanRateLimit(req, res, next) {
@@ -45,20 +57,52 @@ export async function scanRateLimit(req, res, next) {
       return next();
     }
 
-    // Reset counter if the stored reset month is before the current month
+    // Atomic check-and-increment: returns the new count, or 0 if limit reached.
+    // The RPC resets the monthly counter when scans_today_reset differs from
+    // the current month, so no separate reset step is needed here.
     const thisMonthUTC = new Date().toISOString().slice(0, 7); // YYYY-MM
-    let scansToday = profile.scans_today || 0;
 
-    if (profile.scans_today_reset !== thisMonthUTC) {
-      scansToday = 0;
-      await supabase
-        .from("profiles")
-        .update({ scans_today: 0, scans_today_reset: thisMonthUTC })
-        .eq("id", userId);
+    let newCount;
+    try {
+      const { data, error: rpcError } = await supabase.rpc("try_increment_scan", {
+        p_user_id: userId,
+        p_today: thisMonthUTC,
+        p_limit: FREE_SCAN_LIMIT,
+      });
+      if (!rpcError && data != null) {
+        newCount = data;
+      }
+    } catch {
+      // RPC not yet deployed — fall through to non-atomic path below
     }
 
-    // Enforce limit
-    if (scansToday >= FREE_SCAN_LIMIT) {
+    if (newCount == null) {
+      // Fallback (pre-migration): non-atomic read then check, no increment yet
+      const thisMonthUTC2 = thisMonthUTC;
+      let scansToday = profile.scans_today || 0;
+      if (profile.scans_today_reset !== thisMonthUTC2) {
+        scansToday = 0;
+        await supabase
+          .from("profiles")
+          .update({ scans_today: 0, scans_today_reset: thisMonthUTC2 })
+          .eq("id", userId);
+      }
+      if (scansToday >= FREE_SCAN_LIMIT) {
+        return res.status(429).json({
+          error: "Monthly scan limit reached",
+          message: "You've used all 12 free scans this month. Go Pro for unlimited.",
+          scans_remaining: 0,
+          scans_limit: FREE_SCAN_LIMIT,
+          upgrade_url: "/subscribe",
+        });
+      }
+      req.profile = { ...profile, tier, scans_today: scansToday };
+      req.scanAlreadyIncremented = false;
+      return next();
+    }
+
+    // RPC returned 0 → limit was already reached (no increment occurred)
+    if (newCount === 0) {
       return res.status(429).json({
         error: "Monthly scan limit reached",
         message: "You've used all 12 free scans this month. Go Pro for unlimited.",
@@ -68,7 +112,9 @@ export async function scanRateLimit(req, res, next) {
       });
     }
 
-    req.profile = { ...profile, tier, scans_today: scansToday };
+    // Increment succeeded atomically — pass the new count downstream
+    req.profile = { ...profile, tier, scans_today: newCount };
+    req.scanAlreadyIncremented = true;
     next();
   } catch (err) {
     console.error("Rate limit error:", err.message);

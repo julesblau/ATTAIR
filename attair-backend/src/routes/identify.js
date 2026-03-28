@@ -115,8 +115,10 @@ router.post("/", requireAuth, scanRateLimit, async (req, res) => {
     let items = dedup(raw.items || []);
     items.sort((a, b) => (a.position_y || 0.5) - (b.position_y || 0.5));
 
-    // 4. Increment scan count
-    const newCount = await incrementScanCount(req.userId);
+    // 4. Increment scan count — skip if scanRateLimit already did it atomically
+    const newCount = req.scanAlreadyIncremented
+      ? req.profile.scans_today
+      : await incrementScanCount(req.userId);
 
     // 5. Wait for image upload
     const imageUrl = await imageUrlPromise;
