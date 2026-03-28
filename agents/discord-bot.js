@@ -14,7 +14,7 @@
 
 import { Client, GatewayIntentBits, Partials, EmbedBuilder } from "discord.js";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, createWriteStream } from "fs";
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import { pipeline } from "stream/promises";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -73,6 +73,7 @@ You have special powers. When you determine Jules wants one of these, include th
 - [ACTION:WRITE_REQS:content here] — Write requirements/today.md. Use when Jules says to write/save/finalize requirements, or when you've agreed on what to build and it's time to lock it in.
 - [ACTION:BACKLOG:idea here] — Add to creative backlog. Use when Jules drops an idea for later, says "save this for later", "add to backlog", or mentions something that's not for today.
 - [ACTION:STATUS] — Check army status. Use when Jules asks how things are going, what's running, etc.
+- [ACTION:KILL_STALE] — Kill stale/orphaned claude and node processes (but not this bot). Use when Jules says "kill processes", "clean up", "something's stuck", "kill stale", etc.
 
 You can combine actions with your text response. Example: "On it, kicking off the army now. [ACTION:RUN_ARMY]"
 
@@ -395,6 +396,38 @@ async function executeActions(reply, channel) {
     text = text.replace(/\[ACTION:STATUS\]/g, "").trim();
     const status = armyProcess ? "Army is currently running." : "No army running.";
     text = text ? `${text}\n${status}` : status;
+  }
+
+  // [ACTION:KILL_STALE]
+  if (text.includes("[ACTION:KILL_STALE]")) {
+    text = text.replace(/\[ACTION:KILL_STALE\]/g, "").trim();
+    try {
+      const myPid = process.pid;
+      const ps = execSync("ps aux", { encoding: "utf-8" });
+      const stale = ps.split("\n").filter(line => {
+        if (!line.includes("claude") && !line.includes("node")) return false;
+        if (line.includes("grep")) return false;
+        if (line.includes("Code Helper")) return false; // VS Code
+        if (line.includes("node discord-bot.js")) return false; // this bot
+        const pidMatch = line.match(/^\S+\s+(\d+)/);
+        if (!pidMatch) return false;
+        const pid = parseInt(pidMatch[1]);
+        if (pid === myPid) return false;
+        // Only kill claude -p (spawned) and node agents/run.js type processes
+        return line.includes("claude -p") || line.includes("node agents/") || line.includes("node run.js");
+      });
+      let killed = 0;
+      for (const line of stale) {
+        const pidMatch = line.match(/^\S+\s+(\d+)/);
+        if (pidMatch) {
+          try { process.kill(parseInt(pidMatch[1])); killed++; } catch {}
+        }
+      }
+      const msg = killed > 0 ? `Killed ${killed} stale process(es).` : "No stale processes found.";
+      text = text ? `${text}\n${msg}` : msg;
+    } catch (err) {
+      text = text ? `${text}\nError checking processes: ${err.message}` : `Error: ${err.message}`;
+    }
   }
 
   // [ACTION:WRITE_REQS:...]
