@@ -128,6 +128,35 @@ const API = {
     return data;
   },
 
+  // Guest endpoints (no auth required)
+  async guestIdentify(base64, mimeType, priorityRegionBase64 = null) {
+    const res = await fetch(`${API_BASE}/api/guest/identify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: base64, mime_type: mimeType, ...(priorityRegionBase64 && { priority_region_base64: priorityRegionBase64 }) }),
+    });
+    if (res.status === 429) {
+      const data = await res.json();
+      throw new Error(data.message || "Guest scan limit reached");
+    }
+    if (!res.ok) {
+      let data = {};
+      try { data = await res.json(); } catch { data = { message: `HTTP ${res.status}` }; }
+      throw new Error(data.message || data.error || `API error ${res.status}`);
+    }
+    return await res.json();
+  },
+
+  async guestFindProducts(items, gender, searchMode = "fast") {
+    const res = await fetch(`${API_BASE}/api/guest/find-products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, gender, search_mode: searchMode }),
+    });
+    if (!res.ok) { const data = await res.json(); throw new Error(data.message || "Product search failed"); }
+    return await res.json();
+  },
+
   async identifyClothing(base64, mimeType, userPrefs, priorityRegionBase64 = null) {
     const res = await authFetch(`${API_BASE}/api/identify`, {
       method: "POST",
@@ -1088,7 +1117,6 @@ const STRINGS = {
 // ═══════════════════════════════════════════════════════════════
 const OB_STEPS = [
   { id: "welcome", type: "info", icon: "✦", title: "Scan any outfit.\nFind where to buy it.", sub: "Upload any outfit photo. Our AI identifies every piece and finds you budget, mid, and premium options instantly.", cta: "Get Started" },
-  { id: "first_scan", type: "first_scan", title: "Scan Your First Outfit", sub: "Take a photo or upload one to see the magic." },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -1532,6 +1560,11 @@ export default function App() {
   const [budgetMax, setBudgetMax] = useState(100);
   const [selectedBudgetTiers, setSelectedBudgetTiers] = useState(new Set());
   const [sizePrefs, setSizePrefs] = useState({ body_type: [], fit: [], sizes: {} });
+
+  // ─── Guest mode ────────────────────────────────────────────
+  const isGuest = !authed;
+  const [guestScans, setGuestScans] = useState(() => parseInt(localStorage.getItem("attair_guest_scans") || "0", 10));
+  const [signupPrompt, setSignupPrompt] = useState(null); // null | "scan_limit" | "save" | "social" | "post_scan"
 
   // ─── User status (from backend) ───────────────────────────
   const [userStatus, setUserStatus] = useState(null); // { tier, scans_remaining_today, saved_count, show_ads, ... }
@@ -1995,7 +2028,7 @@ export default function App() {
   const trans = (fn) => { setFade("fo"); setTimeout(() => { fn(); setFade("fi"); }, 220); };
   const obNext = () => {
     if (obIdx < OB_STEPS.length - 1) trans(() => setObIdx(i => i + 1));
-    else trans(() => setScreen("paywall"));
+    else trans(() => setScreen("app"));
   };
   const isFree = !userStatus || userStatus.tier === "free" || userStatus.tier === "expired";
   const isPro = userStatus?.tier === "pro" || userStatus?.tier === "trial";
@@ -2071,6 +2104,9 @@ export default function App() {
       }
       setAuthed(true);
       setScreen("app");
+      // Clear guest scan counter on signup (they now get 12 free scans)
+      localStorage.removeItem("attair_guest_scans");
+      setGuestScans(0);
       // If the user came from the paywall with a plan selected, trigger checkout now
       const pendingPlan = sessionStorage.getItem("attair_pending_plan");
       if (pendingPlan) {
@@ -2119,6 +2155,13 @@ export default function App() {
 
   // ─── Pre-scan gate: check limits ─────────────────────────
   const canScan = () => {
+    if (isGuest) {
+      if (guestScans >= 3) {
+        setSignupPrompt("scan_limit");
+        return false;
+      }
+      return true;
+    }
     if (isPro) return true;
     if (scansLeft <= 0) {
       setUpgradeModal("scan_limit");
@@ -2199,7 +2242,9 @@ export default function App() {
 
     // Phase 1: Identify (backend handles Claude + dedup + rate limit + image storage)
     try {
-      const raw = await API.identifyClothing(base64, mime, prefs, priorityRegionBase64);
+      const raw = isGuest
+        ? await API.guestIdentify(base64, mime, priorityRegionBase64)
+        : await API.identifyClothing(base64, mime, prefs, priorityRegionBase64);
       // Sort priority items first
       if (raw.items) {
         raw.items = [...raw.items].sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
@@ -2218,21 +2263,32 @@ export default function App() {
       items.forEach((item, i) => { if (item.priority) priorityPicks.add(i); });
       if (priorityPicks.size > 0) setPickedItems(priorityPicks);
       setPhase("picking"); // Stop here — let user choose which items to search
-      track("scan_completed", { item_count: items.length, gender: raw.gender }, raw.scan_id, "scan");
+      track("scan_completed", { item_count: items.length, gender: raw.gender, guest: isGuest }, raw.scan_id, "scan");
 
-      // Update status (scan count changed) — optimistic local update + server confirm
-      setUserStatus(prev => prev ? { ...prev, scans_remaining_today: Math.max(0, (prev.scans_remaining_today ?? 12) - 1) } : prev);
-      refreshStatus();
+      if (isGuest) {
+        // Increment guest scan counter
+        const newCount = guestScans + 1;
+        setGuestScans(newCount);
+        localStorage.setItem("attair_guest_scans", String(newCount));
+      } else {
+        // Update status (scan count changed) — optimistic local update + server confirm
+        setUserStatus(prev => prev ? { ...prev, scans_remaining_today: Math.max(0, (prev.scans_remaining_today ?? 12) - 1) } : prev);
+        refreshStatus();
+      }
 
       // Show interstitial ad for free users (skip on first-ever scan — don't be hostile)
-      if (showAds && scansLeft < 2) {
+      if (!isGuest && showAds && scansLeft < 2) {
         setShowInterstitial(true);
       }
-      if (showAds && scansLeft <= 1) {
+      if (!isGuest && showAds && scansLeft <= 1) {
         setTimeout(() => setUpgradeModal("ad_fatigue"), 800);
       }
     } catch (err) {
       setPhase("idle");
+      if (isGuest && (err.message.includes("Guest scan limit") || err.message.includes("sign up") || err.message.includes("Sign up"))) {
+        setSignupPrompt("scan_limit");
+        return;
+      }
       if (err.message.includes("scan limit") || err.message.includes("12/12") || err.message.includes("3/3")) {
         setUpgradeModal("scan_limit");
         setError("You've used all 12 free scans this month.");
@@ -2278,7 +2334,9 @@ export default function App() {
 
     let searchFailed = false;
     try {
-      const searchResults = await API.findProducts(picked, results.gender, scanId, occasion, searchNotes || null, searchMode);
+      const searchResults = isGuest
+        ? await API.guestFindProducts(picked, results.gender, searchMode)
+        : await API.findProducts(picked, results.gender, scanId, occasion, searchNotes || null, searchMode);
       setResults(prev => {
         if (!prev) return prev;
         const updated = prev.items.map((item, idx) => {
@@ -2316,17 +2374,24 @@ export default function App() {
       return next;
     });
 
-    // Post-first-scan preference sheet — show once after the user's very first scan
-    if (!localStorage.getItem("attair_pref_sheet_shown")) {
+    // Post-first-scan preference sheet — show once after the user's very first scan (authed only)
+    if (!isGuest && !localStorage.getItem("attair_pref_sheet_shown")) {
       setTimeout(() => {
         setShowPrefSheet(true);
         localStorage.setItem("attair_pref_sheet_shown", "1");
       }, 1200);
     }
 
-    // Refresh history + saved so those tabs are up to date
-    API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
-    API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
+    // Guest post-scan signup nudge — show after 2nd scan with a compelling message
+    if (isGuest && guestScans >= 2) {
+      setTimeout(() => setSignupPrompt("post_scan"), 2000);
+    }
+
+    // Refresh history + saved so those tabs are up to date (authed only)
+    if (!isGuest) {
+      API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
+      API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
+    }
   };
 
   const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); setShowAdvanced(false); setExpandedItems(new Set()); setShowAllPickItems(false); };
@@ -2360,6 +2425,7 @@ export default function App() {
 
   // ─── Save with backend persistence ────────────────────────
   const toggleSave = async (item) => {
+    if (isGuest) { setSignupPrompt("save"); return; }
     const existing = saved.find(i => (i.item_data || i).name === item.name);
     if (existing) {
       await API.deleteSaved(existing.id).catch(() => {});
@@ -2387,6 +2453,7 @@ export default function App() {
 
   // ─── One-tap heart save from product cards ─────────────────
   const quickSaveItem = async (item, scanIdOverride) => {
+    if (isGuest) { setSignupPrompt("save"); return; }
     const sid = scanIdOverride || scanId;
     const existing = saved.find(i => (i.item_data || i).name === item.name);
     if (existing) {
@@ -2430,19 +2497,8 @@ export default function App() {
             <h1 className="ob-title">{step.title}</h1>
             <p className="ob-sub">{step.sub}</p>
             {step.stats && <div className="ob-stats">{step.stats.map((s,i) => <div key={i}><div className="ob-sn">{s.n}</div><div className="ob-sl">{s.l}</div></div>)}</div>}
-            {step.type === "first_scan" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
-                <div style={{ width: 120, height: 120, borderRadius: "50%", border: "1.5px dashed rgba(201,169,110,.4)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
-                </div>
-                <button className="cta" style={{ width: "100%" }} onClick={() => { trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }}>
-                  Create Account to Start Scanning
-                </button>
-                <button className="ob-skip" onClick={() => { trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }}>Skip for now</button>
-              </div>
-            )}
             {step.type === "info" && <button className="cta" onClick={() => obNext()}>{step.cta}</button>}
-            {obIdx === 0 && <button style={{background:"none",border:"none",color:"var(--text-tertiary)",fontSize:13,cursor:"pointer",fontFamily:"var(--font-sans)",padding:"12px 0",marginTop:8,minHeight:44}} onClick={() => { setScreen("auth"); setAuthScreen("login"); }}>Already have an account? Log in</button>}
+            <button style={{background:"none",border:"none",color:"var(--text-tertiary)",fontSize:13,cursor:"pointer",fontFamily:"var(--font-sans)",padding:"12px 0",marginTop:8,minHeight:44}} onClick={() => { setScreen("auth"); setAuthScreen("login"); }}>Already have an account? Log in</button>
           </div>
         </div>
       )}
@@ -2526,6 +2582,12 @@ export default function App() {
           <button className="auth-toggle" onClick={() => { setAuthScreen(authScreen === "login" ? "signup" : "login"); setAuthErr(null); setShowPass(false); }}>
             {authScreen === "login" ? "Don't have an account? Sign up" : "Already have an account? Log in"}
           </button>
+          {guestScans > 0 && (
+            <button style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 12, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px 0", marginTop: 4, minHeight: 44 }}
+              onClick={() => trans(() => setScreen("app"))}>
+              Continue browsing
+            </button>
+          )}
         </div>
       )}
 
@@ -2545,6 +2607,43 @@ export default function App() {
           onStartTrial={handleStartTrial}
           userStatus={userStatus}
         />
+      )}
+
+      {/* ─── SIGNUP PROMPT (guest users) ────────────────── */}
+      {signupPrompt && (
+        <div className="modal-overlay" onClick={() => setSignupPrompt(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ textAlign: "center", padding: "32px 24px" }}>
+            <button className="modal-x" onClick={() => setSignupPrompt(null)}>✕</button>
+            <div style={{ fontSize: 40, marginBottom: 16 }}>
+              {signupPrompt === "scan_limit" ? "✦" : signupPrompt === "save" ? "♡" : signupPrompt === "social" ? "👥" : "✦"}
+            </div>
+            <h2 className="modal-title" style={{ fontSize: 22, marginBottom: 8 }}>
+              {signupPrompt === "scan_limit" ? "You're on a roll!"
+                : signupPrompt === "save" ? "Save your favorites"
+                : signupPrompt === "social" ? "Join the community"
+                : "Loving what you see?"}
+            </h2>
+            <p className="modal-sub" style={{ marginBottom: 24, lineHeight: 1.5 }}>
+              {signupPrompt === "scan_limit"
+                ? "Create a free account to keep scanning outfits — you get 12 scans per month, plus save items and build wishlists."
+                : signupPrompt === "save"
+                ? "Sign up for free to save items, create wishlists, and get price drop alerts on your favorites."
+                : signupPrompt === "social"
+                ? "Create a free account to follow other stylists, share your looks, and build your style profile."
+                : "Sign up for free to save your results, unlock more scans, and get personalized recommendations."}
+            </p>
+            <button className="cta" style={{ width: "100%", marginBottom: 12 }} onClick={() => {
+              setSignupPrompt(null);
+              trans(() => { setScreen("auth"); setAuthScreen("signup"); });
+            }}>
+              Create Free Account
+            </button>
+            <button style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px 0", minHeight: 44 }}
+              onClick={() => setSignupPrompt(null)}>
+              Maybe later
+            </button>
+          </div>
+        </div>
       )}
 
       {/* ─── INTEREST PICKER ─────────────────────────────── */}
@@ -2608,7 +2707,9 @@ export default function App() {
         <div className="hdr">
           <img src="/logo-option-3.svg" alt="ATTAIRE" className="logo-img" />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {isPro
+            {isGuest
+              ? <button className="cta" style={{ padding: "6px 16px", fontSize: 12, borderRadius: 100 }} onClick={() => trans(() => { setScreen("auth"); setAuthScreen("signup"); })}>Sign Up Free</button>
+              : isPro
               ? <div className="pro">PRO</div>
               : <div className="free-badge" onClick={() => setUpgradeModal("general")}>FREE · {scansLeft}/{scansLimit}</div>
             }
@@ -2625,6 +2726,16 @@ export default function App() {
           {/* ─── Home Feed (TikTok/Instagram style) ────── */}
           {tab === "home" && (
             <div className="animate-fade-in" style={{ paddingBottom: 80 }}>
+              {/* Guest welcome banner */}
+              {isGuest && (
+                <div style={{ margin: "8px 16px 12px", padding: "16px 18px", background: "linear-gradient(135deg, rgba(201,169,110,.08), rgba(201,169,110,.03))", border: "1px solid rgba(201,169,110,.15)", borderRadius: 16, textAlign: "center" }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>Try it free — scan any outfit</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.4 }}>Upload a photo and we'll find where to buy every piece</div>
+                  <button className="cta" style={{ padding: "10px 28px", fontSize: 13, borderRadius: 100 }} onClick={() => setTab("scan")}>
+                    Scan Your First Outfit
+                  </button>
+                </div>
+              )}
               {/* For You / Following tabs directly under header */}
               {/* For You / Following toggle */}
               <div className="feed-tabs-wrap">
@@ -2955,11 +3066,15 @@ export default function App() {
                 Upload a photo of any outfit to find where to buy it
               </div>
 
-              {isFree && scansLeft != null && (
+              {isGuest ? (
+                <div style={{ marginBottom: 24 }}>
+                  <div className="scan-counter" style={{ display: "inline-block" }}><strong>{guestScans}</strong> of 3 free scans used</div>
+                </div>
+              ) : isFree && scansLeft != null ? (
                 <div style={{ marginBottom: 24 }}>
                   <div className="scan-counter" style={{ display: "inline-block" }}>{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong> of {scansLimit} scans used</> : <>No scans left &middot; <span style={{color:"var(--accent)",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
                 </div>
-              )}
+              ) : null}
 
               {/* Scan actions — camera or gallery */}
               <div style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -4653,14 +4768,14 @@ export default function App() {
             </div>
             <span className="tab-l">Scan</span>
           </button>
-          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); }} aria-label="Saved">
+          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); }} aria-label="Saved">
             <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             <span className="tab-l">My Scans</span>
             {priceAlertCount > 0 && (
               <span className="tab-badge" />
             )}
           </button>
-          <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { track("tab_switched", { tab: "profile" }); setTab("profile"); setShowUserSearch(false); }} aria-label="Profile">
+          <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("social"); return; } track("tab_switched", { tab: "profile" }); setTab("profile"); setShowUserSearch(false); }} aria-label="Profile">
             <svg viewBox="0 0 24 24" fill={tab==="profile"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
             <span className="tab-l">Profile</span>
           </button>

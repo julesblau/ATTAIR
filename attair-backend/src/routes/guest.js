@@ -1,0 +1,119 @@
+import { Router } from "express";
+import { guestRateLimit } from "../middleware/rateLimit.js";
+import { identifyClothing } from "../services/claude.js";
+import { findProductsForItems } from "../services/products.js";
+
+const router = Router();
+
+/**
+ * POST /api/guest/identify
+ *
+ * Stripped-down identify for unauthenticated users.
+ * - No image upload to Supabase storage
+ * - No scan persistence to DB
+ * - No profile preferences merge
+ * - IP rate-limited to 3 scans/day
+ */
+router.post("/identify", guestRateLimit, async (req, res) => {
+  const { image, mime_type, priority_region_base64 } = req.body;
+
+  if (!image || typeof image !== "string" || image.length < 100) {
+    return res.status(400).json({ error: "Missing or invalid image data" });
+  }
+
+  const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  if (mime_type && !ALLOWED_MIME_TYPES.includes(mime_type)) {
+    return res.status(400).json({ error: "Invalid image type" });
+  }
+
+  const cleanImage = image.startsWith("data:") ? image.split(",")[1] || image : image;
+  if (!/^[A-Za-z0-9+/=\s]+$/.test(cleanImage.slice(0, 200))) {
+    return res.status(400).json({ error: "Invalid base64 encoding" });
+  }
+
+  const MAX_PRIORITY_B64_CHARS = 2_000_000;
+  if (priority_region_base64 && (typeof priority_region_base64 !== "string" || priority_region_base64.length > MAX_PRIORITY_B64_CHARS)) {
+    return res.status(400).json({ error: "priority_region_base64 exceeds maximum allowed size" });
+  }
+
+  const mimeType = mime_type || "image/jpeg";
+
+  try {
+    const raw = await identifyClothing(cleanImage, mimeType, {}, priority_region_base64);
+
+    // Dedup same as identify.js
+    const slots = {};
+    for (const item of raw.items || []) {
+      if ((item.visibility_pct || 100) < 50) continue;
+      let key = (item.category || "other").toLowerCase();
+      if (key === "accessory" || key === "bag") {
+        const n = (item.name || "").toLowerCase();
+        key = n.includes("hat") || n.includes("cap") ? "acc_head"
+          : n.includes("watch") ? "acc_watch"
+          : n.includes("bag") || n.includes("backpack") ? "acc_bag"
+          : n.includes("belt") ? "acc_belt"
+          : n.includes("glass") || n.includes("sunglass") ? "acc_eye"
+          : `acc_${Object.keys(slots).length}`;
+      }
+      if (!slots[key] || (item.identification_confidence || 0) > (slots[key].identification_confidence || 0)) {
+        slots[key] = item;
+      }
+    }
+    let items = Object.values(slots);
+    items.sort((a, b) => (a.position_y || 0.5) - (b.position_y || 0.5));
+
+    return res.json({
+      scan_id: null, // no persistence for guests
+      image_url: null,
+      gender: raw.gender || "male",
+      summary: raw.summary || "",
+      items,
+      guest: true,
+      guest_scans_remaining: req.guestScansRemaining ?? 0,
+    });
+  } catch (err) {
+    console.error("Guest identify error:", err.message);
+    return res.status(500).json({ error: "Identification failed" });
+  }
+});
+
+/**
+ * POST /api/guest/find-products
+ *
+ * Stripped-down product search for unauthenticated users.
+ * - No profile budget/size defaults
+ * - No scan image URL (skips Lens — text search only)
+ * - No tier persistence
+ * - IP rate-limited (shared budget with identify)
+ */
+router.post("/find-products", guestRateLimit, async (req, res) => {
+  const { items, gender, search_mode: rawSearchMode } = req.body;
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "Items array is required" });
+  }
+
+  const searchMode = rawSearchMode === "extended" ? "extended" : "fast";
+
+  try {
+    const results = await findProductsForItems(
+      items,
+      gender,
+      null, // budget_min
+      null, // budget_max
+      null, // imageUrl (no Lens for guests)
+      {},   // size_prefs
+      null, // occasion
+      null, // search_notes
+      null, // customOccasionModifiers
+      searchMode,
+    );
+
+    return res.json(results);
+  } catch (err) {
+    console.error("Guest find-products error:", err.message);
+    return res.status(500).json({ error: "Product search failed" });
+  }
+});
+
+export default router;

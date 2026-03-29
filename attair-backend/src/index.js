@@ -21,6 +21,7 @@ import paymentsRouter from "./routes/payments.js";
 import socialRouter from "./routes/social.js";
 import styleDnaRouter from "./routes/styleDna.js";
 import priceAlertsRouter from "./routes/priceAlerts.js";
+import guestRouter from "./routes/guest.js";
 
 // ─── Validate required env vars ─────────────────────────────
 const REQUIRED_ENV = [
@@ -106,6 +107,7 @@ app.use("/api/auth/", authLimiter);
 
 // ─── Routes ─────────────────────────────────────────────────
 app.use("/api/auth", authRouter);
+app.use("/api/guest", guestRouter);
 app.use("/api/identify", identifyRouter);
 app.use("/api/find-products", findProductsRouter);
 app.use("/api/user/style-dna", styleDnaRouter);

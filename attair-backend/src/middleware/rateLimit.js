@@ -163,3 +163,33 @@ export async function incrementScanCount(userId) {
 
   return currentCount + 1;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// GUEST RATE LIMIT — IP-based, 3 scans per day, in-memory
+// ═══════════════════════════════════════════════════════════════
+const GUEST_SCAN_LIMIT = 3;
+const guestScans = new Map(); // ip → { count, date }
+
+export function guestRateLimit(req, res, next) {
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "unknown";
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const entry = guestScans.get(ip);
+  if (!entry || entry.date !== today) {
+    guestScans.set(ip, { count: 1, date: today });
+    req.guestScansRemaining = GUEST_SCAN_LIMIT - 1;
+    return next();
+  }
+
+  if (entry.count >= GUEST_SCAN_LIMIT) {
+    return res.status(429).json({
+      error: "Guest scan limit reached",
+      message: "Sign up for free to keep scanning — you get 12 scans per month!",
+      scans_remaining: 0,
+    });
+  }
+
+  entry.count += 1;
+  req.guestScansRemaining = GUEST_SCAN_LIMIT - entry.count;
+  next();
+}
