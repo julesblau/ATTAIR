@@ -4593,7 +4593,7 @@ export default function App() {
                         <div className="scan-card-back-items">
                           {scanItems.slice(0, 4).map((it, idx) => (
                             <div key={idx} className="scan-card-back-item">
-                              <span className="scan-card-back-item-icon">{{ shoes: "\uD83D\uDC5F", accessory: "\u231A", bag: "\uD83D\uDC5C", outerwear: "\uD83E\uDDE5", top: "\uD83D\uDC55", bottom: "\uD83D\uDC56", dress: "\uD83D\uDC57" }[it.category] || "\u2726"}</span>
+                              <span className="scan-card-back-item-icon" style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.03em" }}>{{ shoes: "SHOE", accessory: "ACC", bag: "BAG", outerwear: "OUTER", top: "TOP", bottom: "BTM", dress: "DRESS" }[it.category] || "ITEM"}</span>
                               <span className="scan-card-back-item-name">{it.name || it.category || "Item"}</span>
                             </div>
                           ))}
@@ -4836,15 +4836,23 @@ export default function App() {
                       {hs.summary && <div className="scan-overlay-summary">{hs.summary}</div>}
                       {hsItems.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         <div className="sec-t">Identified Items</div>
-                        {hsItems.map((it, idx) => (
+                        {hsItems.map((it, idx) => {
+                          const tierData = (hs.tiers || []).find(t2 => t2.item_index === idx);
+                          const bestProduct = tierData?.tiers?.flatMap(t => t.products || []).find(p => p.link);
+                          return (
                           <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
-                            <div style={{ width: 36, height: 36, borderRadius: "var(--radius-sm)", background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>{{ shoes: "\uD83D\uDC5F", accessory: "\u231A", bag: "\uD83D\uDC5C", outerwear: "\uD83E\uDDE5", top: "\uD83D\uDC55", bottom: "\uD83D\uDC56", dress: "\uD83D\uDC57" }[it.category] || "\u2726"}</div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
                               <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{it.brand || it.category}</div>
                             </div>
+                            {bestProduct ? (
+                              <a href={bestProduct.link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--accent)", textDecoration: "none", whiteSpace: "nowrap", padding: "4px 10px", border: "1px solid var(--accent)", borderRadius: "var(--radius-sm)", flexShrink: 0 }}>Shop this</a>
+                            ) : (
+                              <button onClick={(e) => { e.stopPropagation(); setResults({ gender: hs.detected_gender || "male", summary: hs.summary || "", items: hsItems.map(i => ({ ...i, status: hs.tiers ? "verified" : "identified", tiers: null })) }); if (hs.tiers && Array.isArray(hs.tiers)) setResults(prev => prev ? { ...prev, items: prev.items.map((item, i2) => { const sr = hs.tiers.find(t2 => t2.item_index === i2); return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev); setImg(hs.image_url || hs.image_thumbnail || null); setScanId(hs.id); setSelIdx(idx); setPickedItems(new Set((hs.tiers || []).map(t2 => t2.item_index))); setPhase("done"); setTab("scan"); setProfileScanOverlay(null); }} style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--accent)", background: "none", border: "1px solid var(--accent)", borderRadius: "var(--radius-sm)", padding: "4px 10px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>Find it</button>
+                            )}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>}
                       <button className="btn-primary" style={{ width: "100%", marginTop: 16 }} onClick={() => {
                         setResults({ gender: hs.detected_gender || "male", summary: hs.summary || "", items: hsItems.map(it => ({ ...it, status: hs.tiers ? "verified" : "identified", tiers: null })) });
