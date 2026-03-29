@@ -325,9 +325,17 @@ export async function processNudges() {
 
       console.log(`[Nudge] Sent to user ${userId.slice(0, 8)}… (context: ${nudge.context})`);
     } catch (err) {
-      console.error(`[Nudge] Failed for user ${userId.slice(0, 8)}…: ${err.message}`);
-      // Remove failed nudge to avoid infinite retries
-      pendingNudges.delete(userId);
+      const retries = nudge._retries || 0;
+      if (retries < 1) {
+        // Allow one retry on next processor cycle
+        nudge._retries = retries + 1;
+        nudge.fireAt = now + 60 * 1000; // Retry in 1 minute
+        console.warn(`[Nudge] Failed for user ${userId.slice(0, 8)}…, will retry (attempt ${retries + 1}): ${err.message}`);
+      } else {
+        // Final failure — remove to avoid infinite retries
+        pendingNudges.delete(userId);
+        console.error(`[Nudge] Permanently failed for user ${userId.slice(0, 8)}… after ${retries + 1} attempts: ${err.message}`);
+      }
     }
   }
 }
@@ -370,4 +378,12 @@ export function getPendingNudgeCount() {
     if (!nudge.sent) count++;
   }
   return count;
+}
+
+/**
+ * Clear all pending nudges (for tests / graceful shutdown).
+ * @private — exported only for test cleanup
+ */
+export function _clearAllNudges() {
+  pendingNudges.clear();
 }
