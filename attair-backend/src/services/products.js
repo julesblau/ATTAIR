@@ -2169,6 +2169,72 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     console.log("[Rerank] AI re-ranking complete.");
   }
 
+  // ── Step 5b (extended mode only): Retailer diversity check ──
+  // Ensure each item has results from 3+ unique retailer domains with
+  // 5+ priced products total. If below threshold, fire a supplementary
+  // broadened text search to fill the gaps.
+  if (searchMode === "extended") {
+    const MIN_DOMAINS = 3;
+    const MIN_PRICED = 5;
+    const diversityPromises = output.map(async (result) => {
+      const item = result._item;
+      if (!item) return;
+
+      const allProducts = [
+        ...result.tiers.budget,
+        ...result.tiers.mid,
+        ...result.tiers.premium,
+      ].filter(p => p.is_product_page !== false);
+
+      const domains = new Set();
+      let pricedCount = 0;
+      for (const p of allProducts) {
+        try {
+          const domain = new URL(p.url || "").hostname.replace(/^www\./, "");
+          domains.add(domain);
+        } catch {}
+        if (p.price && p.price !== "N/A") pricedCount++;
+      }
+
+      if (domains.size >= MIN_DOMAINS && pricedCount >= MIN_PRICED) return;
+
+      console.log(`[Diversity] "${item.name}": ${domains.size} domains, ${pricedCount} priced — below threshold, running supplementary search`);
+
+      // Broadened fallback: gender + category (widest possible query)
+      const g = (gender === "female") ? "women's" : "men's";
+      const broadQuery = `${g} ${item.subcategory || item.category}`;
+      const suppResults = await textSearch(broadQuery, null, null).catch(() => []);
+      if (!suppResults.length) return;
+
+      // Score, dedup against existing URLs, and inject into the thinnest tier
+      const existingUrls = new Set(allProducts.map(p => p.url).filter(Boolean));
+      const newProducts = suppResults
+        .filter(r => {
+          const url = r.link || r.product_link || r.url || "";
+          return url && !existingUrls.has(url);
+        })
+        .slice(0, 6);
+
+      if (!newProducts.length) return;
+
+      // Find the smallest tier and inject supplementary results
+      const tierSizes = [
+        { name: "budget", len: result.tiers.budget.length },
+        { name: "mid", len: result.tiers.mid.length },
+        { name: "premium", len: result.tiers.premium.length },
+      ].sort((a, b) => a.len - b.len);
+
+      const targetTier = tierSizes[0].name;
+      for (const r of newProducts.slice(0, 3)) {
+        const formatted = formatProduct(r, false);
+        formatted.why = "Supplementary result for retailer diversity";
+        result.tiers[targetTier].push(formatted);
+      }
+      console.log(`[Diversity] "${item.name}": injected ${Math.min(3, newProducts.length)} supplementary results into ${targetTier} tier`);
+    });
+    await Promise.all(diversityPromises);
+  }
+
   // ── Step 6: Style Match Score ─────────────────────────────
   // Compute a 0-100 "your style" match for each product using
   // the user's preference profile (liked brands, colors, categories, keywords).
