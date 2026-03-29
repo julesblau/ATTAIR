@@ -71,16 +71,8 @@ router.get("/profile", requireAuth, async (req, res) => {
 });
 
 // ─── PATCH /api/user/profile ────────────────────────────────
-const VALID_STYLE_INTERESTS = [
-  "Actors & Actresses",
-  "Musicians & K-Pop",
-  "Athletes",
-  "TikTok Creators",
-  "Instagram Influencers",
-  "Streamers & YouTubers",
-  "Fashion Icons & Models",
-  "Street Style",
-];
+// Style interests can be categories ("Athletes", "TikTok Creators") or
+// specific people names ("Zendaya", "A$AP Rocky") from the onboarding picker.
 
 router.patch("/profile", requireAuth, async (req, res) => {
   const { display_name, phone, avatar_url, gender_pref, budget_min, budget_max, size_prefs, bio, style_interests } = req.body;
@@ -170,12 +162,13 @@ router.patch("/profile", requireAuth, async (req, res) => {
     if (!Array.isArray(style_interests)) {
       return res.status(400).json({ error: "style_interests must be an array" });
     }
-    if (style_interests.length > 8) {
-      return res.status(400).json({ error: "style_interests can have at most 8 items" });
+    if (style_interests.length > 12) {
+      return res.status(400).json({ error: "style_interests can have at most 12 items" });
     }
-    // Validate each entry is a string under 50 chars, silently strip unknown values
+    // Validate each entry is a string under 50 chars
     const cleaned = style_interests
-      .filter(v => typeof v === "string" && v.length <= 50 && VALID_STYLE_INTERESTS.includes(v));
+      .filter(v => typeof v === "string" && v.trim().length > 0 && v.length <= 50)
+      .map(v => v.trim());
     updates.style_interests = cleaned;
   }
 

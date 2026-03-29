@@ -1730,6 +1730,167 @@
 .app[data-theme='light'] .ob-demo-title { color: #1A1816; }
 .app[data-theme='light'] .ob-demo-login { color: rgba(0,0,0,0.3); }
 
+/* ── Inspiration Picker ── */
+.ob-inspo {
+  padding: 0 !important;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg-primary);
+}
+
+.ob-inspo-header {
+  padding: 48px 28px 16px;
+  text-align: center;
+}
+
+.ob-inspo-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 30px;
+  line-height: 1.15;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.ob-inspo-sub {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.ob-inspo-gender {
+  display: flex;
+  gap: 0;
+  margin: 8px 28px 16px;
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 3px;
+  border: 1px solid var(--border);
+}
+
+.ob-inspo-gender-btn {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  color: var(--text-tertiary);
+  min-height: 44px;
+}
+
+.ob-inspo-gender-btn.active {
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.ob-inspo-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 20px 16px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  align-content: start;
+}
+
+.ob-inspo-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 8px;
+  border-radius: 16px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-sans);
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+}
+
+.ob-inspo-card:active { transform: scale(0.97); }
+
+.ob-inspo-card.selected {
+  border-color: var(--accent);
+  background: rgba(201,169,110,0.08);
+}
+
+.ob-inspo-card-emoji {
+  font-size: 24px;
+  margin-bottom: 2px;
+}
+
+.ob-inspo-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.ob-inspo-card-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.ob-inspo-card-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  animation: fi 0.2s ease;
+}
+
+.ob-inspo-footer {
+  padding: 12px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+
+.ob-inspo-skip {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  padding: 12px 0;
+  margin-top: 4px;
+  min-height: 44px;
+}
+
+/* Light mode */
+.app[data-theme='light'] .ob-inspo { background: #F6F4F0; }
+.app[data-theme='light'] .ob-inspo-title { color: #1A1816; }
+.app[data-theme='light'] .ob-inspo-card { background: #FFF; border-color: rgba(0,0,0,0.08); }
+.app[data-theme='light'] .ob-inspo-card.selected { background: rgba(201,169,110,0.06); border-color: var(--accent); }
+.app[data-theme='light'] .ob-inspo-footer { background: #F6F4F0; border-top-color: rgba(0,0,0,0.06); }
+.app[data-theme='light'] .ob-inspo-gender { background: #FFF; border-color: rgba(0,0,0,0.06); }
+.app[data-theme='light'] .ob-inspo-skip { color: rgba(0,0,0,0.25); }
+
 .cta{width:100%;padding:17px;background:var(--accent);color:var(--text-inverse);border:none;border-radius:14px;font-family:var(--font-sans);font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:auto;min-height:44px}.cta:hover{background:var(--accent-hover)}
 
 .pw{flex:1;display:flex;flex-direction:column;padding:20px 28px}

@@ -1132,6 +1132,40 @@ const OB_DEMO_RESULTS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
+// INSPIRATION DATA — Gender-adaptive celebrity/influencer grid
+// ═══════════════════════════════════════════════════════════════
+const INSPIRATIONS = {
+  female: [
+    { name: "Alix Earle", tag: "TikTok", emoji: "📱" },
+    { name: "Hailey Bieber", tag: "Model", emoji: "✨" },
+    { name: "Zendaya", tag: "Actress", emoji: "🎬" },
+    { name: "Sabrina Carpenter", tag: "Artist", emoji: "🎵" },
+    { name: "Sydney Sweeney", tag: "Actress", emoji: "🎬" },
+    { name: "Dua Lipa", tag: "Artist", emoji: "🎵" },
+    { name: "Bella Hadid", tag: "Model", emoji: "✨" },
+    { name: "Rihanna", tag: "Fashion", emoji: "👗" },
+    { name: "Matilda Djerf", tag: "TikTok", emoji: "📱" },
+    { name: "Emma Chamberlain", tag: "YouTube", emoji: "🎥" },
+    { name: "Kendall Jenner", tag: "Model", emoji: "✨" },
+    { name: "Billie Eilish", tag: "Artist", emoji: "🎵" },
+  ],
+  male: [
+    { name: "Travis Scott", tag: "Artist", emoji: "🎵" },
+    { name: "A$AP Rocky", tag: "Artist", emoji: "🎵" },
+    { name: "LeBron James", tag: "Athlete", emoji: "🏀" },
+    { name: "Bad Bunny", tag: "Artist", emoji: "🎵" },
+    { name: "Timothée Chalamet", tag: "Actor", emoji: "🎬" },
+    { name: "Tyler, the Creator", tag: "Artist", emoji: "🎵" },
+    { name: "Jalen Brunson", tag: "Athlete", emoji: "🏀" },
+    { name: "Harry Styles", tag: "Artist", emoji: "🎵" },
+    { name: "Jacob Elordi", tag: "Actor", emoji: "🎬" },
+    { name: "Jaylen Brown", tag: "Athlete", emoji: "🏀" },
+    { name: "Pedro Pascal", tag: "Actor", emoji: "🎬" },
+    { name: "Pharrell", tag: "Fashion", emoji: "👗" },
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════════
 // ONBOARDING DEMO — TikTok-speed animated welcome
 // ═══════════════════════════════════════════════════════════════
 function OnboardingDemo({ fade, onGetStarted, onLogin }) {
@@ -1229,6 +1263,89 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
         <button className="cta" onClick={onGetStarted}>Get Started</button>
         <button className="ob-demo-login" onClick={onLogin}>
           Already have an account? Log in
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INSPIRATION PICKER — "Who inspires your style?"
+// ═══════════════════════════════════════════════════════════════
+function InspirationPicker({ fade, onContinue, onSkip }) {
+  const [gender, setGender] = useState("female");
+  const [selected, setSelected] = useState([]);
+
+  const people = INSPIRATIONS[gender] || INSPIRATIONS.female;
+
+  const toggle = (name) => {
+    setSelected(prev =>
+      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+    );
+  };
+
+  const handleContinue = () => {
+    // Store in localStorage for persistence — saved to backend on signup
+    localStorage.setItem("attair_inspirations", JSON.stringify(selected));
+    localStorage.setItem("attair_ob_gender", gender);
+    onContinue(selected, gender);
+  };
+
+  return (
+    <div className={`ob ob-inspo ${fade}`}>
+      <div className="ob-inspo-header">
+        <h1 className="ob-inspo-title">Who inspires<br />your style?</h1>
+        <p className="ob-inspo-sub">Pick 3 or more. This helps us personalize your experience.</p>
+      </div>
+
+      {/* Gender toggle */}
+      <div className="ob-inspo-gender">
+        {[{ key: "female", label: "Her Style" }, { key: "male", label: "His Style" }].map(({ key, label }) => (
+          <button
+            key={key}
+            className={`ob-inspo-gender-btn ${gender === key ? "active" : ""}`}
+            onClick={() => { setGender(key); setSelected([]); }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* People grid */}
+      <div className="ob-inspo-grid">
+        {people.map((person) => {
+          const on = selected.includes(person.name);
+          return (
+            <button
+              key={person.name}
+              className={`ob-inspo-card ${on ? "selected" : ""}`}
+              onClick={() => toggle(person.name)}
+            >
+              <div className="ob-inspo-card-emoji">{person.emoji}</div>
+              <div className="ob-inspo-card-name">{person.name}</div>
+              <div className="ob-inspo-card-tag">{person.tag}</div>
+              {on && <div className="ob-inspo-card-check">✓</div>}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bottom CTA */}
+      <div className="ob-inspo-footer">
+        <button
+          className="cta"
+          style={{ opacity: selected.length < 3 ? 0.5 : 1 }}
+          onClick={handleContinue}
+          disabled={selected.length < 3}
+        >
+          {selected.length === 0
+            ? "Pick at least 3"
+            : selected.length < 3
+            ? `${3 - selected.length} more to go`
+            : `Continue with ${selected.length} picks`}
+        </button>
+        <button className="ob-inspo-skip" onClick={() => { localStorage.setItem("attair_inspirations", "[]"); onSkip(); }}>
+          Skip for now
         </button>
       </div>
     </div>
@@ -1995,7 +2112,7 @@ export default function App() {
         setStyleDnaLoading(true);
         API.styleDna().then(data => setStyleDna(data)).catch(() => {}).finally(() => setStyleDnaLoading(false));
       }
-      if (screen === "onboarding") setScreen("app");
+      if (screen === "onboarding" || screen === "inspiration") setScreen("app");
 
       // Handle post-Stripe-checkout redirect
       const params = new URLSearchParams(window.location.search);
@@ -2144,7 +2261,7 @@ export default function App() {
   const trans = (fn) => { setFade("fo"); setTimeout(() => { fn(); setFade("fi"); }, 220); };
   const obNext = () => {
     if (obIdx < OB_STEPS.length - 1) trans(() => setObIdx(i => i + 1));
-    else trans(() => setScreen("app"));
+    else trans(() => setScreen("inspiration"));
   };
   const isFree = !userStatus || userStatus.tier === "free" || userStatus.tier === "expired";
   const isPro = userStatus?.tier === "pro" || userStatus?.tier === "trial";
@@ -2223,6 +2340,19 @@ export default function App() {
       // Clear guest scan counter on signup (they now get 12 free scans)
       localStorage.removeItem("attair_guest_scans");
       setGuestScans(0);
+      // Persist onboarding inspirations if stored
+      if (authScreen === "signup") {
+        try {
+          const storedInspo = JSON.parse(localStorage.getItem("attair_inspirations") || "[]");
+          const storedGender = localStorage.getItem("attair_ob_gender");
+          if (storedInspo.length > 0 || storedGender) {
+            API.updateProfile({
+              ...(storedInspo.length > 0 && { style_interests: storedInspo }),
+              ...(storedGender && { gender_pref: storedGender }),
+            }).catch(() => {});
+          }
+        } catch {}
+      }
       // If the user came from the paywall with a plan selected, trigger checkout now
       const pendingPlan = sessionStorage.getItem("attair_pending_plan");
       if (pendingPlan) {
@@ -2610,6 +2740,21 @@ export default function App() {
           fade={fade}
           onGetStarted={() => obNext()}
           onLogin={() => { setScreen("auth"); setAuthScreen("login"); }}
+        />
+      )}
+
+      {/* ─── INSPIRATION PICKER ────────────────────────── */}
+      {screen === "inspiration" && (
+        <InspirationPicker
+          fade={fade}
+          onContinue={(picks, gender) => {
+            setPrefs(p => ({ ...p, gender }));
+            if (authed) {
+              API.updateProfile({ style_interests: picks, gender_pref: gender }).catch(() => {});
+            }
+            trans(() => setScreen("app"));
+          }}
+          onSkip={() => trans(() => setScreen("app"))}
         />
       )}
 
