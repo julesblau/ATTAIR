@@ -19,6 +19,7 @@
  */
 
 import { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } from "discord.js";
+import { createKeepAliveSystem, KEEPALIVE_RESPONSE_TIMEOUT, IDLE_KEEPALIVE_THRESHOLD, IDLE_CHECK_INTERVAL, BUILD_HEARTBEAT_INTERVAL } from "./keepalive.js";
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, createWriteStream, unlinkSync, statSync } from "fs";
 import { spawn, execSync } from "child_process";
 import { pipeline } from "stream/promises";
@@ -94,15 +95,7 @@ let buildLoopRunning = false;       // is the build→judge→fix loop active?
 let stopRequested = false;          // user asked to stop
 
 // ─── Keep-Alive State ───────────────────────────────────────────────────────
-const KEEPALIVE_RESPONSE_TIMEOUT = 2 * 60 * 1000;   // 2 min to respond before shutdown
-const IDLE_KEEPALIVE_THRESHOLD = 2 * 60 * 60 * 1000; // 2 hours idle → send keep-alive ping
-const IDLE_CHECK_INTERVAL = 15 * 60 * 1000;          // check every 15 min
-const BUILD_HEARTBEAT_INTERVAL = 30 * 60 * 1000;     // heartbeat every 30 min during builds
-let keepAliveResolved = null;        // resolve function for pending keep-alive
-let keepAlivePending = false;        // is a keep-alive ping awaiting response?
-let shutdownDeferred = false;        // SIGTERM received but deferred for keep-alive
 let lastBuildHeartbeat = 0;          // timestamp of last build heartbeat ping
-let idleKeepaliveTimer = null;       // interval for idle keep-alive checks
 
 // ─── System Prompt ──────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You're Jules' product partner for ATTAIRE (AI fashion shopping app). Discord on his phone.
@@ -1298,282 +1291,7 @@ client.on("error", (err) => {
 // ─── Proactive Check-ins ─────────────────────────────────────────────────────
 let lastMessageTime = Date.now();
 
-// ─── Keep-Alive Ping System ─────────────────────────────────────────────────
-
-/**
- * Send a keep-alive ping to Jules with interactive buttons.
- * Returns a promise that resolves to { keepRunning: boolean }.
- * Times out after KEEPALIVE_RESPONSE_TIMEOUT.
- */
-async function sendKeepAlivePing(reason, { urgent = false } = {}) {
-  if (!CHAT_CHANNEL_ID || !client.isReady()) return { keepRunning: false };
-  if (keepAlivePending) return { keepRunning: true }; // don't double-ping
-
-  keepAlivePending = true;
-
-  try {
-    const channel = await client.channels.fetch(CHAT_CHANNEL_ID);
-
-    const uptime = Math.floor(process.uptime());
-    const hours = Math.floor(uptime / 3600);
-    const mins = Math.floor((uptime % 3600) / 60);
-
-    const statusParts = [];
-    if (buildLoopRunning) statusParts.push(`🔨 Build running: ${activeTaskLabel || "unknown"}`);
-    else if (activeProcess) statusParts.push(`⚙️ Agent active: ${activeTaskLabel || "unknown"}`);
-    else statusParts.push("💤 Idle — no active tasks");
-    statusParts.push(`⏱️ Uptime: ${hours}h ${mins}m`);
-
-    const embed = new EmbedBuilder()
-      .setColor(urgent ? 0xE74C3C : 0xF39C12) // red if urgent, amber if routine
-      .setTitle(urgent ? "⚠️ Process Shutting Down" : "🏓 Keep-Alive Ping")
-      .setDescription(reason)
-      .addFields({ name: "Status", value: statusParts.join("\n"), inline: false })
-      .setFooter({ text: `Auto-shutdown in ${Math.round(KEEPALIVE_RESPONSE_TIMEOUT / 1000)}s if no response` })
-      .setTimestamp();
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("keepalive_yes")
-        .setLabel("Keep Running")
-        .setStyle(ButtonStyle.Success)
-        .setEmoji("🟢"),
-      new ButtonBuilder()
-        .setCustomId("keepalive_no")
-        .setLabel("Let it Sleep")
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji("😴"),
-    );
-
-    const pingMsg = await channel.send({
-      content: "<@&everyone>", // ping to ensure visibility
-      embeds: [embed],
-      components: [row],
-    });
-
-    // Wait for button response or timeout
-    const result = await new Promise((resolve) => {
-      keepAliveResolved = resolve;
-
-      const collector = pingMsg.createMessageComponentCollector({
-        componentType: ComponentType.Button,
-        time: KEEPALIVE_RESPONSE_TIMEOUT,
-      });
-
-      collector.on("collect", async (interaction) => {
-        const keepRunning = interaction.customId === "keepalive_yes";
-
-        // Disable buttons after click
-        const disabledRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("keepalive_yes")
-            .setLabel("Keep Running")
-            .setStyle(keepRunning ? ButtonStyle.Success : ButtonStyle.Secondary)
-            .setEmoji("🟢")
-            .setDisabled(true),
-          new ButtonBuilder()
-            .setCustomId("keepalive_no")
-            .setLabel("Let it Sleep")
-            .setStyle(keepRunning ? ButtonStyle.Secondary : ButtonStyle.Primary)
-            .setEmoji("😴")
-            .setDisabled(true),
-        );
-
-        const responseEmbed = new EmbedBuilder()
-          .setColor(keepRunning ? 0x2ECC71 : 0x95A5A6)
-          .setTitle(keepRunning ? "✅ Staying Online" : "😴 Going to Sleep")
-          .setDescription(keepRunning
-            ? "Process will keep running. Back to work."
-            : "Shutting down gracefully. Saving all work first.")
-          .setTimestamp();
-
-        await interaction.update({
-          content: null,
-          embeds: [responseEmbed],
-          components: [disabledRow],
-        });
-
-        collector.stop();
-        resolve({ keepRunning });
-      });
-
-      collector.on("end", (collected, reason) => {
-        if (reason === "time" && collected.size === 0) {
-          // No response — update message and resolve
-          const timeoutEmbed = new EmbedBuilder()
-            .setColor(0xE74C3C)
-            .setTitle("⏰ No Response — Shutting Down")
-            .setDescription("Keep-alive ping timed out. Saving work and going offline.")
-            .setTimestamp();
-
-          const disabledRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("keepalive_yes")
-              .setLabel("Keep Running")
-              .setStyle(ButtonStyle.Secondary)
-              .setEmoji("🟢")
-              .setDisabled(true),
-            new ButtonBuilder()
-              .setCustomId("keepalive_no")
-              .setLabel("Let it Sleep")
-              .setStyle(ButtonStyle.Secondary)
-              .setEmoji("😴")
-              .setDisabled(true),
-          );
-
-          pingMsg.edit({
-            content: null,
-            embeds: [timeoutEmbed],
-            components: [disabledRow],
-          }).catch(() => {});
-
-          resolve({ keepRunning: false });
-        }
-      });
-    });
-
-    return result;
-  } catch (err) {
-    console.error("[keepAlive] Failed to send ping:", err.message);
-    return { keepRunning: false };
-  } finally {
-    keepAlivePending = false;
-    keepAliveResolved = null;
-  }
-}
-
-/**
- * Build heartbeat — called during long builds to check if Jules wants to continue.
- * Non-blocking: if Jules doesn't respond, build continues (only urgent pings block).
- */
-async function buildHeartbeatCheck() {
-  if (!buildLoopRunning) return;
-  if (Date.now() - lastBuildHeartbeat < BUILD_HEARTBEAT_INTERVAL) return;
-
-  lastBuildHeartbeat = Date.now();
-
-  const uptime = Math.floor(process.uptime());
-  const hours = Math.floor(uptime / 3600);
-
-  // Only send heartbeat if build has been running for 1+ hours
-  if (hours < 1) return;
-
-  if (!CHAT_CHANNEL_ID || !client.isReady()) return;
-
-  try {
-    const channel = await client.channels.fetch(CHAT_CHANNEL_ID);
-
-    const embed = new EmbedBuilder()
-      .setColor(0x3498DB)
-      .setTitle("💙 Build Heartbeat")
-      .setDescription(`Still building: **${activeTaskLabel || "backlog tasks"}**\nRunning for ${hours}h+. All good — just checking in.`)
-      .setTimestamp();
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("heartbeat_continue")
-        .setLabel("Keep Going")
-        .setStyle(ButtonStyle.Success)
-        .setEmoji("👍"),
-      new ButtonBuilder()
-        .setCustomId("heartbeat_stop")
-        .setLabel("Stop After This Task")
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji("✋"),
-    );
-
-    const msg = await channel.send({ embeds: [embed], components: [row] });
-
-    const collector = msg.createMessageComponentCollector({
-      componentType: ComponentType.Button,
-      time: 10 * 60 * 1000, // 10 min to respond
-    });
-
-    collector.on("collect", async (interaction) => {
-      const shouldStop = interaction.customId === "heartbeat_stop";
-
-      if (shouldStop) {
-        stopRequested = true;
-      }
-
-      const responseEmbed = new EmbedBuilder()
-        .setColor(shouldStop ? 0xE74C3C : 0x2ECC71)
-        .setTitle(shouldStop ? "✋ Stopping After Current Task" : "👍 Continuing Build")
-        .setTimestamp();
-
-      const disabledRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("heartbeat_continue")
-          .setLabel("Keep Going")
-          .setStyle(shouldStop ? ButtonStyle.Secondary : ButtonStyle.Success)
-          .setEmoji("👍")
-          .setDisabled(true),
-        new ButtonBuilder()
-          .setCustomId("heartbeat_stop")
-          .setLabel("Stop After This Task")
-          .setStyle(shouldStop ? ButtonStyle.Danger : ButtonStyle.Secondary)
-          .setEmoji("✋")
-          .setDisabled(true),
-      );
-
-      await interaction.update({ embeds: [responseEmbed], components: [disabledRow] });
-      collector.stop();
-    });
-
-    collector.on("end", (collected, reason) => {
-      if (reason === "time" && collected.size === 0) {
-        // No response — keep building (non-blocking heartbeat)
-        const timeoutEmbed = new EmbedBuilder()
-          .setColor(0x95A5A6)
-          .setTitle("💙 Build Continuing")
-          .setDescription("No response — keeping at it.")
-          .setTimestamp();
-
-        const disabledRow = new ActionRowBuilder().addComponents(
-          new ButtonBuilder().setCustomId("heartbeat_continue").setLabel("Keep Going").setStyle(ButtonStyle.Secondary).setEmoji("👍").setDisabled(true),
-          new ButtonBuilder().setCustomId("heartbeat_stop").setLabel("Stop After This Task").setStyle(ButtonStyle.Secondary).setEmoji("✋").setDisabled(true),
-        );
-
-        msg.edit({ embeds: [timeoutEmbed], components: [disabledRow] }).catch(() => {});
-      }
-    });
-  } catch (err) {
-    console.error("[buildHeartbeat] Error:", err.message);
-  }
-}
-
-/**
- * Start idle keep-alive monitoring.
- * Pings Jules when the bot has been idle for too long (hosting platforms may kill idle processes).
- */
-function startIdleKeepAliveMonitor() {
-  if (idleKeepaliveTimer) clearInterval(idleKeepaliveTimer);
-
-  idleKeepaliveTimer = setInterval(async () => {
-    // Skip if busy or if we already pinged recently
-    if (buildLoopRunning || activeProcess || keepAlivePending) return;
-
-    const idleTime = Date.now() - lastMessageTime;
-    if (idleTime < IDLE_KEEPALIVE_THRESHOLD) return;
-
-    console.log(`[keepAlive] Idle for ${Math.round(idleTime / 60000)}min — sending keep-alive ping`);
-
-    const { keepRunning } = await sendKeepAlivePing(
-      `Bot has been idle for **${Math.round(idleTime / 60000)} minutes**.\nHosting platforms may shut down idle processes. Want to keep me running?`,
-      { urgent: false },
-    );
-
-    if (keepRunning) {
-      lastMessageTime = Date.now(); // Reset idle timer
-      console.log("[keepAlive] Jules confirmed — staying alive");
-    } else {
-      console.log("[keepAlive] Jules said sleep or no response — shutting down");
-      await performShutdown("idle-keepalive");
-    }
-  }, IDLE_CHECK_INTERVAL);
-}
-
-// ─── Graceful Shutdown ──────────────────────────────────────────────────────
+// ─── Keep-Alive Ping System (extracted to keepalive.js) ─────────────────────
 
 /**
  * Perform the actual shutdown sequence (save work, notify, exit).
@@ -1595,7 +1313,7 @@ async function performShutdown(reason = "unknown") {
   await gitPush();
 
   // Clear timers
-  if (idleKeepaliveTimer) clearInterval(idleKeepaliveTimer);
+  keepAlive.stopIdleMonitor();
 
   // Close connections
   healthServer.close();
@@ -1604,47 +1322,26 @@ async function performShutdown(reason = "unknown") {
   process.exit(0);
 }
 
-/**
- * Handle shutdown signals with keep-alive ping.
- * Gives Jules a chance to keep the process running before it dies.
- */
-async function shutdown(signal) {
-  console.log(`\n${signal} received — sending keep-alive ping before shutdown...`);
+const keepAlive = createKeepAliveSystem({
+  client,
+  channelId: CHAT_CHANNEL_ID,
+  getState: () => ({
+    buildLoopRunning,
+    activeProcess,
+    activeTaskLabel,
+    stopRequested,
+    lastMessageTime,
+    lastBuildHeartbeat,
+  }),
+  setState: (patch) => {
+    if ("stopRequested" in patch) stopRequested = patch.stopRequested;
+    if ("lastMessageTime" in patch) lastMessageTime = patch.lastMessageTime;
+    if ("lastBuildHeartbeat" in patch) lastBuildHeartbeat = patch.lastBuildHeartbeat;
+  },
+  performShutdown,
+});
 
-  if (shutdownDeferred) {
-    // Second signal — force shutdown
-    console.log("[shutdown] Second signal received — forcing shutdown");
-    await performShutdown(`${signal}-forced`);
-    return;
-  }
-
-  shutdownDeferred = true;
-
-  // Send keep-alive ping to Jules
-  const hasWork = buildLoopRunning || activeProcess;
-  const reason = hasWork
-    ? `**${signal}** received while ${buildLoopRunning ? "build loop is running" : `agent is working on: ${activeTaskLabel}`}.\nProcess will shut down unless you confirm to keep it running.`
-    : `**${signal}** received — process is about to shut down.\nSay the word to keep it running.`;
-
-  const { keepRunning } = await sendKeepAlivePing(reason, { urgent: true });
-
-  if (keepRunning) {
-    console.log("[shutdown] Jules confirmed keep-alive — cancelling shutdown");
-    shutdownDeferred = false;
-
-    // Notify Discord
-    if (CHAT_CHANNEL_ID && client.isReady()) {
-      try {
-        const ch = await client.channels.fetch(CHAT_CHANNEL_ID);
-        await ch.send("Shutdown cancelled — still here. 🫡");
-      } catch {}
-    }
-    return;
-  }
-
-  // Jules said sleep or timed out — proceed with shutdown
-  await performShutdown(signal);
-}
+const { sendKeepAlivePing, buildHeartbeatCheck, startIdleKeepAliveMonitor, shutdown } = keepAlive;
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));

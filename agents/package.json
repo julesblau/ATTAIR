@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node discord-bot.js",
-    "bot": "node discord-bot.js"
+    "bot": "node discord-bot.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
@@ -16,5 +17,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.2"
   }
 }
