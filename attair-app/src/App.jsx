@@ -531,6 +531,23 @@ const API = {
     if (!res.ok) return { history: [] };
     return await res.json();
   },
+
+  // ─── Complete the Look ────────────────────────────────────
+  async getLooks() {
+    const res = await authFetch(`${API_BASE}/api/looks`);
+    if (!res.ok) return { looks: [] };
+    return await res.json();
+  },
+  async getLookDetail(scanId) {
+    const res = await authFetch(`${API_BASE}/api/looks/${scanId}`);
+    if (!res.ok) throw new Error("Failed to fetch look");
+    return await res.json();
+  },
+  async getBuyAllLinks(scanId) {
+    const res = await authFetch(`${API_BASE}/api/looks/${scanId}/buy-all`);
+    if (!res.ok) throw new Error("Failed to get buy links");
+    return await res.json();
+  },
 };
 
 // ─── Push subscription helper ────────────────────────────────
@@ -1451,6 +1468,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
 
       {/* CTA section */}
       <div className="ob-demo-cta">
+        <img src="/logo-option-3.svg" alt="ATTAIRE" className="logo-img" style={{ marginBottom: 16 }} />
         <h1 className="ob-demo-title">
           See it. Scan it.<br /><span className="ob-demo-title-gold">Shop it.</span>
         </h1>
@@ -1692,6 +1710,414 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
   ctx.fillText("AI Fashion Scanner", 540, 1850);
 
   return canvas.toDataURL("image/png");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCAN-TO-REEL VIDEO GENERATOR — Canvas + MediaRecorder (5s, 9:16)
+// Optimized for TikTok/Reels. Pro-only feature.
+// ═══════════════════════════════════════════════════════════════
+async function generateScanReel({ imageUrl, summary, items, verdict, userName }) {
+  const W = 1080, H = 1920, FPS = 30, DURATION = 5;
+  const TOTAL_FRAMES = FPS * DURATION;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // Pre-load outfit image
+  let outfitImg = null;
+  try {
+    outfitImg = new Image();
+    outfitImg.crossOrigin = "anonymous";
+    await new Promise((resolve, reject) => {
+      outfitImg.onload = resolve;
+      outfitImg.onerror = reject;
+      outfitImg.src = imageUrl;
+    });
+  } catch { outfitImg = null; }
+
+  // Prepare items data (max 4 for the reel)
+  const reelItems = (items || []).slice(0, 4).map(it => ({
+    name: it.name || it.category || "Item",
+    brand: it.tiers?.mid?.brand || it.tiers?.budget?.brand || it.tiers?.premium?.brand || "",
+    price: it.tiers?.mid?.price || it.tiers?.budget?.price || it.tiers?.premium?.price || "",
+    category: it.category || "",
+  }));
+
+  // Color palette
+  const GOLD = "#C9A96E";
+  const GOLD_DIM = "rgba(201,169,110,0.5)";
+  const BG_DARK = "#0C0C0E";
+  const BG_CARD = "#1A1A1A";
+  const WHITE = "#FFFFFF";
+  const WHITE_60 = "rgba(255,255,255,0.6)";
+  const WHITE_35 = "rgba(255,255,255,0.35)";
+
+  // Verdict info
+  const verdictLabels = { would_wear: "Would Wear", on_the_fence: "On the Fence", not_for_me: "Not for Me" };
+  const verdictColors = { would_wear: "#4CAF50", on_the_fence: "#FFB74D", not_for_me: "#FF5252" };
+
+  // Easing functions
+  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+  const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const easeOutBack = (t) => { const c1 = 1.70158; const c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+
+  // Helper: draw rounded rect fill
+  const roundRect = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
+
+  // Helper: clamp 0–1
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+  // Helper: word-wrap text, returns array of lines
+  const wrapText = (text, maxWidth, font) => {
+    ctx.font = font;
+    const words = text.split(" ");
+    const lines = [];
+    let current = "";
+    for (const word of words) {
+      const test = current ? current + " " + word : word;
+      if (ctx.measureText(test).width > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  };
+
+  // ─── Frame renderer ────────────────────────────────────────
+  const drawFrame = (frameIndex) => {
+    const t = frameIndex / TOTAL_FRAMES; // 0 → 1 over 5 seconds
+    const frameTime = frameIndex / FPS; // seconds
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    // ─── Background ────────────────────────────────────────
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, BG_DARK);
+    grad.addColorStop(0.5, "#111114");
+    grad.addColorStop(1, BG_DARK);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Animated ambient gold glow behind photo
+    const glowPulse = 0.5 + 0.5 * Math.sin(frameTime * 1.5);
+    const glowGrad = ctx.createRadialGradient(W / 2, 600, 100, W / 2, 600, 500 + glowPulse * 80);
+    glowGrad.addColorStop(0, `rgba(201,169,110,${0.04 + glowPulse * 0.02})`);
+    glowGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle animated particles (gold dust)
+    ctx.save();
+    for (let p = 0; p < 12; p++) {
+      const px = (((p * 137.5 + frameTime * 30) % W) + W) % W;
+      const py = (((p * 89.3 + frameTime * (15 + p * 3)) % H) + H) % H;
+      const pAlpha = 0.08 + 0.06 * Math.sin(frameTime * 2 + p);
+      const pSize = 1.5 + Math.sin(frameTime + p * 0.7) * 0.8;
+      ctx.beginPath();
+      ctx.arc(px, py, pSize, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(201,169,110,${pAlpha})`;
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // ─── Phase 1 (0–1.2s): Photo reveal with scan line ────
+    const photoRevealT = clamp01(frameTime / 0.8);
+    const photoAlpha = easeOutCubic(photoRevealT);
+
+    if (outfitImg) {
+      const photoX = 80, photoY = 140, photoW = W - 160, photoH = 1000;
+      ctx.save();
+      ctx.globalAlpha = photoAlpha;
+
+      // Photo container with shadow
+      ctx.shadowColor = "rgba(0,0,0,0.5)";
+      ctx.shadowBlur = 40;
+      ctx.shadowOffsetY = 10;
+      roundRect(photoX, photoY, photoW, photoH, 28);
+      ctx.fillStyle = BG_CARD;
+      ctx.fill();
+      ctx.shadowColor = "transparent";
+
+      // Clip and draw image
+      ctx.beginPath();
+      ctx.roundRect(photoX, photoY, photoW, photoH, 28);
+      ctx.clip();
+      const scale = Math.max(photoW / outfitImg.width, photoH / outfitImg.height);
+      const sw = photoW / scale, sh = photoH / scale;
+      const sx = (outfitImg.width - sw) / 2, sy = (outfitImg.height - sh) / 2;
+      ctx.drawImage(outfitImg, sx, sy, sw, sh, photoX, photoY, photoW, photoH);
+
+      // Gradient overlay at bottom of photo for text readability
+      const photoGrad = ctx.createLinearGradient(0, photoY + photoH - 300, 0, photoY + photoH);
+      photoGrad.addColorStop(0, "rgba(0,0,0,0)");
+      photoGrad.addColorStop(1, "rgba(0,0,0,0.7)");
+      ctx.fillStyle = photoGrad;
+      ctx.fillRect(photoX, photoY + photoH - 300, photoW, 300);
+
+      ctx.restore();
+
+      // Scan line animation (0–1.5s)
+      if (frameTime < 1.5) {
+        const scanLineT = clamp01(frameTime / 1.2);
+        const scanLineY = photoY + scanLineT * photoH;
+        const scanGrad = ctx.createLinearGradient(photoX, 0, photoX + photoW, 0);
+        scanGrad.addColorStop(0, "transparent");
+        scanGrad.addColorStop(0.2, `rgba(201,169,110,${0.7 * (1 - scanLineT)})`);
+        scanGrad.addColorStop(0.8, `rgba(201,169,110,${0.7 * (1 - scanLineT)})`);
+        scanGrad.addColorStop(1, "transparent");
+        ctx.fillStyle = scanGrad;
+        ctx.fillRect(photoX, scanLineY - 1.5, photoW, 3);
+
+        // Glow below scan line
+        const scanGlow = ctx.createLinearGradient(0, scanLineY, 0, scanLineY + 40);
+        scanGlow.addColorStop(0, `rgba(201,169,110,${0.15 * (1 - scanLineT)})`);
+        scanGlow.addColorStop(1, "transparent");
+        ctx.fillStyle = scanGlow;
+        ctx.fillRect(photoX, scanLineY, photoW, 40);
+      }
+
+      // Gold border shimmer on photo
+      if (photoAlpha > 0.5) {
+        ctx.save();
+        ctx.globalAlpha = 0.3 + 0.2 * Math.sin(frameTime * 3);
+        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = 2;
+        roundRect(photoX, photoY, photoW, photoH, 28);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // ─── Phase 2 (1.0–3.0s): Items slide in staggered ─────
+    const itemBaseY = 1200;
+    reelItems.forEach((item, i) => {
+      const itemDelay = 1.0 + i * 0.35;
+      const itemT = clamp01((frameTime - itemDelay) / 0.5);
+      if (itemT <= 0) return;
+
+      const eased = easeOutBack(itemT);
+      const itemX = 80;
+      const itemY = itemBaseY + i * 110;
+      const itemW = W - 160;
+      const itemH = 96;
+      const slideX = (1 - eased) * -120;
+
+      ctx.save();
+      ctx.globalAlpha = easeOutCubic(itemT);
+      ctx.translate(slideX, 0);
+
+      // Item card background
+      roundRect(itemX, itemY, itemW, itemH, 16);
+      ctx.fillStyle = "rgba(255,255,255,0.04)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Gold accent bar on left
+      roundRect(itemX, itemY + 12, 3, itemH - 24, 2);
+      ctx.fillStyle = GOLD;
+      ctx.fill();
+
+      // Item name
+      ctx.fillStyle = WHITE;
+      ctx.font = "600 32px 'Outfit', system-ui";
+      ctx.textAlign = "left";
+      const displayName = item.name.length > 28 ? item.name.slice(0, 26) + "..." : item.name;
+      ctx.fillText(displayName, itemX + 24, itemY + 40);
+
+      // Brand + price row
+      ctx.font = "400 24px 'Outfit', system-ui";
+      ctx.fillStyle = WHITE_60;
+      const brandText = item.brand ? item.brand : item.category;
+      ctx.fillText(brandText.length > 24 ? brandText.slice(0, 22) + "..." : brandText, itemX + 24, itemY + 72);
+
+      if (item.price) {
+        const priceStr = typeof item.price === "number" ? `$${item.price}` : `${item.price}`;
+        ctx.fillStyle = GOLD;
+        ctx.font = "700 26px 'Outfit', system-ui";
+        ctx.textAlign = "right";
+        ctx.fillText(priceStr, itemX + itemW - 20, itemY + 56);
+      }
+
+      ctx.restore();
+    });
+
+    // ─── Phase 3 (2.5–4.0s): Summary + verdict ────────────
+    const summaryDelay = 2.5;
+    const summaryT = clamp01((frameTime - summaryDelay) / 0.6);
+
+    if (summaryT > 0 && summary) {
+      ctx.save();
+      ctx.globalAlpha = easeOutCubic(summaryT);
+      const summaryY = itemBaseY + reelItems.length * 110 + 30;
+
+      // Summary text
+      ctx.fillStyle = WHITE_60;
+      ctx.font = "400 28px 'Outfit', system-ui";
+      ctx.textAlign = "center";
+      const lines = wrapText(summary.substring(0, 80), W - 200, "400 28px 'Outfit', system-ui");
+      lines.forEach((line, li) => {
+        ctx.fillText(line, W / 2, summaryY + li * 38);
+      });
+
+      ctx.restore();
+    }
+
+    // Verdict badge
+    if (verdict && verdictLabels[verdict]) {
+      const verdictDelay = 3.0;
+      const verdictT = clamp01((frameTime - verdictDelay) / 0.5);
+      if (verdictT > 0) {
+        ctx.save();
+        const verdictScale = easeOutBack(verdictT);
+        const verdictY = itemBaseY + reelItems.length * 110 + (summary ? 100 : 30);
+
+        ctx.globalAlpha = easeOutCubic(verdictT);
+        ctx.textAlign = "center";
+
+        // Pill background
+        const pillText = verdictLabels[verdict];
+        ctx.font = "bold 34px 'Outfit', system-ui";
+        const pillW = ctx.measureText(pillText).width + 60;
+        const pillX = W / 2 - pillW / 2;
+        const pillH = 52;
+
+        ctx.save();
+        ctx.translate(W / 2, verdictY);
+        ctx.scale(verdictScale, verdictScale);
+        ctx.translate(-W / 2, -verdictY);
+
+        roundRect(pillX, verdictY - 34, pillW, pillH, pillH / 2);
+        ctx.fillStyle = (verdictColors[verdict] || GOLD) + "18";
+        ctx.fill();
+        ctx.strokeStyle = (verdictColors[verdict] || GOLD) + "44";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = verdictColors[verdict] || GOLD;
+        ctx.fillText(pillText, W / 2, verdictY);
+        ctx.restore();
+
+        ctx.restore();
+      }
+    }
+
+    // ─── Phase 4 (3.5–5.0s): Branding + CTA ───────────────
+    const brandDelay = 3.8;
+    const brandT = clamp01((frameTime - brandDelay) / 0.6);
+
+    if (brandT > 0) {
+      ctx.save();
+      ctx.globalAlpha = easeOutCubic(brandT);
+      ctx.textAlign = "center";
+
+      // ATTAIR logo
+      ctx.fillStyle = GOLD;
+      ctx.font = "bold 52px 'Outfit', system-ui";
+      ctx.fillText("ATTAIR", W / 2, H - 160);
+
+      // Tagline
+      ctx.fillStyle = GOLD_DIM;
+      ctx.font = "400 24px 'Outfit', system-ui";
+      ctx.fillText("AI Fashion Scanner", W / 2, H - 110);
+
+      // User attribution
+      if (userName) {
+        ctx.fillStyle = WHITE_35;
+        ctx.font = "400 22px 'Outfit', system-ui";
+        ctx.fillText(`Scanned by @${userName}`, W / 2, H - 70);
+      }
+
+      ctx.restore();
+    }
+
+    // ─── Persistent: top "ATTAIR" watermark ────────────────
+    if (frameTime > 0.5) {
+      const wmT = clamp01((frameTime - 0.5) / 0.4);
+      ctx.save();
+      ctx.globalAlpha = 0.35 * easeOutCubic(wmT);
+      ctx.fillStyle = GOLD;
+      ctx.font = "bold 28px 'Outfit', system-ui";
+      ctx.textAlign = "left";
+      ctx.fillText("ATTAIR", 80, 100);
+      ctx.restore();
+    }
+
+    // ─── Persistent: item count badge (top right) ──────────
+    if (frameTime > 0.8) {
+      const badgeT = clamp01((frameTime - 0.8) / 0.3);
+      ctx.save();
+      ctx.globalAlpha = easeOutCubic(badgeT);
+      const countText = `${items?.length || 0} items`;
+      ctx.font = "600 22px 'Outfit', system-ui";
+      const countW = ctx.measureText(countText).width + 32;
+      roundRect(W - 80 - countW, 80, countW, 36, 18);
+      ctx.fillStyle = "rgba(201,169,110,0.12)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(201,169,110,0.25)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = GOLD;
+      ctx.textAlign = "center";
+      ctx.fillText(countText, W - 80 - countW / 2, 104);
+      ctx.restore();
+    }
+
+    // ─── Outro fade (4.5–5.0s) ─────────────────────────────
+    if (frameTime > 4.6) {
+      const fadeT = clamp01((frameTime - 4.6) / 0.4);
+      ctx.fillStyle = `rgba(12,12,14,${fadeT * 0.3})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  };
+
+  // ─── Record video via MediaRecorder ────────────────────────
+  return new Promise((resolve, reject) => {
+    const stream = canvas.captureStream(FPS);
+    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+      ? "video/webm;codecs=vp9"
+      : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+        ? "video/webm;codecs=vp8"
+        : "video/webm";
+
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: mimeType });
+      resolve({ blob, url: URL.createObjectURL(blob), mimeType });
+    };
+
+    recorder.onerror = (e) => reject(e.error || new Error("Recording failed"));
+
+    recorder.start();
+
+    let frame = 0;
+    const renderLoop = () => {
+      if (frame >= TOTAL_FRAMES) {
+        recorder.stop();
+        return;
+      }
+      drawFrame(frame);
+      frame++;
+      // Use requestAnimationFrame for smooth rendering, but pace to FPS
+      if (frame < TOTAL_FRAMES) {
+        setTimeout(() => requestAnimationFrame(renderLoop), 1000 / FPS);
+      } else {
+        // Last frame rendered, stop
+        setTimeout(() => recorder.stop(), 100);
+      }
+    };
+
+    requestAnimationFrame(renderLoop);
+  });
 }
 
 // ─── Style DNA color name → hex mapping ─────────────────────
@@ -2182,6 +2608,13 @@ export default function App() {
   const [sharePublicToast, setSharePublicToast] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
 
+  // ─── Scan-to-Reel Video Export (Pro-only) ──────────────────
+  const [reelGenerating, setReelGenerating] = useState(false);
+  const [reelProgress, setReelProgress] = useState(0); // 0–100
+  const [reelResult, setReelResult] = useState(null); // { blob, url, mimeType } | null
+  const [showReelPreview, setShowReelPreview] = useState(false);
+  const reelVideoRef = useRef(null);
+
   // ─── Post-first-scan preference sheet ──────────────────────
   const [showPrefSheet, setShowPrefSheet] = useState(false);
   const [prefSheetBudgetMin, setPrefSheetBudgetMin] = useState(50);
@@ -2197,6 +2630,9 @@ export default function App() {
   const [showStyleDna, setShowStyleDna] = useState(false);
   const [styleDnaShareLoading, setStyleDnaShareLoading] = useState(false);
   const [styleDnaSlide, setStyleDnaSlide] = useState(0);
+
+  // ─── Style Match tooltip ──────────────────────────────────
+  const [styleMatchTooltip, setStyleMatchTooltip] = useState(null); // null | { key: string }
 
   // ─── Price Drop Alerts ────────────────────────────────────
   const [priceAlertCount, setPriceAlertCount] = useState(0);
@@ -2223,6 +2659,15 @@ export default function App() {
   const [likesBudgetExpanded, setLikesBudgetExpanded] = useState(false); // budget tracker toggle
   const [flippedScans, setFlippedScans] = useState(new Set()); // which scan cards are flipped
   const [scanSearchQuery, setScanSearchQuery] = useState(""); // search within scan history
+
+  // ─── Complete the Look ──────────────────────────────────────
+  const [looks, setLooks] = useState([]);                          // grouped looks from backend
+  const [looksLoading, setLooksLoading] = useState(false);
+  const [looksView, setLooksView] = useState("grouped");           // "grouped" | "flat"
+  const [expandedLook, setExpandedLook] = useState(null);          // scan_id of expanded look
+  const [lookDetail, setLookDetail] = useState(null);              // full detail for expanded look
+  const [lookDetailLoading, setLookDetailLoading] = useState(false);
+  const [buyAllLoading, setBuyAllLoading] = useState(null);        // scan_id being processed
 
   // ─── Hanger Test ────────────────────────────────────────────
   const [hangerOutfit, setHangerOutfit] = useState(null);         // today's outfit
@@ -2305,13 +2750,17 @@ export default function App() {
     setHangerVoting(false);
   }, [hangerOutfit, hangerVoting, hangerUserVote]);
 
-  // Load scan history and price alerts when Saved tab is opened
+  // Load scan history, price alerts, and looks when Saved tab is opened
   useEffect(() => {
     if (tab === "likes" && authed && history.length === 0) {
       API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
     }
     if (tab === "likes" && authed && isPro && priceAlerts.length === 0) {
       API.priceAlerts().then(d => setPriceAlerts(d.data || [])).catch(() => {});
+    }
+    if (tab === "likes" && authed && looks.length === 0) {
+      setLooksLoading(true);
+      API.getLooks().then(d => { setLooks(d.looks || []); setLooksLoading(false); }).catch(() => setLooksLoading(false));
     }
   }, [tab, authed]);
 
@@ -3319,6 +3768,11 @@ export default function App() {
     setRefineLoadings(l => ({ ...l, [itemIdx]: false }));
   };
 
+  // ─── Refresh looks data (debounced) ────────────────────────
+  const refreshLooks = useCallback(() => {
+    API.getLooks().then(d => setLooks(d.looks || [])).catch(() => {});
+  }, []);
+
   // ─── Save with backend persistence ────────────────────────
   const toggleSave = async (item) => {
     if (isGuest) { setSignupPrompt("save"); return; }
@@ -3327,6 +3781,7 @@ export default function App() {
       await API.deleteSaved(existing.id).catch(() => {});
       setSaved(s => s.filter(i => i.id !== existing.id));
       refreshStatus();
+      refreshLooks();
       track("item_unsaved", { item_name: item.name }, scanId, "scan");
     } else {
       // Check save limit for free users
@@ -3339,6 +3794,7 @@ export default function App() {
         const res = await API.saveItem(scanId, item);
         setSaved(s => [...s, { id: res.id, item_data: item, created_at: new Date().toISOString() }]);
         refreshStatus();
+        refreshLooks();
         track("item_saved", { item_name: item.name }, scanId, "scan");
       } catch (err) {
         if (err.message.includes("limit")) setUpgradeModal("save_limit");
@@ -3356,6 +3812,7 @@ export default function App() {
       await API.deleteSaved(existing.id).catch(() => {});
       setSaved(s => s.filter(i => i.id !== existing.id));
       refreshStatus();
+      refreshLooks();
     } else {
       if (isFree && (userStatus?.saved_count || 0) >= (userStatus?.saved_limit || 20)) {
         setUpgradeModal("save_limit");
@@ -3365,6 +3822,7 @@ export default function App() {
         const res = await API.saveItem(sid, item);
         setSaved(s => [...s, { id: res.id, item_data: item, scan_id: sid, created_at: new Date().toISOString() }]);
         refreshStatus();
+        refreshLooks();
         track("item_saved", { item_name: item.name }, sid, "scan");
       } catch (err) {
         if (err.message?.includes("limit")) setUpgradeModal("save_limit");
@@ -5348,8 +5806,37 @@ export default function App() {
                                     return (
                                       <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
                                         {/* Style Match Score pill */}
-                                        {p.style_match != null && p.style_match >= 60 && (
-                                          <div className="style-match-pill">{p.style_match}% your style</div>
+                                        {p.style_match != null && p.style_match >= 50 ? (
+                                          <div
+                                            className={`style-match-pill ${p.style_match >= 80 ? "style-match-green" : "style-match-yellow"}`}
+                                            onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
+                                            style={{ cursor: "pointer" }}
+                                          >
+                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                            {p.style_match}% your style
+                                            {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
+                                              <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
+                                                Based on your Style DNA profile
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : p.style_match === null && j === 0 && (
+                                          <div
+                                            className="style-match-pill style-match-new"
+                                            onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
+                                            style={{ cursor: "pointer" }}
+                                          >
+                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                                            New to you
+                                            {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
+                                              <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
+                                                <span>Scan more outfits to unlock match scores</span>
+                                                <div onClick={e => { e.stopPropagation(); setTab("profile"); setStyleMatchTooltip(null); }} style={{ marginTop: 4, fontSize: 9, fontWeight: 700, color: "var(--accent)", cursor: "pointer", letterSpacing: 0.3 }}>
+                                                  Build your Style DNA &rarr;
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
                                         )}
                                         {/* Dupe Alert pill — tappable to open dupe finder */}
                                         {dupeInfo && (
@@ -5689,73 +6176,369 @@ export default function App() {
                   </div>
                 )}
 
-                {/* ── My Outfits: saved items grouped by scan ── */}
-                {(() => {
-                  // Group saved items by scan_id
-                  const outfitMap = new Map();
-                  saved.forEach(s => {
-                    if (!s.scan_id) return;
-                    if (!outfitMap.has(s.scan_id)) outfitMap.set(s.scan_id, []);
-                    outfitMap.get(s.scan_id).push(s);
-                  });
-                  // Match with scan history for item counts
-                  const outfits = [];
-                  outfitMap.forEach((savedItems, scanId) => {
-                    const scan = history.find(h => h.id === scanId);
-                    const totalItems = scan?.items?.length || savedItems.length;
-                    outfits.push({
-                      scanId,
-                      scanName: scan?.scan_name || scan?.summary || "Outfit",
-                      scanImg: scan?.image_url || scan?.image_thumbnail,
-                      savedItems,
-                      totalItems,
-                      progress: Math.min(1, savedItems.length / Math.max(1, totalItems)),
-                    });
-                  });
-                  outfits.sort((a, b) => b.savedItems.length - a.savedItems.length);
+                {/* ── View toggle: Grouped (Complete the Look) vs Flat ── */}
+                {(looks.length > 0 || saved.length > 0) && (
+                  <div style={{ padding: "8px 16px 0", display: "flex", alignItems: "center", gap: 8 }}>
+                    <button
+                      className={`scan-vis-chip${looksView === "grouped" ? " active" : ""}`}
+                      onClick={() => setLooksView("grouped")}
+                      style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                      Outfits
+                    </button>
+                    <button
+                      className={`scan-vis-chip${looksView === "flat" ? " active" : ""}`}
+                      onClick={() => setLooksView("flat")}
+                      style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+                      All Items
+                    </button>
+                  </div>
+                )}
 
-                  if (outfits.length === 0) return null;
+                {/* ── Complete the Look: grouped view ── */}
+                {looksView === "grouped" && (() => {
+                  // Use backend looks data, fallback to client-side grouping
+                  const looksData = looks.length > 0 ? looks : (() => {
+                    const outfitMap = new Map();
+                    saved.forEach(s => {
+                      if (!s.scan_id) return;
+                      if (!outfitMap.has(s.scan_id)) outfitMap.set(s.scan_id, []);
+                      outfitMap.get(s.scan_id).push(s);
+                    });
+                    const result = [];
+                    outfitMap.forEach((items, scanId) => {
+                      const scan = history.find(h => h.id === scanId);
+                      const totalItems = scan?.items?.length || items.length;
+                      result.push({
+                        scan_id: scanId,
+                        scan_name: scan?.scan_name || scan?.summary || "Outfit",
+                        scan_thumbnail: scan?.image_url || scan?.image_thumbnail,
+                        scan_image: scan?.image_url || scan?.image_thumbnail,
+                        total_items: totalItems,
+                        saved_count: items.length,
+                        progress: Math.min(1, items.length / Math.max(1, totalItems)),
+                        total_price_estimate: null,
+                        saved_items: items.map(i => ({ id: i.id, item_data: i.item_data, tier_product: i.tier_product, created_at: i.created_at })),
+                        scan_items: (scan?.items || []).map((si, idx) => ({ ...si, index: idx, is_saved: items.some(sv => (sv.item_data?.name || "").toLowerCase() === (si.name || "").toLowerCase()) })),
+                      });
+                    });
+                    result.sort((a, b) => b.saved_count - a.saved_count);
+                    return result;
+                  })();
+
+                  if (looksLoading) {
+                    return (
+                      <div style={{ padding: "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                        <div className="look-skeleton-card" />
+                        <div className="look-skeleton-card" />
+                      </div>
+                    );
+                  }
+
+                  if (looksData.length === 0) {
+                    return (
+                      <div style={{ padding: "40px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}>
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>No outfits saved yet</div>
+                        <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 260 }}>
+                          Save items from your scans to build complete outfits
+                        </div>
+                        <button className="btn-primary" style={{ marginTop: 8, padding: "10px 24px", fontSize: 13, borderRadius: 100 }} onClick={() => setTab("scan")}>
+                          Scan an Outfit
+                        </button>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div style={{ padding: "12px 0 0" }}>
-                      <div style={{ padding: "0 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase" }}>My Outfits</span>
-                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{outfits.length} outfit{outfits.length !== 1 ? "s" : ""}</span>
+                      <div style={{ padding: "0 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase" }}>Complete the Look</span>
+                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{looksData.length} outfit{looksData.length !== 1 ? "s" : ""}</span>
                       </div>
-                      <div className="scroll-x" style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 16px 12px", scrollSnapType: "x mandatory", scrollbarWidth: "none" }}>
-                        {outfits.map(o => {
-                          const pct = Math.round(o.progress * 100);
-                          const radius = 20, stroke = 3, circumference = 2 * Math.PI * radius;
-                          const dashOffset = circumference * (1 - o.progress);
-                          const allUrls = o.savedItems.map(s => (s.item_data || s).url || (s.tier_product || {}).url).filter(Boolean);
-                          return (
-                            <div key={o.scanId} className="card-press" style={{ flexShrink: 0, width: 160, scrollSnapAlign: "start", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
-                              <div style={{ position: "relative", height: 100, background: "var(--bg-input)" }}>
-                                {o.scanImg && <img src={o.scanImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
-                                {/* Progress ring overlay */}
-                                <div style={{ position: "absolute", bottom: -18, right: 8, width: 46, height: 46, background: "var(--bg-card)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--bg-card)" }}>
-                                  <svg width="46" height="46" viewBox="0 0 46 46">
-                                    <circle cx="23" cy="23" r={radius} fill="none" stroke="var(--border)" strokeWidth={stroke} />
-                                    <circle cx="23" cy="23" r={radius} fill="none" stroke={pct === 100 ? "#5AC8A0" : "var(--accent)"} strokeWidth={stroke} strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" transform="rotate(-90 23 23)" style={{ transition: "stroke-dashoffset .4s ease" }} />
-                                  </svg>
-                                  <span style={{ position: "absolute", fontSize: 10, fontWeight: 700, color: pct === 100 ? "#5AC8A0" : "var(--accent)" }}>{pct}%</span>
-                                </div>
-                              </div>
-                              <div style={{ padding: "22px 10px 10px" }}>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.scanName}</div>
-                                <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 2 }}>{o.savedItems.length}/{o.totalItems} items saved</div>
-                                {allUrls.length > 0 && (
-                                  <button onClick={(e) => { e.stopPropagation(); allUrls.forEach(url => window.open(url, "_blank")); track("buy_all_clicked", { scan_id: o.scanId, count: allUrls.length }); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", background: "var(--accent)", border: "none", borderRadius: 8, fontSize: 11, fontWeight: 700, color: "var(--text-inverse)", cursor: "pointer", fontFamily: "var(--font-sans)" }}>
-                                    Buy All ({allUrls.length})
-                                  </button>
+
+                      {looksData.map(look => {
+                        const pct = Math.round(look.progress * 100);
+                        const isComplete = pct === 100;
+                        const isExpanded = expandedLook === look.scan_id;
+                        const unsavedItems = (look.scan_items || []).filter(si => !si.is_saved);
+                        const savedItemsList = look.saved_items || [];
+                        const allUrls = savedItemsList.map(s => (s.item_data || s)?.url || (s.tier_product || {})?.url).filter(Boolean);
+
+                        const handleExpand = async () => {
+                          if (isExpanded) {
+                            setExpandedLook(null);
+                            setLookDetail(null);
+                            return;
+                          }
+                          setExpandedLook(look.scan_id);
+                          if (!look.scan_items || look.scan_items.length === 0) {
+                            setLookDetailLoading(true);
+                            try {
+                              const detail = await API.getLookDetail(look.scan_id);
+                              setLookDetail(detail);
+                            } catch {}
+                            setLookDetailLoading(false);
+                          }
+                        };
+
+                        const handleBuyAll = async (e) => {
+                          e.stopPropagation();
+                          setBuyAllLoading(look.scan_id);
+                          try {
+                            const data = await API.getBuyAllLinks(look.scan_id);
+                            if (data.links && data.links.length > 0) {
+                              data.links.forEach((link, i) => {
+                                setTimeout(() => {
+                                  const affiliateUrl = API.affiliateUrl(crypto.randomUUID(), link.url, look.scan_id, 0, "saved", link.retailer || "");
+                                  window.open(affiliateUrl, "_blank");
+                                }, i * 300);
+                              });
+                              track("buy_all_clicked", { scan_id: look.scan_id, count: data.links.length, total_price: data.total_price });
+                            }
+                          } catch {}
+                          setBuyAllLoading(null);
+                        };
+
+                        const formatPrice = (p) => {
+                          if (!p) return null;
+                          const n = typeof p === "string" ? parseFloat(p.replace(/[^0-9.]/g, "")) : p;
+                          return n && isFinite(n) ? `$${n.toFixed(2)}` : null;
+                        };
+
+                        // Use detail data if available for expanded view
+                        const detailItems = isExpanded && lookDetail?.scan_id === look.scan_id ? lookDetail.items : look.scan_items;
+                        const detailUnsaved = (detailItems || []).filter(si => !si.is_saved);
+
+                        return (
+                          <div key={look.scan_id} className={`look-card${isExpanded ? " look-card-expanded" : ""}`} style={{ margin: "0 16px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", transition: "all .3s ease" }}>
+                            {/* Header with scan thumbnail */}
+                            <div style={{ display: "flex", gap: 12, padding: 12, cursor: "pointer" }} onClick={handleExpand}>
+                              <div style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "var(--bg-input)" }}>
+                                {look.scan_thumbnail ? (
+                                  <img src={look.scan_thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                                ) : (
+                                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.2 }}><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
+                                  </div>
                                 )}
                               </div>
+                              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{look.scan_name}</div>
+                                <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 2 }}>
+                                  {look.saved_count} of {look.total_items} items saved
+                                </div>
+                                {/* Progress bar */}
+                                <div style={{ marginTop: 6, height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
+                                  <div style={{ height: "100%", borderRadius: 2, background: isComplete ? "#5AC8A0" : "var(--accent)", width: `${pct}%`, transition: "width .4s ease" }} />
+                                </div>
+                              </div>
+                              {/* Progress percentage */}
+                              <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: isComplete ? "#5AC8A0" : "var(--accent)" }}>{pct}%</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" style={{ marginLeft: 4, transform: isExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform .3s ease" }}>
+                                  <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                              </div>
                             </div>
-                          );
-                        })}
-                      </div>
+
+                            {/* Saved items horizontal scroll */}
+                            {savedItemsList.length > 0 && (
+                              <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 12px 12px", scrollSnapType: "x mandatory", scrollbarWidth: "none" }}>
+                                {savedItemsList.map(si => {
+                                  const item = si.item_data || si;
+                                  const product = si.tier_product || {};
+                                  const img = product.image_url || item.image_url || item.thumbnail;
+                                  const name = item.name || product.name || "Item";
+                                  const price = formatPrice(product.price || item.price || item.estimated_price);
+                                  const url = product.url || item.url;
+                                  return (
+                                    <div key={si.id} className="look-item-card" style={{ flexShrink: 0, width: 100, scrollSnapAlign: "start" }}>
+                                      <div style={{ width: 100, height: 100, borderRadius: 10, overflow: "hidden", background: "var(--bg-input)", position: "relative" }}>
+                                        {img ? (
+                                          <img src={img} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                                        ) : (
+                                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--text-tertiary)" }}>
+                                            {item.category || "Item"}
+                                          </div>
+                                        )}
+                                        {/* Saved badge */}
+                                        <div style={{ position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: "50%", background: "rgba(201,169,110,.9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                        </div>
+                                        {url && (
+                                          <a href={API.affiliateUrl(crypto.randomUUID(), url, look.scan_id, 0, "saved", "")} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ position: "absolute", inset: 0 }} aria-label={`Shop ${name}`} />
+                                        )}
+                                      </div>
+                                      <div style={{ padding: "4px 2px 0", overflow: "hidden" }}>
+                                        <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                                        {price && <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 600, marginTop: 1 }}>{price}</div>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Expanded: unsaved items (Complete the Look CTA) */}
+                            {isExpanded && (
+                              <div className="look-expand-section" style={{ borderTop: "1px solid var(--border)", padding: 12, animation: "lookExpandIn .3s ease" }}>
+                                {lookDetailLoading ? (
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                                    <div className="look-spinner" />
+                                  </div>
+                                ) : detailUnsaved.length > 0 ? (
+                                  <>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                                      Complete your look ({detailUnsaved.length} remaining)
+                                    </div>
+                                    <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
+                                      {detailUnsaved.map((ui, idx) => {
+                                        const name = ui.name || ui.category || "Item";
+                                        const img = ui.image_url || ui.thumbnail;
+                                        const price = formatPrice(ui.estimated_price || ui.price);
+                                        return (
+                                          <div key={idx} style={{ flexShrink: 0, width: 90, opacity: 0.7 }}>
+                                            <div style={{ width: 90, height: 90, borderRadius: 10, overflow: "hidden", background: "var(--bg-input)", border: "1px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                                              {img ? (
+                                                <img src={img} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} loading="lazy" />
+                                              ) : (
+                                                <div style={{ fontSize: 9, color: "var(--text-tertiary)", textAlign: "center", padding: 4 }}>{name}</div>
+                                              )}
+                                              {/* Plus icon */}
+                                              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(201,169,110,.85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                                </div>
+                                              </div>
+                                            </div>
+                                            <div style={{ padding: "3px 2px 0", overflow: "hidden" }}>
+                                              <div style={{ fontSize: 9, fontWeight: 600, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                                              {price && <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginTop: 1 }}>{price}</div>}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    <button
+                                      className="btn-primary"
+                                      style={{ width: "100%", marginTop: 10, padding: "10px 0", fontSize: 13, fontWeight: 600, borderRadius: 10 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // Navigate to scan results to save remaining items
+                                        const scan = history.find(h => h.id === look.scan_id);
+                                        if (scan) {
+                                          const hsItems = scan.items || [];
+                                          setResults({ gender: scan.detected_gender || "male", summary: scan.summary || "", items: hsItems.map(it => ({ ...it, status: scan.tiers ? "verified" : "identified", tiers: null })) });
+                                          if (scan.tiers && Array.isArray(scan.tiers)) {
+                                            setResults(prev => prev ? { ...prev, items: prev.items.map((item, idx) => { const sr = scan.tiers.find(t2 => t2.item_index === idx); return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev);
+                                          }
+                                          setImg(scan.image_url || scan.image_thumbnail || null);
+                                          setScanId(scan.id); setSelIdx(0); setPickedItems(new Set((scan.tiers || []).map(t2 => t2.item_index))); setPhase("done"); setTab("scan");
+                                        }
+                                        track("complete_look_clicked", { scan_id: look.scan_id, remaining: detailUnsaved.length });
+                                      }}
+                                    >
+                                      Complete the Look
+                                    </button>
+                                  </>
+                                ) : (
+                                  <div style={{ textAlign: "center", padding: "8px 0", fontSize: 13, color: "#5AC8A0", fontWeight: 600 }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5AC8A0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: -3, marginRight: 6 }}><polyline points="20 6 9 17 4 12"/></svg>
+                                    Look complete!
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Buy All + Price footer */}
+                            {allUrls.length > 0 && (
+                              <div style={{ padding: "0 12px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                                <button
+                                  className="look-buy-all-btn"
+                                  onClick={handleBuyAll}
+                                  disabled={buyAllLoading === look.scan_id}
+                                  style={{ flex: 1, padding: "10px 0", background: "var(--accent)", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700, color: "var(--text-inverse)", cursor: "pointer", fontFamily: "var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: buyAllLoading === look.scan_id ? 0.6 : 1, transition: "opacity .2s" }}
+                                >
+                                  {buyAllLoading === look.scan_id ? (
+                                    <div className="look-spinner-sm" />
+                                  ) : (
+                                    <>
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                                      Buy All ({allUrls.length})
+                                    </>
+                                  )}
+                                </button>
+                                {look.total_price_estimate && (
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", flexShrink: 0 }}>
+                                    ~${look.total_price_estimate.toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })()}
+
+                {/* ── Flat list view: all saved items ── */}
+                {looksView === "flat" && saved.length > 0 && (
+                  <div style={{ padding: "12px 16px 0" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
+                      {saved.map(si => {
+                        const item = si.item_data || si;
+                        const product = si.tier_product || {};
+                        const img = product.image_url || item.image_url || item.thumbnail;
+                        const name = item.name || product.name || "Item";
+                        const price = (() => { const p = product.price || item.price || item.estimated_price; if (!p) return null; const n = typeof p === "string" ? parseFloat(p.replace(/[^0-9.]/g, "")) : p; return n && isFinite(n) ? `$${n.toFixed(2)}` : null; })();
+                        const url = product.url || item.url;
+                        return (
+                          <div key={si.id} className="look-item-card" style={{ position: "relative" }}>
+                            <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, overflow: "hidden", background: "var(--bg-input)", position: "relative" }}>
+                              {img ? (
+                                <img src={img} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                              ) : (
+                                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--text-tertiary)" }}>
+                                  {item.category || "Item"}
+                                </div>
+                              )}
+                              {url && (
+                                <a href={API.affiliateUrl(crypto.randomUUID(), url, si.scan_id || "", 0, "saved", "")} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ position: "absolute", inset: 0 }} aria-label={`Shop ${name}`} />
+                              )}
+                              {/* Delete button */}
+                              <button onClick={async (e) => { e.preventDefault(); e.stopPropagation(); await API.deleteSaved(si.id).catch(() => {}); setSaved(s => s.filter(i => i.id !== si.id)); refreshStatus(); }} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,.6)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }} aria-label="Remove saved item">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                              </button>
+                            </div>
+                            <div style={{ padding: "4px 2px 0", overflow: "hidden" }}>
+                              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                              {price && <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 600, marginTop: 1 }}>{price}</div>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {looksView === "flat" && saved.length === 0 && (
+                  <div style={{ padding: "40px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}>
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>No saved items yet</div>
+                    <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 260 }}>
+                      Heart items from your scans to save them here
+                    </div>
+                  </div>
+                )}
 
                 {/* Content */}
                 {filteredScans.length === 0 ? (
@@ -7276,6 +8059,59 @@ export default function App() {
                 </div>
                 <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600, fontFamily: "var(--font-sans)" }}>{shareCardLoading ? "Creating..." : "Share Card"}</span>
               </button>
+
+              {/* Create Reel (Pro-only) */}
+              <button disabled={reelGenerating} onClick={async () => {
+                if (!isPro) {
+                  setShowShareSheet(false);
+                  setUpgradeModal("general");
+                  return;
+                }
+                setReelGenerating(true);
+                setReelProgress(0);
+                track("reel_started", {}, scanId, "scan");
+                try {
+                  const userName = authName || (authEmail ? authEmail.split("@")[0] : "");
+                  const reelData = await generateScanReel({
+                    imageUrl: img,
+                    summary: results?.summary,
+                    items: results?.items?.filter((_, idx) => pickedItems.has(idx)),
+                    verdict: scanVerdicts[scanId],
+                    userName,
+                  });
+                  setReelResult(reelData);
+                  setShowShareSheet(false);
+                  setShowReelPreview(true);
+                  track("reel_generated", { size: reelData.blob.size }, scanId, "scan");
+                } catch (e) {
+                  console.error("Reel generation failed:", e);
+                }
+                setReelGenerating(false);
+                setReelProgress(100);
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", opacity: reelGenerating ? 0.5 : 1, position: "relative" }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: 14, position: "relative", overflow: "hidden",
+                  background: isPro ? "linear-gradient(135deg, #C9A96E, #E8D5A3)" : "var(--bg-input)",
+                  border: isPro ? "none" : "1px solid var(--border)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {reelGenerating ? (
+                    <div style={{ width: 22, height: 22, border: "2.5px solid rgba(0,0,0,0.2)", borderTopColor: "#000", borderRadius: "50%", animation: "spin .7s linear infinite" }} />
+                  ) : (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isPro ? "#000" : "var(--text-secondary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  )}
+                </div>
+                <span style={{ fontSize: 11, color: isPro ? "var(--accent)" : "var(--text-tertiary)", fontWeight: 600, fontFamily: "var(--font-sans)" }}>
+                  {reelGenerating ? "Creating..." : "Create Reel"}
+                </span>
+                {!isPro && (
+                  <span style={{
+                    position: "absolute", top: -2, right: -2, fontSize: 8, fontWeight: 800,
+                    background: "var(--accent)", color: "#000", padding: "2px 5px", borderRadius: 6,
+                    letterSpacing: 0.5, fontFamily: "var(--font-sans)",
+                  }}>PRO</span>
+                )}
+              </button>
             </div>
 
             {/* Link preview */}
@@ -7284,6 +8120,81 @@ export default function App() {
               <div style={{ flex: 1, fontSize: 12, color: "var(--text-tertiary)", fontFamily: "var(--font-sans)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {window.location.origin}/scan/{scanId?.slice(0, 8)}...
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Scan-to-Reel Video Preview Modal ═══════════════════ */}
+      {showReelPreview && reelResult && (
+        <div className="reel-preview-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setShowReelPreview(false); URL.revokeObjectURL(reelResult.url); setReelResult(null); } }}>
+          <div className="reel-preview-container">
+            {/* Header */}
+            <div className="reel-preview-header">
+              <button onClick={() => { setShowReelPreview(false); URL.revokeObjectURL(reelResult.url); setReelResult(null); }}
+                className="reel-preview-close">&times;</button>
+              <div className="reel-preview-title">Your Reel</div>
+              <div style={{ width: 36 }} />
+            </div>
+
+            {/* Video player */}
+            <div className="reel-preview-video-wrap">
+              <video
+                ref={reelVideoRef}
+                src={reelResult.url}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="reel-preview-video"
+              />
+              {/* TikTok/Reels format badge */}
+              <div className="reel-format-badge">9:16</div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="reel-preview-actions">
+              {/* Download */}
+              <button className="reel-action-btn reel-action-download" onClick={() => {
+                const a = document.createElement("a");
+                a.href = reelResult.url;
+                a.download = `attair-reel-${scanId?.slice(0, 8) || "scan"}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                track("reel_downloaded", {}, scanId, "scan");
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Save Video
+              </button>
+
+              {/* Share via native share API */}
+              <button className="reel-action-btn reel-action-share" onClick={async () => {
+                try {
+                  const file = new File([reelResult.blob], `attair-reel.webm`, { type: reelResult.mimeType });
+                  if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                    await navigator.share({ title: "My ATTAIR Outfit Reel", files: [file] });
+                    track("reel_shared", { method: "native" }, scanId, "scan");
+                  } else {
+                    // Fallback: download
+                    const a = document.createElement("a");
+                    a.href = reelResult.url;
+                    a.download = `attair-reel-${scanId?.slice(0, 8) || "scan"}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    track("reel_shared", { method: "download_fallback" }, scanId, "scan");
+                  }
+                } catch (e) { console.error("Reel share failed:", e); }
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                Share
+              </button>
+            </div>
+
+            {/* Tip text */}
+            <div className="reel-preview-tip">
+              Optimized for TikTok, Reels & Shorts
             </div>
           </div>
         </div>
