@@ -4018,3 +4018,298 @@
   letter-spacing: 0.3px;
   animation: reelActionsIn 0.4s ease 0.5s both;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   Style Twins — Discover Tab
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Loading spinner */
+.style-twins-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+}
+
+.style-twins-loading-orbit {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.style-twins-loading-ring {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--accent);
+  animation: styleTwinSpin 1.2s linear infinite;
+}
+
+@keyframes styleTwinSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Empty state */
+.style-twins-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 60px 24px;
+}
+
+.style-twins-empty-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(201, 169, 110, 0.08);
+  border: 1px solid rgba(201, 169, 110, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Featured top twin card */
+.style-twin-featured {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.style-twin-featured-glow {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(201, 169, 110, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+@keyframes styleTwinCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Avatar styles */
+.style-twin-avatar-lg {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(201, 169, 110, 0.25), rgba(201, 169, 110, 0.05));
+  border: 2px solid rgba(201, 169, 110, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 18;
+  color: var(--accent);
+  letter-spacing: 1px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.style-twin-avatar-sm {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(201, 169, 110, 0.2), rgba(201, 169, 110, 0.05));
+  border: 1.5px solid rgba(201, 169, 110, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Match percentage badge */
+.style-twin-match-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.style-twin-match-high {
+  background: rgba(201, 169, 110, 0.18);
+  color: var(--accent);
+  border: 1px solid rgba(201, 169, 110, 0.35);
+}
+
+.style-twin-match-mid {
+  background: rgba(120, 180, 120, 0.12);
+  color: #78b478;
+  border: 1px solid rgba(120, 180, 120, 0.25);
+}
+
+.style-twin-match-low {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+/* Axis and trait chips */
+.style-twin-axis-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  background: rgba(201, 169, 110, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(201, 169, 110, 0.2);
+  letter-spacing: 0.2px;
+}
+
+.style-twin-trait-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-sans);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  letter-spacing: 0.2px;
+}
+
+/* Color palette dots */
+.style-twin-color-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Shared saves indicator */
+.style-twin-shared-saves {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(201, 169, 110, 0.06);
+  border-radius: 10px;
+  border: 1px solid rgba(201, 169, 110, 0.12);
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* Grid for remaining twins */
+.style-twins-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.style-twin-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.style-twin-card:nth-child(1) { animation-delay: 0.05s; }
+.style-twin-card:nth-child(2) { animation-delay: 0.1s; }
+.style-twin-card:nth-child(3) { animation-delay: 0.15s; }
+.style-twin-card:nth-child(4) { animation-delay: 0.2s; }
+.style-twin-card:nth-child(5) { animation-delay: 0.25s; }
+.style-twin-card:nth-child(6) { animation-delay: 0.3s; }
+.style-twin-card:nth-child(7) { animation-delay: 0.35s; }
+.style-twin-card:nth-child(8) { animation-delay: 0.4s; }
+.style-twin-card:nth-child(9) { animation-delay: 0.45s; }
+
+.style-twin-card:active {
+  transform: scale(0.98);
+}
+
+/* Save banner toast */
+.style-twin-save-toast {
+  position: fixed;
+  top: 56px;
+  left: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, rgba(201, 169, 110, 0.14), rgba(201, 169, 110, 0.04));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(201, 169, 110, 0.3);
+  border-radius: 16px;
+  padding: 14px 16px;
+  z-index: 9998;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+/* Light mode overrides */
+[data-theme='light'] .style-twin-featured {
+  border-color: rgba(201, 169, 110, 0.2);
+}
+
+[data-theme='light'] .style-twin-card {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .style-twin-color-dot {
+  color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .style-twin-save-toast {
+  background: linear-gradient(135deg, rgba(201, 169, 110, 0.12), rgba(255, 255, 255, 0.9));
+  border-color: rgba(201, 169, 110, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .style-twins-loading-ring { animation: none; }
+  .style-twin-card,
+  .style-twin-featured { animation: none; }
+}

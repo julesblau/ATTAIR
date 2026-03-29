@@ -28,6 +28,7 @@ import challengesRouter from "./routes/challenges.js";
 import dupesRouter from "./routes/dupes.js";
 import hangerTestRouter from "./routes/hangerTest.js";
 import looksRouter from "./routes/looks.js";
+import styleTwinsRouter from "./routes/styleTwins.js";
 import { startNudgeProcessor } from "./services/notifications.js";
 
 // ─── Validate required env vars ─────────────────────────────
@@ -134,6 +135,7 @@ app.use("/api/ai-content", aiContentRouter);
 app.use("/api/challenges", challengesRouter);
 app.use("/api/dupes", dupesRouter);
 app.use("/api/looks", looksRouter);
+app.use("/api/style-twins", styleTwinsRouter);
 app.use("/api", hangerTestRouter);
 app.use("/api", socialRouter);
 
