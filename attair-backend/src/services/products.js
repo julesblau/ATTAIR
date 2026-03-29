@@ -953,6 +953,13 @@ const SHOPPING_NOISE_WORDS = [
   "great", "nice", "perfect", "ideal", "excellent",
   "modern", "contemporary",
   "high quality", "high-quality",
+  // Additional AI-generated filler
+  "stunning", "gorgeous", "exquisite", "refined", "polished",
+  "functional", "practical", "durable", "soft", "plush",
+  "striking", "eye-catching", "statement", "statement-making",
+  "wardrobe staple", "wardrobe essential", "must-have",
+  "on-trend", "season", "seasonal",
+  "structured", "unstructured", "designed",
 ];
 
 /**
