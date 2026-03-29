@@ -101,7 +101,7 @@ function parseJSON(text) {
  * Memory captures key corrections and context from prior conversation turns so we don't
  * need to replay the full chat history every time.
  */
-function buildMemoryBlock(memory) {
+export function buildMemoryBlock(memory) {
   if (!memory) return "";
   const parts = [];
 

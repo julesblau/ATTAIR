@@ -2964,28 +2964,33 @@ export default function App() {
   const [refineInputs, setRefineInputs] = useState({});    // { [idx]: string }
   const [refineLoadings, setRefineLoadings] = useState({}); // { [idx]: bool }
 
-  // ─── Restore chat memories from localStorage when scan loads ─
+  // ─── Restore chat memories: merge Supabase + localStorage (localStorage wins) ─
   useEffect(() => {
     if (!scanId) return;
-    try {
-      const stored = JSON.parse(localStorage.getItem(`attaire_mem_${scanId}`) || "{}");
-      if (Object.keys(stored).length > 0) setItemMemories(stored);
-    } catch { /* corrupt localStorage — ignore */ }
-  }, [scanId]);
 
-  // ─── Restore memories from Supabase _memory fields on historical scan load ─
-  useEffect(() => {
-    if (!results?.items?.length) return;
-    const restored = {};
-    results.items.forEach((item, idx) => {
-      if (item._memory && typeof item._memory === "object") {
-        restored[idx] = item._memory;
-      }
-    });
-    if (Object.keys(restored).length > 0) {
-      setItemMemories(prev => ({ ...restored, ...prev })); // localStorage takes priority
+    // Layer 1: Supabase _memory fields from historical scan items
+    const supabaseMemories = {};
+    if (results?.items?.length) {
+      results.items.forEach((item, idx) => {
+        if (item._memory && typeof item._memory === "object") {
+          supabaseMemories[idx] = item._memory;
+        }
+      });
     }
-  }, [results?.items?.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Layer 2: localStorage (more recent, takes priority over Supabase)
+    let localMemories = {};
+    try {
+      localMemories = JSON.parse(localStorage.getItem(`attaire_mem_${scanId}`) || "{}");
+      if (typeof localMemories !== "object" || Array.isArray(localMemories)) localMemories = {};
+    } catch { localMemories = {}; }
+
+    // Merge: Supabase is base, localStorage overwrites per-item
+    const merged = { ...supabaseMemories, ...localMemories };
+    if (Object.keys(merged).length > 0) {
+      setItemMemories(merged);
+    }
+  }, [scanId, results?.items?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Dupe Finder state ────────────────────────────────────
   const [dupeModal, setDupeModal] = useState(null);         // null | { product, itemIdx, tierKey }
