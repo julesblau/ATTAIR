@@ -2988,3 +2988,92 @@
 /* ─── Advanced filters toggle button ─── */
 .advanced-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 0;background:none;border:none;border-top:1px solid var(--border);cursor:pointer;color:var(--text-secondary);font-family:var(--font-sans);font-size:13px;font-weight:600;min-height:44px}
 .advanced-toggle svg{transition:transform .2s ease}
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVENESS — iPhone SE (375px) + small screens
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Prevent horizontal overflow globally */
+.app { overflow-x: hidden; }
+
+/* Responsive padding for narrow screens */
+@media (max-width: 380px) {
+  .ob, .pw, .auth { padding-left: 16px !important; padding-right: 16px !important; }
+  .ob-demo-cta { padding-left: 16px; padding-right: 16px; }
+  .ob-inspo-header { padding-left: 16px; padding-right: 16px; }
+  .ob-inspo-footer { padding-left: 16px; padding-right: 16px; }
+  .ob-inspo-gender { margin-left: 16px; margin-right: 16px; }
+  .ob-inspo-grid { padding-left: 12px; padding-right: 12px; gap: 8px; }
+  .ob-demo-phone { max-width: 260px; }
+  .ob-demo-viewport { padding: 20px 12px 12px; }
+  .ob-demo-title { font-size: 26px; }
+  .ob-demo-sub { font-size: 13px; }
+}
+
+/* Modal fix — prevent overflow on narrow screens */
+@media (max-width: 390px) {
+  .modal-box { max-width: calc(100% - 24px); }
+  .modal-overlay { padding: 12px; }
+}
+
+/* Feed list — tighter on narrow screens */
+@media (max-width: 380px) {
+  .feed-list { gap: 4px !important; padding-left: 8px !important; padding-right: 8px !important; }
+  .feed-card-overlay { padding: 10px; }
+}
+
+/* Tab bar — reduce height for more content space */
+@media (max-width: 430px) {
+  .tab { min-height: 44px; padding: 6px 0; }
+  .tab-icon { font-size: 18px; }
+  .tab-label { font-size: 9px; }
+}
+
+/* Search item cards — ensure they fit */
+@media (max-width: 380px) {
+  .search-item-cards { gap: 6px; }
+  .search-item-card { width: calc(50% - 3px); padding: 10px 8px; }
+}
+
+/* Profile stats — reduce gap */
+@media (max-width: 380px) {
+  .profile-stats-row { gap: 16px; }
+}
+
+/* Bottom sheet — adjust for short screens */
+@media (max-height: 650px) {
+  .bottom-sheet { max-height: 80vh; }
+  .item-opts-sheet { max-height: 80vh; }
+}
+
+/* Product cards in horizontal scroll — slightly smaller on SE */
+@media (max-width: 380px) {
+  .scroll-x { padding-left: 16px !important; padding-right: 16px !important; }
+}
+
+/* Scan error state — tighter on narrow screens */
+@media (max-width: 380px) {
+  .scan-error-state { padding: 16px; }
+  .scan-error-icon { font-size: 32px; }
+  .scan-error-title { font-size: 16px; }
+}
+
+/* Buttons — adjust padding on narrow screens */
+@media (max-width: 380px) {
+  .btn-primary, .btn-secondary { padding: 10px 16px; }
+}
+
+/* Safe area insets for notch devices */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .tb { padding-bottom: env(safe-area-inset-bottom); }
+  .bottom-sheet { padding-bottom: env(safe-area-inset-bottom); }
+  .ob-demo-cta { padding-bottom: max(40px, env(safe-area-inset-bottom)); }
+  .ob-inspo-footer { padding-bottom: max(40px, env(safe-area-inset-bottom)); }
+}
+
+/* Landscape orientation */
+@media (orientation: landscape) and (max-height: 500px) {
+  .ob-demo-phone { max-width: 200px; }
+  .ob-demo-viewport { padding: 12px; }
+  .bottom-sheet { max-height: 85vh; }
+}
