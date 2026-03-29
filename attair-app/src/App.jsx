@@ -413,6 +413,37 @@ const API = {
     await authFetch(`${API_BASE}/api/price-alerts/${id}/seen`, { method: "PATCH" });
   },
 
+  // ─── Style Challenges ─────────────────────────────────────
+  async getChallenges() {
+    const res = await authFetch(`${API_BASE}/api/challenges`);
+    return res.json();
+  },
+  async getChallenge(id) {
+    const res = await authFetch(`${API_BASE}/api/challenges/${id}`);
+    return res.json();
+  },
+  async submitChallenge(id, imageUrl, caption, scanId) {
+    const res = await authFetch(`${API_BASE}/api/challenges/${id}/submit`, {
+      method: "POST",
+      body: JSON.stringify({ image_url: imageUrl, caption, scan_id: scanId }),
+    });
+    return res.json();
+  },
+  async voteChallenge(id, submissionId) {
+    const res = await authFetch(`${API_BASE}/api/challenges/${id}/vote`, {
+      method: "POST",
+      body: JSON.stringify({ submission_id: submissionId }),
+    });
+    return res.json();
+  },
+  async unvoteChallenge(id, submissionId) {
+    const res = await authFetch(`${API_BASE}/api/challenges/${id}/vote`, {
+      method: "DELETE",
+      body: JSON.stringify({ submission_id: submissionId }),
+    });
+    return res.json();
+  },
+
   // ─── Push Notifications ───────────────────────────────────
   async getVapidKey() {
     const res = await fetch(`${API_BASE}/api/notifications/vapid-key`);
@@ -2234,6 +2265,11 @@ export default function App() {
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [productSearchResults, setProductSearchResults] = useState([]);
 
+  // ─── Style Challenges ──────────────────────────────────────
+  const [challenges, setChallenges] = useState([]);
+  const [activeChallengeDetail, setActiveChallengeDetail] = useState(null); // full challenge with submissions
+  const [challengeLoading, setChallengeLoading] = useState(false);
+
   // ─── Theme (dark / light) ─────────────────────────────────
   const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
   const toggleTheme = () => setTheme(t => { const n = t === "dark" ? "light" : "dark"; localStorage.setItem("attair_theme", n); return n; });
@@ -2449,6 +2485,10 @@ export default function App() {
   useEffect(() => {
     if (authed && screen === "app" && (tab === "home" || (tab === "scan" && phase === "idle" && !img))) {
       loadFeed(1, false);
+      // Load challenges for the home feed (once)
+      if (challenges.length === 0) {
+        API.getChallenges().then(d => setChallenges(d.data || [])).catch(() => {});
+      }
     }
   }, [authed, screen, tab, feedTab]);
 
@@ -3324,6 +3364,43 @@ export default function App() {
                 </button>
                 <button className={`feed-tab${feedTab === "following" ? " active" : ""}`} onClick={() => { setFeedTab("following"); setFeedPage(1); }}>Following</button>
               </div>
+
+              {/* ─── Active Style Challenge card ─── */}
+              {challenges.length > 0 && (() => {
+                const active = challenges.find(c => c.status === "active" || c.status === "voting");
+                if (!active) return null;
+                const isVoting = active.status === "voting";
+                const timeLeft = Math.max(0, Math.ceil((new Date(active.ends_at) - Date.now()) / (1000 * 60 * 60 * 24)));
+                return (
+                  <div className="card-press" onClick={async () => {
+                    setChallengeLoading(true);
+                    try {
+                      const d = await API.getChallenge(active.id);
+                      setActiveChallengeDetail(d.data);
+                    } catch {}
+                    setChallengeLoading(false);
+                  }} style={{ margin: "4px 12px 8px", padding: "14px 16px", background: "linear-gradient(135deg, rgba(201,169,110,.08), rgba(199,125,255,.06))", border: "1px solid rgba(201,169,110,.15)", borderRadius: 14, cursor: "pointer" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: "linear-gradient(135deg, #C9A96E, #C77DFF)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{active.title}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{active.description}</div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: isVoting ? "#C77DFF" : "var(--accent)" }}>{isVoting ? "VOTING" : `${timeLeft}d left`}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{active.submission_count} entries</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {!active.user_submitted && !isVoting && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: "var(--accent)", color: "var(--text-inverse)" }}>Submit Outfit</span>}
+                      {isVoting && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: "rgba(199,125,255,.15)", color: "#C77DFF" }}>Vote Now</span>}
+                      {active.user_submitted && !isVoting && <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "rgba(90,200,160,.1)", color: "#5AC8A0" }}>Submitted</span>}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Skeleton loading */}
               {feedLoading && feedScans.length === 0 && (
@@ -6169,6 +6246,119 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* ═══ STYLE CHALLENGE DETAIL OVERLAY ═══════════════════════ */}
+      {activeChallengeDetail && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9997, background: "var(--bg-primary)", overflowY: "auto" }}>
+          {/* Header */}
+          <div style={{ position: "sticky", top: 0, zIndex: 1, background: "var(--bg-primary)", borderBottom: "1px solid var(--border)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => setActiveChallengeDetail(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{activeChallengeDetail.title}</div>
+              <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{activeChallengeDetail.description}</div>
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: activeChallengeDetail.status === "voting" ? "#C77DFF" : activeChallengeDetail.status === "completed" ? "#5AC8A0" : "var(--accent)", padding: "4px 10px", borderRadius: 100, background: activeChallengeDetail.status === "voting" ? "rgba(199,125,255,.1)" : activeChallengeDetail.status === "completed" ? "rgba(90,200,160,.1)" : "rgba(201,169,110,.1)", textTransform: "uppercase", letterSpacing: .5 }}>
+              {activeChallengeDetail.status}
+            </div>
+          </div>
+
+          {/* Submit button */}
+          {activeChallengeDetail.status === "active" && !activeChallengeDetail.submissions?.some(s => s.user_id === (activeChallengeDetail._userId || "")) && (
+            <div style={{ padding: "16px" }}>
+              <button onClick={() => {
+                // Open scan sheet to submit — user scans an outfit, then submits
+                // For now, use the most recent scan
+                const recentScan = history[0];
+                if (recentScan?.image_url) {
+                  API.submitChallenge(activeChallengeDetail.id, recentScan.image_url, recentScan.summary || "", recentScan.id)
+                    .then(d => {
+                      if (d.success) {
+                        // Refresh challenge
+                        API.getChallenge(activeChallengeDetail.id).then(r => setActiveChallengeDetail(r.data)).catch(() => {});
+                      }
+                    }).catch(() => {});
+                } else {
+                  // No scans yet — prompt to scan first
+                  setActiveChallengeDetail(null);
+                  setTab("scan");
+                }
+              }} style={{ width: "100%", padding: "14px 0", background: "linear-gradient(135deg, #C9A96E, #C77DFF)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: "pointer", fontFamily: "var(--font-sans)" }}>
+                Submit Your Look
+              </button>
+            </div>
+          )}
+
+          {/* Submissions grid */}
+          <div style={{ padding: "0 12px 100px" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", padding: "12px 4px 8px" }}>
+              {(activeChallengeDetail.submissions || []).length} Entries
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {(activeChallengeDetail.submissions || []).map((sub, si) => {
+                const u = sub.user || {};
+                const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+                const isWinner = activeChallengeDetail.winner_id === sub.user_id && activeChallengeDetail.status === "completed";
+                return (
+                  <div key={sub.id} style={{ background: "var(--bg-card)", border: isWinner ? "2px solid var(--accent)" : "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+                    <div style={{ position: "relative" }}>
+                      <img src={sub.image_url} alt="" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} loading="lazy" />
+                      {si === 0 && activeChallengeDetail.status !== "active" && (
+                        <div style={{ position: "absolute", top: 8, left: 8, padding: "3px 8px", borderRadius: 100, background: "rgba(201,169,110,.9)", fontSize: 9, fontWeight: 700, color: "#fff" }}>
+                          {isWinner ? "WINNER" : "#1"}
+                        </div>
+                      )}
+                      {sub.ai_verified && (
+                        <div style={{ position: "absolute", top: 8, right: 8, width: 20, height: 20, borderRadius: "50%", background: "rgba(90,200,160,.9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: "8px 10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "var(--text-inverse)" }}>{ini}</div>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.display_name || "Anonymous"}</span>
+                        {(u.challenge_wins || 0) > 0 && <span style={{ fontSize: 8, fontWeight: 700, padding: "1px 4px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)" }}>{u.challenge_wins}x</span>}
+                      </div>
+                      {sub.caption && <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{sub.caption}</div>}
+                      <button
+                        onClick={() => {
+                          if (sub.user_voted) {
+                            API.unvoteChallenge(activeChallengeDetail.id, sub.id).then(() => {
+                              setActiveChallengeDetail(prev => ({
+                                ...prev,
+                                submissions: prev.submissions.map(s => s.id === sub.id ? { ...s, vote_count: Math.max(0, s.vote_count - 1), user_voted: false } : s),
+                              }));
+                            }).catch(() => {});
+                          } else {
+                            API.voteChallenge(activeChallengeDetail.id, sub.id).then(() => {
+                              setActiveChallengeDetail(prev => ({
+                                ...prev,
+                                submissions: prev.submissions.map(s => s.id === sub.id ? { ...s, vote_count: s.vote_count + 1, user_voted: true } : s),
+                              }));
+                            }).catch(() => {});
+                          }
+                        }}
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "6px 0", background: sub.user_voted ? "rgba(201,169,110,.15)" : "var(--bg-input)", border: `1px solid ${sub.user_voted ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, cursor: "pointer", fontFamily: "var(--font-sans)" }}
+                      >
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill={sub.user_voted ? "var(--accent)" : "none"} stroke={sub.user_voted ? "var(--accent)" : "var(--text-tertiary)"} strokeWidth="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: sub.user_voted ? "var(--accent)" : "var(--text-secondary)" }}>{sub.vote_count}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {(activeChallengeDetail.submissions || []).length === 0 && (
+              <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-tertiary)" }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>No entries yet</div>
+                <div style={{ fontSize: 12 }}>Be the first to submit!</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ═══ PRICE ALERTS BOTTOM SHEET ═══════════════════════════ */}
       {showPriceAlerts && (
