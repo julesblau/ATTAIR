@@ -302,6 +302,28 @@ function runAgent(prompt, { label = "agent", onLog } = {}) {
   });
 }
 
+// ─── Safety Commit: catch orphaned changes after agent exit ────────────────
+function safetyCommit(label = "agent") {
+  try {
+    const status = execSync("git status --porcelain", { cwd: REPO_ROOT, encoding: "utf-8", timeout: 10000 }).trim();
+    if (!status) return false; // nothing to commit
+
+    console.log(`[safetyCommit] Found uncommitted changes after ${label}:\n${status.slice(0, 500)}`);
+    execSync("git add -A", { cwd: REPO_ROOT, timeout: 10000 });
+    const shortLabel = label.replace(/^build:/, "").slice(0, 50);
+    execSync(`git commit -m "wip: safety commit — ${shortLabel} (agent exited with uncommitted work)"`, {
+      cwd: REPO_ROOT,
+      encoding: "utf-8",
+      timeout: 15000,
+    });
+    console.log("[safetyCommit] Committed orphaned changes.");
+    return true;
+  } catch (err) {
+    console.error("[safetyCommit] Failed:", err.message?.slice(0, 200));
+    return false;
+  }
+}
+
 // ─── Build → Judge → Fix Loop ───────────────────────────────────────────────
 async function buildWithQualityLoop(taskDescription, chatChannel, logsChannel) {
   if (activeProcess) {
@@ -348,7 +370,14 @@ INSTRUCTIONS:
 4. The app should look and feel as polished as TikTok, Depop, Pickle, or Instagram.
 5. After building, run the backend tests: cd attair-backend && npm test
 6. Fix any test failures before finishing.
-7. Commit your changes with: git add -A && git commit -m "feat: [short summary]"
+
+COMMIT STRATEGY — commit after EACH sub-task, not at the end:
+- After backend changes (routes, services, migrations): git add attair-backend/ && git commit -m "feat: [task] — backend"
+- After frontend changes (components, styles): git add attair-app/ && git commit -m "feat: [task] — frontend"
+- After test fixes: git add -A && git commit -m "fix: [task] — test fixes"
+- After any other significant chunk of work: commit immediately.
+This prevents losing work if the process dies. Small, frequent commits > one big commit at the end.
+If a commit has nothing to add (no changes), skip it and move on — do not error out.
 
 Do NOT create new files unless absolutely necessary. Build within existing files.
 Do NOT change function signatures in attair-backend/src/services/products.js.`;
@@ -357,8 +386,16 @@ Do NOT change function signatures in attair-backend/src/services/products.js.`;
       console.log("[buildLoop] calling runAgent, prompt length:", buildPrompt.length);
       const buildOutput = await runAgent(buildPrompt, { label: `build:${taskDescription.slice(0, 30)}`, onLog: logToDiscord });
       console.log("[buildLoop] agent returned, output length:", buildOutput.length);
+      // Safety commit: catch any work the agent didn't commit
+      if (safetyCommit(`build:${taskDescription.slice(0, 30)}`)) {
+        await chatChannel.send("(safety commit: saved uncommitted agent work)");
+      }
     } catch (err) {
       console.error("[buildLoop] agent error:", err.message);
+      // Safety commit on crash — don't lose whatever the agent built before dying
+      if (safetyCommit(`build:${taskDescription.slice(0, 30)}`)) {
+        await chatChannel.send("Agent crashed but saved uncommitted work via safety commit.");
+      }
       await chatChannel.send(`Build agent error: ${err.message.slice(0, 200)}`);
       if (stopRequested) break;
       continue;
@@ -730,6 +767,7 @@ Commit with: git add agents/backlog.md && git commit -m "feat: creative agent �
 
   try {
     const output = await runAgent(creativePrompt, { label: "creative", onLog: logToDiscord });
+    safetyCommit("creative");
 
     await chatChannel.send(
       new EmbedBuilder()
@@ -738,6 +776,7 @@ Commit with: git add agents/backlog.md && git commit -m "feat: creative agent �
         .setDescription("New ideas added to backlog. Review them and tell me what to build.")
     );
   } catch (err) {
+    safetyCommit("creative");
     await chatChannel.send(`Creative agent error: ${err.message.slice(0, 200)}`);
   }
 }
