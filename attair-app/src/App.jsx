@@ -2078,45 +2078,67 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
   };
 
   // ─── Record video via MediaRecorder ────────────────────────
+  if (typeof MediaRecorder === "undefined") {
+    throw new Error("MediaRecorder API is not supported in this browser");
+  }
+  if (!canvas.captureStream) {
+    throw new Error("Canvas captureStream is not supported in this browser");
+  }
+
   return new Promise((resolve, reject) => {
-    const stream = canvas.captureStream(FPS);
-    const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-      ? "video/webm;codecs=vp9"
-      : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
-        ? "video/webm;codecs=vp8"
-        : "video/webm";
+    try {
+      const stream = canvas.captureStream(FPS);
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
+        ? "video/webm;codecs=vp9"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
+          ? "video/webm;codecs=vp8"
+          : MediaRecorder.isTypeSupported("video/webm")
+            ? "video/webm"
+            : MediaRecorder.isTypeSupported("video/mp4")
+              ? "video/mp4"
+              : "";
 
-    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
-    const chunks = [];
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-
-    recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: mimeType });
-      resolve({ blob, url: URL.createObjectURL(blob), mimeType });
-    };
-
-    recorder.onerror = (e) => reject(e.error || new Error("Recording failed"));
-
-    recorder.start();
-
-    let frame = 0;
-    const renderLoop = () => {
-      if (frame >= TOTAL_FRAMES) {
-        recorder.stop();
+      if (!mimeType) {
+        reject(new Error("No supported video codec found"));
         return;
       }
-      drawFrame(frame);
-      frame++;
-      // Use requestAnimationFrame for smooth rendering, but pace to FPS
-      if (frame < TOTAL_FRAMES) {
-        setTimeout(() => requestAnimationFrame(renderLoop), 1000 / FPS);
-      } else {
-        // Last frame rendered, stop
-        setTimeout(() => recorder.stop(), 100);
-      }
-    };
 
-    requestAnimationFrame(renderLoop);
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5_000_000 });
+      const chunks = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType });
+        if (blob.size === 0) {
+          reject(new Error("Recording produced an empty video"));
+          return;
+        }
+        resolve({ blob, url: URL.createObjectURL(blob), mimeType });
+      };
+
+      recorder.onerror = (e) => reject(e.error || new Error("Recording failed"));
+
+      recorder.start();
+
+      let frame = 0;
+      const renderLoop = () => {
+        if (frame >= TOTAL_FRAMES) {
+          recorder.stop();
+          return;
+        }
+        drawFrame(frame);
+        frame++;
+        if (frame < TOTAL_FRAMES) {
+          setTimeout(() => requestAnimationFrame(renderLoop), 1000 / FPS);
+        } else {
+          setTimeout(() => recorder.stop(), 100);
+        }
+      };
+
+      requestAnimationFrame(renderLoop);
+    } catch (e) {
+      reject(e);
+    }
   });
 }
 
@@ -2613,7 +2635,25 @@ export default function App() {
   const [reelProgress, setReelProgress] = useState(0); // 0–100
   const [reelResult, setReelResult] = useState(null); // { blob, url, mimeType } | null
   const [showReelPreview, setShowReelPreview] = useState(false);
+  const [reelError, setReelError] = useState(null); // user-visible error message
   const reelVideoRef = useRef(null);
+  const reelSupported = typeof MediaRecorder !== "undefined" && typeof HTMLCanvasElement !== "undefined" && !!HTMLCanvasElement.prototype.captureStream;
+
+  // Cleanup reel object URL on unmount or when result changes
+  useEffect(() => {
+    return () => {
+      if (reelResult?.url) {
+        try { URL.revokeObjectURL(reelResult.url); } catch {}
+      }
+    };
+  }, [reelResult]);
+
+  // Auto-dismiss reel error toast
+  useEffect(() => {
+    if (!reelError) return;
+    const t = setTimeout(() => setReelError(null), 4000);
+    return () => clearTimeout(t);
+  }, [reelError]);
 
   // ─── Post-first-scan preference sheet ──────────────────────
   const [showPrefSheet, setShowPrefSheet] = useState(false);
@@ -8060,7 +8100,8 @@ export default function App() {
                 <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 600, fontFamily: "var(--font-sans)" }}>{shareCardLoading ? "Creating..." : "Share Card"}</span>
               </button>
 
-              {/* Create Reel (Pro-only) */}
+              {/* Create Reel (Pro-only) — hidden if browser doesn't support MediaRecorder */}
+              {reelSupported && (
               <button disabled={reelGenerating} onClick={async () => {
                 if (!isPro) {
                   setShowShareSheet(false);
@@ -8069,6 +8110,7 @@ export default function App() {
                 }
                 setReelGenerating(true);
                 setReelProgress(0);
+                setReelError(null);
                 track("reel_started", {}, scanId, "scan");
                 try {
                   const userName = authName || (authEmail ? authEmail.split("@")[0] : "");
@@ -8085,6 +8127,8 @@ export default function App() {
                   track("reel_generated", { size: reelData.blob.size }, scanId, "scan");
                 } catch (e) {
                   console.error("Reel generation failed:", e);
+                  setReelError("Reel creation failed — your browser may not support video recording. Try Chrome or Safari.");
+                  setShowShareSheet(false);
                 }
                 setReelGenerating(false);
                 setReelProgress(100);
@@ -8112,6 +8156,7 @@ export default function App() {
                   }}>PRO</span>
                 )}
               </button>
+              )}
             </div>
 
             {/* Link preview */}
@@ -8197,6 +8242,20 @@ export default function App() {
               Optimized for TikTok, Reels & Shorts
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Reel error toast */}
+      {reelError && (
+        <div style={{
+          position: "fixed", bottom: 140, left: "50%", transform: "translateX(-50%)", zIndex: 10001,
+          background: "var(--error, #FF5252)", color: "#fff", padding: "12px 20px", borderRadius: 14,
+          fontWeight: 700, fontSize: 13, fontFamily: "var(--font-sans)",
+          boxShadow: "0 4px 24px rgba(0,0,0,.4)", animation: "slideUp .3s ease",
+          display: "flex", alignItems: "center", gap: 8, maxWidth: "90vw", textAlign: "center",
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          {reelError}
         </div>
       )}
 
