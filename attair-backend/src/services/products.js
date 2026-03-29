@@ -20,6 +20,30 @@ import { rerankCandidates } from "./claude.js";
 
 const SERPAPI_URL = "https://serpapi.com/search.json";
 
+// ─── SerpAPI concurrency limiter ────────────────────────────
+// Prevents flooding SerpAPI with parallel requests (which causes 429s
+// and wastes API credits on retries). Max 4 concurrent calls.
+const SERP_MAX_CONCURRENT = 4;
+let _serpActive = 0;
+const _serpQueue = [];
+
+function serpAcquire() {
+  if (_serpActive < SERP_MAX_CONCURRENT) {
+    _serpActive++;
+    return Promise.resolve();
+  }
+  return new Promise(resolve => _serpQueue.push(resolve));
+}
+
+function serpRelease() {
+  if (_serpQueue.length > 0) {
+    const next = _serpQueue.shift();
+    next(); // hand the slot to the next waiter
+  } else {
+    _serpActive--;
+  }
+}
+
 // ─── Budget config ──────────────────────────────────────────
 const DEFAULT_BUDGET = { min: 50, max: 100 };
 
@@ -573,6 +597,7 @@ async function googleLensSearch(imageUrl) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
 
+  await serpAcquire();
   try {
     const res = await fetch(`${SERPAPI_URL}?${params}`, { signal: controller.signal });
     clearTimeout(timeout);
@@ -605,6 +630,8 @@ async function googleLensSearch(imageUrl) {
     clearTimeout(timeout);
     console.error(`[Lens] Error: ${err.message}`);
     return [];
+  } finally {
+    serpRelease();
   }
 }
 
@@ -770,6 +797,7 @@ async function textSearch(query, priceMin, priceMax) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
 
+  await serpAcquire();
   try {
     console.log(`  [Text] Query: "${query}"`);
     const res = await fetch(`${SERPAPI_URL}?${params}`, { signal: controller.signal });
@@ -790,6 +818,8 @@ async function textSearch(query, priceMin, priceMax) {
     clearTimeout(timeout);
     console.error(`  [Text] Error: ${err.message}`);
     return [];
+  } finally {
+    serpRelease();
   }
 }
 
