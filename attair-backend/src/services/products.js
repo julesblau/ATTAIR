@@ -703,8 +703,9 @@ function matchLensResultToItem(result, items) {
     }
   }
 
-  // Require at least a minimal match (category or subcategory)
-  return bestScore >= 10 ? bestMatch : -1;
+  // Require at least a subcategory-level match to avoid false positives
+  // (category-only match of 10 is too loose — sandals matching boots, etc.)
+  return bestScore >= 18 ? bestMatch : -1;
 }
 
 // ═════════════════════════════════════════════════════════════
@@ -1120,12 +1121,18 @@ const GARMENT_SYNONYMS = [
  */
 function getSynonyms(subcategory) {
   if (!subcategory) return [];
+  const subLower = subcategory.toLowerCase();
+  const subWords = new Set(subLower.split(/\s+/));
   for (const group of GARMENT_SYNONYMS) {
-    // Check if any term in the group matches (substring or exact)
-    const match = group.some(term => subcategory.includes(term) || term.includes(subcategory));
+    // Word-boundary match to avoid false positives (e.g., "blouse" in "blue suede")
+    const match = group.some(term => {
+      if (term === subLower || subLower === term) return true;
+      // Check if all words in term appear as whole words in subcategory (or vice versa)
+      const termWords = term.split(/\s+/);
+      return termWords.every(w => subWords.has(w)) || subLower.split(/\s+/).every(w => new Set(termWords).has(w));
+    });
     if (match) {
-      // Return all terms in this group except the subcategory itself
-      return group.filter(term => term !== subcategory);
+      return group.filter(term => term !== subLower);
     }
   }
   return [];
@@ -1864,18 +1871,36 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     }
 
     // Pick up to `n` products from candidates, deduped by URL.
+    // Applies retailer diversity: first product from a retailer gets full score,
+    // subsequent products from the same retailer are deprioritized to ensure
+    // users see results from multiple stores.
     function pickTopN(candidates, n, tier) {
       const results = [];
-      for (const s of candidates) {
+      const retailerCount = {};
+      // Re-sort candidates with retailer diversity penalty applied
+      const diversified = candidates
+        .filter(s => !usedUrls.has(getUrl(s)))
+        .map(s => {
+          const source = (s.product.source || "").toLowerCase().replace(/[^a-z]/g, "");
+          return { ...s, _source: source };
+        });
+      // Greedy selection: always pick highest effective score, incrementing retailer count
+      for (const s of diversified) {
         if (results.length >= n) break;
-        const url = getUrl(s);
-        if (!usedUrls.has(url)) {
-          const isBrand = hasBrand && (
-            (s.product.title || "").toLowerCase().includes(brandLower) ||
-            (s.product.source || "").toLowerCase().includes(brandLower)
-          );
-          results.push(formatAndTrack(s, tier, isBrand));
+        const count = retailerCount[s._source] || 0;
+        // First from a retailer: no penalty. Second: -15%. Third+: -30%.
+        const diversityFactor = count === 0 ? 1 : count === 1 ? 0.85 : 0.7;
+        const effectiveScore = s.score * diversityFactor;
+        // Only skip if there's a meaningful penalty AND we haven't exhausted unique retailers
+        if (count >= 2 && results.length < n - 1 && diversified.some(ds => !usedUrls.has(getUrl(ds)) && (retailerCount[ds._source] || 0) === 0)) {
+          continue; // Try to find an unseen retailer first
         }
+        retailerCount[s._source] = count + 1;
+        const isBrand = hasBrand && (
+          (s.product.title || "").toLowerCase().includes(brandLower) ||
+          (s.product.source || "").toLowerCase().includes(brandLower)
+        );
+        results.push(formatAndTrack(s, tier, isBrand));
       }
       return results;
     }
