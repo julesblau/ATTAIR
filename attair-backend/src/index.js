@@ -27,6 +27,8 @@ import aiContentRouter from "./routes/aiContent.js";
 import challengesRouter from "./routes/challenges.js";
 import dupesRouter from "./routes/dupes.js";
 import hangerTestRouter from "./routes/hangerTest.js";
+import looksRouter from "./routes/looks.js";
+import { startNudgeProcessor } from "./services/notifications.js";
 
 // ─── Validate required env vars ─────────────────────────────
 const REQUIRED_ENV = [
@@ -131,6 +133,7 @@ app.use("/api/notifications", notificationsRouter);
 app.use("/api/ai-content", aiContentRouter);
 app.use("/api/challenges", challengesRouter);
 app.use("/api/dupes", dupesRouter);
+app.use("/api/looks", looksRouter);
 app.use("/api", hangerTestRouter);
 app.use("/api", socialRouter);
 
@@ -283,6 +286,9 @@ app.listen(PORT, "0.0.0.0", () => {
   ║   Env:  ${String(process.env.NODE_ENV || "development").padEnd(31)}║
   ╚═════════════════════════════════════════╝
   `);
+
+  // Start the follow-up nudge processor (checks every 60s)
+  startNudgeProcessor();
 });
 
 export default app;

@@ -75,6 +75,7 @@ export async function sendNotification(userId, type, title, body, data = {}) {
     new_post: "new_posts",
     digest: "weekly_digest",
     hanger_test: "hanger_test",
+    follow_up: "follow_up_nudges",
   };
 
   if (prefs[prefMap[type]] === false) {
@@ -178,4 +179,195 @@ export async function markRead(userId, notificationIds) {
  */
 export function getVapidPublicKey() {
   return VAPID_PUBLIC;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Follow-up Nudge System
+//
+// When the AI sends results that need user input (scan results, refinement
+// questions, etc.), the frontend schedules a nudge. If the user doesn't
+// interact within 10-15 minutes, the system sends a push notification
+// bringing them back.
+//
+// In-memory queue — fine for single-server. Nudges are ephemeral by nature
+// (they only matter for the current session).
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Pending nudges map: userId → { scanId, context, fireAt, itemName, sent }
+ * Each user has at most one pending nudge at a time (latest wins).
+ */
+const pendingNudges = new Map();
+
+/** Nudge delay range in ms: 10–15 minutes */
+const NUDGE_MIN_MS = 10 * 60 * 1000;
+const NUDGE_MAX_MS = 15 * 60 * 1000;
+
+function randomNudgeDelay() {
+  return NUDGE_MIN_MS + Math.floor(Math.random() * (NUDGE_MAX_MS - NUDGE_MIN_MS));
+}
+
+/** Nudge message templates — picks one at random for variety */
+const NUDGE_MESSAGES = [
+  { title: "Your outfit results are waiting", body: "We found some great matches — come take a look ��" },
+  { title: "Still thinking?", body: "Your scan results are ready. Tap to check them out." },
+  { title: "Don't leave your fit hanging", body: "We identified your pieces — pick your favorites before they sell out." },
+  { title: "Quick reminder", body: "Your style matches are waiting. Swipe through your results!" },
+  { title: "Your AI stylist has picks for you", body: "Come back and see what we found for your outfit." },
+];
+
+/**
+ * Schedule a follow-up nudge for a user.
+ * Replaces any existing pending nudge for that user.
+ *
+ * @param {string} userId
+ * @param {string} scanId - Current scan context
+ * @param {string} context - "scan_results" | "refinement" | "pairings"
+ * @param {string} [itemName] - Optional item name for personalized nudge
+ */
+export function scheduleNudge(userId, scanId, context = "scan_results", itemName = null) {
+  if (!userId) return;
+
+  const fireAt = Date.now() + randomNudgeDelay();
+
+  pendingNudges.set(userId, {
+    scanId,
+    context,
+    itemName,
+    fireAt,
+    sent: false,
+    createdAt: Date.now(),
+  });
+
+  console.log(`[Nudge] Scheduled for user ${userId.slice(0, 8)}… in ${Math.round((fireAt - Date.now()) / 60000)}min (context: ${context})`);
+}
+
+/**
+ * Cancel a pending nudge for a user.
+ * Called when the user interacts (refines, saves, clicks a product, etc.).
+ *
+ * @param {string} userId
+ * @param {string} [scanId] - If provided, only cancel if it matches the pending scan
+ */
+export function cancelNudge(userId, scanId = null) {
+  if (!userId) return;
+
+  const existing = pendingNudges.get(userId);
+  if (!existing) return;
+
+  // If scanId specified, only cancel if it matches
+  if (scanId && existing.scanId !== scanId) return;
+
+  pendingNudges.delete(userId);
+  console.log(`[Nudge] Cancelled for user ${userId.slice(0, 8)}…`);
+}
+
+/**
+ * Get nudge status for a user (used by frontend to know if nudge is pending).
+ */
+export function getNudgeStatus(userId) {
+  const nudge = pendingNudges.get(userId);
+  if (!nudge || nudge.sent) return null;
+  return {
+    scanId: nudge.scanId,
+    context: nudge.context,
+    minutesLeft: Math.max(0, Math.round((nudge.fireAt - Date.now()) / 60000)),
+  };
+}
+
+/**
+ * Process all pending nudges — called every 60 seconds by the server.
+ * Fires push notifications for nudges whose timer has expired.
+ */
+export async function processNudges() {
+  const now = Date.now();
+  const toFire = [];
+
+  for (const [userId, nudge] of pendingNudges.entries()) {
+    if (nudge.sent) {
+      // Clean up sent nudges older than 1 hour
+      if (now - nudge.createdAt > 60 * 60 * 1000) {
+        pendingNudges.delete(userId);
+      }
+      continue;
+    }
+
+    if (now >= nudge.fireAt) {
+      toFire.push({ userId, nudge });
+    }
+  }
+
+  if (toFire.length === 0) return;
+
+  console.log(`[Nudge] Processing ${toFire.length} pending nudge(s)`);
+
+  for (const { userId, nudge } of toFire) {
+    try {
+      // Pick a random message template
+      const template = NUDGE_MESSAGES[Math.floor(Math.random() * NUDGE_MESSAGES.length)];
+
+      // Personalize if we have item name
+      let { title, body } = template;
+      if (nudge.itemName) {
+        body = body.replace("your outfit", `your ${nudge.itemName}`).replace("your pieces", `your ${nudge.itemName}`);
+      }
+
+      // Send the push notification (respects user prefs)
+      await sendNotification(userId, "follow_up", title, body, {
+        url: nudge.scanId ? `/scan/${nudge.scanId}` : "/",
+        nudge: true,
+        context: nudge.context,
+      });
+
+      // Mark as sent (don't delete yet — frontend may query status)
+      nudge.sent = true;
+      nudge.sentAt = now;
+
+      console.log(`[Nudge] Sent to user ${userId.slice(0, 8)}… (context: ${nudge.context})`);
+    } catch (err) {
+      console.error(`[Nudge] Failed for user ${userId.slice(0, 8)}…: ${err.message}`);
+      // Remove failed nudge to avoid infinite retries
+      pendingNudges.delete(userId);
+    }
+  }
+}
+
+/** Nudge processor interval handle */
+let nudgeInterval = null;
+
+/**
+ * Start the nudge processor — runs every 60 seconds.
+ * Safe to call multiple times (idempotent).
+ */
+export function startNudgeProcessor() {
+  if (nudgeInterval) return;
+  nudgeInterval = setInterval(() => {
+    processNudges().catch(err => console.error("[Nudge] Processor error:", err.message));
+  }, 60 * 1000);
+
+  // Don't prevent Node from exiting
+  if (nudgeInterval.unref) nudgeInterval.unref();
+
+  console.log("[Nudge] Processor started (60s interval)");
+}
+
+/**
+ * Stop the nudge processor (for tests / graceful shutdown).
+ */
+export function stopNudgeProcessor() {
+  if (nudgeInterval) {
+    clearInterval(nudgeInterval);
+    nudgeInterval = null;
+  }
+}
+
+/**
+ * Get pending nudge count (for monitoring).
+ */
+export function getPendingNudgeCount() {
+  let count = 0;
+  for (const nudge of pendingNudges.values()) {
+    if (!nudge.sent) count++;
+  }
+  return count;
 }

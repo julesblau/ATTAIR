@@ -19,6 +19,9 @@ import {
   getUnreadCount,
   markRead,
   getVapidPublicKey,
+  scheduleNudge,
+  cancelNudge,
+  getNudgeStatus,
 } from "../services/notifications.js";
 import supabase from "../lib/supabase.js";
 
@@ -113,6 +116,38 @@ router.patch("/read", requireAuth, async (req, res) => {
   }
 });
 
+// ─── POST /api/notifications/nudge ────────────────────────────
+// Schedule a follow-up nudge (10-15 min) for the current user.
+// Called by the frontend when AI returns results that need input.
+router.post("/nudge", requireAuth, (req, res) => {
+  const { scan_id, context, item_name } = req.body;
+
+  if (!scan_id) {
+    return res.status(400).json({ error: "Missing scan_id" });
+  }
+
+  const validContexts = ["scan_results", "refinement", "pairings"];
+  const ctx = validContexts.includes(context) ? context : "scan_results";
+
+  scheduleNudge(req.userId, scan_id, ctx, item_name || null);
+  res.json({ success: true, context: ctx });
+});
+
+// ─── DELETE /api/notifications/nudge ──────────────────────────
+// Cancel a pending nudge (user interacted, no nudge needed).
+router.delete("/nudge", requireAuth, (req, res) => {
+  const { scan_id } = req.body;
+  cancelNudge(req.userId, scan_id || null);
+  res.json({ success: true });
+});
+
+// ─── GET /api/notifications/nudge ─────────────────────────────
+// Check if the user has a pending nudge (for debugging / status).
+router.get("/nudge", requireAuth, (req, res) => {
+  const status = getNudgeStatus(req.userId);
+  res.json({ nudge: status });
+});
+
 // ─── PATCH /api/notifications/preferences ─────────────────────
 router.patch("/preferences", requireAuth, async (req, res) => {
   const { preferences } = req.body;
@@ -122,7 +157,7 @@ router.patch("/preferences", requireAuth, async (req, res) => {
   }
 
   // Only allow known preference keys
-  const ALLOWED_KEYS = ["price_drops", "style_dna", "social_activity", "new_posts", "weekly_digest", "hanger_test"];
+  const ALLOWED_KEYS = ["price_drops", "style_dna", "social_activity", "new_posts", "weekly_digest", "hanger_test", "follow_up_nudges"];
   const sanitized = {};
   for (const key of ALLOWED_KEYS) {
     if (key in preferences) {

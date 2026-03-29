@@ -504,6 +504,21 @@ const API = {
     return res.ok ? (await res.json()).preferences : null;
   },
 
+  // ─── Follow-up Nudges ────────────────────────────────────────
+  async scheduleNudge(scanId, context = "scan_results", itemName = null) {
+    return authFetch(`${API_BASE}/api/notifications/nudge`, {
+      method: "POST",
+      body: JSON.stringify({ scan_id: scanId, context, item_name: itemName }),
+    }).catch(() => {});
+  },
+
+  async cancelNudge(scanId = null) {
+    return authFetch(`${API_BASE}/api/notifications/nudge`, {
+      method: "DELETE",
+      body: JSON.stringify({ scan_id: scanId }),
+    }).catch(() => {});
+  },
+
   // ─── Hanger Test ──────────────────────────────────────────
   async hangerTestToday() {
     const res = await authFetch(`${API_BASE}/api/hanger-test/today`);
@@ -2559,6 +2574,8 @@ export default function App() {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [nudgeBanner, setNudgeBanner] = useState(null); // null | { context, scanId, itemName }
+  const nudgeScheduledRef = useRef(null); // track currently scheduled nudge scanId
 
   // ─── App state ────────────────────────────────────────────
   const [screen, setScreen] = useState("onboarding");
@@ -2758,7 +2775,36 @@ export default function App() {
       setHangerFullscreen(true);
       window.history.replaceState({}, "", window.location.pathname);
     }
+    // If returning from a nudge push notification, show the nudge banner
+    if (params.get("nudge") === "1" && authed) {
+      setNudgeBanner({ context: params.get("context") || "scan_results" });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, [authed]);
+
+  // ─── Visibility change: show nudge banner when user returns after being away ──
+  useEffect(() => {
+    let hiddenAt = null;
+    const NUDGE_AWAY_THRESHOLD = 5 * 60 * 1000; // 5 min away triggers in-app nudge
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        hiddenAt = Date.now();
+      } else if (hiddenAt) {
+        const awayMs = Date.now() - hiddenAt;
+        hiddenAt = null;
+        // If user was away 5+ min and has pending results, show subtle nudge
+        if (awayMs >= NUDGE_AWAY_THRESHOLD && phase === "done" && results && scanId && authed) {
+          setNudgeBanner({ context: "scan_results", scanId });
+          // Auto-dismiss after 8 seconds
+          setTimeout(() => setNudgeBanner(null), 8000);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [phase, results, scanId, authed]);
 
   const handleHangerVote = useCallback(async (verdict) => {
     if (!hangerOutfit || hangerVoting || hangerUserVote) return;
@@ -3777,14 +3823,28 @@ export default function App() {
       API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
       API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
     }
+
+    // Schedule a follow-up nudge (10-15 min) so if the user leaves without
+    // saving or refining, we ping them back with a push notification
+    if (!isGuest && scanId && !searchFailed) {
+      const firstName = results?.items?.[pickedIndices[0]]?.name;
+      API.scheduleNudge(scanId, "scan_results", firstName || null);
+      nudgeScheduledRef.current = scanId;
+    }
   };
 
-  const reset = () => { setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); setShowAdvanced(false); setExpandedItems(new Set()); setShowAllPickItems(false); };
+  const reset = () => { if (nudgeScheduledRef.current) { API.cancelNudge(nudgeScheduledRef.current); nudgeScheduledRef.current = null; } setNudgeBanner(null); setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); setShowAdvanced(false); setExpandedItems(new Set()); setShowAllPickItems(false); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
     const msg = (refineInputs[itemIdx] || "").trim();
     if (!msg || refineLoadings[itemIdx]) return;
+    // User is actively engaging — cancel any pending nudge
+    if (nudgeScheduledRef.current) {
+      API.cancelNudge(nudgeScheduledRef.current);
+      nudgeScheduledRef.current = null;
+      setNudgeBanner(null);
+    }
     const item = results.items[itemIdx];
     const chat = itemChats[itemIdx] || [];
     setRefineLoadings(l => ({ ...l, [itemIdx]: true }));
@@ -3816,6 +3876,8 @@ export default function App() {
   // ─── Save with backend persistence ────────────────────────
   const toggleSave = async (item) => {
     if (isGuest) { setSignupPrompt("save"); return; }
+    // User is engaging — cancel pending nudge
+    if (nudgeScheduledRef.current) { API.cancelNudge(nudgeScheduledRef.current); nudgeScheduledRef.current = null; setNudgeBanner(null); }
     const existing = saved.find(i => (i.item_data || i).name === item.name);
     if (existing) {
       await API.deleteSaved(existing.id).catch(() => {});
@@ -4330,6 +4392,29 @@ export default function App() {
         </div>
       )}
 
+      {/* ─── FOLLOW-UP NUDGE BANNER ────────────────────── */}
+      {nudgeBanner && screen === "app" && (
+        <div className="animate-slide-up" style={{ position: "fixed", top: 56, left: 12, right: 12, background: "linear-gradient(135deg, rgba(201,169,110,.12), rgba(201,169,110,.04))", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 16, padding: "14px 16px", zIndex: 9997, display: "flex", gap: 12, alignItems: "center", boxShadow: "0 8px 32px rgba(0,0,0,.3)" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(201,169,110,.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
+              {nudgeBanner.context === "refinement" ? "Your AI stylist is waiting" : "Your results are ready"}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+              {nudgeBanner.context === "refinement"
+                ? "Tap to continue refining your outfit picks."
+                : "Swipe through your matches and save your favorites."}
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+            <button onClick={() => { setNudgeBanner(null); setTab("scan"); }} style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>View</button>
+            <button onClick={() => setNudgeBanner(null)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 9, cursor: "pointer", padding: "2px 0" }}>Dismiss</button>
+          </div>
+        </div>
+      )}
+
       {/* ─── MAIN APP ────────────────────────────────────── */}
       {screen === "app" && (<>
         <div className="hdr">
@@ -4378,8 +4463,8 @@ export default function App() {
               ) : notifications.map(n => (
                 <div key={n.id} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: n.read_at ? "transparent" : "rgba(201,169,110,.04)", cursor: n.data?.url ? "pointer" : "default" }} onClick={() => { if (n.data?.url) { setShowNotifPanel(false); if (!n.data.url.startsWith("/")) window.open(n.data.url, "_blank", "noopener"); } }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: n.type === "price_drop" ? "rgba(76,175,80,.15)" : n.type === "social" ? "rgba(201,169,110,.15)" : n.type === "new_post" ? "rgba(100,181,246,.15)" : "rgba(255,255,255,.08)" }}>
-                      {n.type === "price_drop" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" strokeWidth="2"><path d="M12 2v20M17 17l-5 5-5-5"/></svg> : n.type === "social" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> : n.type === "new_post" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m21 15-5-5L5 21"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>}
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: n.type === "price_drop" ? "rgba(76,175,80,.15)" : n.type === "social" ? "rgba(201,169,110,.15)" : n.type === "new_post" ? "rgba(100,181,246,.15)" : n.type === "follow_up" ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.08)" }}>
+                      {n.type === "price_drop" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" strokeWidth="2"><path d="M12 2v20M17 17l-5 5-5-5"/></svg> : n.type === "social" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> : n.type === "new_post" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m21 15-5-5L5 21"/></svg> : n.type === "follow_up" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>{n.title}</div>
@@ -6862,6 +6947,20 @@ export default function App() {
                       </button>
                     ) : (
                       <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 4 }}>Push notifications are enabled</div>
+                      {/* Follow-up nudge toggle */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, padding: "8px 0" }}>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Follow-up reminders</div>
+                          <div style={{ fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.3 }}>Nudge me if I forget to check my results</div>
+                        </div>
+                        <button onClick={() => {
+                          const current = !(localStorage.getItem("attair_nudge_off") === "1");
+                          localStorage.setItem("attair_nudge_off", current ? "1" : "0");
+                          API.updateNotifPrefs({ follow_up_nudges: !current });
+                        }} style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", position: "relative", background: localStorage.getItem("attair_nudge_off") === "1" ? "var(--border)" : "var(--accent)", transition: "background .2s" }}>
+                          <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", position: "absolute", top: 2, transition: "left .2s", left: localStorage.getItem("attair_nudge_off") === "1" ? 2 : 20 }} />
+                        </button>
+                      </div>
                     )}
                   </div>
 
