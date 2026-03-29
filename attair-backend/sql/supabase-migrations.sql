@@ -29,3 +29,9 @@ ALTER TABLE saved_items
 -- ─── Index for faster wishlist queries ───────────────────────
 CREATE INDEX IF NOT EXISTS idx_saved_items_wishlist ON saved_items(wishlist_id);
 CREATE INDEX IF NOT EXISTS idx_wishlists_user ON wishlists(user_id);
+
+-- ─── Style DNA cache on profiles (Style Match Score feature) ─
+-- Stores the generated Style DNA payload so the product search
+-- can compute style match scores without re-generating DNA.
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS style_dna_cache JSONB;

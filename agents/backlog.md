@@ -25,15 +25,119 @@
 **Status:** DONE (Run 5, 2026-03-28) — autonomous mode implemented
 **Effort:** S (1 agent)
 
+## QUEUED — Build This Run (Specs Approved 2026-03-29)
+
+### 1. Budget Dupe Finder
+**Status:** QUEUED — Spec approved by Jules
+**Effort:** M (2 agents)
+**Spec:**
+- **What it does:** User sees a luxury item in results -> taps "Find the Dupe" -> gets dedicated view of visually similar items at way lower price points, with a shareable comparison card.
+- **Entry points:** "Find the Dupe" button on any product card priced $150+. Existing dupe alert pills become tappable -> opens dupe view.
+- **Flow:**
+  1. User taps "Find the Dupe"
+  2. Loading state: "Hunting dupes..."
+  3. Backend hits SerpAPI with visual-similarity queries (item description + "dupe" / "alternative" / "inspired by", filtered to <40% of original price)
+  4. Results screen: side-by-side comparison card — original on left, dupe on right, savings % badge between them
+  5. Swipeable if multiple dupes found (up to 5)
+  6. Each dupe card has: product image, price, store, savings %, "Shop" CTA
+  7. Share button -> generates a "Dupe Card" image (original vs dupe, prices, ATTAIRE watermark) for TikTok/IG stories
+- **Backend:**
+  - New endpoint: `POST /api/dupes` — takes product name, description, price, image URL -> returns ranked dupe results
+  - Uses Claude vision to score visual similarity between original and candidates
+  - Filters: must be <40% of original price, must score 60%+ visual similarity
+- **UI:**
+  - Comparison card is a modal/overlay, not a new page
+  - Swipe horizontally between dupes
+  - Share generates a 1080x1920 story-format image
+  - "Similar Look" in UI copy (avoid "dupe" legally), shareable card can say "dupe"
+- **NOT building yet:** Dupe Feed on trending tab, push notifs for new dupes, user-submitted dupes
+
+### 2. Hanger Test — Daily Outfit Verdict Habit
+**Status:** QUEUED — Spec approved by Jules
+**Effort:** M (2 agents)
+**Spec:**
+- **What it does:** Every day at 8am, users get a push notification with a trending outfit. They tap "Would Wear" or "Pass" — one tap, done. Builds style profile + daily habit.
+- **Flow:**
+  1. Push notif at 8am local: "Today's Hanger Test is ready"
+  2. User opens -> full-screen verdict card with outfit image + brief AI description
+  3. Two big buttons: "Would Wear" / "Pass"
+  4. After voting -> quick result: "73% said Would Wear" + option to scan for similar items
+  5. Verdict saved to profile
+- **Streaks & rewards:**
+  - 7-day streak -> Claude generates a "Style Insight" (e.g. "You lean 80% streetwear, 20% minimalist")
+  - 30-day streak -> "Taste Badge" on profile
+  - Style Insights gated behind Pro after first freebie
+- **Where outfit comes from:**
+  - Daily cron picks from top trending scans in the DB (we have 1000+ seeded)
+  - If not enough real scans, Claude curates from SerpAPI trending fashion
+- **Backend:**
+  - New cron: `POST /api/cron/hanger-test` — runs daily, selects outfit, sends push via web-push
+  - New endpoints: `GET /api/hanger-test/today`, `POST /api/hanger-test/vote`
+  - New table: `hanger_votes` (user_id, outfit_id, verdict, created_at)
+  - Streak tracking in `user_streaks` table or new columns on profiles
+- **UI:**
+  - Full-screen card, swipeable (right = wear, left = pass) OR tap buttons
+  - After vote: community results bar + "Find Similar" CTA
+  - History accessible from profile ("My Verdicts")
+- **Dependencies:** VAPID keys done, still need: service worker registration, notification permission prompt, daily cron job
+- **NOT building yet:** Rich push with outfit preview image (needs native), social features (friends' votes)
+
+### 3. Style Match Score
+**Status:** QUEUED — Spec drafted by agent
+**Effort:** M
+**Spec:**
+- **What it does:** Every product card in results shows a "92% your style" compatibility pill based on the user's Style DNA profile.
+- **How it works:**
+  - When results come back from a scan, backend compares each item's attributes (category, aesthetic, price tier) against user's Style DNA scores
+  - Generates a 0-100% match score
+  - Score displayed as a colored pill on each product card (green 80%+, yellow 50-79%, hidden <50%)
+- **Backend:**
+  - Extend existing scan results endpoint to include match_score per item
+  - Scoring logic: weighted average of style archetype overlap, price tier alignment, category preference
+  - Falls back to "New to you" pill if user has no Style DNA yet (encourages onboarding)
+- **UI:**
+  - Small pill on product card, next to existing dupe alert pill
+  - Tappable -> tooltip: "Based on your Style DNA profile"
+- **Dependencies:** Style DNA must exist for the user. If not, shows prompt to take Style Fingerprint quiz.
+
+### 4. Complete the Look
+**Status:** QUEUED — Spec drafted by agent
+**Effort:** M
+**Spec:**
+- **What it does:** Groups saved items by scan session. Shows progress toward a full outfit and offers a "Buy All" batch affiliate link.
+- **Flow:**
+  1. In Likes/Saves tab, items grouped by scan (e.g. "From your blue jacket scan — 3 of 5 items saved")
+  2. Progress bar showing how many items from that scan are saved
+  3. "Complete the Look" CTA suggests remaining items from that scan
+  4. "Buy All" button -> opens multi-retailer cart (affiliate links for each)
+- **Backend:**
+  - Group saved items by scan_id
+  - New endpoint: `GET /api/looks/:scanId` — returns all items from scan + which are saved
+  - "Buy All" generates a redirect page that opens each retailer link
+- **UI:**
+  - Grouped cards in Saves tab with scan thumbnail header
+  - Progress ring/bar
+  - "Buy All" button with total price estimate
+- **NOT building yet:** AI-suggested additions beyond original scan results
+
+### 5. Logo Tweaks
+**Status:** QUEUED
+**Effort:** S
+**Spec:**
+- Black rectangular background behind logo mark
+- Light mode: invert logo colors
+- Add logo to landing/marketing page
+- Quick pass, no new components needed
+
 ## HIGH
 
 ### Smaller/More Frequent Agent Commits
-**Status:** HIGH — Improve agent reliability
+**Status:** DONE (2026-03-29)
 **Effort:** S
 **Summary:** Each agent commits after completing each sub-task rather than batching at the end. Prevents losing work on process death.
 
 ### Migrate Discord Bot to Hosted Environment
-**Status:** HIGH — Queued
+**Status:** DONE (2026-03-29)
 **Effort:** M
 **Summary:** Move the Discord bot off Jules' laptop to a hosted environment (Railway, VPS, or similar). Currently requires laptop to stay on and awake. Should run 24/7 without depending on personal hardware.
 **Added:** 2026-03-29 via Discord
@@ -45,14 +149,14 @@
 **Effort:** S (1 agent)
 
 ### Process Keep-Alive Pings
-**Status:** MEDIUM
+**Status:** DONE (2026-03-29)
 **Effort:** S (1 agent)
 **Summary:** Discord bot pings Jules when any Claude Code process is about to shut down or sleep, so he can confirm to keep it running.
 
 ## LOW
 
 ### Scan-to-Reel Video Export
-**Status:** LOW — Deferred
+**Status:** DONE (2026-03-29)
 **Effort:** M (2 agents)
 **Summary:** 5-second animated video of scan results using Canvas + MediaRecorder API. Pro-only. Optimized for TikTok/Reels.
 
@@ -85,59 +189,7 @@
 **Status:** DEFERRED (needs data volume)
 **Effort:** S (1 agent)
 
-## Approved — Creative Run 5 Proposals (2026-03-28)
-
-### Retailer Spotlight
-**Status:** DONE (Run 5, 2026-03-28)
-**Effort:** S
-
-### Dupe Alert
-**Status:** DONE (Run 5, 2026-03-28)
-**Effort:** S
-
-### Trending Feed
-**Status:** DONE (Run 5, 2026-03-28)
-**Effort:** M
-
-### Interactive Share Link
-**Status:** DONE (Run 5, 2026-03-28)
-**Effort:** M
-
-### Style Match Score
-**Status:** Approved — backlogged
-**Effort:** M
-**Summary:** "92% your style" pill on results using Style DNA compatibility. Cool moat, needs Style DNA adoption.
-
-### Complete the Look
-**Status:** Approved — backlogged
-**Effort:** M
-**Summary:** Group saved items by scan, show progress + "Buy All" batch affiliate link.
-
-### Scan History Replay
-**Status:** Approved — backlogged
-**Effort:** L
-**Summary:** Weekly "price dropped since you scanned this" notifications. Needs SerpAPI budget increase.
-
-### Style Challenge
-**Status:** Approved — backlogged
-**Effort:** L
-**Summary:** Weekly AI-verified outfit challenges with voting + winner badges. Needs critical mass of users.
-
-## Proposed — Creative Run 2026-03-25 (Pending Jules Approval)
-
-### Budget Dupe Finder — "Find the $38 bag that looks like the $1,200 one"
-**PM Verdict:** BUILD NEXT — Highest viral potential of any feature. Dupes are TikTok gold.
-**Effort:** S-M (1-2 agents)
-**Summary:** When AI detects a luxury item ($200+), show a "Find the Dupe" button. Triggers specialized search for visually similar items at 80% less. Results shown in side-by-side comparison card. Shareable "Dupe Card" image for TikTok/Instagram with ATTAIR watermark. Dupe Feed section on trending tab.
-**Revenue:** Fast-fashion dupe purchases ($20-80) have higher affiliate conversion than luxury items. Each share card drives organic installs.
-**Risk:** Avoid using brand trademarks in search queries. Call it "Similar Look" in UI, let users say "dupe" in shares.
-
-### Hanger Test — Daily Outfit Verdict Habit
-**PM Verdict:** BUILD NEXT — Strongest daily retention mechanic possible. Tiny effort.
-**Effort:** S (1 agent)
-**Summary:** Daily push notification at 8am with trending outfit. "Would you wear this?" — one-tap verdict. Extends scan streak. After 7 days: Style Insight from Claude. After 30 days: Taste Badge on profile. Full-screen verdict card reuses existing verdict buttons.
-**Revenue:** Daily session = daily ad impression for free. Style Insights gated behind Pro for engagement paywall.
-**Risk:** Needs push notification infrastructure. Rich notifications need iOS entitlements.
+## Proposed — Creative Run 2026-03-25 (Remaining)
 
 ### Style Twins — Find Your Fashion Doppelganger
 **PM Verdict:** QUEUE — Clever use of existing Style DNA data. Great retention.
@@ -161,12 +213,48 @@
 ### "Spotted This" Share Extension
 **PM Verdict:** LATER — Highest viral potential but needs native app (Capacitor).
 **Effort:** M+ (needs native setup)
-**Summary:** iOS Share Sheet / Android Intent handler. Share any image from Instagram/TikTok directly to ATTAIR. Compact modal shows results without leaving source app.
+**Summary:** iOS Share Sheet / Android Intent handler. Share any image from Instagram/TikTok directly to ATTAIRE. Compact modal shows results without leaving source app.
 
 ### Budget Lock — Real-Time Outfit Budget Guard
 **PM Verdict:** LATER — Good UX but less viral than other options.
 **Effort:** M (2 agents)
 **Summary:** "I want to spend $____ on this outfit" input. Running total with progress bar. Auto-adjusts tier suggestions. "Mix and Match" optimizer. Shareable "Budget Build" links.
+
+## Approved — Creative Run 5 Proposals (2026-03-28)
+
+### Retailer Spotlight
+**Status:** DONE (Run 5, 2026-03-28)
+**Effort:** S
+
+### Dupe Alert
+**Status:** DONE (Run 5, 2026-03-28)
+**Effort:** S
+
+### Trending Feed
+**Status:** DONE (Run 5, 2026-03-28)
+**Effort:** M
+
+### Interactive Share Link
+**Status:** DONE (Run 5, 2026-03-28)
+**Effort:** M
+
+### Style Match Score
+**Status:** Moved to QUEUED section with full spec
+**Effort:** M
+
+### Complete the Look
+**Status:** Moved to QUEUED section with full spec
+**Effort:** M
+
+### Scan History Replay
+**Status:** Approved — backlogged
+**Effort:** L
+**Summary:** Weekly "price dropped since you scanned this" notifications. Needs SerpAPI budget increase.
+
+### Style Challenge
+**Status:** Approved — backlogged
+**Effort:** L
+**Summary:** Weekly AI-verified outfit challenges with voting + winner badges. Needs critical mass of users.
 
 ## Priority 2 — Later Runs
 

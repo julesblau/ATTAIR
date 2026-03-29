@@ -6946,21 +6946,23 @@ export default function App() {
                         Enable Push Notifications
                       </button>
                     ) : (
-                      <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 4 }}>Push notifications are enabled</div>
-                      {/* Follow-up nudge toggle */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, padding: "8px 0" }}>
-                        <div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Follow-up reminders</div>
-                          <div style={{ fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.3 }}>Nudge me if I forget to check my results</div>
+                      <>
+                        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 4 }}>Push notifications are enabled</div>
+                        {/* Follow-up nudge toggle */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, padding: "8px 0" }}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Follow-up reminders</div>
+                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.3 }}>Nudge me if I forget to check my results</div>
+                          </div>
+                          <button onClick={() => {
+                            const current = !(localStorage.getItem("attair_nudge_off") === "1");
+                            localStorage.setItem("attair_nudge_off", current ? "1" : "0");
+                            API.updateNotifPrefs({ follow_up_nudges: !current });
+                          }} style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", position: "relative", background: localStorage.getItem("attair_nudge_off") === "1" ? "var(--border)" : "var(--accent)", transition: "background .2s" }}>
+                            <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", position: "absolute", top: 2, transition: "left .2s", left: localStorage.getItem("attair_nudge_off") === "1" ? 2 : 20 }} />
+                          </button>
                         </div>
-                        <button onClick={() => {
-                          const current = !(localStorage.getItem("attair_nudge_off") === "1");
-                          localStorage.setItem("attair_nudge_off", current ? "1" : "0");
-                          API.updateNotifPrefs({ follow_up_nudges: !current });
-                        }} style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", position: "relative", background: localStorage.getItem("attair_nudge_off") === "1" ? "var(--border)" : "var(--accent)", transition: "background .2s" }}>
-                          <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", position: "absolute", top: 2, transition: "left .2s", left: localStorage.getItem("attair_nudge_off") === "1" ? 2 : 20 }} />
-                        </button>
-                      </div>
+                      </>
                     )}
                   </div>
 

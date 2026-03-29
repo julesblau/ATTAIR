@@ -270,12 +270,21 @@ router.get("/", requireAuth, styleDnaLimiter, async (req, res) => {
       },
     };
 
-    // Store in cache
+    // Store in memory cache
     dnaCache.set(userId, {
       generatedAt: Date.now(),
       lastScanId: latestScanId,
       payload,
     });
+
+    // Persist to profiles table so style match scoring can access it
+    // without re-generating (fire-and-forget — never blocks response)
+    supabase
+      .from("profiles")
+      .update({ style_dna_cache: payload })
+      .eq("id", userId)
+      .then(() => {})
+      .catch(err => console.error("[StyleDNA] Cache persist error:", err.message));
 
     return res.json(payload);
   } catch (err) {
