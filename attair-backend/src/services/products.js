@@ -1608,6 +1608,17 @@ const OCCASION_MODIFIERS = {
 export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null, searchMode = "fast", preferenceProfile = null) {
   console.log(`[Search] Mode: ${searchMode} | Items: ${items.length} | Image: ${!!imageUrl} | Occasion: ${occasion || "none"}`);
   cleanupExpiredCache();
+
+  // Build rejected product fingerprint set from preference profile
+  if (preferenceProfile?.rejected_queries?.length) {
+    preferenceProfile._rejected_fingerprints = new Set(
+      preferenceProfile.rejected_queries.map(q => {
+        // Normalize: strip punctuation, sort words — same as productFingerprint
+        const words = q.replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim().split(" ").filter(w => w.length > 1).sort();
+        return words.join(" ");
+      })
+    );
+  }
   const defaultTierBounds = getTierBounds(budgetMin, budgetMax);
   const defaultSizePrefs = sizePrefs;
 
@@ -1766,12 +1777,13 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           else score += 5; // smaller bonus for unknown domains
         }
 
-        // ── Preference-based scoring ───────────────────────
-        // Boost products from brands/categories the user has liked,
-        // penalize ones they've consistently rejected.
+        // ── Preference-based scoring (negative feedback loop) ──
+        // Boost liked signals, penalize rejected ones. Uses brand, color,
+        // category, style keywords, and rejected product fingerprints.
         if (preferenceProfile && score > 0) {
           const title = (product.title || "").toLowerCase();
           const source = (product.source || "").toLowerCase();
+
           // Liked brands get a boost
           if (preferenceProfile.liked_brands?.some(b => title.includes(b.toLowerCase()) || source.includes(b.toLowerCase()))) {
             score += 15;
@@ -1780,9 +1792,33 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           if (preferenceProfile.avoided_brands?.some(b => title.includes(b.toLowerCase()) || source.includes(b.toLowerCase()))) {
             score -= 20;
           }
-          // Preferred colors get a small boost
+          // Preferred colors get a boost
           if (preferenceProfile.color_preferences?.positive?.some(c => title.includes(c))) {
             score += 5;
+          }
+          // Negative colors get a penalty
+          if (preferenceProfile.color_preferences?.negative?.some(c => title.includes(c))) {
+            score -= 8;
+          }
+          // Preferred categories get a boost
+          if (preferenceProfile.preferred_categories?.some(c => title.includes(c) || (item.category || "").toLowerCase() === c)) {
+            score += 8;
+          }
+          // Avoided categories get a penalty
+          if (preferenceProfile.avoided_categories?.some(c => title.includes(c) || (item.category || "").toLowerCase() === c)) {
+            score -= 12;
+          }
+          // Style keyword matches get a small boost
+          const kwMatches = (preferenceProfile.style_keywords || []).filter(kw => title.includes(kw.toLowerCase())).length;
+          if (kwMatches > 0) score += Math.min(kwMatches * 3, 10);
+
+          // Rejected product fingerprint check — if user said "Not for me"
+          // to a product with a similar fingerprint, penalize it
+          if (preferenceProfile._rejected_fingerprints?.size > 0) {
+            const fp = productFingerprint(product);
+            if (preferenceProfile._rejected_fingerprints.has(fp)) {
+              score -= 15;
+            }
           }
         }
 

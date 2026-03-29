@@ -167,6 +167,16 @@ export async function computePreferenceProfile(userId) {
     .slice(0, 8)
     .map(([kw]) => kw);
 
+  // Build rejected product fingerprints from negative signals
+  // These are stored as search queries that can be fingerprinted against new results
+  const rejectedQueries = negative
+    .map(s => {
+      const parts = [s.brand, s.subcategory || s.category, s.color].filter(Boolean);
+      return parts.join(" ").toLowerCase().trim();
+    })
+    .filter(q => q.length > 3)
+    .slice(0, 50); // Cap at 50 to keep profile size reasonable
+
   const profile = {
     liked_brands: likedBrands,
     avoided_brands: avoidedBrands,
@@ -174,6 +184,7 @@ export async function computePreferenceProfile(userId) {
     avoided_categories: avoidedCategories,
     color_preferences: { positive: positiveColors, negative: negativeColors },
     style_keywords: topKeywords,
+    rejected_queries: rejectedQueries,
     signal_count: signals.length,
     positive_count: positive.length,
     negative_count: negative.length,
