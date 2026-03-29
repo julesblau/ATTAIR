@@ -892,7 +892,7 @@ const ts = ${JSON.stringify(String(timestamp))};
         await page.waitForTimeout(800);
       }
       // Click the Twins sub-tab
-      const twinsBtn = page.locator('button.feed-tab:has-text("Twins")').first();
+      const twinsBtn = page.locator('button:has-text("Twins")').first();
       if (await twinsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await twinsBtn.click();
         await page.waitForTimeout(800);
@@ -908,20 +908,32 @@ const ts = ${JSON.stringify(String(timestamp))};
         await page.waitForTimeout(800);
       }
       // Click the Twins sub-tab
-      const twinsBtn = page.locator('button.feed-tab:has-text("Twins")').first();
+      const twinsBtn = page.locator('button:has-text("Twins")').first();
       if (await twinsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await twinsBtn.click();
         await page.waitForTimeout(500);
       }
-      // Inject synthetic twin cards into the twins section
+      // Inject synthetic twin cards — replace empty/locked/loading state
       await page.evaluate(() => {
-        const container = document.querySelector('.style-twins-empty');
-        if (!container) return;
-        const parent = container.parentElement;
-        // Remove the empty state
-        container.remove();
-        // Inject fully rendered twin cards
-        parent.innerHTML = \`
+        // Remove any empty, loading, or "no twins" state
+        const empties = document.querySelectorAll('.style-twins-empty, .style-twins-loading');
+        let parent = null;
+        empties.forEach(el => { parent = el.parentElement; el.remove(); });
+        // Fallback: find the Discover tab content area if no empty state existed
+        if (!parent) {
+          const sections = document.querySelectorAll('.animate-fade-in');
+          for (const s of sections) {
+            if (s.querySelector('.feed-tabs-wrap')) { parent = s; break; }
+          }
+        }
+        if (!parent) return;
+        // Clear any existing twin content and inject fresh synthetic cards
+        const existing = parent.querySelector('.style-twins-grid, .style-twin-featured');
+        if (existing) existing.parentElement.innerHTML = '';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'animate-fade-in';
+        wrapper.style.padding = '0 16px';
+        wrapper.innerHTML = \`
           <div class="animate-fade-in">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-top:4px">
               <div>
@@ -1040,6 +1052,7 @@ const ts = ${JSON.stringify(String(timestamp))};
             </div>
           </div>
         \`;
+        parent.appendChild(wrapper);
       });
       await page.waitForTimeout(500);
     }},
@@ -1155,8 +1168,14 @@ const ts = ${JSON.stringify(String(timestamp))};
     }},
   ];
 
+  // Prioritize twins screenshots: capture them first so they appear before timeout
+  const priorityNames = ['home', 'discover-twins-empty', 'discover-twins-cards', 'discover-twins-compare', 'discover-twins-save-toast'];
+  const priorityScreens = priorityNames.map(n => screens.find(s => s.name === n)).filter(Boolean);
+  const otherScreens = screens.filter(s => !priorityNames.includes(s.name));
+  const orderedScreens = [...priorityScreens, ...otherScreens];
+
   const paths = [];
-  for (const screen of screens) {
+  for (const screen of orderedScreens) {
     try {
       await page.goto(screen.url, { waitUntil: "networkidle", timeout: 10000 }).catch(() =>
         page.goto(screen.url, { waitUntil: "load", timeout: 10000 })
@@ -1180,7 +1199,7 @@ const ts = ${JSON.stringify(String(timestamp))};
     const result = execSync(`node "${scriptPath}"`, {
       cwd: REPO_ROOT,
       encoding: "utf-8",
-      timeout: 60000,
+      timeout: 120000,
       shell: true,
     });
 
