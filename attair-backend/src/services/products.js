@@ -640,9 +640,11 @@ async function extendedTextSearch(item, gender, tierBounds) {
 
   console.log(`[ExtendedText] "${item.name}" → ${uniqueQueries.map(q => `"${q}"`).join(" | ")}`);
 
+  const isCustomBudget = tierBounds.min > DEFAULT_BUDGET.min || tierBounds.max > DEFAULT_BUDGET.max;
+  const priceFloor = isCustomBudget ? tierBounds.min : null;
   const priceCeil = tierBounds.max > DEFAULT_BUDGET.max ? tierBounds.max : null;
   const allResults = [];
-  const batches = await Promise.all(uniqueQueries.map(q => textSearch(q, null, priceCeil).catch(() => [])));
+  const batches = await Promise.all(uniqueQueries.map(q => textSearch(q, priceFloor, priceCeil).catch(() => [])));
   for (const batch of batches) allResults.push(...batch);
   return allResults;
 }
@@ -708,11 +710,10 @@ function matchLensResultToItem(result, items) {
 // ═════════════════════════════════════════════════════════════
 // STEP 3: Text search fallback (for items Lens didn't cover)
 // ═════════════════════════════════════════════════════════════
-async function textSearch(query, _priceMin, priceMax) {
-  // Cache keyed on query + priceMax — the same query with the same price ceiling
+async function textSearch(query, priceMin, priceMax) {
+  // Cache keyed on query + price range — the same query with the same price bounds
   // always hits the same Shopping results page, so this is a safe cache key.
-  // priceMax defaults to 0 in the key when unset so keys stay deterministic.
-  const cacheKey = crypto.createHash("md5").update(`text:${query}:${priceMax || 0}`).digest("hex");
+  const cacheKey = crypto.createHash("md5").update(`text:${query}:${priceMin || 0}:${priceMax || 0}`).digest("hex");
   const cached = await getCache(cacheKey);
   if (cached) {
     console.log(`[cache] HIT: ${cacheKey}`);
@@ -728,10 +729,15 @@ async function textSearch(query, _priceMin, priceMax) {
     gl: "us",
     num: "20",
   });
-  // Add a price ceiling when a budget is set — this keeps premium headroom but avoids
-  // stripping all results for common items that have no products at the floor price.
-  if (priceMax != null) {
+  // Add price bounds to Google Shopping query — this tells Google to filter results
+  // to the user's budget range. We use 0.5x min as floor and 1.5x max as ceiling
+  // to give some breathing room for dupes/alternatives while still being budget-driven.
+  if (priceMin != null && priceMax != null) {
+    params.set("tbs", `price:1,ppr_min:${Math.floor(priceMin * 0.5)},ppr_max:${Math.ceil(priceMax * 1.5)}`);
+  } else if (priceMax != null) {
     params.set("tbs", `price:1,ppr_max:${Math.ceil(priceMax * 1.5)}`);
+  } else if (priceMin != null) {
+    params.set("tbs", `price:1,ppr_min:${Math.floor(priceMin * 0.5)}`);
   }
 
   const controller = new AbortController();
@@ -1045,10 +1051,16 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
   const uniqueQueries = [...new Set(queries.filter(Boolean))].slice(0, 2);
   console.log(`[TextFallback] "${item.name}" → ${uniqueQueries.map(q => `"${q}"`).join(" | ")} budget=$${tierBounds.min}-$${tierBounds.max}${notes ? ` notes="${notes}"` : ""}`);
 
+  // Pass both floor and ceiling to Google Shopping when user has a custom budget.
+  // This ensures Google returns results in the user's actual price range, not just
+  // everything below a ceiling. The floor is only set for non-default budgets to
+  // avoid filtering out cheap finds for users who haven't set preferences.
+  const isCustomBudget = tierBounds.min > DEFAULT_BUDGET.min || tierBounds.max > DEFAULT_BUDGET.max;
+  const priceFloor = isCustomBudget ? tierBounds.min : null;
   const priceCeil = tierBounds.max > DEFAULT_BUDGET.max ? tierBounds.max : null;
 
   const allResults = [];
-  const batches = await Promise.all(uniqueQueries.map(q => textSearch(q, null, priceCeil).catch(() => [])));
+  const batches = await Promise.all(uniqueQueries.map(q => textSearch(q, priceFloor, priceCeil).catch(() => [])));
   for (const batch of batches) allResults.push(...batch);
 
   return allResults;
@@ -1291,22 +1303,28 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
     if (fitTerm && title.includes(fitTerm.toLowerCase())) { score += 10; break; }
   }
 
-  // Price proximity — only applied when the user has set a non-default budget
-  // Products in the user's target range get a strong bonus; items that are a fraction
-  // of the minimum budget get heavily penalised (e.g. a $15 item for a $1000 budget)
+  // Price proximity — budget is the primary driver of result relevance.
+  // Products in the user's target range get a strong bonus that outweighs most
+  // other scoring signals. Items way outside the range get penalised aggressively.
   if (price !== null && tierBounds) {
     const { min, max } = tierBounds;
+    const isCustom = min > DEFAULT_BUDGET.min || max > DEFAULT_BUDGET.max;
     if (price >= min && price <= max) {
-      score += 30; // squarely in the user's target range
+      score += isCustom ? 45 : 30;  // squarely in target range — big bonus for custom budgets
+    } else if (price >= min * 0.7 && price <= max * 1.3) {
+      score += isCustom ? 20 : 15;  // close to target range
     } else if (price < min) {
       const ratio = price / min;
-      if (ratio < 0.1) score -= 50;       // way too cheap (e.g. $10 vs $1000 min)
-      else if (ratio < 0.3) score -= 30;  // significantly under budget
-      else if (ratio < 0.6) score -= 15;  // moderately under budget
+      if (ratio < 0.1) score -= 60;       // way too cheap (e.g. $10 vs $1000 min)
+      else if (ratio < 0.3) score -= 40;  // significantly under budget
+      else if (ratio < 0.5) score -= 25;  // moderately under budget
+      else score -= 10;                    // slightly under
     } else if (price > max) {
       const ratio = price / max;
-      if (ratio > 5) score -= 20;         // extreme luxury outlier
-      else if (ratio > 2) score -= 8;
+      if (ratio > 5) score -= 30;         // extreme luxury outlier
+      else if (ratio > 3) score -= 20;
+      else if (ratio > 2) score -= 12;
+      else score -= 5;                     // slightly over
     }
   }
 
@@ -1500,18 +1518,16 @@ function fallbackTier(item, tier, tierBounds) {
 //   It does NOT affect Query A or C (to avoid over-constraining those queries).
 //
 // ── budget_min / budget_max ──────────────────────────────────────────────────
-//   Budget values are used in TWO ways:
-//     1. textSearch(): a price CEILING of 1.5 × budget_max is passed as the
-//        Google Shopping tbs parameter (ppr_max). There is currently NO price
-//        floor passed — Google Shopping's ppr_min parameter is not used in
-//        textSearch(), only in the fallbackTier() Google Shopping URL helper.
-//        FUTURE IMPROVEMENT: pass ppr_min = budget_min × 0.5 to textSearch()
-//        to reduce returns that are implausibly cheap for the user's budget.
-//     2. Tier partitioning (scoreProduct + findProductsForItems): results are
-//        sorted into budget/mid/premium tiers based on whether their price is
-//        below, within, or above the min–max range. A +30 score bonus is also
-//        applied for products priced within the range. So budget DOES affect
-//        which products surface at the top of each tier.
+//   Budget values drive search in THREE ways (Option C — full budget integration):
+//     1. textSearch(): BOTH ppr_min (0.5 × budget_min) and ppr_max (1.5 × budget_max)
+//        are passed to Google Shopping when the user has a custom budget.
+//        This tells Google to return results in the user's actual price range,
+//        dramatically reducing irrelevant results at the API level.
+//     2. scoreProduct(): in-budget products get +45 score bonus (vs +30 before) for
+//        custom budgets. Out-of-budget penalties are steeper. The budget scoring
+//        outweighs most other signals, making price the primary driver.
+//     3. Tier partitioning: results are sorted into budget/mid/premium tiers
+//        based on whether their price is below, within, or above the min–max range.
 //   The budget does NOT act as a hard filter — products outside the range are
 //   still returned (in a different tier) rather than excluded. This is
 //   intentional: we want to show alternatives across price points.
