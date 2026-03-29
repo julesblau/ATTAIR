@@ -3077,3 +3077,500 @@
   .ob-demo-viewport { padding: 12px; }
   .bottom-sheet { max-height: 85vh; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   STYLE DNA — Spotify Wrapped Experience
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Full-screen overlay */
+.sdna-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+}
+
+/* ── Progress bar (Stories-style) ── */
+.sdna-progress {
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  gap: 3px;
+  z-index: 4;
+  padding-top: max(12px, env(safe-area-inset-top, 12px));
+}
+
+.sdna-seg {
+  flex: 1;
+  height: 2.5px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.sdna-seg.done {
+  background: var(--accent);
+}
+
+.sdna-seg.active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: sdnaFillSeg 5s linear forwards;
+}
+
+@keyframes sdnaFillSeg {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* ── Close button ── */
+.sdna-close {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top, 16px));
+  right: 16px;
+  z-index: 5;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  padding: 8px;
+  margin-top: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .2s, background .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sdna-close:active { background: rgba(255,255,255,0.15); color: #fff; }
+
+/* ── Card (full-screen slide) ── */
+.sdna-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 28px 48px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  animation: sdnaCardIn .45s ease forwards;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+@keyframes sdnaCardIn {
+  from { opacity: 0; transform: scale(.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Ambient radial glow */
+.sdna-glow {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,169,110,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Content container ── */
+.sdna-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 340px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Animations ── */
+.sdna-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  animation: sdnaReveal .65s cubic-bezier(.25,.46,.45,.94) forwards;
+}
+
+@keyframes sdnaReveal {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.sdna-scale-in {
+  opacity: 0;
+  transform: scale(.3);
+  animation: sdnaScaleIn .8s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+
+@keyframes sdnaScaleIn {
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ── Section label ── */
+.sdna-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3.5px;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 28px;
+  font-family: var(--font-sans);
+}
+
+/* ── Slide 0: Intro ── */
+.sdna-big-num {
+  font-family: var(--font-display);
+  font-size: 88px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #fff 30%, var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sdna-sub {
+  font-size: 18px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 36px;
+  font-family: var(--font-sans);
+}
+
+.sdna-body {
+  font-size: 16px;
+  color: var(--text-tertiary);
+  line-height: 1.6;
+  max-width: 260px;
+  font-family: var(--font-sans);
+}
+
+/* ── Slide 1: Archetype ── */
+.sdna-archetype {
+  font-family: 'Instrument Serif', serif;
+  font-size: 46px;
+  line-height: 1.1;
+  margin-bottom: 28px;
+  background: linear-gradient(135deg, #fff 20%, var(--accent) 80%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sdna-desc {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 300px;
+  font-family: var(--font-sans);
+}
+
+/* ── Slide 2: Traits ── */
+.sdna-traits {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.sdna-trait {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 14px 32px;
+  background: rgba(201,169,110,0.06);
+  border: 1px solid rgba(201,169,110,0.15);
+  border-radius: 32px;
+  letter-spacing: .3px;
+  font-family: var(--font-sans);
+}
+
+/* ── Slide 3: Style Scores ── */
+.sdna-scores {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  margin-top: 4px;
+}
+
+.sdna-score-row { width: 100%; }
+
+.sdna-score-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+  letter-spacing: .8px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  font-family: var(--font-sans);
+}
+
+.sdna-score-track {
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  position: relative;
+  overflow: visible;
+}
+
+.sdna-score-fill {
+  position: absolute;
+  left: 0; top: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), rgba(201,169,110,0.5));
+  border-radius: 3px;
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: sdnaBarGrow 1s cubic-bezier(.25,.46,.45,.94) forwards;
+}
+
+.sdna-score-dot {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border: 2.5px solid #0C0C0E;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: sdnaDotPop .4s cubic-bezier(.34,1.56,.64,1) forwards;
+  box-shadow: 0 0 16px rgba(201,169,110,0.35);
+}
+
+@keyframes sdnaBarGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes sdnaDotPop {
+  from { transform: translate(-50%, -50%) scale(0); }
+  to   { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ── Slide 4: Colors ── */
+.sdna-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+  margin-top: 4px;
+  margin-bottom: 32px;
+}
+
+.sdna-color {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+.sdna-swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.1);
+  flex-shrink: 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.sdna-price {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sdna-price-lbl {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+
+.sdna-price-val {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 6px;
+  font-family: var(--font-display);
+}
+
+/* ── Slide 5: Brands ── */
+.sdna-brands {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+  margin-top: 4px;
+  margin-bottom: 32px;
+}
+
+.sdna-brand {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: .5px;
+  font-family: var(--font-display);
+}
+
+.sdna-cats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.sdna-cat-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+}
+
+.sdna-cat-pct {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+/* ── Slide 6: Summary + Share ── */
+.sdna-final { gap: 14px; }
+
+.sdna-final-arch {
+  font-family: 'Instrument Serif', serif;
+  font-size: 38px;
+  color: var(--text-primary);
+  line-height: 1.15;
+}
+
+.sdna-final-traits {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: .3px;
+  font-family: var(--font-sans);
+}
+
+.sdna-final-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 4px 0;
+}
+
+.sdna-chip {
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+}
+
+.sdna-chip.gold {
+  background: rgba(201,169,110,0.1);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sdna-final-brands {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+}
+
+.sdna-share-btn {
+  width: 100%;
+  padding: 14px 0;
+  background: var(--accent);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  letter-spacing: .3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sdna-share-btn:disabled { opacity: .55; pointer-events: none; }
+
+.sdna-share-btn:active { transform: scale(.97); }
+
+.sdna-count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+}
+
+/* ── Tap hint ── */
+.sdna-tap {
+  position: absolute;
+  bottom: max(32px, env(safe-area-inset-bottom, 24px));
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255,255,255,0.2);
+  font-family: var(--font-sans);
+  pointer-events: none;
+  animation-delay: 1.5s !important;
+}
+
+/* ── Responsive tweaks ── */
+@media (max-width: 380px) {
+  .sdna-big-num { font-size: 72px; }
+  .sdna-archetype { font-size: 38px; }
+  .sdna-trait { font-size: 17px; padding: 12px 24px; }
+  .sdna-brand { font-size: 24px; }
+  .sdna-final-arch { font-size: 32px; }
+  .sdna-card { padding: 72px 20px 40px; }
+}
+
+@media (max-height: 650px) {
+  .sdna-big-num { font-size: 64px; }
+  .sdna-archetype { font-size: 36px; }
+  .sdna-label { margin-bottom: 20px; }
+  .sdna-scores { gap: 18px; }
+  .sdna-trait { padding: 10px 24px; font-size: 17px; }
+  .sdna-colors { gap: 12px; }
+  .sdna-swatch { width: 36px; height: 36px; }
+}

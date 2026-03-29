@@ -1530,6 +1530,33 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
   return canvas.toDataURL("image/png");
 }
 
+// ─── Style DNA color name → hex mapping ─────────────────────
+const SDNA_COLOR_MAP = {
+  black: "#1a1a1a", white: "#f0f0f0", navy: "#1e3a5f", blue: "#3b82f6",
+  red: "#ef4444", green: "#22c55e", brown: "#8b5836", beige: "#d4b896",
+  gray: "#6b7280", grey: "#6b7280", cream: "#f5f0d0", tan: "#d2b48c",
+  pink: "#ec4899", purple: "#8b5cf6", olive: "#6b8e23", burgundy: "#800020",
+  teal: "#0d9488", coral: "#ff7f6b", khaki: "#bdb76b", maroon: "#800000",
+  camel: "#c19a6b", ivory: "#fffce8", charcoal: "#36454f", denim: "#5b7fa3",
+  gold: "#d4a030", silver: "#c0c0c0", orange: "#f97316", yellow: "#eab308",
+  indigo: "#4f46e5", lavender: "#a78bfa", rust: "#b7410e", sage: "#87ae73",
+  mint: "#3eb489", peach: "#ffb07c", mauve: "#c084a4", taupe: "#8b8589",
+  wine: "#722f37", plum: "#673147", slate: "#64748b", forest: "#228b22",
+  mustard: "#e1a836", blush: "#de98a0", chocolate: "#7b3f00", nude: "#e3bc9a"
+};
+function sdnaColorHex(name) {
+  if (!name) return "#555";
+  const lower = name.toLowerCase().trim();
+  if (SDNA_COLOR_MAP[lower]) return SDNA_COLOR_MAP[lower];
+  // Try first word (e.g. "Navy Blue" → "navy")
+  const first = lower.split(/[\s-]/)[0];
+  if (SDNA_COLOR_MAP[first]) return SDNA_COLOR_MAP[first];
+  // Try last word (e.g. "Light Blue" → "blue")
+  const words = lower.split(/[\s-]/);
+  if (SDNA_COLOR_MAP[words[words.length - 1]]) return SDNA_COLOR_MAP[words[words.length - 1]];
+  return "#555";
+}
+
 // ─── Style DNA share card generator ──────────────────────────
 async function generateStyleDnaCard(dna, userName) {
   const canvas = document.createElement("canvas");
@@ -1982,6 +2009,7 @@ export default function App() {
   const [styleDnaLoading, setStyleDnaLoading] = useState(false);
   const [showStyleDna, setShowStyleDna] = useState(false);
   const [styleDnaShareLoading, setStyleDnaShareLoading] = useState(false);
+  const [styleDnaSlide, setStyleDnaSlide] = useState(0);
 
   // ─── Price Drop Alerts ────────────────────────────────────
   const [priceAlertCount, setPriceAlertCount] = useState(0);
@@ -4737,7 +4765,7 @@ export default function App() {
 
                 {/* Style DNA button */}
                 {styleDna?.ready ? (
-                  <button onClick={() => setShowStyleDna(true)} aria-label="View your Style DNA report" style={{
+                  <button onClick={() => { setStyleDnaSlide(0); setShowStyleDna(true); }} aria-label="View your Style DNA report" style={{
                     width: "100%", marginTop: 8, padding: "12px 0", fontSize: 14, fontWeight: 600,
                     borderRadius: "var(--radius-sm)", background: "linear-gradient(135deg, rgba(201,169,110,.12), rgba(201,169,110,.04))",
                     border: "1px solid rgba(201,169,110,.25)", color: "var(--accent)",
@@ -5504,112 +5532,239 @@ export default function App() {
         </div>
       )}
 
-      {/* ═══ STYLE DNA CARD MODAL ═══════════════════════════════ */}
-      {showStyleDna && styleDna?.ready && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9997, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.6)", backdropFilter: "blur(8px)" }}
-          onClick={() => setShowStyleDna(false)} role="dialog" aria-label="Style DNA report" aria-modal="true">
-          <div onClick={e => e.stopPropagation()} style={{
-            position: "relative", width: "calc(100% - 32px)", maxWidth: 400,
-            background: "linear-gradient(165deg, #1A1A1C 0%, #0C0C0E 100%)",
-            border: "1px solid rgba(201,169,110,.2)", borderRadius: 24,
-            padding: "32px 24px 24px", textAlign: "center",
-            animation: "slideIn .4s var(--ease-spring) forwards",
-            boxShadow: "0 24px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(201,169,110,.1)",
-            overflow: "hidden", maxHeight: "90vh", overflowY: "auto"
-          }}>
-            {/* Shimmer overlay */}
-            <div style={{ position: "absolute", inset: 0, borderRadius: 24, overflow: "hidden", pointerEvents: "none",
-              background: "linear-gradient(105deg, transparent 40%, rgba(201,169,110,.05) 45%, rgba(201,169,110,.1) 50%, rgba(201,169,110,.05) 55%, transparent 60%)",
-              backgroundSize: "200% 100%", animation: "searchPulse 3s ease infinite" }} />
+      {/* ═══ STYLE DNA — WRAPPED EXPERIENCE ═══════════════════ */}
+      {showStyleDna && styleDna?.ready && (() => {
+        const slide = styleDnaSlide;
+        const TOTAL_SLIDES = 7;
+        const stats = styleDna.stats || {};
+        const scores = styleDna.style_score || {};
 
-            {/* Header */}
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, color: "var(--accent)", textTransform: "uppercase", marginBottom: 6 }}>YOUR STYLE DNA</div>
+        const handleSlideNav = (e) => {
+          e.stopPropagation();
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX || (e.touches?.[0]?.clientX ?? rect.width);
+          const relX = x - rect.left;
+          // Tap left 30% = back, rest = forward
+          if (relX < rect.width * 0.3 && slide > 0) {
+            setStyleDnaSlide(s => s - 1);
+          } else if (slide < TOTAL_SLIDES - 1) {
+            setStyleDnaSlide(s => s + 1);
+          }
+        };
 
-            {/* Archetype */}
-            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, color: "var(--text-primary)", marginBottom: 8, lineHeight: 1.2 }}>{styleDna.archetype}</div>
+        const handleClose = () => {
+          setShowStyleDna(false);
+          setStyleDnaSlide(0);
+        };
 
-            {/* Description */}
-            <div style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 20, maxWidth: 320, margin: "0 auto 20px" }}>{styleDna.description}</div>
+        const GRADIENTS = [
+          "linear-gradient(165deg, #0C0C0E 0%, #1a1520 50%, #0C0C0E 100%)",
+          "linear-gradient(165deg, #1a0a2e 0%, #12081e 50%, #0C0C0E 100%)",
+          "linear-gradient(165deg, #0a1e1e 0%, #081414 50%, #0C0C0E 100%)",
+          "linear-gradient(165deg, #1e1508 0%, #141008 50%, #0C0C0E 100%)",
+          "linear-gradient(165deg, #1e0a14 0%, #14080e 50%, #0C0C0E 100%)",
+          "linear-gradient(165deg, #0a0e1e 0%, #080a14 50%, #0C0C0E 100%)",
+          "linear-gradient(165deg, #1a1508 0%, #12100a 50%, #0C0C0E 100%)",
+        ];
 
-            {/* Traits */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 20 }}>
-              {styleDna.traits?.map((trait, i) => (
-                <span key={i} style={{ padding: "6px 14px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 20, fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>{trait}</span>
+        return (
+          <div className="sdna-overlay" role="dialog" aria-label="Style DNA report" aria-modal="true">
+            {/* Progress bar — Instagram Stories style */}
+            <div className="sdna-progress">
+              {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
+                <div key={i} className={`sdna-seg${i < slide ? " done" : ""}${i === slide ? " active" : ""}`} />
               ))}
             </div>
 
-            {/* Style scores - horizontal bars */}
-            {styleDna.style_score && (
-              <div style={{ marginBottom: 20, textAlign: "left" }}>
-                {[
-                  { label: "Classic", label2: "Trendy", key: "classic_vs_trendy" },
-                  { label: "Minimal", label2: "Maximal", key: "minimal_vs_maximal" },
-                  { label: "Casual", label2: "Formal", key: "casual_vs_formal" },
-                  { label: "Budget", label2: "Luxury", key: "budget_vs_luxury" }
-                ].map(({ label, label2, key }) => (
-                  <div key={key} style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>
-                      <span>{label}</span><span>{label2}</span>
-                    </div>
-                    <div style={{ height: 4, background: "var(--border)", borderRadius: 2, position: "relative" }}>
-                      <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${(styleDna.style_score[key] || 5) * 10}%`, background: "var(--accent)", borderRadius: 2, transition: "width 1s ease" }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Stats row */}
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20, flexWrap: "wrap" }}>
-              {styleDna.stats?.dominant_colors?.slice(0, 3).map((color, i) => (
-                <span key={i} style={{ padding: "6px 12px", background: "var(--bg-input)", borderRadius: 8, fontSize: 11, color: "var(--text-secondary)" }}>{color}</span>
-              ))}
-              {styleDna.stats?.price_tier && (
-                <span style={{ padding: "6px 12px", background: "rgba(201,169,110,.1)", borderRadius: 8, fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>{styleDna.stats.price_tier}</span>
-              )}
-            </div>
-
-            {/* Top brands */}
-            {styleDna.stats?.top_brands?.length > 0 && (
-              <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>
-                Top brands: {styleDna.stats.top_brands.slice(0, 3).join(" \u00B7 ")}
-              </div>
-            )}
-
-            {/* Share button */}
-            <button onClick={async (e) => {
-              e.stopPropagation();
-              setStyleDnaShareLoading(true);
-              try {
-                const cardUrl = await generateStyleDnaCard(styleDna, authName);
-                if (navigator.share) {
-                  const blob = await (await fetch(cardUrl)).blob();
-                  const file = new File([blob], "style-dna.png", { type: "image/png" });
-                  await navigator.share({ files: [file], title: "My Style DNA \u2014 ATTAIR" });
-                } else {
-                  const a = document.createElement("a");
-                  a.href = cardUrl;
-                  a.download = "style-dna.png";
-                  a.click();
-                }
-              } catch {}
-              setStyleDnaShareLoading(false);
-            }} aria-label="Share your Style DNA card" style={{
-              width: "100%", padding: "14px 0", background: "var(--accent)", color: "var(--text-inverse)",
-              border: "none", borderRadius: "var(--radius-sm)", fontSize: 15, fontWeight: 700,
-              cursor: "pointer", fontFamily: "var(--font-sans)", letterSpacing: 0.3,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              opacity: styleDnaShareLoading ? 0.6 : 1, minHeight: 44
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-              {styleDnaShareLoading ? "Generating..." : "Share Your Style DNA"}
+            {/* Close button */}
+            <button className="sdna-close" onClick={handleClose} aria-label="Close Style DNA">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
 
-            {/* Scan count */}
-            <div style={{ marginTop: 12, fontSize: 11, color: "var(--text-tertiary)" }}>Based on {styleDna.stats?.total_scans || 0} scans</div>
+            {/* Card — full screen, tap to advance */}
+            <div className="sdna-card" style={{ background: GRADIENTS[slide] }} onClick={handleSlideNav} key={slide}>
+              {/* Ambient glow */}
+              <div className="sdna-glow" />
+
+              {/* ── Slide 0: Intro ── */}
+              {slide === 0 && (
+                <div className="sdna-content">
+                  <div className="sdna-label sdna-reveal">YOUR STYLE DNA</div>
+                  <div className="sdna-big-num sdna-reveal" style={{ animationDelay: ".2s" }}>
+                    {stats.total_scans || 0}
+                  </div>
+                  <div className="sdna-sub sdna-reveal" style={{ animationDelay: ".4s" }}>
+                    outfits analyzed
+                  </div>
+                  <div className="sdna-body sdna-reveal" style={{ animationDelay: ".7s" }}>
+                    Let's see what your style says about you
+                  </div>
+                </div>
+              )}
+
+              {/* ── Slide 1: Archetype Reveal ── */}
+              {slide === 1 && (
+                <div className="sdna-content">
+                  <div className="sdna-label sdna-reveal">YOU ARE</div>
+                  <div className="sdna-archetype sdna-scale-in" style={{ animationDelay: ".3s" }}>
+                    {styleDna.archetype}
+                  </div>
+                  <div className="sdna-desc sdna-reveal" style={{ animationDelay: ".9s" }}>
+                    {styleDna.description}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Slide 2: Traits ── */}
+              {slide === 2 && (
+                <div className="sdna-content">
+                  <div className="sdna-label sdna-reveal">YOUR STYLE IN FOUR WORDS</div>
+                  <div className="sdna-traits">
+                    {(styleDna.traits || []).map((trait, i) => (
+                      <div key={i} className="sdna-trait sdna-reveal" style={{ animationDelay: `${0.3 + i * 0.2}s` }}>
+                        {trait}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Slide 3: Style Spectrum ── */}
+              {slide === 3 && (
+                <div className="sdna-content">
+                  <div className="sdna-label sdna-reveal">YOUR STYLE SPECTRUM</div>
+                  <div className="sdna-scores">
+                    {[
+                      { label: "Classic", label2: "Trendy", key: "classic_vs_trendy" },
+                      { label: "Minimal", label2: "Maximal", key: "minimal_vs_maximal" },
+                      { label: "Casual", label2: "Formal", key: "casual_vs_formal" },
+                      { label: "Budget", label2: "Luxury", key: "budget_vs_luxury" }
+                    ].map(({ label, label2, key }, i) => (
+                      <div key={key} className="sdna-score-row sdna-reveal" style={{ animationDelay: `${0.3 + i * 0.2}s` }}>
+                        <div className="sdna-score-labels">
+                          <span>{label}</span><span>{label2}</span>
+                        </div>
+                        <div className="sdna-score-track">
+                          <div className="sdna-score-fill" style={{ width: `${(scores[key] || 5) * 10}%`, animationDelay: `${0.5 + i * 0.2}s` }} />
+                          <div className="sdna-score-dot" style={{ left: `${(scores[key] || 5) * 10}%`, animationDelay: `${0.7 + i * 0.2}s` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Slide 4: Color Palette ── */}
+              {slide === 4 && (
+                <div className="sdna-content">
+                  <div className="sdna-label sdna-reveal">YOUR COLOR PALETTE</div>
+                  <div className="sdna-colors">
+                    {(stats.dominant_colors || []).slice(0, 5).map((cObj, i) => {
+                      const name = typeof cObj === "string" ? cObj : cObj.value;
+                      return (
+                        <div key={i} className="sdna-color sdna-reveal" style={{ animationDelay: `${0.3 + i * 0.15}s` }}>
+                          <div className="sdna-swatch" style={{ background: sdnaColorHex(name) }} />
+                          <span>{name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {stats.price_tier && (
+                    <div className="sdna-price sdna-reveal" style={{ animationDelay: ".95s" }}>
+                      <span className="sdna-price-lbl">Your Price Zone</span>
+                      <span className="sdna-price-val">{stats.price_tier}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Slide 5: Top Brands ── */}
+              {slide === 5 && (
+                <div className="sdna-content">
+                  <div className="sdna-label sdna-reveal">YOUR TOP BRANDS</div>
+                  <div className="sdna-brands">
+                    {(stats.top_brands || []).slice(0, 5).map((bObj, i) => {
+                      const name = typeof bObj === "string" ? bObj : bObj.value;
+                      return (
+                        <div key={i} className="sdna-brand sdna-scale-in" style={{ animationDelay: `${0.3 + i * 0.2}s` }}>
+                          {name}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {stats.category_breakdown && Object.keys(stats.category_breakdown).length > 0 && (
+                    <div className="sdna-cats sdna-reveal" style={{ animationDelay: "1.2s" }}>
+                      {Object.entries(stats.category_breakdown).slice(0, 3).map(([cat, pct]) => (
+                        <div key={cat} className="sdna-cat-chip">
+                          <span className="sdna-cat-pct">{Math.round(pct)}%</span>
+                          <span>{cat}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Slide 6: Summary + Share ── */}
+              {slide === 6 && (
+                <div className="sdna-content sdna-final">
+                  <div className="sdna-label sdna-reveal">YOUR STYLE DNA</div>
+                  <div className="sdna-final-arch sdna-reveal" style={{ animationDelay: ".2s" }}>
+                    {styleDna.archetype}
+                  </div>
+                  <div className="sdna-final-traits sdna-reveal" style={{ animationDelay: ".4s" }}>
+                    {(styleDna.traits || []).join(" · ")}
+                  </div>
+                  <div className="sdna-final-chips sdna-reveal" style={{ animationDelay: ".6s" }}>
+                    {(stats.dominant_colors || []).slice(0, 3).map((c, i) => (
+                      <span key={i} className="sdna-chip">{typeof c === "string" ? c : c.value}</span>
+                    ))}
+                    {stats.price_tier && <span className="sdna-chip gold">{stats.price_tier}</span>}
+                  </div>
+                  {stats.top_brands?.length > 0 && (
+                    <div className="sdna-final-brands sdna-reveal" style={{ animationDelay: ".8s" }}>
+                      {stats.top_brands.slice(0, 3).map(b => typeof b === "string" ? b : b.value).join(" · ")}
+                    </div>
+                  )}
+                  <button className="sdna-share-btn sdna-reveal" style={{ animationDelay: "1s" }}
+                    disabled={styleDnaShareLoading}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setStyleDnaShareLoading(true);
+                      try {
+                        const cardUrl = await generateStyleDnaCard(styleDna, authName);
+                        if (navigator.share) {
+                          const blob = await (await fetch(cardUrl)).blob();
+                          const file = new File([blob], "style-dna.png", { type: "image/png" });
+                          await navigator.share({ files: [file], title: "My Style DNA \u2014 ATTAIR" });
+                        } else {
+                          const a = document.createElement("a");
+                          a.href = cardUrl;
+                          a.download = "style-dna.png";
+                          a.click();
+                        }
+                      } catch {}
+                      setStyleDnaShareLoading(false);
+                    }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                    {styleDnaShareLoading ? "Generating..." : "Share Your Style DNA"}
+                  </button>
+                  <div className="sdna-count sdna-reveal" style={{ animationDelay: "1.1s" }}>
+                    Based on {stats.total_scans || 0} scans
+                  </div>
+                </div>
+              )}
+
+              {/* Tap hint (not on final slide) */}
+              {slide < TOTAL_SLIDES - 1 && (
+                <div className="sdna-tap sdna-reveal" style={{ animationDelay: "1.5s" }}>
+                  Tap to continue
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ═══ PRICE ALERTS BOTTOM SHEET ═══════════════════════════ */}
       {showPriceAlerts && (
