@@ -3370,6 +3370,7 @@ export default function App() {
                     const u = scan.user || {};
                     const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
                     const isSaved = saved.some(s => s.scan_id === scan.id);
+                    const isTrending = (scan.save_count || 0) >= 3;
                     return (
                       <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => setFeedDetailScan(scan)}>
                         <div style={{ position: "relative" }}>
@@ -3379,12 +3380,25 @@ export default function App() {
                                 <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                               </div>
                           }
-                          {scan.save_count > 0 && (
-                            <div className="feed-card-pill">
-                              <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                              {scan.save_count}
-                            </div>
-                          )}
+                          <div className="feed-card-pills">
+                            {isTrending && (
+                              <div className="feed-card-pill feed-card-trending">
+                                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                                Trending
+                              </div>
+                            )}
+                            {scan.save_count > 0 && (
+                              <div className="feed-card-pill">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                {scan.save_count}
+                              </div>
+                            )}
+                            {scan.item_count > 0 && (
+                              <div className="feed-card-pill feed-card-items-pill">
+                                {scan.item_count} {scan.item_count === 1 ? "item" : "items"}
+                              </div>
+                            )}
+                          </div>
                           <div className="feed-card-overlay">
                             <div className="feed-card-user">
                               <div className="feed-card-avatar">{ini}</div>
@@ -5400,7 +5414,11 @@ export default function App() {
                 </div>
               </div>
               {feedDetailScan.summary && <div className="feed-detail-summary">{feedDetailScan.summary}</div>}
-              {feedDetailScan.item_count > 0 && <div style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 16 }}>{feedDetailScan.item_count} item{feedDetailScan.item_count !== 1 ? "s" : ""} identified</div>}
+              <div className="feed-detail-stats">
+                {feedDetailScan.item_count > 0 && <span>{feedDetailScan.item_count} item{feedDetailScan.item_count !== 1 ? "s" : ""} identified</span>}
+                {(feedDetailScan.save_count || 0) > 0 && <span>{feedDetailScan.save_count} {feedDetailScan.save_count === 1 ? "person" : "people"} saved this</span>}
+                {(feedDetailScan.save_count || 0) >= 3 && <span className="feed-detail-trending">Trending</span>}
+              </div>
               {feedDetailScan.user?.bio && <div style={{ fontSize: 13, color: "var(--text-tertiary)", padding: "12px 0", borderTop: "1px solid var(--border)" }}>{feedDetailScan.user.bio}</div>}
             </div>
           </div>

@@ -2689,7 +2689,10 @@
 .feed-card-name{font-size:11px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .feed-card-summary{font-size:9px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;margin-top:1px}
 .feed-card-items{font-size:9px;color:rgba(255,255,255,.5);margin-top:1px}
-.feed-card-pill{position:absolute;top:8px;right:8px;padding:3px 7px;border-radius:100px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;gap:3px;font-size:10px;font-family:var(--font-sans);font-weight:600;color:#fff;z-index:1}
+.feed-card-pills{position:absolute;top:8px;right:8px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;z-index:1}
+.feed-card-pill{padding:3px 7px;border-radius:100px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;gap:3px;font-size:10px;font-family:var(--font-sans);font-weight:600;color:#fff}
+.feed-card-trending{background:linear-gradient(135deg,rgba(201,169,110,.85),rgba(180,140,80,.85));color:#fff;font-size:9px;letter-spacing:.3px;text-transform:uppercase}
+.feed-card-items-pill{font-size:9px;font-weight:500;color:rgba(255,255,255,.85);background:rgba(0,0,0,.45)}
 .feed-card-heart{width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
 .feed-card-heart:active{transform:scale(0.9)}
 .feed-card-heart svg{width:16px;height:16px}
@@ -2736,7 +2739,10 @@
 .feed-detail-user{display:flex;align-items:center;gap:8px;margin-bottom:16px}
 .feed-detail-name{font-size:16px;font-weight:600;color:var(--text-primary)}
 .feed-detail-date{font-size:12px;color:var(--text-tertiary)}
-.feed-detail-summary{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px}
+.feed-detail-summary{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px}
+.feed-detail-stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;font-size:12px;color:var(--text-tertiary)}
+.feed-detail-stats span{display:inline-flex;align-items:center;gap:4px}
+.feed-detail-trending{color:var(--accent);font-weight:600}
 .app[data-theme='light'] .feed-card-overlay{background:linear-gradient(transparent,rgba(0,0,0,.55))}
 .app[data-theme='light'] .feed-skeleton-img{background:linear-gradient(110deg,#f0f0f0 30%,#e0e0e0 50%,#f0f0f0 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
 /* #11 Light mode: thicker/darker tab underline for visibility */
