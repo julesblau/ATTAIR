@@ -2592,7 +2592,9 @@ export default function App() {
   const nudgeScheduledRef = useRef(null); // track currently scheduled nudge scanId
 
   // ─── App state ────────────────────────────────────────────
-  const [screen, setScreen] = useState("onboarding");
+  // Skip onboarding for returning authed users — go straight to "app" screen.
+  // This also ensures Playwright screenshot captures see the tab bar immediately.
+  const [screen, setScreen] = useState(() => Auth.getToken() ? "app" : "onboarding");
   const [obIdx, setObIdx] = useState(0);
   const [prefs, setPrefs] = useState({});
   const [selPlan, setSelPlan] = useState("yearly");
@@ -5032,11 +5034,14 @@ export default function App() {
                 <button className={`feed-tab${searchSubTab === "products" ? " active" : ""}`} onClick={() => setSearchSubTab("products")}>Products</button>
                 <button className={`feed-tab${searchSubTab === "twins" ? " active" : ""}`} onClick={() => {
                   setSearchSubTab("twins");
-                  // Always set loading synchronously on tab switch to guarantee no "Unlock" flash.
-                  // loadStyleTwins guards against concurrent fetches via ref, so calling it is safe.
-                  if (authed && !styleTwinsLoadingRef.current) {
+                  // RACE CONDITION FIX: Always set loading=true synchronously on tab activation.
+                  // This guarantees the loading spinner shows immediately — never the "Unlock" CTA —
+                  // even if the user already visited twins before (hasFetched=true, ready=false).
+                  if (authed) {
                     setStyleTwinsLoading(true);
-                    loadStyleTwins();
+                    if (!styleTwinsLoadingRef.current) {
+                      loadStyleTwins();
+                    }
                   }
                 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
