@@ -3937,15 +3937,16 @@ export default function App() {
             <div className="res">
               {/* Re-search banner */}
               {phase === "searching" && isResearch && (
-                <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", borderBottom: "1px solid rgba(201,169,110,.15)", display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                    <div className="ld-dot" style={{ background: "var(--accent)" }} />
-                    <div className="ld-dot" style={{ background: "var(--accent)", animationDelay: ".15s" }} />
-                    <div className="ld-dot" style={{ background: "var(--accent)", animationDelay: ".3s" }} />
+                <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,.75)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <div className="ld-dot" style={{ background: "var(--accent)", width: 10, height: 10 }} />
+                    <div className="ld-dot" style={{ background: "var(--accent)", width: 10, height: 10, animationDelay: ".15s" }} />
+                    <div className="ld-dot" style={{ background: "var(--accent)", width: 10, height: 10, animationDelay: ".3s" }} />
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0.3 }}>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--accent)", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0.3, textAlign: "center", padding: "0 32px" }}>
                     {RESEARCH_MESSAGES[loadMsgIdx % RESEARCH_MESSAGES.length]}
                   </div>
+                  {searchNotes && <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 4 }}>"{searchNotes}"</div>}
                 </div>
               )}
 
@@ -4153,7 +4154,7 @@ export default function App() {
                         value={searchNotes}
                         onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
                         onKeyDown={e => { if (e.key === "Enter" && searchNotes.trim()) { e.target.blur(); runProductSearch(); } }}
-                        placeholder="Refine your results with AI\u2026"
+                        placeholder="Refine your results with AI…"
                         className="refine-input"
                         style={{ flex: 1, minHeight: 44 }}
                       />
