@@ -4302,7 +4302,7 @@ export default function App() {
                   const allTierProducts = item.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(item.tiers[tk]).map(p => ({ ...p, _tier: tk }))) : [];
 
                   // Dupe detection: find highest-priced product, flag 40%+ cheaper alternatives
-                  const dupeMap = new Map(); // key: "tierKey_j" → { savings, vsPrice, vsStore }
+                  const dupeMap = new Map(); // key: "tierKey_j" → { savings, vsPrice, vsStore, vsTier }
                   if (item.tiers) {
                     const allPriced = allTierProducts
                       .map(p => ({ ...p, _numPrice: parseFloat((p.price || "").replace(/[^0-9.]/g, "")) }))
@@ -4313,7 +4313,6 @@ export default function App() {
                         if (p === maxProduct) return;
                         const savings = 1 - (p._numPrice / maxProduct._numPrice);
                         if (savings >= 0.4) {
-                          // Find the index of this product in its tier
                           const tierProducts = asTierArray(item.tiers[p._tier]);
                           const idx = tierProducts.findIndex(tp => tp.url === p.url && tp.product_name === p.product_name);
                           if (idx >= 0) {
@@ -4321,6 +4320,8 @@ export default function App() {
                               savings: Math.round(savings * 100),
                               vsPrice: maxProduct.price,
                               vsStore: maxProduct.brand,
+                              vsTier: maxProduct._tier,
+                              vsUrl: maxProduct.url,
                             });
                           }
                         }
@@ -4403,10 +4404,10 @@ export default function App() {
                                     const dupeInfo = dupeMap.get(`${tierKey}_${j}`);
                                     return (
                                       <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
-                                        {/* Dupe Alert pill */}
+                                        {/* Dupe Alert pill — shows savings vs most expensive + reference price */}
                                         {dupeInfo && (
-                                          <div className="dupe-alert-pill">
-                                            {dupeInfo.savings}% less vs {dupeInfo.vsStore}
+                                          <div className="dupe-alert-pill" onClick={e => { e.preventDefault(); e.stopPropagation(); if (dupeInfo.vsUrl) window.open(dupeInfo.vsUrl, "_blank"); }} style={{ cursor: "pointer" }} title={`Compare: ${dupeInfo.vsStore} at ${dupeInfo.vsPrice}`}>
+                                            {dupeInfo.savings}% less vs {dupeInfo.vsStore} ({dupeInfo.vsPrice})
                                           </div>
                                         )}
                                         <a href={href} target="_blank" rel="noopener noreferrer"
