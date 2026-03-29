@@ -743,12 +743,12 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
         <div className="pw-plans">
           <div className={`pw-p${plan === "yearly" ? " sel" : ""}`} onClick={() => setPlan("yearly")} style={{ textAlign: "center" }}>
             <div className="pw-ptag">SAVE 50%</div>
-            <div className="pw-pp">$30<span className="pw-pd">/yr</span></div>
-            <div className="pw-pw">$2.50/mo</div>
+            <div className="pw-pp">$29.99<span className="pw-pd">/yr</span></div>
+            <div className="pw-pw">$0.58/week</div>
           </div>
           <div className={`pw-p${plan === "monthly" ? " sel" : ""}`} onClick={() => setPlan("monthly")} style={{ textAlign: "center" }}>
-            <div className="pw-pp">$5<span className="pw-pd">/mo</span></div>
-            <div className="pw-pw">$1.15/week</div>
+            <div className="pw-pp">$4.99<span className="pw-pd">/mo</span></div>
+            <div className="pw-pw">$1.25/week</div>
           </div>
         </div>
         <button className="cta" onClick={handleCta} disabled={loadingPlan} style={{ opacity: loadingPlan ? 0.7 : 1 }}>
@@ -3068,8 +3068,8 @@ export default function App() {
             {["Unlimited AI outfit scans","Completely ad-free experience","Web-verified product links","Price drop alerts on saved items","Full scan history forever"].map((f,i) => <div className="pw-f" key={i}><div className="pw-ck">✓</div>{f}</div>)}
           </div>
           <div className="pw-plans">
-            <div className={`pw-p ${selPlan==="yearly"?"sel":""}`} onClick={() => setSelPlan("yearly")}><div className="pw-ptag">BEST VALUE</div><div className="pw-pp">$30<span className="pw-pd"> /year</span></div><div className="pw-pw">$0.58/week</div></div>
-            <div className={`pw-p ${selPlan==="monthly"?"sel":""}`} onClick={() => setSelPlan("monthly")}><div className="pw-pp">$5<span className="pw-pd"> /mo</span></div><div className="pw-pw">$1.15/week</div></div>
+            <div className={`pw-p ${selPlan==="yearly"?"sel":""}`} onClick={() => setSelPlan("yearly")}><div className="pw-ptag">BEST VALUE · SAVE 50%</div><div className="pw-pp">$29.99<span className="pw-pd"> /year</span></div><div className="pw-pw">$0.58/week</div></div>
+            <div className={`pw-p ${selPlan==="monthly"?"sel":""}`} onClick={() => setSelPlan("monthly")}><div className="pw-pp">$4.99<span className="pw-pd"> /mo</span></div><div className="pw-pw">$1.25/week</div></div>
           </div>
           <button className="cta" onClick={() => {
             if (authed) {
@@ -3080,7 +3080,7 @@ export default function App() {
               trans(() => setScreen("auth"));
             }
           }}>
-            {authed ? (upgradeLoading ? "Loading..." : `Start Pro — ${selPlan === "yearly" ? "$30/yr" : "$5/mo"}`) : "Get started"}
+            {authed ? (upgradeLoading ? "Loading..." : `Start Pro — ${selPlan === "yearly" ? "$29.99/yr" : "$4.99/mo"}`) : "Get started"}
           </button>
           <div className="pw-terms">12 free scans per month. Upgrade anytime.</div>
         </div>
@@ -4979,9 +4979,9 @@ export default function App() {
                         <button className="btn-ghost scan-card-back-btn" onClick={(e) => {
                           e.stopPropagation();
                           setWishlistPickerScan(scan);
-                        }} aria-label="Add to wishlist">
+                        }} aria-label="Add to collection">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                          Wishlist
+                          Collection
                         </button>
                         <button className="btn-ghost scan-card-back-btn" onClick={(e) => shareScan(e, scan)} aria-label="Share this scan">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -6406,7 +6406,7 @@ export default function App() {
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)" }} />
           <div style={{ position: "relative", width: "100%", maxWidth: 400, background: "var(--bg-secondary)", borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", maxHeight: "60vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Add to Wishlist</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Add to Collection</div>
               <button onClick={() => { setWishlistPickerScan(null); setNewWishlistName(""); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>&times;</button>
             </div>
             {wishlists.length > 0 && wishlists.map(wl => (

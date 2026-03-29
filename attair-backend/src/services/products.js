@@ -1124,7 +1124,7 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
     if (isShoeItem) sizeTerm = String(sizePrefs.shoe_size).trim();
   }
 
-  const occasionTerm = occasion ? OCCASION_MODIFIERS[occasion] || null : (customOccasionModifiers || null);
+  const occasionTerm = occasion ? (OCCASION_MODIFIERS[occasion] || customOccasionModifiers || null) : (customOccasionModifiers || null);
 
   const queries = [];
 
