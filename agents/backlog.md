@@ -53,34 +53,8 @@
 - **NOT building yet:** Dupe Feed on trending tab, push notifs for new dupes, user-submitted dupes
 
 ### 2. Hanger Test — Daily Outfit Verdict Habit
-**Status:** QUEUED — Spec approved by Jules
+**Status:** DONE (2026-03-29) — Full-screen verdict cards with streaks, Would Wear / Pass voting
 **Effort:** M (2 agents)
-**Spec:**
-- **What it does:** Every day at 8am, users get a push notification with a trending outfit. They tap "Would Wear" or "Pass" — one tap, done. Builds style profile + daily habit.
-- **Flow:**
-  1. Push notif at 8am local: "Today's Hanger Test is ready"
-  2. User opens -> full-screen verdict card with outfit image + brief AI description
-  3. Two big buttons: "Would Wear" / "Pass"
-  4. After voting -> quick result: "73% said Would Wear" + option to scan for similar items
-  5. Verdict saved to profile
-- **Streaks & rewards:**
-  - 7-day streak -> Claude generates a "Style Insight" (e.g. "You lean 80% streetwear, 20% minimalist")
-  - 30-day streak -> "Taste Badge" on profile
-  - Style Insights gated behind Pro after first freebie
-- **Where outfit comes from:**
-  - Daily cron picks from top trending scans in the DB (we have 1000+ seeded)
-  - If not enough real scans, Claude curates from SerpAPI trending fashion
-- **Backend:**
-  - New cron: `POST /api/cron/hanger-test` — runs daily, selects outfit, sends push via web-push
-  - New endpoints: `GET /api/hanger-test/today`, `POST /api/hanger-test/vote`
-  - New table: `hanger_votes` (user_id, outfit_id, verdict, created_at)
-  - Streak tracking in `user_streaks` table or new columns on profiles
-- **UI:**
-  - Full-screen card, swipeable (right = wear, left = pass) OR tap buttons
-  - After vote: community results bar + "Find Similar" CTA
-  - History accessible from profile ("My Verdicts")
-- **Dependencies:** VAPID keys done, still need: service worker registration, notification permission prompt, daily cron job
-- **NOT building yet:** Rich push with outfit preview image (needs native), social features (friends' votes)
 
 ### 3. Style Match Score
 **Status:** QUEUED — Spec drafted by agent
@@ -121,7 +95,7 @@
 - **NOT building yet:** AI-suggested additions beyond original scan results
 
 ### 5. Logo Tweaks
-**Status:** QUEUED
+**Status:** IN PROGRESS (2026-03-29) — black bg + dark/light mode variants, started before stop
 **Effort:** S
 **Spec:**
 - Black rectangular background behind logo mark
@@ -192,11 +166,8 @@
 ## Proposed — Creative Run 2026-03-25 (Remaining)
 
 ### Style Twins — Find Your Fashion Doppelganger
-**PM Verdict:** QUEUE — Clever use of existing Style DNA data. Great retention.
+**Status:** DONE (2026-03-29) — Discover tab with score comparison bars, shared-save triggers, weekly cron, 20+ commits of polish
 **Effort:** M (1-2 agents)
-**Summary:** Compute Euclidean distance between Style DNA scores. Surface 5-10 "Style Twins" on Discover tab. Weekly notification: "3 new style twins discovered." Shared saves trigger: "Your Style Twin also saved this."
-**Revenue:** Retention mechanic + social flywheel acceleration.
-**Risk:** Needs 50+ users with Style DNA before launching. Privacy opt-in required.
 
 ### Outfit of the Week — AI Editorial That Runs on Autopilot
 **PM Verdict:** QUEUE — Low effort, high retention. Uses existing AI content infra.
@@ -301,6 +272,14 @@
 - Smart Re-Search / Alt-Search Button
 
 ### Run 6 (2026-03-29)
+- **Hanger Test** — daily outfit verdict habit with streaks, Would Wear / Pass voting
+- **Style Twins** — fashion doppelganger on Discover tab, score comparison bars, shared-save triggers, weekly cron
+- **Scan-to-Reel** — 5s animated video export of scan results (3 iterations of polish)
+- **Follow-up Nudge System** — re-pings after 10-15 min inactivity
+- **Chat Context Persistence** — structured memory system for convo context
+- **Process Keep-Alive Pings** — Discord bot pings before shutdown
+- **Discord Bot Hosted Migration** — moved off Jules' laptop to hosted env
+- **Smaller/More Frequent Commits** — agents commit per sub-task
 - VAPID keys generated and set on Railway (push notifications enabled)
 - scan-images bucket verified (exists, public)
 - style_challenges table + RPCs created and verified (endpoints working)
