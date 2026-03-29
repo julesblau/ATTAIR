@@ -2187,6 +2187,13 @@ export default function App() {
   const [flippedScans, setFlippedScans] = useState(new Set()); // which scan cards are flipped
   const [scanSearchQuery, setScanSearchQuery] = useState(""); // search within scan history
 
+  // ─── Derived status helpers (must be before any useEffect that references them) ───
+  const isFree = !userStatus || userStatus.tier === "free" || userStatus.tier === "expired";
+  const isPro = userStatus?.tier === "pro" || userStatus?.tier === "trial";
+  const scansLeft = userStatus?.scans_remaining_today ?? 12;
+  const scansLimit = userStatus?.scans_limit ?? 12;
+  const showAds = userStatus?.show_ads ?? true;
+
   // Load scan history and price alerts when Saved tab is opened
   useEffect(() => {
     if (tab === "likes" && authed && history.length === 0) {
@@ -2562,12 +2569,6 @@ export default function App() {
     if (obIdx < OB_STEPS.length - 1) trans(() => setObIdx(i => i + 1));
     else trans(() => setScreen("inspiration"));
   };
-  const isFree = !userStatus || userStatus.tier === "free" || userStatus.tier === "expired";
-  const isPro = userStatus?.tier === "pro" || userStatus?.tier === "trial";
-  const scansLeft = userStatus?.scans_remaining_today ?? 12;
-  const scansLimit = userStatus?.scans_limit ?? 12;
-  const showAds = userStatus?.show_ads ?? true;
-
   // ─── OAuth callback — check URL hash for tokens on mount ──
   useEffect(() => {
     const hash = window.location.hash;
