@@ -186,7 +186,7 @@ async function chatWithOpus(userMessage) {
       "Bash(cat *)", "Bash(ls *)", "Bash(wc *)", "Bash(head *)", "Bash(tail *)",
       "Bash(railway *)", "Bash(curl *)",
     ].join(" ");
-    const relPromptFile = "agents\\.tmp\\" + sysPromptFile.split(/[/\\]/).pop();
+    const relPromptFile = "agents/.tmp/" + sysPromptFile.split(/[/\\]/).pop();
     const cmd = `claude -p "Respond to Jules latest message. See system prompt for context." --system-prompt-file ${relPromptFile} --model opus --output-format text --dangerously-skip-permissions --allowedTools ${toolsList}`;
 
     console.log("[chatWithOpus] spawning:", cmd.slice(0, 200) + "...");
@@ -230,7 +230,7 @@ function runAgent(prompt, { label = "agent", onLog } = {}) {
     const agentId = randomUUID();
     const agentPromptFile = join(tmpDir, `agent-${agentId}.txt`);
     writeFileSync(agentPromptFile, prompt);
-    const relPromptFile = "agents\\.tmp\\agent-" + agentId + ".txt";
+    const relPromptFile = "agents/.tmp/agent-" + agentId + ".txt";
 
     const toolsList = [
       "Read", "Write", "Edit", "Glob", "Grep",
@@ -348,8 +348,11 @@ Do NOT create new files unless absolutely necessary. Build within existing files
 Do NOT change function signatures in attair-backend/src/services/products.js.`;
 
     try {
-      await runAgent(buildPrompt, { label: `build:${taskDescription.slice(0, 30)}`, onLog: logToDiscord });
+      console.log("[buildLoop] calling runAgent, prompt length:", buildPrompt.length);
+      const buildOutput = await runAgent(buildPrompt, { label: `build:${taskDescription.slice(0, 30)}`, onLog: logToDiscord });
+      console.log("[buildLoop] agent returned, output length:", buildOutput.length);
     } catch (err) {
+      console.error("[buildLoop] agent error:", err.message);
       await chatChannel.send(`Build agent error: ${err.message.slice(0, 200)}`);
       if (stopRequested) break;
       continue;
@@ -557,6 +560,7 @@ async function buildFromBacklog(chatChannel, logsChannel) {
 
   while (!stopRequested) {
     const task = getNextBacklogTask();
+    console.log("[buildFromBacklog] next task:", task ? task.title : "null");
     if (!task) {
       await chatChannel.send("Backlog is empty — nothing left to build. Nice.");
       break;
@@ -566,7 +570,7 @@ async function buildFromBacklog(chatChannel, logsChannel) {
       new EmbedBuilder()
         .setColor(0x3498DB)
         .setTitle("Next Task")
-        .setDescription(`**${task.title}**\n${task.summary || ""}`.slice(0, 4096))
+        .setDescription(`**${task.title}**\n${task.summary || "(no summary)"}`.slice(0, 4096))
         .addFields(
           { name: "Priority", value: task.priority || "?", inline: true },
           { name: "Size", value: task.size || "?", inline: true },
