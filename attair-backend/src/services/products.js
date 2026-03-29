@@ -1262,6 +1262,19 @@ const GARMENT_SYNONYMS = [
   ["vest", "gilet", "puffer vest", "down vest", "quilted vest"],
   ["boots", "ankle boots", "chelsea boots", "combat boots"],
   ["coat", "overcoat", "topcoat", "wool coat", "trench coat"],
+  ["trousers", "pants", "dress pants", "slacks"],
+  ["heels", "pumps", "stilettos", "high heels"],
+  ["crop top", "cropped top", "cropped tee"],
+  ["jumpsuit", "romper", "one-piece", "playsuit"],
+  ["maxi dress", "long dress", "floor-length dress"],
+  ["midi skirt", "mid-length skirt", "knee-length skirt"],
+  ["mini skirt", "short skirt"],
+  ["pullover", "knit pullover", "pull-over sweater"],
+  ["bodysuit", "body suit", "leotard"],
+  ["bralette", "bra top", "crop bra"],
+  ["espadrilles", "rope-sole shoes", "canvas espadrilles"],
+  ["oxford shoes", "lace-up shoes", "brogues", "wingtips"],
+  ["clogs", "mule shoes", "slip-on clogs"],
 ];
 
 /**
