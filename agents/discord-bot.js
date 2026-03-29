@@ -304,8 +304,8 @@ function runAgent(prompt, { label = "agent", onLog } = {}) {
 
 // ─── Build → Judge → Fix Loop ───────────────────────────────────────────────
 async function buildWithQualityLoop(taskDescription, chatChannel, logsChannel) {
-  if (activeProcess || buildLoopRunning) {
-    await chatChannel.send("A build is already in progress. Say `stop` first.");
+  if (activeProcess) {
+    await chatChannel.send("A build agent is already running. Say `stop` first.");
     return false;
   }
 
