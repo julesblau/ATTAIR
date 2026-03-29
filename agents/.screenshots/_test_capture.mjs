@@ -27,10 +27,27 @@ const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;ba
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
+
+  // Build mock JWT token (Node.js Buffer-based for reliability, btoa can be inconsistent)
+  const mockJwtPayload = Buffer.from(JSON.stringify({email:"demo@attaire.com",sub:"demo-user",iat:1774800000,exp:1974800000})).toString("base64").replace(/=/g,"");
+  const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + mockJwtPayload + ".mock-sig";
+
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 3,
   });
+
+  // ═══ KEY FIX: Set localStorage BEFORE any page loads via addInitScript ═══
+  // This runs synchronously in the browser before React initializes,
+  // so Auth.getToken() returns the token on first render → screen="app" immediately.
+  await context.addInitScript((token) => {
+    localStorage.setItem("attair_token", token);
+    localStorage.setItem("attair_refresh", "mock-refresh-token");
+    localStorage.setItem("attair_interests_picked", "1");
+    localStorage.setItem("attair_notif_prompted", "1");
+    localStorage.setItem("attair_pref_sheet_shown", "1");
+  }, mockToken);
+
   const page = await context.newPage();
   const paths = [];
 
@@ -46,11 +63,7 @@ const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;ba
   }
 
   try {
-    // Build mock JWT token
-    const mockJwtPayload = btoa(JSON.stringify({email:"demo@attaire.com",sub:"demo-user",iat:1774800000,exp:1974800000})).replace(/=/g,"");
-    const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + mockJwtPayload + ".mock-sig";
-
-    // Intercept ALL API calls BEFORE any navigation — return mock data
+    // Intercept ALL API calls — return mock data for every endpoint
     await page.route("**/api/**", async (route) => {
       const url = route.request().url();
       if (url.includes("/api/user/status")) {
@@ -62,7 +75,7 @@ const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;ba
       } else if (url.includes("/api/style-dna")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ axes: { classic_vs_trendy: 3, minimal_vs_maximal: 2, casual_vs_formal: 7, budget_vs_luxury: 6 }, archetype: "Modern Classic", palette: ["navy", "cream", "brown"] }) });
       } else if (url.includes("/api/feed")) {
-        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ posts: [], has_more: false }) });
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ posts: [], scans: [], has_more: false }) });
       } else if (url.includes("/api/saved")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }) });
       } else if (url.includes("/api/wishlists")) {
@@ -79,83 +92,49 @@ const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;ba
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
       } else if (url.includes("/api/challenges")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ challenges: [] }) });
+      } else if (url.includes("/api/social/following-ids")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ following_ids: [] }) });
+      } else if (url.includes("/api/auth/refresh")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ access_token: "mock-access", refresh_token: "mock-refresh" }) });
       } else {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
       }
     });
 
-    // ═══ STRATEGY: Load page first, then set auth token, then reload ═══
-    // addInitScript can be unreliable with Vite's ES module loading.
-    // Instead: load page → set localStorage from page context → reload.
+    // ═══ SINGLE LOAD: Navigate directly to /?tab=twins ═══
+    // localStorage is already set via addInitScript, so React sees the token on first render.
+    // Use "load" instead of "networkidle" — Vite's HMR WebSocket prevents networkidle from resolving.
+    console.error("[Screenshot] Navigating to /?tab=twins with token pre-set...");
+    await page.goto("http://localhost:5173/?tab=twins", { waitUntil: "load", timeout: 20000 });
 
-    // Step 1: Load the page (will show onboarding since no token yet)
-    console.error("[Screenshot] Step 1: Initial page load...");
-    await page.goto("http://localhost:5173/", { waitUntil: "networkidle", timeout: 20000 });
-    await page.waitForTimeout(500);
-
-    // Step 2: Set auth token and flags directly in page's localStorage
-    console.error("[Screenshot] Step 2: Setting auth token in localStorage...");
-    await page.evaluate((token) => {
-      localStorage.setItem("attair_token", token);
-      localStorage.setItem("attair_interests_picked", "1");
-      localStorage.setItem("attair_notif_prompted", "1");
-      localStorage.setItem("attair_pref_sheet_shown", "1");
-    }, mockToken);
-
-    // Step 3: Reload with ?tab=twins deep link — React will now see the token on init
-    console.error("[Screenshot] Step 3: Reloading with ?tab=twins...");
-    await page.goto("http://localhost:5173/?tab=twins", { waitUntil: "networkidle", timeout: 20000 });
-
-    // Step 4: Wait for the tab bar — confirms we're on the app screen (not onboarding)
-    console.error("[Screenshot] Step 4: Waiting for tab bar (.tb)...");
-    let tabBarFound = false;
+    // Wait for React to hydrate and render — look for the tab bar which confirms app screen
+    console.error("[Screenshot] Waiting for tab bar (.tb)...");
     try {
-      await page.waitForSelector(".tb", { timeout: 8000 });
-      tabBarFound = true;
+      await page.waitForSelector(".tb", { timeout: 10000 });
       console.error("[Screenshot] Tab bar found — app screen active");
     } catch {
-      console.error("[Screenshot] Tab bar NOT found after initial load, trying fallback...");
-      // Fallback: try clicking through onboarding if somehow still showing
-      try {
-        const ctaBtn = await page.$("button.cta");
-        if (ctaBtn) {
-          console.error("[Screenshot] Clicking Get Started...");
-          await ctaBtn.click();
-          await page.waitForTimeout(1000);
-        }
-        // Set token again and reload
-        await page.evaluate((token) => {
-          localStorage.setItem("attair_token", token);
-          localStorage.setItem("attair_interests_picked", "1");
-          localStorage.setItem("attair_notif_prompted", "1");
-          localStorage.setItem("attair_pref_sheet_shown", "1");
-        }, mockToken);
-        await page.goto("http://localhost:5173/?tab=twins", { waitUntil: "networkidle", timeout: 15000 });
-        await page.waitForSelector(".tb", { timeout: 8000 });
-        tabBarFound = true;
-        console.error("[Screenshot] Tab bar found on second attempt");
-      } catch {
-        console.error("[Screenshot] FATAL: Cannot reach app screen even after fallback");
-      }
-    }
+      console.error("[Screenshot] Tab bar NOT found, diagnosing...");
+      const diagnosis = await page.evaluate(() => ({
+        url: location.href,
+        hasToken: !!localStorage.getItem("attair_token"),
+        bodyClasses: document.body.className,
+        bodyText: document.body.innerText.slice(0, 300),
+        allButtons: Array.from(document.querySelectorAll("button")).map(b => b.textContent.trim()).slice(0, 10),
+      }));
+      console.error("[Screenshot] Diagnosis:", JSON.stringify(diagnosis, null, 2));
 
-    if (!tabBarFound) {
-      // Last resort: try to force-mount the app screen by modifying React state
-      console.error("[Screenshot] Last resort: attempting direct state manipulation...");
-      await page.evaluate((token) => {
-        localStorage.setItem("attair_token", token);
-        localStorage.setItem("attair_interests_picked", "1");
-        localStorage.setItem("attair_notif_prompted", "1");
-        localStorage.setItem("attair_pref_sheet_shown", "1");
-      }, mockToken);
-      await page.reload({ waitUntil: "networkidle", timeout: 15000 });
-      await page.waitForTimeout(2000);
+      // If stuck on onboarding despite token, try clicking through
+      const skipBtn = await page.$("text=Skip");
+      if (skipBtn) { await skipBtn.click(); await page.waitForTimeout(500); }
+      const startBtn = await page.$("button.cta");
+      if (startBtn) { await startBtn.click(); await page.waitForTimeout(500); }
+
+      // Re-check for tab bar
       try {
-        await page.waitForSelector(".tb", { timeout: 8000 });
-        tabBarFound = true;
-        console.error("[Screenshot] Tab bar found on third attempt");
+        await page.waitForSelector(".tb", { timeout: 5000 });
+        console.error("[Screenshot] Tab bar found after clicking through onboarding");
       } catch {
-        console.error("[Screenshot] FATAL: Tab bar never found. Taking fallback screenshots.");
+        console.error("[Screenshot] FATAL: Cannot reach app screen. Taking diagnostic screenshot.");
         await snap("home");
         await snap("scan");
         await snap("profile");
@@ -165,86 +144,78 @@ const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;ba
       }
     }
 
-    // Allow initial renders and API calls to settle
+    // Give React time to settle after mount and process ?tab=twins deep link
     await page.waitForTimeout(1500);
 
-    // Step 5: Navigate to Discover > Twins tab
-    console.error("[Screenshot] Step 5: Navigating to Twins tab...");
-
-    // Check if Twins tab is already active (from ?tab=twins deep link)
-    const twinsAlreadyActive = await page.evaluate(() => {
-      const btns = document.querySelectorAll('.feed-tab');
-      for (const b of btns) {
-        if (b.textContent.includes('Twins') && b.classList.contains('active')) return true;
+    // Verify we're on the Twins tab — deep link should have set it
+    const tabState = await page.evaluate(() => {
+      const feedTabs = document.querySelectorAll(".feed-tab");
+      let activeTab = "none";
+      for (const t of feedTabs) {
+        if (t.classList.contains("active")) activeTab = t.textContent.trim();
       }
-      return false;
+      return {
+        hasFeedTabs: feedTabs.length > 0,
+        activeTab,
+        hasTwinsContent: !!document.querySelector(".style-twin-featured") || !!document.querySelector(".style-twins-loading") || !!document.querySelector(".style-twins-empty"),
+      };
     });
+    console.error("[Screenshot] Tab state:", JSON.stringify(tabState));
 
-    if (twinsAlreadyActive) {
-      console.error("[Screenshot] Twins tab already active from deep link");
-    } else {
-      // Click the Discover tab in bottom bar
-      console.error("[Screenshot] Clicking Discover tab...");
-      try {
-        await page.click('button[aria-label="Discover"]', { timeout: 3000 });
-      } catch {
-        // Fallback: find by text
-        await page.evaluate(() => {
-          const btns = document.querySelectorAll('.tb button');
-          for (const b of btns) {
-            if (b.textContent.includes('Discover') || b.getAttribute('aria-label') === 'Discover') {
-              b.click(); break;
-            }
-          }
-        });
-      }
-      await page.waitForTimeout(800);
+    // If Twins tab is not active, click it manually
+    if (!tabState.activeTab.includes("Twins")) {
+      console.error("[Screenshot] Twins tab not active, clicking Discover then Twins...");
 
-      // Click the Twins sub-tab
-      console.error("[Screenshot] Clicking Twins sub-tab...");
+      // Click the Discover tab button in bottom bar
       await page.evaluate(() => {
-        const btns = document.querySelectorAll('.feed-tab, button');
+        const btns = document.querySelectorAll(".tb button");
         for (const b of btns) {
-          if (b.textContent.trim().includes('Twins')) { b.click(); break; }
+          const label = b.getAttribute("aria-label") || b.textContent;
+          if (label.includes("Discover")) { b.click(); return; }
         }
       });
-    }
+      await page.waitForTimeout(500);
 
-    // Step 6: Wait for twins content to render
-    console.error("[Screenshot] Step 6: Waiting for twins content...");
-    await page.waitForTimeout(1000); // Allow API fetch to trigger
-
-    // Wait for either the featured card or loading spinner
-    try {
-      await page.waitForSelector('.style-twin-featured, .style-twins-loading', { timeout: 6000 });
-      console.error("[Screenshot] Twins content or loading spinner found");
-    } catch {
-      console.error("[Screenshot] No twins content found, waiting longer...");
-      await page.waitForTimeout(3000);
-    }
-
-    // If loading is still showing, wait for it to resolve
-    try {
-      await page.waitForSelector('.style-twin-featured', { timeout: 8000 });
-      console.error("[Screenshot] Featured twin card rendered!");
-    } catch {
-      console.error("[Screenshot] Featured card not found — checking what IS on screen...");
-      const pageState = await page.evaluate(() => {
-        return {
-          hasTabBar: !!document.querySelector('.tb'),
-          hasFeedTabs: !!document.querySelector('.feed-tab'),
-          hasLoading: !!document.querySelector('.style-twins-loading'),
-          hasEmpty: !!document.querySelector('.style-twins-empty'),
-          hasFeatured: !!document.querySelector('.style-twin-featured'),
-          hasGrid: !!document.querySelector('.style-twins-grid'),
-          activeTab: document.querySelector('.feed-tab.active')?.textContent?.trim() || 'none',
-          bodyText: document.body.innerText.slice(0, 500),
-        };
+      // Click the Twins sub-tab
+      await page.evaluate(() => {
+        const btns = document.querySelectorAll(".feed-tab, button");
+        for (const b of btns) {
+          if (b.textContent.trim().includes("Twins")) { b.click(); return; }
+        }
       });
-      console.error("[Screenshot] Page state:", JSON.stringify(pageState, null, 2));
+      await page.waitForTimeout(500);
     }
 
-    // Extra stabilization for animations
+    // Wait for the API call to complete and twins content to render
+    console.error("[Screenshot] Waiting for twins content to render...");
+    try {
+      await page.waitForSelector(".style-twin-featured", { timeout: 10000 });
+      console.error("[Screenshot] Featured twin card rendered successfully!");
+    } catch {
+      // Check if loading or error is showing
+      const state = await page.evaluate(() => ({
+        hasLoading: !!document.querySelector(".style-twins-loading"),
+        hasEmpty: !!document.querySelector(".style-twins-empty"),
+        hasFeatured: !!document.querySelector(".style-twin-featured"),
+        hasGrid: !!document.querySelector(".style-twins-grid"),
+        hasError: document.body.innerText.includes("Something Went Wrong") || document.body.innerText.includes("Tap to retry"),
+        visibleText: document.body.innerText.slice(0, 500),
+      }));
+      console.error("[Screenshot] Content state:", JSON.stringify(state, null, 2));
+
+      // If still loading, wait more
+      if (state.hasLoading) {
+        console.error("[Screenshot] Still loading, waiting 5 more seconds...");
+        try {
+          await page.waitForSelector(".style-twin-featured", { timeout: 5000 });
+          console.error("[Screenshot] Featured card appeared after extended wait");
+        } catch {
+          console.error("[Screenshot] Twins still loading/not rendering after extended wait");
+        }
+      }
+    }
+
+    // Extra stabilization for CSS animations
     await page.waitForTimeout(800);
 
     // ═══ SCREENSHOTS ═══
@@ -256,9 +227,9 @@ const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;ba
     // SCREENSHOT 2 ("scan"): Comparison sheet overlay
     console.error("[Screenshot] Taking screenshot 2: Comparison sheet...");
     await page.evaluate((html) => {
-      const overlay = document.createElement('div');
-      overlay.setAttribute('data-screenshot-twin-compare', '1');
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:10001';
+      const overlay = document.createElement("div");
+      overlay.setAttribute("data-screenshot-twin-compare", "1");
+      overlay.style.cssText = "position:fixed;inset:0;z-index:10001";
       overlay.innerHTML = html;
       document.body.appendChild(overlay);
     }, COMPARE_SHEET_HTML);
@@ -267,16 +238,16 @@ const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;ba
 
     // Remove comparison overlay
     await page.evaluate(() => {
-      const el = document.querySelector('[data-screenshot-twin-compare]');
+      const el = document.querySelector("[data-screenshot-twin-compare]");
       if (el) el.remove();
     });
 
     // SCREENSHOT 3 ("profile"): Twins grid with shared save toast banner
     console.error("[Screenshot] Taking screenshot 3: Save toast overlay...");
     await page.evaluate((html) => {
-      const toast = document.createElement('div');
-      toast.setAttribute('data-screenshot-twin-toast', '1');
-      toast.style.cssText = 'position:fixed;top:56px;left:12px;right:12px;background:linear-gradient(135deg,rgba(201,169,110,0.14),rgba(201,169,110,0.04));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(201,169,110,0.3);border-radius:16px;padding:14px 16px;z-index:9998;display:flex;gap:12px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)';
+      const toast = document.createElement("div");
+      toast.setAttribute("data-screenshot-twin-toast", "1");
+      toast.style.cssText = "position:fixed;top:56px;left:12px;right:12px;background:linear-gradient(135deg,rgba(201,169,110,0.14),rgba(201,169,110,0.04));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(201,169,110,0.3);border-radius:16px;padding:14px 16px;z-index:9998;display:flex;gap:12px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)";
       toast.innerHTML = html;
       document.body.appendChild(toast);
     }, SAVE_TOAST_HTML);
