@@ -4226,6 +4226,33 @@ export default function App() {
                   const TIER_CFG = { budget: { label: "Budget", accent: "#5AC8FF" }, mid: { label: "Match", accent: "#C9A96E" }, premium: { label: "Premium", accent: "#C77DFF" }, resale: { label: "Resale", accent: "#7BC47F" } };
                   const allTierProducts = item.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(item.tiers[tk]).map(p => ({ ...p, _tier: tk }))) : [];
 
+                  // Dupe detection: find highest-priced product, flag 40%+ cheaper alternatives
+                  const dupeMap = new Map(); // key: "tierKey_j" → { savings, vsPrice, vsStore }
+                  if (item.tiers) {
+                    const allPriced = allTierProducts
+                      .map(p => ({ ...p, _numPrice: parseFloat((p.price || "").replace(/[^0-9.]/g, "")) }))
+                      .filter(p => p._numPrice > 0);
+                    if (allPriced.length >= 2) {
+                      const maxProduct = allPriced.reduce((a, b) => a._numPrice > b._numPrice ? a : b);
+                      allPriced.forEach(p => {
+                        if (p === maxProduct) return;
+                        const savings = 1 - (p._numPrice / maxProduct._numPrice);
+                        if (savings >= 0.4) {
+                          // Find the index of this product in its tier
+                          const tierProducts = asTierArray(item.tiers[p._tier]);
+                          const idx = tierProducts.findIndex(tp => tp.url === p.url && tp.product_name === p.product_name);
+                          if (idx >= 0) {
+                            dupeMap.set(`${p._tier}_${idx}`, {
+                              savings: Math.round(savings * 100),
+                              vsPrice: maxProduct.price,
+                              vsStore: maxProduct.brand,
+                            });
+                          }
+                        }
+                      });
+                    }
+                  }
+
                   return (
                     <div key={i} style={{ borderBottom: "1px solid var(--border)" }}>
                       {/* Item header — tap to expand/collapse */}
@@ -4298,11 +4325,18 @@ export default function App() {
                                     const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
                                     const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
                                     const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
+                                    const dupeInfo = dupeMap.get(`${tierKey}_${j}`);
                                     return (
                                       <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
+                                        {/* Dupe Alert pill */}
+                                        {dupeInfo && (
+                                          <div className="dupe-alert-pill">
+                                            {dupeInfo.savings}% less vs {dupeInfo.vsStore}
+                                          </div>
+                                        )}
                                         <a href={href} target="_blank" rel="noopener noreferrer"
-                                          onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback }, scanId, "scan")}
-                                          style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
+                                          onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback, is_dupe: !!dupeInfo }, scanId, "scan")}
+                                          style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
                                           {p.image_url && (
                                             <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
                                               <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />

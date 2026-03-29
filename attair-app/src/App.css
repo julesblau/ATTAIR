@@ -1812,6 +1812,32 @@
 .app[data-theme='light'] .ob-social-scan-img { border-color: rgba(0,0,0,0.08); }
 .app[data-theme='light'] .ob-social-scan-count { background: rgba(255,255,255,0.8); color: #1A1A1A; }
 
+/* ── Dupe Alert Pill ── */
+.dupe-alert-pill {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 3px 8px;
+  border-radius: 100px;
+  background: var(--accent);
+  color: var(--text-inverse);
+  box-shadow: 0 2px 8px rgba(201,169,110,0.4);
+  animation: dupeAlertIn 0.3s ease-out;
+}
+
+@keyframes dupeAlertIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px) scale(0.9); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.app[data-theme='light'] .dupe-alert-pill { box-shadow: 0 2px 8px rgba(201,169,110,0.3); }
+
 /* ── Inspiration Picker ── */
 .ob-inspo {
   padding: 0 !important;
