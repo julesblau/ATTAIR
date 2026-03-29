@@ -1888,7 +1888,16 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
         .sort((a, b) => b.price - a.price);
       tiers.premium.push(...pickTopN(pricier, 6, "premium"));
 
-      // Fill any still-empty tiers with unpriced Lens results
+      // Fill empty tiers: prefer priced results from wider range over unpriced
+      if (!tiers.budget.length) {
+        const anyPriced = pricedRetail.filter(s => !usedUrls.has(getUrl(s))).sort((a, b) => a.price - b.price);
+        tiers.budget.push(...pickTopN(anyPriced, 6, "budget"));
+      }
+      if (!tiers.premium.length) {
+        const anyPriced = pricedRetail.filter(s => !usedUrls.has(getUrl(s))).sort((a, b) => b.price - a.price);
+        tiers.premium.push(...pickTopN(anyPriced, 6, "premium"));
+      }
+      // Only use unpriced as absolute last resort
       if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 6, "budget"));
       if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 6, "premium"));
 
@@ -1902,11 +1911,13 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       tiers.mid.push(...pickTopN(midPool, 6, "mid"));
       tiers.premium.push(...pickTopN(premiumPool, 6, "premium"));
 
-      // Widen budget tier only
-      if (!tiers.budget.length) tiers.budget.push(...pickTopN(pricedRetail, 6, "budget"));
-      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 6, "budget"));
+      // Fill empty tiers by expanding price range — always prefer priced results
+      if (!tiers.budget.length) tiers.budget.push(...pickTopN(pricedRetail.sort((a, b) => a.price - b.price), 6, "budget"));
+      if (!tiers.mid.length) tiers.mid.push(...pickTopN(pricedRetail.sort((a, b) => b.score - a.score), 6, "mid"));
+      if (!tiers.premium.length) tiers.premium.push(...pickTopN(pricedRetail.sort((a, b) => b.price - a.price), 6, "premium"));
 
-      // For mid and premium: fall back to unpriced Lens results only
+      // Absolute last resort: unpriced Lens results
+      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 6, "budget"));
       if (!tiers.mid.length) tiers.mid.push(...pickTopN(unpricedRetail, 6, "mid"));
       if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 6, "premium"));
     }
