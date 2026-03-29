@@ -189,7 +189,7 @@ async function chatWithOpus(userMessage) {
       "Bash(railway *)", "Bash(curl *)",
     ].join(" ");
     const relPromptFile = "agents/.tmp/" + sysPromptFile.split(/[/\\]/).pop();
-    const cmd = `claude -p "Respond to Jules latest message. See system prompt for context." --system-prompt-file ${relPromptFile} --model opus --output-format text --dangerously-skip-permissions --max-turns 3 --allowedTools ${toolsList}`;
+    const cmd = `claude -p "Respond to Jules latest message. See system prompt for context." --system-prompt-file ${relPromptFile} --model opus --output-format text --dangerously-skip-permissions --allowedTools ${toolsList}`;
 
     console.log("[chatWithOpus] spawning:", cmd.slice(0, 200) + "...");
 
