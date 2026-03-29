@@ -391,6 +391,11 @@ const API = {
     return res.json();
   },
 
+  async getStats() {
+    const res = await fetch(`${API_BASE}/api/stats`);
+    return res.json();
+  },
+
   async styleDna() {
     const res = await authFetch(`${API_BASE}/api/user/style-dna`);
     return res.json();
@@ -1171,6 +1176,11 @@ const INSPIRATIONS = {
 function OnboardingDemo({ fade, onGetStarted, onLogin }) {
   const [demoPhase, setDemoPhase] = useState(0); // 0=photo, 1=scanning, 2=items, 3=results, 4=fade-out
   const [cycleKey, setCycleKey] = useState(0);
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    API.getStats().then(setStats).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const timings = [1200, 1000, 1200, 1800, 600]; // ms per phase (last = fade-out before reset)
@@ -1251,6 +1261,29 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
           ))}
         </div>
       </div>
+
+      {/* Social proof bar */}
+      {stats && (
+        <div className="ob-social-proof">
+          {stats.total_scans > 0 && (
+            <div className="ob-social-stat">
+              <span className="ob-social-stat-n">{stats.total_scans.toLocaleString()}+</span>
+              <span className="ob-social-stat-l">outfits scanned</span>
+            </div>
+          )}
+          {stats.recent_scans?.length > 0 && (
+            <div className="ob-social-carousel">
+              {stats.recent_scans.map((scan) => (
+                <div key={scan.id} className="ob-social-scan">
+                  <img src={scan.image_url} alt="" className="ob-social-scan-img" loading="lazy" />
+                  <div className="ob-social-scan-count">{scan.item_count} items</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="ob-social-trust">Trusted by style hunters everywhere</div>
+        </div>
+      )}
 
       {/* CTA section */}
       <div className="ob-demo-cta">

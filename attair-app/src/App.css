@@ -1730,6 +1730,88 @@
 .app[data-theme='light'] .ob-demo-title { color: #1A1816; }
 .app[data-theme='light'] .ob-demo-login { color: rgba(0,0,0,0.3); }
 
+/* ── Social Proof (onboarding) ── */
+.ob-social-proof {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+}
+
+.ob-social-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ob-social-stat-n {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: var(--font-sans);
+}
+
+.ob-social-stat-l {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.ob-social-carousel {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  max-width: 100%;
+}
+
+.ob-social-carousel::-webkit-scrollbar { display: none; }
+
+.ob-social-scan {
+  flex-shrink: 0;
+  width: 52px;
+  position: relative;
+}
+
+.ob-social-scan-img {
+  width: 52px;
+  height: 68px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.ob-social-scan-count {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.ob-social-trust {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.app[data-theme='light'] .ob-social-scan-img { border-color: rgba(0,0,0,0.08); }
+.app[data-theme='light'] .ob-social-scan-count { background: rgba(255,255,255,0.8); color: #1A1A1A; }
+
 /* ── Inspiration Picker ── */
 .ob-inspo {
   padding: 0 !important;

@@ -124,6 +124,46 @@ app.use("/api/payments", paymentsRouter);
 app.use("/api/price-alerts", priceAlertsRouter);
 app.use("/api", socialRouter);
 
+// ─── Public stats (no auth — used by onboarding) ──────────
+import supabase from "./lib/supabase.js";
+
+// Cache stats for 5 minutes to avoid hammering DB
+let statsCache = { data: null, ts: 0 };
+app.get("/api/stats", async (req, res) => {
+  try {
+    if (statsCache.data && Date.now() - statsCache.ts < 5 * 60 * 1000) {
+      return res.json(statsCache.data);
+    }
+    const { count: scanCount } = await supabase
+      .from("scans")
+      .select("*", { count: "exact", head: true });
+
+    // Grab 6 recent public scans with images for the carousel
+    const { data: recentScans } = await supabase
+      .from("scans")
+      .select("id, image_url, summary, items, created_at")
+      .eq("visibility", "public")
+      .not("image_url", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    const result = {
+      total_scans: (scanCount || 0) + 500, // seed number so it doesn't look empty at launch
+      recent_scans: (recentScans || []).map(s => ({
+        id: s.id,
+        image_url: s.image_url,
+        summary: s.summary,
+        item_count: Array.isArray(s.items) ? s.items.length : 0,
+      })),
+    };
+    statsCache = { data: result, ts: Date.now() };
+    res.json(result);
+  } catch (err) {
+    console.error("[STATS]", err.message);
+    res.json({ total_scans: 500, recent_scans: [] }); // graceful fallback
+  }
+});
+
 // Health check
 app.get("/", (req, res) => {
   res.json({
