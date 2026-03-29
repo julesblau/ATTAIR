@@ -3335,20 +3335,22 @@ export default function App() {
                     <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12, paddingLeft: 4 }}>Style accounts to follow</div>
                     <div className="feed-suggested-users" role="list" aria-label="Curated style accounts">
                       {[
-                        { name: "Street Style Daily", emoji: "🌍", desc: "NYC, London, Tokyo street looks", color: "#C9A96E" },
-                        { name: "Luxury Finds", emoji: "✨", desc: "Designer pieces at every price point", color: "#AB82FF" },
-                        { name: "Vintage Vibes", emoji: "🕰️", desc: "Retro-inspired fits & thrift gems", color: "#A8884A" },
-                        { name: "Athleisure Edit", emoji: "🏃", desc: "Gym to brunch outfit inspo", color: "#66BB6A" },
-                        { name: "Minimal Wardrobe", emoji: "◻️", desc: "Clean lines, neutral tones, less is more", color: "#8B8B8B" },
-                        { name: "Date Night Looks", emoji: "🌙", desc: "Outfits that turn heads", color: "#D4B978" },
+                        { name: "Street Style Daily", ini: "SS", desc: "NYC, London, Tokyo street looks", color: "#C9A96E" },
+                        { name: "Luxury Finds", ini: "LF", desc: "Designer pieces at every price point", color: "#AB82FF" },
+                        { name: "Drip Check", ini: "DC", desc: "Best men's streetwear fits", color: "#EF5350" },
+                        { name: "TikTok Trending", ini: "TT", desc: "Viral fits everyone is talking about", color: "#EE1D52" },
+                        { name: "Celeb Spotted", ini: "CS", desc: "Celebrity style decoded", color: "#FFD54F" },
+                        { name: "Vintage Vibes", ini: "VV", desc: "Retro-inspired fits and thrift gems", color: "#A8884A" },
+                        { name: "Athleisure Edit", ini: "AE", desc: "Gym to brunch outfit inspo", color: "#66BB6A" },
+                        { name: "Minimal Wardrobe", ini: "MW", desc: "Clean lines, neutral tones", color: "#8B8B8B" },
                       ].map((acct, idx) => (
                         <div key={idx} className="feed-suggested-row" role="listitem" style={{ animationDelay: `${idx * 0.05}s` }}>
-                          <div className="feed-suggested-avatar" style={{ background: acct.color, fontSize: 18 }}>{acct.emoji}</div>
+                          <div className="feed-suggested-avatar" style={{ background: acct.color, fontSize: 12, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>{acct.ini}</div>
                           <div className="feed-suggested-info">
                             <div className="feed-suggested-name">{acct.name}</div>
                             <div className="feed-suggested-meta">{acct.desc}</div>
                           </div>
-                          <button className="feed-suggested-follow-btn">Follow</button>
+                          <button className="feed-suggested-follow-btn" onClick={(e) => { e.stopPropagation(); API.searchUsers(acct.name).then(r => { const user = (r.users || []).find(u => u.display_name === acct.name); if (user) API.followUser(user.id).then(() => { e.target.textContent = "Following"; e.target.style.opacity = "0.5"; }); }); }}>Follow</button>
                         </div>
                       ))}
                     </div>

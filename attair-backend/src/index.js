@@ -23,6 +23,7 @@ import styleDnaRouter from "./routes/styleDna.js";
 import priceAlertsRouter from "./routes/priceAlerts.js";
 import guestRouter from "./routes/guest.js";
 import notificationsRouter from "./routes/notifications.js";
+import aiContentRouter from "./routes/aiContent.js";
 
 // ─── Validate required env vars ─────────────────────────────
 const REQUIRED_ENV = [
@@ -124,6 +125,7 @@ app.use("/api/wishlists", wishlistsRouter);
 app.use("/api/payments", paymentsRouter);
 app.use("/api/price-alerts", priceAlertsRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/ai-content", aiContentRouter);
 app.use("/api", socialRouter);
 
 // ─── Public stats (no auth — used by onboarding) ──────────
