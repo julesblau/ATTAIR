@@ -323,13 +323,7 @@ async function buildWithQualityLoop(taskDescription, chatChannel, logsChannel) {
     }
   };
 
-  await chatChannel.send(
-    new EmbedBuilder()
-      .setColor(0xC9A96E)
-      .setTitle("Building")
-      .setDescription(taskDescription.slice(0, 4096))
-      .setFooter({ text: "Build→Judge→Fix loop started" })
-  );
+  await chatChannel.send(`**Building:** ${taskDescription.slice(0, 1900)}`);
 
   while (iteration < MAX_ITERATIONS && !stopRequested) {
     iteration++;
@@ -447,23 +441,12 @@ Only approve work you'd ship to real users today.`;
     const approved = judgeVerdict.toUpperCase().includes("APPROVED") && !judgeVerdict.toUpperCase().includes("NEEDS_WORK");
 
     if (approved) {
-      await chatChannel.send(
-        new EmbedBuilder()
-          .setColor(0x2ECC71)
-          .setTitle("Approved")
-          .setDescription(`**${taskDescription.slice(0, 200)}**\n\nPassed quality review after ${iteration} iteration(s).`)
-          .setFooter({ text: judgeVerdict.slice(0, 200) })
-      );
+      await chatChannel.send(`**Approved:** ${taskDescription.slice(0, 200)}\nPassed after ${iteration} iteration(s). ${judgeVerdict.slice(0, 300)}`);
       return true;
     }
 
     // Not approved — feed judge feedback into next iteration
-    await chatChannel.send(
-      new EmbedBuilder()
-        .setColor(0xE74C3C)
-        .setTitle(`Iteration ${iteration} — Needs Work`)
-        .setDescription(judgeVerdict.slice(0, 4096))
-    );
+    await chatChannel.send(`**Iteration ${iteration} — Needs Work:**\n${judgeVerdict.slice(0, 1800)}`);
 
     // Append judge feedback to task description for next iteration
     taskDescription += `\n\nJUDGE FEEDBACK (iteration ${iteration}):\n${judgeVerdict}`;
@@ -578,16 +561,7 @@ async function buildFromBacklog(chatChannel, logsChannel) {
       break;
     }
 
-    await chatChannel.send(
-      new EmbedBuilder()
-        .setColor(0x3498DB)
-        .setTitle("Next Task")
-        .setDescription(`**${task.title}**\n${task.summary || "(no summary)"}`.slice(0, 4096))
-        .addFields(
-          { name: "Priority", value: task.priority || "?", inline: true },
-          { name: "Size", value: task.size || "?", inline: true },
-        )
-    );
+    await chatChannel.send(`**Next Task:** ${task.title}\n${task.summary || ""}\nPriority: ${task.priority || "?"} | Size: ${task.size || "?"}`);
 
     const success = await buildWithQualityLoop(
       `${task.title}\n\n${task.summary || ""}`,
