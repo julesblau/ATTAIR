@@ -2692,6 +2692,7 @@
 .feed-card-pills{position:absolute;top:8px;right:8px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;z-index:1}
 .feed-card-pill{padding:3px 7px;border-radius:100px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;gap:3px;font-size:10px;font-family:var(--font-sans);font-weight:600;color:#fff}
 .feed-card-trending{background:linear-gradient(135deg,rgba(201,169,110,.85),rgba(180,140,80,.85));color:#fff;font-size:9px;letter-spacing:.3px;text-transform:uppercase}
+.feed-card-rank{position:absolute;top:8px;left:8px;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#C9A96E,#B08C50);color:#fff;font-size:12px;font-weight:800;font-family:var(--font-sans);display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.4);letter-spacing:-.3px}
 .feed-card-items-pill{font-size:9px;font-weight:500;color:rgba(255,255,255,.85);background:rgba(0,0,0,.45)}
 .feed-card-heart{width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
 .feed-card-heart:active{transform:scale(0.9)}

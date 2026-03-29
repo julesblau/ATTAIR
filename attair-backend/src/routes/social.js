@@ -397,17 +397,82 @@ router.patch("/social/profile", requireAuth, async (req, res) => {
   }
 });
 
+// ─── Trending score helper ───────────────────────────────────
+// Score = save_count * recency_multiplier
+// Recency: scans from last 24h get 1.0x, 3 days → 0.7x, 7 days → 0.4x, older → 0.15x
+function trendingScore(saveCount, createdAt) {
+  const ageHrs = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
+  let recency;
+  if (ageHrs <= 24) recency = 1.0;
+  else if (ageHrs <= 72) recency = 0.7;
+  else if (ageHrs <= 168) recency = 0.4;
+  else recency = 0.15;
+  // Base score of 0.1 so new scans with 0 saves still appear (just ranked low)
+  return (saveCount + 0.1) * recency;
+}
+
 // ─── GET /api/feed ───────────────────────────────────────────
-// Public scans from followed users, paginated.
-// Falls back to trending/recent public scans when following nobody.
+// Supports tabs: "foryou", "following", "trending"
 router.get("/feed", requireAuth, async (req, res) => {
   const page = Math.min(Math.max(1, parseInt(req.query.page) || 1), 1000);
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
   const offset = (page - 1) * limit;
-  const tab = req.query.tab || "foryou"; // "foryou" or "following"
+  const tab = req.query.tab || "foryou";
 
   try {
-    // Get users the current user follows
+    // ─── Trending tab: fetch a larger pool, score & sort ────
+    if (tab === "trending") {
+      // Grab up to 200 recent public scans (pool for scoring)
+      const poolSize = Math.min(200, offset + limit + 80);
+      const { data: pool, error: poolErr } = await supabase
+        .from("scans")
+        .select("id, user_id, image_url, summary, items, created_at, visibility")
+        .eq("visibility", "public")
+        .neq("user_id", req.userId)
+        .not("image_url", "is", null)
+        .order("created_at", { ascending: false })
+        .range(0, poolSize - 1);
+      if (poolErr) throw poolErr;
+
+      if (!pool || pool.length === 0) {
+        return res.json({ scans: [], page, has_more: false });
+      }
+
+      // Get save counts for all pool scans
+      const poolIds = pool.map(s => s.id);
+      const userIds = [...new Set(pool.map(s => s.user_id))];
+
+      const [{ data: profiles }, { data: saveRows }] = await Promise.all([
+        supabase.from("profiles").select("id, display_name, bio").in("id", userIds),
+        supabase.from("saved_items").select("scan_id").in("scan_id", poolIds),
+      ]);
+
+      const profileMap = {};
+      (profiles || []).forEach(p => { profileMap[p.id] = p; });
+
+      const saveCountMap = {};
+      (saveRows || []).forEach(row => {
+        if (row.scan_id) saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
+      });
+
+      // Score and sort
+      const scored = pool.map(s => ({
+        id: s.id,
+        image_url: s.image_url,
+        summary: s.summary,
+        item_count: Array.isArray(s.items) ? s.items.length : 0,
+        created_at: s.created_at,
+        save_count: saveCountMap[s.id] || 0,
+        trending_score: trendingScore(saveCountMap[s.id] || 0, s.created_at),
+        user: profileMap[s.user_id] || { display_name: "Anonymous" },
+      }));
+      scored.sort((a, b) => b.trending_score - a.trending_score);
+
+      const paged = scored.slice(offset, offset + limit);
+      return res.json({ scans: paged, page, has_more: scored.length > offset + limit });
+    }
+
+    // ─── For You / Following tabs ────────────────────────────
     const { data: following } = await supabase
       .from("follows")
       .select("following_id")
@@ -417,7 +482,6 @@ router.get("/feed", requireAuth, async (req, res) => {
 
     let query;
     if (tab === "following" && followingIds.length > 0) {
-      // Following tab: only scans from followed users
       query = supabase
         .from("scans")
         .select("id, user_id, image_url, summary, items, created_at, visibility")
@@ -426,19 +490,9 @@ router.get("/feed", requireAuth, async (req, res) => {
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
     } else if (tab === "following") {
-      // Following tab but no follows — empty
       return res.json({ scans: [], page, has_more: false });
-    } else if (followingIds.length > 0) {
-      // For You tab with follows — mix of followed + trending
-      query = supabase
-        .from("scans")
-        .select("id, user_id, image_url, summary, items, created_at, visibility")
-        .eq("visibility", "public")
-        .neq("user_id", req.userId)
-        .order("created_at", { ascending: false })
-        .range(offset, offset + limit - 1);
     } else {
-      // For You tab, no follows — show trending/recent public scans
+      // For You — all public scans except own, chronological
       query = supabase
         .from("scans")
         .select("id, user_id, image_url, summary, items, created_at, visibility")
@@ -451,32 +505,21 @@ router.get("/feed", requireAuth, async (req, res) => {
     const { data: scans, error } = await query;
     if (error) throw error;
 
-    // Enrich with user info and save counts
     if (scans && scans.length > 0) {
       const userIds = [...new Set(scans.map(s => s.user_id))];
       const scanIds = scans.map(s => s.id);
 
-      // Fetch profiles and save counts in parallel
       const [{ data: profiles }, { data: saveRows }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, display_name, bio")
-          .in("id", userIds),
-        supabase
-          .from("saved_items")
-          .select("scan_id")
-          .in("scan_id", scanIds),
+        supabase.from("profiles").select("id, display_name, bio").in("id", userIds),
+        supabase.from("saved_items").select("scan_id").in("scan_id", scanIds),
       ]);
 
       const profileMap = {};
       (profiles || []).forEach(p => { profileMap[p.id] = p; });
 
-      // Build a save count map: scan_id -> number of saves
       const saveCountMap = {};
       (saveRows || []).forEach(row => {
-        if (row.scan_id) {
-          saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
-        }
+        if (row.scan_id) saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
       });
 
       const enriched = scans.map(s => ({

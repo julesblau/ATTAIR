@@ -2202,7 +2202,7 @@ export default function App() {
   const [scanVisibilityMap, setScanVisibilityMap] = useState({}); // { [scanId]: "public"|"private"|"followers" }
 
   // ─── Social Feed ───────────────────────────────────────────
-  const [feedTab, setFeedTab] = useState("foryou"); // "foryou" | "following"
+  const [feedTab, setFeedTab] = useState("foryou"); // "foryou" | "following" | "trending"
   const [feedScans, setFeedScans] = useState([]);
   const [feedPage, setFeedPage] = useState(1);
   const [feedLoading, setFeedLoading] = useState(false);
@@ -3302,6 +3302,10 @@ export default function App() {
               {/* For You / Following toggle */}
               <div className="feed-tabs-wrap">
                 <button className={`feed-tab${feedTab === "foryou" ? " active" : ""}`} onClick={() => { setFeedTab("foryou"); setFeedPage(1); }}>For You</button>
+                <button className={`feed-tab${feedTab === "trending" ? " active" : ""}`} onClick={() => { setFeedTab("trending"); setFeedPage(1); }}>
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4, verticalAlign: -1 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                  Trending
+                </button>
                 <button className={`feed-tab${feedTab === "following" ? " active" : ""}`} onClick={() => { setFeedTab("following"); setFeedPage(1); }}>Following</button>
               </div>
 
@@ -3316,8 +3320,8 @@ export default function App() {
                 </div>
               )}
 
-              {/* Empty state — For You: featured scans from community */}
-              {!feedLoading && feedScans.length === 0 && feedTab === "foryou" && (
+              {/* Empty state — For You / Trending: featured scans from community */}
+              {!feedLoading && feedScans.length === 0 && (feedTab === "foryou" || feedTab === "trending") && (
                 <FeaturedScansEmpty onScan={() => setTab("scan")} onDiscover={() => { setTab("search"); setShowUserSearch(true); }} />
               )}
 
@@ -3371,6 +3375,7 @@ export default function App() {
                     const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
                     const isSaved = saved.some(s => s.scan_id === scan.id);
                     const isTrending = (scan.save_count || 0) >= 3;
+                    const trendingRank = feedTab === "trending" ? idx + 1 + ((feedPage - 1) * 20) : null;
                     return (
                       <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => setFeedDetailScan(scan)}>
                         <div style={{ position: "relative" }}>
@@ -3380,6 +3385,10 @@ export default function App() {
                                 <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                               </div>
                           }
+                          {/* Trending rank badge (top-left) */}
+                          {trendingRank && trendingRank <= 10 && (
+                            <div className="feed-card-rank">#{trendingRank}</div>
+                          )}
                           <div className="feed-card-pills">
                             {isTrending && (
                               <div className="feed-card-pill feed-card-trending">
