@@ -2156,10 +2156,13 @@ export default function App() {
   const [flippedScans, setFlippedScans] = useState(new Set()); // which scan cards are flipped
   const [scanSearchQuery, setScanSearchQuery] = useState(""); // search within scan history
 
-  // Load scan history when Saved tab is opened
+  // Load scan history and price alerts when Saved tab is opened
   useEffect(() => {
     if (tab === "likes" && authed && history.length === 0) {
       API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
+    }
+    if (tab === "likes" && authed && isPro && priceAlerts.length === 0) {
+      API.priceAlerts().then(d => setPriceAlerts(d.data || [])).catch(() => {});
     }
   }, [tab, authed]);
 
@@ -4794,12 +4797,28 @@ export default function App() {
               }
             };
 
+            // Build a set of scan IDs that have price drop alerts
+            const scanIdsWithDrops = new Set();
+            const scanDropMap = new Map(); // scanId -> best alert
+            priceAlerts.forEach(alert => {
+              const matchingSaved = saved.find(s => s.id === alert.saved_item_id);
+              if (matchingSaved?.scan_id) {
+                scanIdsWithDrops.add(matchingSaved.scan_id);
+                const existing = scanDropMap.get(matchingSaved.scan_id);
+                if (!existing || alert.drop_percentage > existing.drop_percentage) {
+                  scanDropMap.set(matchingSaved.scan_id, alert);
+                }
+              }
+            });
+
             const renderScanCard = (scan) => {
               const isFlipped = flippedScans.has(scan.id);
               const scanImg = scan.image_url || scan.image_thumbnail;
               const scanItems = scan.items || [];
               const scanName = scan.scan_name || scan.summary || "Outfit Scan";
               const isPublic = scan.visibility === "public";
+              const hasDrop = scanIdsWithDrops.has(scan.id);
+              const bestDrop = scanDropMap.get(scan.id);
 
               return (
                 <div key={scan.id} className="scan-card-flip" onClick={() => toggleFlip(scan.id)} aria-label={`Scan card: ${scanName}. Tap to ${isFlipped ? "see image" : "see details"}`}>
@@ -4811,6 +4830,13 @@ export default function App() {
                       ) : (
                         <div className="scan-card-img-placeholder">
                           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
+                        </div>
+                      )}
+                      {/* Price drop badge */}
+                      {hasDrop && bestDrop && (
+                        <div style={{ position: "absolute", top: 8, left: 8, zIndex: 2, display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 100, background: "rgba(76,175,80,.9)", backdropFilter: "blur(8px)", animation: "dupeAlertIn 0.3s ease-out" }}>
+                          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#fff" strokeWidth="2.5"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", letterSpacing: .3 }}>-{Math.round(bestDrop.drop_percentage)}%</span>
                         </div>
                       )}
                       {/* Overlay at bottom */}
@@ -4833,6 +4859,19 @@ export default function App() {
                     <div className="scan-card-back">
                       <div className="scan-card-back-header">Scan Details</div>
                       {scan.summary && <div className="scan-card-back-summary">{scan.summary}</div>}
+                      {/* Price drop alert on back face */}
+                      {hasDrop && bestDrop && (
+                        <a href={bestDrop.product_url} target="_blank" rel="noopener noreferrer" onClick={e => { e.stopPropagation(); API.priceAlertSeen(bestDrop.id).catch(() => {}); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", margin: "6px 0", background: "rgba(76,175,80,.08)", border: "1px solid rgba(76,175,80,.2)", borderRadius: 10, textDecoration: "none", color: "inherit" }}>
+                          <div style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(76,175,80,.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4CAF50" strokeWidth="2.5"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#4CAF50" }}>Price dropped {Math.round(bestDrop.drop_percentage)}%</div>
+                            <div style={{ fontSize: 9, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>${bestDrop.original_price} → ${bestDrop.current_price}</div>
+                          </div>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: "#4CAF50" }}>Shop</span>
+                        </a>
+                      )}
 
                       {/* Identified items list */}
                       {scanItems.length > 0 && (
