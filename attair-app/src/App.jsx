@@ -3928,6 +3928,20 @@ export default function App() {
                     <div key={i} className={`identify-step-dot${i < revealedSearchItems.size ? " active" : ""}`} />
                   ))}
                 </div>
+
+                {/* ATTAIRE promo for free users during search */}
+                {(isFree || isGuest) && (
+                  <div style={{ marginTop: 24, padding: "20px 24px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.15)", borderRadius: 16, textAlign: "center", maxWidth: 320 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.5, color: "var(--accent)", marginBottom: 8, textTransform: "uppercase" }}>ATTAIRE Pro</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>Unlock unlimited scans</div>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 14, lineHeight: 1.4 }}>
+                      Extended search, price alerts, Style DNA, and priority results.
+                    </div>
+                    <button onClick={() => { setUpgradeModal("search_promo"); track("promo_clicked", { location: "search_loading" }); }} style={{ padding: "10px 28px", background: "linear-gradient(135deg, #C9A96E 0%, #B8944F 100%)", border: "none", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "#0C0C0E", cursor: "pointer", fontFamily: "var(--font-sans)" }}>
+                      Try Pro Free
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
