@@ -800,6 +800,10 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
   const page = await context.newPage();
   const paths = [];
 
+  // Debug logging to stderr for troubleshooting
+  page.on("console", msg => console.error("[PAGE " + msg.type() + "] " + msg.text()));
+  page.on("pageerror", err => console.error("[PAGE ERROR] " + err.message));
+
   async function snap(name) {
     const p = join(dir, ts + "-" + name + ".png");
     await page.screenshot({ path: p, fullPage: false });
@@ -818,7 +822,7 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
       localStorage.setItem("attair_pref_sheet_shown", "1");
     }, mockToken);
 
-    // Intercept API calls — return REAL mock twins data so React renders twins UI natively
+    // Intercept ALL network requests to APIs — return mock data so React renders natively
     await page.route("**/api/**", async (route) => {
       const url = route.request().url();
       if (url.includes("/api/user/status")) {
@@ -826,35 +830,102 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
       } else if (url.includes("/api/user/profile")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ display_name: "Demo User", email: "demo@attaire.com" }) });
       } else if (url.includes("/api/style-twins")) {
-        // Return ready:true with full mock twins — React renders the twins grid through its normal code path
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_TWINS_DATA) });
       } else if (url.includes("/api/style-dna")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ axes: { classic_vs_trendy: 3, minimal_vs_maximal: 2, casual_vs_formal: 7, budget_vs_luxury: 6 }, archetype: "Modern Classic", palette: ["navy", "cream", "brown"] }) });
+      } else if (url.includes("/api/feed")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ posts: [], has_more: false }) });
+      } else if (url.includes("/api/saved")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }) });
+      } else if (url.includes("/api/wishlists")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ wishlists: [] }) });
+      } else if (url.includes("/api/history")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ scans: [] }) });
+      } else if (url.includes("/api/streak")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ streak: 5 }) });
+      } else if (url.includes("/api/notifications")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ notifications: [], count: 0 }) });
+      } else if (url.includes("/api/price-alerts")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ unseen_count: 0 }) });
+      } else if (url.includes("/api/challenges")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ challenges: [] }) });
       } else {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
       }
     });
 
-    // Load the app
-    await page.goto("http://localhost:5173/", { waitUntil: "load", timeout: 15000 });
-    await page.waitForTimeout(3500);
+    // Load the app and wait for network to be idle (all mock API calls resolved)
+    await page.goto("http://localhost:5173/", { waitUntil: "networkidle", timeout: 20000 });
 
-    // Navigate to Discover tab
-    await page.evaluate(() => {
-      const btn = document.querySelector('button[aria-label="Discover"]');
-      if (btn) btn.click();
-    });
-    await page.waitForTimeout(1200);
-
-    // Click Twins sub-tab — React fetches mock twins data and renders natively
-    await page.evaluate(() => {
-      const btns = document.querySelectorAll('button');
-      for (const b of btns) {
-        if (b.textContent.trim().includes('Twins')) { b.click(); break; }
+    // Wait for the tab bar to appear — confirms app has transitioned from onboarding to "app" screen
+    console.error("[Screenshot] Waiting for tab bar (.tb) to confirm app screen...");
+    try {
+      await page.waitForSelector(".tb", { timeout: 10000 });
+      console.error("[Screenshot] Tab bar found — app is in app screen");
+    } catch (e) {
+      console.error("[Screenshot] Tab bar not found after 10s, trying onboarding skip...");
+      // Try clicking "Get Started" or similar CTA to skip onboarding
+      const cta = await page.$("button.cta");
+      if (cta) {
+        await cta.click();
+        await page.waitForTimeout(1500);
       }
-    });
-    // Wait for React to render twins from mock API response
-    await page.waitForTimeout(2500);
+      // Try again
+      try {
+        await page.waitForSelector(".tb", { timeout: 8000 });
+        console.error("[Screenshot] Tab bar found after onboarding skip");
+      } catch {
+        console.error("[Screenshot] FATAL: Could not reach app screen with tab bar");
+        // Take debug screenshots showing current state
+        await snap("home");
+        await snap("scan");
+        await snap("profile");
+        await browser.close();
+        console.log(JSON.stringify(paths));
+        return;
+      }
+    }
+
+    // Extra stabilization for React to finish rendering after screen transition
+    await page.waitForTimeout(1500);
+
+    // Navigate to Discover tab by clicking the tab bar button
+    console.error("[Screenshot] Clicking Discover tab...");
+    try {
+      await page.click('button[aria-label="Discover"]', { timeout: 5000 });
+    } catch {
+      console.error("[Screenshot] aria-label click failed, trying text match...");
+      await page.evaluate(() => {
+        const btns = document.querySelectorAll('.tb button');
+        for (const b of btns) { if (b.textContent.includes('Discover')) { b.click(); break; } }
+      });
+    }
+    await page.waitForTimeout(1000);
+
+    // Click the Twins sub-tab
+    console.error("[Screenshot] Clicking Twins sub-tab...");
+    try {
+      await page.click('.feed-tab:has-text("Twins")', { timeout: 5000 });
+    } catch {
+      console.error("[Screenshot] .feed-tab click failed, trying evaluate fallback...");
+      await page.evaluate(() => {
+        const btns = document.querySelectorAll('button');
+        for (const b of btns) { if (b.textContent.trim().includes('Twins')) { b.click(); break; } }
+      });
+    }
+
+    // Wait for the featured twin card to appear — confirms twins data rendered from mock API
+    console.error("[Screenshot] Waiting for twins grid to render (.style-twin-featured)...");
+    try {
+      await page.waitForSelector('.style-twin-featured', { timeout: 8000 });
+      console.error("[Screenshot] Twins featured card found — twins UI is rendered!");
+    } catch {
+      console.error("[Screenshot] Featured twin card NOT found after 8s, waiting extra...");
+      await page.waitForTimeout(3000);
+    }
+
+    // Extra stabilization
+    await page.waitForTimeout(500);
 
     // SCREENSHOT 1 ("home"): Twins cards grid — the core feature UI, React-rendered
     try { await snap("home"); } catch(e) { console.error("FAIL home: " + e.message); }
@@ -889,6 +960,7 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
 
   } catch(e) {
     console.error("FATAL: " + e.message);
+    console.error(e.stack);
   }
 
   await browser.close();
