@@ -1362,7 +1362,7 @@ function formatProduct(product, isOriginalBrand) {
   return {
     product_name: product.title || "Unknown",
     brand: product.source || "Unknown",
-    price: price != null ? `$${price.toFixed(2)}` : "See price →",
+    price: price != null ? `$${price.toFixed(2)}` : "Price on site",
     url: product.link || product.product_link || product.url || "",
     image_url: product.thumbnail || product.image || "",
     is_product_page: true,
@@ -1909,7 +1909,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
         .sort((a, b) => b.price - a.price);
       tiers.premium.push(...pickTopN(pricier, 6, "premium"));
 
-      // Fill empty tiers: prefer priced results from wider range over unpriced
+      // Fill empty tiers: use priced results from wider range — NEVER unpriced
       if (!tiers.budget.length) {
         const anyPriced = pricedRetail.filter(s => !usedUrls.has(getUrl(s))).sort((a, b) => a.price - b.price);
         tiers.budget.push(...pickTopN(anyPriced, 6, "budget"));
@@ -1918,9 +1918,6 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
         const anyPriced = pricedRetail.filter(s => !usedUrls.has(getUrl(s))).sort((a, b) => b.price - a.price);
         tiers.premium.push(...pickTopN(anyPriced, 6, "premium"));
       }
-      // Only use unpriced as absolute last resort
-      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 6, "budget"));
-      if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 6, "premium"));
 
     } else {
       // ── NO ORIGINAL: partition by price, return up to 6 per tier ──
@@ -1932,15 +1929,10 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       tiers.mid.push(...pickTopN(midPool, 6, "mid"));
       tiers.premium.push(...pickTopN(premiumPool, 6, "premium"));
 
-      // Fill empty tiers by expanding price range — always prefer priced results
+      // Fill empty tiers by expanding price range — always priced only, never unpriced
       if (!tiers.budget.length) tiers.budget.push(...pickTopN(pricedRetail.sort((a, b) => a.price - b.price), 6, "budget"));
       if (!tiers.mid.length) tiers.mid.push(...pickTopN(pricedRetail.sort((a, b) => b.score - a.score), 6, "mid"));
       if (!tiers.premium.length) tiers.premium.push(...pickTopN(pricedRetail.sort((a, b) => b.price - a.price), 6, "premium"));
-
-      // Absolute last resort: unpriced Lens results
-      if (!tiers.budget.length) tiers.budget.push(...pickTopN(unpricedRetail, 6, "budget"));
-      if (!tiers.mid.length) tiers.mid.push(...pickTopN(unpricedRetail, 6, "mid"));
-      if (!tiers.premium.length) tiers.premium.push(...pickTopN(unpricedRetail, 6, "premium"));
     }
 
     const brandVerified = item.brand && item.brand !== "Unidentified" &&
