@@ -14,12 +14,13 @@
  */
 
 import { Client, GatewayIntentBits, Partials, EmbedBuilder } from "discord.js";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, createWriteStream } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, createWriteStream, unlinkSync } from "fs";
 import { spawn, execSync } from "child_process";
 import { pipeline } from "stream/promises";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { config } from "dotenv";
+import { randomUUID } from "crypto";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, ".env") });
@@ -30,6 +31,7 @@ const CHAT_CHANNEL_ID = process.env.DISCORD_CHAT_CHANNEL_ID;
 const LOGS_CHANNEL_ID = process.env.DISCORD_LOGS_CHANNEL_ID;
 const REPO_ROOT = join(__dirname, "..");
 const BACKLOG_PATH = join(__dirname, "backlog.md");
+const CLAUDE_BIN = "claude"; // shell: true resolves from PATH on Windows
 
 if (!DISCORD_TOKEN) {
   console.error("Missing DISCORD_TOKEN in agents/.env");
@@ -62,22 +64,36 @@ RULES:
 - If he says something vague, ask ONE clarifying question.
 - You can push back, suggest things, and start conversations.
 - Format for mobile: short lines, no walls of text, use bullet points sparingly.
+- When Jules reports a bug or issue, INVESTIGATE IT YOURSELF. You have tools — read the code, check Railway logs (railway logs), hit endpoints (curl), read files. Do NOT ask Jules to check browser console or do debugging for you. You are the engineer.
 
 CONTEXT: React 19 + Vite, Node/Express on Railway, Supabase, Claude AI vision, SerpAPI, freemium model.
 Backlog lives at agents/backlog.md — markdown with priority sections and sizing.
 
+DEPLOYMENT:
+- Frontend: Vercel at https://attair.vercel.app (React + Vite, env vars: VITE_API_BASE, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+- Backend: Railway at https://attair-production.up.railway.app (Node/Express, port 8080)
+- Database: Supabase (project ref: cmlgqztjkrfipzknwnfm)
+- Use "railway logs" to check backend logs, "curl https://attair-production.up.railway.app/health" to check backend health
+- Frontend code is in attair-app/, backend in attair-backend/
+
 HOW YOU WORK:
-You're Jules' Claude CLI through Discord. You can interview him for feature ideas, manage the backlog,
-and dispatch builds. When building, you use a quality loop: build → test → screenshot → judge against
+You're Jules' Claude CLI through Discord. Your DEFAULT mode is conversational — interview him for
+feature ideas, answer questions, manage the backlog, give opinions. You're a coworker, not an
+autonomous build machine. Only dispatch builds when Jules explicitly asks you to build something.
+
+When Jules DOES ask you to build, you use a quality loop: build → test → screenshot → judge against
 reference apps (TikTok, Depop, Pickle, Instagram) → if not good enough, fix and repeat → only move on
-when the feature is production-quality. You maximize token usage — when one task is done, pull the next
-from backlog and keep going.
+when the feature is production-quality.
+
+BUILD_NEXT (the backlog grind loop) is ONLY for when Jules explicitly says to burn through the backlog.
+Phrases like "burn tokens", "grind the backlog", "keep building", "max it out". Do NOT trigger this
+from casual conversation. When in doubt, ask.
 
 ACTIONS YOU CAN TRIGGER:
 Include the action tag in your response. The system will execute it and strip the tag.
 
-- [ACTION:BUILD:description] — Build a specific feature with the quality loop (build→judge→fix until perfect)
-- [ACTION:BUILD_NEXT] — Pull the highest priority task from backlog and build it with the quality loop
+- [ACTION:BUILD:description] — Build ONE specific feature with the quality loop. Only when Jules asks to build.
+- [ACTION:BUILD_NEXT] — Grind through backlog continuously. ONLY when Jules EXPLICITLY asks for this (e.g. "burn tokens", "grind the backlog", "max it out", "keep building until you run out").
 - [ACTION:STOP] — Stop whatever is currently running
 - [ACTION:STATUS] — Check what's running
 - [ACTION:KILL_STALE] — Kill orphaned processes
@@ -87,11 +103,12 @@ Include the action tag in your response. The system will execute it and strip th
 Combine actions with text. Example: "On it. [ACTION:BUILD:add dupe alert pills to results cards]"
 Be smart about intent:
 - "build this" / "let's do it" / "ship it" = BUILD with description from context
-- "keep going" / "next" / "burn tokens" = BUILD_NEXT
+- "burn tokens" / "grind the backlog" / "max it out" / "keep building" = BUILD_NEXT (ONLY these explicit phrases)
 - "save for later" / "backlog that" = BACKLOG
 - "come up with ideas" / "brainstorm" = CREATIVE
 - "what's running" = STATUS
-- "stop" / "kill it" = STOP`;
+- "stop" / "kill it" = STOP
+- Everything else = just chat, don't dispatch anything`;
 
 // ─── Helper: Send to channel (handles 2000 char limit, mobile-friendly) ─────
 async function sendToChannel(channel, text) {
@@ -150,38 +167,54 @@ async function chatWithOpus(userMessage) {
     `${m.role === "user" ? "Jules" : "ATTAIRE"}: ${m.content}`
   ).join("\n\n");
 
-  const fullPrompt = [
+  // Write everything to system prompt file — Windows shell mangles -p args with spaces
+  const tmpDir = join(__dirname, ".tmp");
+  if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true });
+  const sysPromptFile = join(tmpDir, `chat-${randomUUID()}.txt`);
+  const fullSystemPrompt = [
     SYSTEM_PROMPT,
-    "",
-    context ? `Previous conversation:\n${context}\n` : "",
-    `Jules: ${userMessage}`,
+    context ? `\nCONVERSATION HISTORY (for context — respond to the LATEST message only):\n${context}` : "",
+    `\nLATEST MESSAGE FROM JULES (respond to THIS):\n${userMessage}`,
   ].filter(Boolean).join("\n");
+  writeFileSync(sysPromptFile, fullSystemPrompt);
 
   const reply = await new Promise((resolve, reject) => {
-    const proc = spawn("claude", [
-      "-p", "--model", "opus", "--output-format", "text",
-      "--dangerously-skip-permissions",
-    ], {
-      stdio: ["pipe", "pipe", "pipe"],
+    // Build command as a single string for cmd.exe to avoid arg splitting issues
+    const toolsList = [
+      "Read", "Write", "Edit", "Glob", "Grep",
+      "Bash(git *)", "Bash(npm *)", "Bash(node *)", "Bash(npx *)",
+      "Bash(cat *)", "Bash(ls *)", "Bash(wc *)", "Bash(head *)", "Bash(tail *)",
+      "Bash(railway *)", "Bash(curl *)",
+    ].join(" ");
+    const relPromptFile = "agents\\.tmp\\" + sysPromptFile.split(/[/\\]/).pop();
+    const cmd = `claude -p "Respond to Jules latest message. See system prompt for context." --system-prompt-file ${relPromptFile} --model opus --output-format text --dangerously-skip-permissions --allowedTools ${toolsList}`;
+
+    console.log("[chatWithOpus] spawning:", cmd.slice(0, 200) + "...");
+
+    const proc = spawn("cmd.exe", ["/s", "/c", cmd], {
+      stdio: ["ignore", "pipe", "pipe"],
       cwd: REPO_ROOT,
-      env: { ...process.env, GH_TOKEN: process.env.GH_TOKEN ?? "" },
+      env: { ...process.env, ANTHROPIC_API_KEY: "", GH_TOKEN: process.env.GH_TOKEN ?? "" },
     });
 
     let output = "";
     let stderr = "";
-    proc.stdout.on("data", d => output += d.toString());
-    proc.stderr.on("data", d => stderr += d.toString());
+    proc.stdout.on("data", d => { output += d.toString(); });
+    proc.stderr.on("data", d => { stderr += d.toString(); console.error("[chatWithOpus stderr]", d.toString().slice(0, 200)); });
     proc.on("close", (code) => {
+      console.log("[chatWithOpus] exited code:", code, "output length:", output.length);
+      try { unlinkSync(sysPromptFile); } catch {}
       if (code !== 0 && !output.trim()) {
         reject(new Error(stderr.trim() || `claude exited with code ${code}`));
       } else {
         resolve(output.trim());
       }
     });
-    proc.on("error", reject);
-
-    proc.stdin.write(fullPrompt);
-    proc.stdin.end();
+    proc.on("error", (err) => {
+      console.error("[chatWithOpus] spawn error:", err.message);
+      try { unlinkSync(sysPromptFile); } catch {}
+      reject(err);
+    });
   });
 
   conversationHistory.push({ role: "assistant", content: reply });
@@ -191,14 +224,30 @@ async function chatWithOpus(userMessage) {
 // ─── Helper: Run a Claude agent with a prompt, return its output ────────────
 function runAgent(prompt, { label = "agent", onLog } = {}) {
   return new Promise((resolve, reject) => {
-    const proc = spawn("claude", [
-      "-p", "--model", "opus", "--output-format", "text",
-      "--dangerously-skip-permissions",
-      "--max-turns", "200",
-    ], {
-      stdio: ["pipe", "pipe", "pipe"],
+    // Write prompt to temp file for long build prompts
+    const tmpDir = join(__dirname, ".tmp");
+    if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true });
+    const agentId = randomUUID();
+    const agentPromptFile = join(tmpDir, `agent-${agentId}.txt`);
+    writeFileSync(agentPromptFile, prompt);
+    const relPromptFile = "agents\\.tmp\\agent-" + agentId + ".txt";
+
+    const toolsList = [
+      "Read", "Write", "Edit", "Glob", "Grep",
+      "Bash(git *)", "Bash(npm *)", "Bash(node *)", "Bash(npx *)",
+      "Bash(cat *)", "Bash(ls *)", "Bash(wc *)", "Bash(head *)", "Bash(tail *)",
+      "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)",
+      "Bash(railway *)", "Bash(curl *)", "Bash(npx supabase *)",
+      "Bash(cd *)", "Bash(pwd)",
+    ].join(" ");
+    const cmd = `claude -p "Follow the instructions in the system prompt file." --system-prompt-file ${relPromptFile} --model opus --output-format text --dangerously-skip-permissions --max-turns 200 --allowedTools ${toolsList}`;
+
+    console.log("[runAgent] spawning:", label, cmd.slice(0, 150) + "...");
+
+    const proc = spawn("cmd.exe", ["/s", "/c", cmd], {
+      stdio: ["ignore", "pipe", "pipe"],
       cwd: REPO_ROOT,
-      env: { ...process.env },
+      env: { ...process.env, ANTHROPIC_API_KEY: "" },
     });
 
     activeProcess = proc;
@@ -231,6 +280,7 @@ function runAgent(prompt, { label = "agent", onLog } = {}) {
     proc.on("close", (code) => {
       clearInterval(logInterval);
       if (logBuffer.trim() && onLog) onLog(logBuffer.slice(0, 1900));
+      try { unlinkSync(agentPromptFile); } catch {}
       activeProcess = null;
       activeTaskLabel = null;
       if (code !== 0 && !output.trim()) {
@@ -242,13 +292,11 @@ function runAgent(prompt, { label = "agent", onLog } = {}) {
 
     proc.on("error", (err) => {
       clearInterval(logInterval);
+      try { unlinkSync(agentPromptFile); } catch {}
       activeProcess = null;
       activeTaskLabel = null;
       reject(err);
     });
-
-    proc.stdin.write(prompt);
-    proc.stdin.end();
   });
 }
 
@@ -481,7 +529,7 @@ const ts = ${JSON.stringify(String(timestamp))};
       cwd: REPO_ROOT,
       encoding: "utf-8",
       timeout: 60000,
-      env: { ...process.env },
+      env: { ...process.env, ANTHROPIC_API_KEY: "" },
     });
 
     // Parse the JSON array of paths from the script output
