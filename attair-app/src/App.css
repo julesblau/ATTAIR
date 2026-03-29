@@ -4032,6 +4032,7 @@
   justify-content: center;
   padding: 64px 24px;
   text-align: center;
+  min-height: 40vh;
 }
 
 .style-twins-loading-orbit {
@@ -4086,9 +4087,7 @@
   padding: 20px;
   margin-bottom: 16px;
   overflow: hidden;
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .style-twin-featured-glow {
@@ -4123,7 +4122,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 18;
+  font-size: 18px;
   color: var(--accent);
   letter-spacing: 1px;
   flex-shrink: 0;
@@ -4250,9 +4249,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 14px;
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   transition: border-color 0.2s ease, transform 0.15s ease;
 }
 
@@ -4442,7 +4439,7 @@
   .style-twin-featured { animation: none; opacity: 1 !important; transform: none !important; }
 }
 
-/* Ensure cards are always visible as a baseline — animations enhance, never hide */
+/* Ensure cards are always visible as a baseline — animations enhance, never hide. */
 .style-twin-featured,
 .style-twin-card {
   will-change: opacity, transform;
