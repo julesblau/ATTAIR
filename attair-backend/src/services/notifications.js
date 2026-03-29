@@ -74,6 +74,7 @@ export async function sendNotification(userId, type, title, body, data = {}) {
     social: "social_activity",
     new_post: "new_posts",
     digest: "weekly_digest",
+    hanger_test: "hanger_test",
   };
 
   if (prefs[prefMap[type]] === false) {

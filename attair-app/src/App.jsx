@@ -220,6 +220,15 @@ const API = {
     }).catch(() => {});
   },
 
+  async findDupes(productName, description, price, imageUrl, category, gender) {
+    const res = await authFetch(`${API_BASE}/api/dupes`, {
+      method: "POST",
+      body: JSON.stringify({ product_name: productName, description, price, image_url: imageUrl, category, gender }),
+    });
+    if (!res.ok) { const data = await res.json(); throw new Error(data.error || "Dupe search failed"); }
+    return await res.json();
+  },
+
   affiliateUrl(clickId, url, scanId, itemIndex, tier, retailer) {
     const params = new URLSearchParams({ url, scan_id: scanId || "", item_index: itemIndex, tier, retailer });
     return `${API_BASE}/api/go/${clickId}?${params}`;
@@ -493,6 +502,34 @@ const API = {
       body: JSON.stringify({ preferences }),
     });
     return res.ok ? (await res.json()).preferences : null;
+  },
+
+  // ─── Hanger Test ──────────────────────────────────────────
+  async hangerTestToday() {
+    const res = await authFetch(`${API_BASE}/api/hanger-test/today`);
+    if (!res.ok) return { outfit: null };
+    return await res.json();
+  },
+  async hangerTestVote(outfit_id, verdict) {
+    const res = await authFetch(`${API_BASE}/api/hanger-test/vote`, {
+      method: "POST",
+      body: JSON.stringify({ outfit_id, verdict }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || "Vote failed");
+    }
+    return await res.json();
+  },
+  async hangerTestStreak() {
+    const res = await authFetch(`${API_BASE}/api/hanger-test/streak`);
+    if (!res.ok) return { current_streak: 0 };
+    return await res.json();
+  },
+  async hangerTestHistory(limit = 20, offset = 0) {
+    const res = await authFetch(`${API_BASE}/api/hanger-test/history?limit=${limit}&offset=${offset}`);
+    if (!res.ok) return { history: [] };
+    return await res.json();
   },
 };
 
@@ -2187,12 +2224,86 @@ export default function App() {
   const [flippedScans, setFlippedScans] = useState(new Set()); // which scan cards are flipped
   const [scanSearchQuery, setScanSearchQuery] = useState(""); // search within scan history
 
+  // ─── Hanger Test ────────────────────────────────────────────
+  const [hangerOutfit, setHangerOutfit] = useState(null);         // today's outfit
+  const [hangerUserVote, setHangerUserVote] = useState(null);     // 'wear'|'pass'|null
+  const [hangerStats, setHangerStats] = useState(null);           // { wear_pct, pass_pct, ... }
+  const [hangerStreak, setHangerStreak] = useState(null);         // { current_streak, ... }
+  const [hangerLoading, setHangerLoading] = useState(false);
+  const [hangerVoting, setHangerVoting] = useState(false);
+  const [hangerFullscreen, setHangerFullscreen] = useState(false); // show fullscreen verdict card
+  const [hangerVoteAnim, setHangerVoteAnim] = useState(null);     // 'wear'|'pass' for animation
+  const [hangerInsight, setHangerInsight] = useState(null);        // style insight modal data
+  const [hangerHistory, setHangerHistory] = useState([]);
+  const [hangerHistoryOpen, setHangerHistoryOpen] = useState(false);
+  const [hangerSwipeX, setHangerSwipeX] = useState(0);             // swipe offset
+  const hangerTouchRef = useRef(null);
+
   // ─── Derived status helpers (must be before any useEffect that references them) ───
   const isFree = !userStatus || userStatus.tier === "free" || userStatus.tier === "expired";
   const isPro = userStatus?.tier === "pro" || userStatus?.tier === "trial";
   const scansLeft = userStatus?.scans_remaining_today ?? 12;
   const scansLimit = userStatus?.scans_limit ?? 12;
   const showAds = userStatus?.show_ads ?? true;
+
+  // ─── Load Hanger Test on mount / tab switch ────────────────
+  const loadHangerTest = useCallback(async () => {
+    if (!authed) return;
+    setHangerLoading(true);
+    try {
+      const data = await API.hangerTestToday();
+      setHangerOutfit(data.outfit);
+      setHangerUserVote(data.user_vote);
+      setHangerStats(data.stats);
+      if (data.streak) setHangerStreak(data.streak);
+    } catch { /* silent */ }
+    setHangerLoading(false);
+  }, [authed]);
+
+  useEffect(() => {
+    if (authed && screen === "app" && tab === "home") {
+      loadHangerTest();
+    }
+  }, [authed, screen, tab, loadHangerTest]);
+
+  // Check URL param for deep link from push notification
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("hanger") === "1" && authed) {
+      setHangerFullscreen(true);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [authed]);
+
+  const handleHangerVote = useCallback(async (verdict) => {
+    if (!hangerOutfit || hangerVoting || hangerUserVote) return;
+    setHangerVoting(true);
+    setHangerVoteAnim(verdict);
+
+    // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate(20);
+
+    try {
+      const data = await API.hangerTestVote(hangerOutfit.id, verdict);
+      setHangerUserVote(verdict);
+      setHangerStats(data.stats);
+      setHangerStreak(data.streak);
+
+      // Show insight if earned
+      if (data.style_insight && !data.style_insight.gated) {
+        setTimeout(() => setHangerInsight(data.style_insight), 1200);
+      } else if (data.style_insight?.gated) {
+        setTimeout(() => setHangerInsight({ gated: true, message: data.style_insight.message }), 1200);
+      }
+
+      if (data.earned_badge) {
+        // Could show badge earned toast
+      }
+    } catch { /* already voted or error */ }
+
+    setTimeout(() => setHangerVoteAnim(null), 600);
+    setHangerVoting(false);
+  }, [hangerOutfit, hangerVoting, hangerUserVote]);
 
   // Load scan history and price alerts when Saved tab is opened
   useEffect(() => {
@@ -2314,6 +2425,245 @@ export default function App() {
   const [itemChats, setItemChats] = useState({});          // { [idx]: [{role, content}] }
   const [refineInputs, setRefineInputs] = useState({});    // { [idx]: string }
   const [refineLoadings, setRefineLoadings] = useState({}); // { [idx]: bool }
+
+  // ─── Dupe Finder state ────────────────────────────────────
+  const [dupeModal, setDupeModal] = useState(null);         // null | { product, itemIdx, tierKey }
+  const [dupeResults, setDupeResults] = useState(null);     // null | { dupes: [], original: {} }
+  const [dupeLoading, setDupeLoading] = useState(false);
+  const [dupeError, setDupeError] = useState(null);
+  const [dupeSlide, setDupeSlide] = useState(0);            // current swipe index
+  const [dupeShareLoading, setDupeShareLoading] = useState(false);
+  const dupeScrollRef = useRef(null);
+
+  // ─── Dupe Finder: trigger search ──────────────────────────
+  const openDupeModal = useCallback(async (product, itemData, tierKey) => {
+    const priceNum = parseFloat((product.price || "").replace(/[^0-9.]/g, ""));
+    if (!priceNum || priceNum < 150) return;
+
+    const modalData = {
+      product_name: product.product_name || itemData?.name || "Product",
+      description: [itemData?.color, itemData?.material, itemData?.subcategory, itemData?.fit, itemData?.construction_details].filter(Boolean).join(", "),
+      price: priceNum,
+      image_url: product.image_url || "",
+      category: itemData?.category || "",
+      gender: results?.gender || prefs?.gender || "female",
+    };
+
+    setDupeModal({ product: modalData, itemIdx: null, tierKey });
+    setDupeResults(null);
+    setDupeError(null);
+    setDupeLoading(true);
+    setDupeSlide(0);
+
+    track("dupe_search_started", { product_name: modalData.product_name, price: priceNum }, scanId, "scan");
+
+    try {
+      const data = await API.findDupes(
+        modalData.product_name,
+        modalData.description,
+        modalData.price,
+        modalData.image_url,
+        modalData.category,
+        modalData.gender,
+      );
+      setDupeResults(data);
+      track("dupe_search_completed", { product_name: modalData.product_name, dupe_count: data.dupes?.length || 0 }, scanId, "scan");
+    } catch (err) {
+      setDupeError(err.message || "Failed to find similar looks");
+      track("dupe_search_failed", { product_name: modalData.product_name, error: err.message }, scanId, "scan");
+    } finally {
+      setDupeLoading(false);
+    }
+  }, [results, prefs, scanId]);
+
+  // ─── Dupe Share Card: generate 1080x1920 story image ──────
+  const generateDupeShareCard = useCallback(async (original, dupe) => {
+    setDupeShareLoading(true);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080;
+      canvas.height = 1920;
+      const ctx = canvas.getContext("2d");
+
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, 1920);
+      grad.addColorStop(0, "#0C0C0E");
+      grad.addColorStop(1, "#1A1A1A");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1080, 1920);
+
+      // Header: "DUPE ALERT"
+      ctx.fillStyle = "#C9A96E";
+      ctx.font = "bold 56px system-ui, -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("DUPE ALERT", 540, 140);
+
+      // Divider line
+      ctx.strokeStyle = "rgba(201,169,110,0.4)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(140, 180);
+      ctx.lineTo(940, 180);
+      ctx.stroke();
+
+      // Load images
+      const loadImg = (url) => new Promise((resolve) => {
+        if (!url) { resolve(null); return; }
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = url;
+      });
+
+      const [origImg, dupeImg] = await Promise.all([
+        loadImg(original.image_url),
+        loadImg(dupe.image_url),
+      ]);
+
+      // Cards config
+      const cardW = 440;
+      const cardH = 560;
+      const cardY = 260;
+      const leftX = 60;
+      const rightX = 580;
+      const cardRadius = 24;
+
+      // Draw card backgrounds
+      const drawCard = (x, y, w, h) => {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, cardRadius);
+        ctx.fillStyle = "#222";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      };
+
+      drawCard(leftX, cardY, cardW, cardH);
+      drawCard(rightX, cardY, cardW, cardH);
+
+      // Draw images
+      const imgH = 380;
+      if (origImg) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(leftX, cardY, cardW, imgH, [cardRadius, cardRadius, 0, 0]);
+        ctx.clip();
+        const scale = Math.max(cardW / origImg.width, imgH / origImg.height);
+        const sw = origImg.width * scale;
+        const sh = origImg.height * scale;
+        ctx.drawImage(origImg, leftX + (cardW - sw) / 2, cardY + (imgH - sh) / 2, sw, sh);
+        ctx.restore();
+      }
+      if (dupeImg) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(rightX, cardY, cardW, imgH, [cardRadius, cardRadius, 0, 0]);
+        ctx.clip();
+        const scale = Math.max(cardW / dupeImg.width, imgH / dupeImg.height);
+        const sw = dupeImg.width * scale;
+        const sh = dupeImg.height * scale;
+        ctx.drawImage(dupeImg, rightX + (cardW - sw) / 2, cardY + (imgH - sh) / 2, sw, sh);
+        ctx.restore();
+      }
+
+      // Labels under images
+      const labelY = cardY + imgH + 32;
+      ctx.font = "600 22px system-ui, -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.fillText("ORIGINAL", leftX + cardW / 2, labelY);
+      ctx.fillStyle = "#4CAF50";
+      ctx.fillText("THE DUPE", rightX + cardW / 2, labelY);
+
+      // Prices
+      const priceY = labelY + 46;
+      ctx.font = "bold 40px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(`$${Math.round(original.price)}`, leftX + cardW / 2, priceY);
+      ctx.fillStyle = "#4CAF50";
+      ctx.fillText(dupe.price, rightX + cardW / 2, priceY);
+
+      // Stores
+      const storeY = priceY + 36;
+      ctx.font = "500 20px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.textAlign = "center";
+      ctx.fillText((original.name || "").slice(0, 30), leftX + cardW / 2, storeY);
+      ctx.fillText((dupe.store || "").slice(0, 30), rightX + cardW / 2, storeY);
+
+      // VS badge in the middle
+      const vsY = cardY + imgH / 2;
+      ctx.beginPath();
+      ctx.arc(540, vsY, 40, 0, Math.PI * 2);
+      ctx.fillStyle = "#C9A96E";
+      ctx.fill();
+      ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#000";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("VS", 540, vsY);
+      ctx.textBaseline = "alphabetic";
+
+      // Savings badge
+      const savingsY = storeY + 100;
+      const savingsText = `Save ${dupe.savings_pct}%`;
+      ctx.beginPath();
+      ctx.roundRect(340, savingsY - 36, 400, 72, 36);
+      ctx.fillStyle = "rgba(76,175,80,0.15)";
+      ctx.fill();
+      ctx.strokeStyle = "#4CAF50";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.font = "bold 38px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#4CAF50";
+      ctx.textAlign = "center";
+      ctx.fillText(savingsText, 540, savingsY + 10);
+
+      // Similarity score
+      if (dupe.similarity_score) {
+        const simY = savingsY + 80;
+        ctx.font = "500 22px system-ui, -apple-system, sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.fillText(`${dupe.similarity_score}% visual match`, 540, simY);
+      }
+
+      // ATTAIRE watermark
+      ctx.font = "bold 32px 'Instrument Serif', Georgia, serif";
+      ctx.fillStyle = "rgba(201,169,110,0.6)";
+      ctx.textAlign = "center";
+      ctx.fillText("ATTAIRE", 540, 1820);
+      ctx.font = "400 18px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
+      ctx.fillText("attaire.app", 540, 1855);
+
+      // Convert to blob and trigger share/download
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [new File([blob], "dupe.png", { type: "image/png" })] })) {
+        await navigator.share({
+          title: "ATTAIRE Dupe Alert",
+          text: `Found a dupe! Save ${dupe.savings_pct}% on a similar look`,
+          files: [new File([blob], "attaire-dupe.png", { type: "image/png" })],
+        });
+      } else {
+        // Fallback: download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "attaire-dupe.png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+      track("dupe_share", { product_name: original.name, dupe_name: dupe.product_name, savings_pct: dupe.savings_pct }, scanId, "scan");
+    } catch (err) {
+      console.error("[Dupe Share]", err);
+    } finally {
+      setDupeShareLoading(false);
+    }
+  }, [scanId]);
 
   // ─── Crop ─────────────────────────────────────────────────
   const [cropPending, setCropPending] = useState(null); // { src, base64, mime, source }
@@ -3153,6 +3503,231 @@ export default function App() {
         <InterstitialAd onClose={() => setShowInterstitial(false)} />
       )}
 
+      {/* ─── DUPE FINDER MODAL ─────────────────────────── */}
+      {dupeModal && (
+        <div className="modal-overlay" onClick={() => { setDupeModal(null); setDupeResults(null); setDupeError(null); }} style={{ zIndex: 350 }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: "100%", maxWidth: 420, maxHeight: "90vh", background: "var(--bg-secondary)",
+            borderRadius: 24, overflow: "hidden", position: "relative",
+            display: "flex", flexDirection: "column",
+            animation: "slideIn .3s ease", border: "1px solid var(--border)",
+          }}>
+            {/* Header */}
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>Similar Look</div>
+                <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
+                  {dupeModal.product.product_name?.slice(0, 40)}{dupeModal.product.product_name?.length > 40 ? "..." : ""}
+                </div>
+              </div>
+              <button onClick={() => { setDupeModal(null); setDupeResults(null); setDupeError(null); }}
+                style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--bg-input)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text-tertiary)", fontSize: 16, fontFamily: "var(--font-sans)" }}>
+                ✕
+              </button>
+            </div>
+
+            {/* Content area */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 0 16px" }}>
+              {/* Loading state */}
+              {dupeLoading && (
+                <div style={{ padding: "60px 24px", textAlign: "center" }}>
+                  <div className="ld-dot" style={{ width: 12, height: 12, background: "#4CAF50", margin: "0 auto 20px" }} />
+                  <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>Hunting similar looks...</div>
+                  <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Searching for visually similar styles at lower prices</div>
+                </div>
+              )}
+
+              {/* Error state */}
+              {dupeError && (
+                <div style={{ padding: "48px 24px", textAlign: "center" }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>😕</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>Search failed</div>
+                  <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 16 }}>{dupeError}</div>
+                  <button onClick={() => { setDupeError(null); openDupeModal({ product_name: dupeModal.product.product_name, price: `$${dupeModal.product.price}`, image_url: dupeModal.product.image_url }, { name: dupeModal.product.product_name, category: dupeModal.product.category, color: "", material: "", subcategory: "", fit: "", construction_details: "" }, dupeModal.tierKey); }}
+                    style={{ padding: "10px 20px", background: "#4CAF50", color: "#fff", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)" }}>
+                    Try Again
+                  </button>
+                </div>
+              )}
+
+              {/* Empty state — no dupes found */}
+              {dupeResults && dupeResults.dupes.length === 0 && (
+                <div style={{ padding: "48px 24px", textAlign: "center" }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>No similar looks found</div>
+                  <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>
+                    We couldn't find visually similar alternatives at a lower price point for this item. Try again later — new products are added constantly.
+                  </div>
+                </div>
+              )}
+
+              {/* Results — swipeable dupe comparison cards */}
+              {dupeResults && dupeResults.dupes.length > 0 && (
+                <>
+                  {/* Dupe count + swipe hint */}
+                  <div style={{ padding: "12px 20px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "#4CAF50", textTransform: "uppercase" }}>
+                      {dupeResults.dupes.length} match{dupeResults.dupes.length > 1 ? "es" : ""} found
+                    </span>
+                    {dupeResults.dupes.length > 1 && (
+                      <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
+                        {dupeSlide + 1}/{dupeResults.dupes.length} · Swipe →
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Swipeable card container */}
+                  <div
+                    ref={dupeScrollRef}
+                    onScroll={e => {
+                      const el = e.target;
+                      const cardW = el.scrollWidth / dupeResults.dupes.length;
+                      setDupeSlide(Math.round(el.scrollLeft / cardW));
+                    }}
+                    style={{
+                      display: "flex", overflowX: "auto", scrollSnapType: "x mandatory",
+                      WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none",
+                      paddingLeft: 16, paddingRight: 16, gap: 12,
+                    }}
+                  >
+                    {dupeResults.dupes.map((dupe, di) => (
+                      <div key={di} style={{
+                        flexShrink: 0, width: "calc(100% - 32px)", scrollSnapAlign: "center",
+                        background: "var(--bg-card)", border: "1px solid var(--border)",
+                        borderRadius: 16, overflow: "hidden",
+                      }}>
+                        {/* Side-by-side comparison */}
+                        <div style={{ display: "flex", gap: 0, position: "relative" }}>
+                          {/* Original (left) */}
+                          <div style={{ flex: 1, borderRight: "1px solid var(--border)" }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", textAlign: "center", padding: "8px 0 4px", color: "var(--text-tertiary)" }}>ORIGINAL</div>
+                            <div style={{ aspectRatio: "3/4", background: "var(--bg-input)", overflow: "hidden" }}>
+                              {dupeResults.original.image_url ? (
+                                <img src={dupeResults.original.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                              ) : (
+                                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 11 }}>No image</div>
+                              )}
+                            </div>
+                            <div style={{ padding: "10px 8px", textAlign: "center" }}>
+                              <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.3, marginBottom: 4 }}>
+                                {dupeResults.original.name}
+                              </div>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>${Math.round(dupeResults.original.price)}</div>
+                            </div>
+                          </div>
+
+                          {/* Savings badge (center divider) */}
+                          <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -80%)", zIndex: 2 }}>
+                            <div style={{
+                              width: 52, height: 52, borderRadius: "50%", background: "#4CAF50",
+                              display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column",
+                              boxShadow: "0 4px 16px rgba(76,175,80,0.4)", border: "3px solid var(--bg-card)",
+                            }}>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{dupe.savings_pct}%</div>
+                              <div style={{ fontSize: 7, fontWeight: 600, color: "rgba(255,255,255,.7)", letterSpacing: 0.5 }}>OFF</div>
+                            </div>
+                          </div>
+
+                          {/* Dupe (right) */}
+                          <div style={{ flex: 1, position: "relative" }}>
+                            <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", textAlign: "center", padding: "8px 0 4px", color: "#4CAF50" }}>SIMILAR LOOK</div>
+                            <div style={{ aspectRatio: "3/4", background: "var(--bg-input)", overflow: "hidden" }}>
+                              {dupe.image_url ? (
+                                <img src={dupe.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                              ) : (
+                                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 11 }}>No image</div>
+                              )}
+                            </div>
+                            <div style={{ padding: "10px 8px", textAlign: "center" }}>
+                              <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.3, marginBottom: 4 }}>
+                                {dupe.product_name}
+                              </div>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: "#4CAF50" }}>{dupe.price}</div>
+                              <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 2 }}>{dupe.store}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Similarity score bar */}
+                        {dupe.similarity_score && (
+                          <div style={{ padding: "0 12px 8px" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                              <span style={{ fontSize: 9, fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: 0.3 }}>Visual Match</span>
+                              <span style={{ fontSize: 9, fontWeight: 700, color: dupe.similarity_score >= 80 ? "#4CAF50" : dupe.similarity_score >= 60 ? "#C9A96E" : "var(--text-tertiary)" }}>{dupe.similarity_score}%</span>
+                            </div>
+                            <div style={{ height: 3, borderRadius: 2, background: "var(--bg-input)", overflow: "hidden" }}>
+                              <div style={{ height: "100%", borderRadius: 2, width: `${dupe.similarity_score}%`, background: dupe.similarity_score >= 80 ? "#4CAF50" : dupe.similarity_score >= 60 ? "#C9A96E" : "var(--text-tertiary)", transition: "width .5s ease" }} />
+                            </div>
+                            {dupe.similarity_reason && (
+                              <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginTop: 4, lineHeight: 1.3, fontStyle: "italic" }}>
+                                {dupe.similarity_reason}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div style={{ padding: "8px 12px 12px", display: "flex", gap: 8 }}>
+                          <a
+                            href={dupe.url || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => track("dupe_shop_clicked", { product_name: dupe.product_name, store: dupe.store, price: dupe.price, savings_pct: dupe.savings_pct }, scanId, "scan")}
+                            style={{
+                              flex: 1, padding: "10px 16px", background: "#4CAF50", color: "#fff",
+                              border: "none", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                              textAlign: "center", textDecoration: "none", fontFamily: "var(--font-sans)",
+                              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                              transition: "all .2s",
+                            }}
+                          >
+                            Shop
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                          </a>
+                          <button
+                            onClick={() => generateDupeShareCard(dupeResults.original, dupe)}
+                            disabled={dupeShareLoading}
+                            style={{
+                              padding: "10px 16px", background: "var(--bg-input)", color: "var(--text-secondary)",
+                              border: "1px solid var(--border)", borderRadius: 10, fontSize: 13, fontWeight: 600,
+                              cursor: dupeShareLoading ? "wait" : "pointer", fontFamily: "var(--font-sans)",
+                              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                              transition: "all .2s", opacity: dupeShareLoading ? 0.6 : 1,
+                            }}
+                          >
+                            {dupeShareLoading ? (
+                              <div className="ld-dot" style={{ width: 6, height: 6, background: "var(--text-secondary)" }} />
+                            ) : (
+                              <>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                                Share
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Dot indicators */}
+                  {dupeResults.dupes.length > 1 && (
+                    <div style={{ display: "flex", justifyContent: "center", gap: 6, padding: "12px 0 4px" }}>
+                      {dupeResults.dupes.map((_, di) => (
+                        <div key={di} style={{
+                          width: di === dupeSlide ? 16 : 6, height: 6, borderRadius: 3,
+                          background: di === dupeSlide ? "#4CAF50" : "var(--border)",
+                          transition: "all .2s",
+                        }} />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── UPGRADE MODAL ───────────────────────────────── */}
       {upgradeModal && (
         <UpgradeModal
@@ -3402,6 +3977,56 @@ export default function App() {
                   </div>
                 );
               })()}
+
+              {/* ─── Hanger Test daily card ─── */}
+              {hangerOutfit && !isGuest && (
+                <div
+                  className="card-press hanger-home-card"
+                  onClick={() => setHangerFullscreen(true)}
+                  style={{ margin: "4px 12px 8px", borderRadius: 14, overflow: "hidden", position: "relative", cursor: "pointer", border: "1px solid rgba(201,169,110,.15)" }}
+                >
+                  <div style={{ position: "relative", width: "100%", height: 140, overflow: "hidden" }}>
+                    <img
+                      src={hangerOutfit.image_url}
+                      alt="Today's outfit"
+                      style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.6)" }}
+                    />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 100%)" }} />
+                    <div style={{ position: "absolute", top: 10, left: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2C12 2 8 6 8 10C8 14 12 16 12 16C12 16 16 14 16 10C16 6 12 2 12 2Z"/><path d="M8 16L4 20M16 16L20 20"/></svg>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", letterSpacing: 1.2, textTransform: "uppercase" }}>Hanger Test</span>
+                    </div>
+                    {hangerStreak && hangerStreak.current_streak > 0 && (
+                      <div style={{ position: "absolute", top: 10, right: 12, fontSize: 12, fontWeight: 700, color: "#FFB74D", display: "flex", alignItems: "center", gap: 3 }}>
+                        <span style={{ fontSize: 14 }}>&#128293;</span> {hangerStreak.current_streak}
+                      </div>
+                    )}
+                    <div style={{ position: "absolute", bottom: 12, left: 12, right: 12 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", marginBottom: 2 }}>
+                        {hangerUserVote ? "You voted today" : "Would you wear this?"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", lineHeight: 1.3 }}>
+                        {hangerOutfit.description}
+                      </div>
+                    </div>
+                  </div>
+                  {hangerUserVote ? (
+                    <div style={{ padding: "10px 14px", background: "var(--bg-card)", display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--bg-input)", overflow: "hidden" }}>
+                        <div style={{ width: `${hangerStats?.wear_pct || 50}%`, height: "100%", borderRadius: 3, background: "linear-gradient(90deg, #C9A96E, #E8D5A8)", transition: "width 0.6s ease" }} />
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", whiteSpace: "nowrap" }}>{hangerStats?.wear_pct || 50}% wear</span>
+                    </div>
+                  ) : (
+                    <div style={{ padding: "10px 14px", background: "var(--bg-card)", display: "flex", gap: 8 }}>
+                      <span style={{ flex: 1, textAlign: "center", fontSize: 12, fontWeight: 700, padding: "6px 0", borderRadius: 100, background: "rgba(201,169,110,.1)", color: "var(--accent)" }}>Would Wear</span>
+                      <span style={{ flex: 1, textAlign: "center", fontSize: 12, fontWeight: 700, padding: "6px 0", borderRadius: 100, background: "rgba(255,255,255,.06)", color: "var(--text-secondary)" }}>Pass</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Skeleton loading */}
               {feedLoading && feedScans.length === 0 && (
@@ -4726,9 +5351,9 @@ export default function App() {
                                         {p.style_match != null && p.style_match >= 60 && (
                                           <div className="style-match-pill">{p.style_match}% your style</div>
                                         )}
-                                        {/* Dupe Alert pill — shows savings vs most expensive + reference price */}
+                                        {/* Dupe Alert pill — tappable to open dupe finder */}
                                         {dupeInfo && (
-                                          <div className="dupe-alert-pill" onClick={e => { e.preventDefault(); e.stopPropagation(); if (dupeInfo.vsUrl) window.open(dupeInfo.vsUrl, "_blank"); }} style={{ cursor: "pointer" }} title={`Compare: ${dupeInfo.vsStore} at ${dupeInfo.vsPrice}`}>
+                                          <div className="dupe-alert-pill" onClick={e => { e.preventDefault(); e.stopPropagation(); const priceNum = parseFloat((dupeInfo.vsPrice || "").replace(/[^0-9.]/g, "")); if (priceNum >= 150) { openDupeModal({ product_name: p.product_name || item.name, price: dupeInfo.vsPrice, image_url: p.image_url }, item, tierKey); } else if (dupeInfo.vsUrl) { window.open(dupeInfo.vsUrl, "_blank"); } }} style={{ cursor: "pointer" }} title={`Find similar looks for less`}>
                                             {dupeInfo.savings}% less vs {dupeInfo.vsStore} ({dupeInfo.vsPrice})
                                           </div>
                                         )}
@@ -4750,6 +5375,17 @@ export default function App() {
                                             <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
                                           </div>
                                         </a>
+                                        {/* Find Similar Look button — only on products $150+ */}
+                                        {(() => { const pNum = parseFloat((p.price || "").replace(/[^0-9.]/g, "")); return pNum >= 150 && !isFallback; })() && (
+                                          <button
+                                            onClick={e => { e.preventDefault(); e.stopPropagation(); openDupeModal(p, item, tierKey); }}
+                                            className="dupe-finder-btn"
+                                            style={{ position: "absolute", bottom: 54, left: 4, right: 4, zIndex: 2, padding: "5px 8px", background: "rgba(76,175,80,.9)", backdropFilter: "blur(8px)", border: "none", borderRadius: 8, color: "#fff", fontSize: 9, fontWeight: 700, fontFamily: "var(--font-sans)", cursor: "pointer", letterSpacing: 0.3, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, transition: "all .2s" }}
+                                          >
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                            Similar Look
+                                          </button>
+                                        )}
                                         {/* Save heart */}
                                         <button
                                           aria-label={isSavedProduct ? "Remove from Likes" : "Save to Likes"}
@@ -5227,6 +5863,31 @@ export default function App() {
                     {styleDna.message}
                   </div>
                 ) : null}
+
+                {/* Hanger Test streak + entry point */}
+                <button onClick={async () => {
+                  setHangerFullscreen(true);
+                  if (!hangerOutfit) {
+                    setHangerLoading(true);
+                    try {
+                      const d = await API.hangerTestToday();
+                      setHangerOutfit(d.outfit);
+                      setHangerUserVote(d.user_vote);
+                      setHangerStats(d.stats);
+                      if (d.streak) setHangerStreak(d.streak);
+                    } catch {}
+                    setHangerLoading(false);
+                  }
+                }} style={{
+                  width: "100%", marginTop: 8, padding: "12px 16px", fontSize: 14, fontWeight: 600,
+                  borderRadius: "var(--radius-sm)", background: "linear-gradient(135deg, rgba(255,183,77,.08), rgba(201,169,110,.04))",
+                  border: "1px solid rgba(255,183,77,.2)", color: "#FFB74D",
+                  cursor: "pointer", fontFamily: "var(--font-sans)", letterSpacing: 0.3,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+                }}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2C12 2 8 6 8 10C8 14 12 16 12 16C12 16 16 14 16 10C16 6 12 2 12 2Z"/><path d="M8 16L4 20M16 16L20 20"/></svg>
+                  Hanger Test {hangerStreak?.current_streak > 0 ? `\u00B7 ${hangerStreak.current_streak} day streak \uD83D\uDD25` : "\u00B7 Daily Outfit Verdict"}
+                </button>
               </div>
 
               {/* Trial banner */}
@@ -6642,6 +7303,325 @@ export default function App() {
           Added to {addToListConfirm.wishlistName}
         </div>
       )}
+      {/* ═══ Hanger Test Fullscreen Overlay ═══ */}
+      {hangerFullscreen && (
+        <div className="hanger-overlay" style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-primary)", display: "flex", flexDirection: "column" }}>
+          {/* Top bar */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(env(safe-area-inset-top), 12px) 16px 8px", flexShrink: 0 }}>
+            <button onClick={() => setHangerFullscreen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: "4px 8px", lineHeight: 1 }}>&times;</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><path d="M12 2C12 2 8 6 8 10C8 14 12 16 12 16C12 16 16 14 16 10C16 6 12 2 12 2Z"/><path d="M8 16L4 20M16 16L20 20"/></svg>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.5 }}>Hanger Test</span>
+            </div>
+            <button onClick={async () => {
+              setHangerHistoryOpen(true);
+              try {
+                const d = await API.hangerTestHistory();
+                setHangerHistory(d.history || []);
+              } catch {}
+            }} style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer", padding: "4px 8px" }}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </button>
+          </div>
+
+          {/* Streak display */}
+          {hangerStreak && hangerStreak.current_streak > 0 && (
+            <div style={{ textAlign: "center", padding: "4px 0 8px" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 16px", borderRadius: 100, background: "rgba(255,183,77,.08)", border: "1px solid rgba(255,183,77,.15)" }}>
+                <span style={{ fontSize: 16 }}>&#128293;</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "#FFB74D" }}>{hangerStreak.current_streak} day streak</span>
+                {hangerStreak.taste_badge && <span style={{ fontSize: 12, marginLeft: 4 }}>&#127942;</span>}
+              </div>
+            </div>
+          )}
+
+          {/* Main card area */}
+          {hangerLoading && !hangerOutfit ? (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div className="spinner" />
+            </div>
+          ) : !hangerOutfit ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", textAlign: "center" }}>
+              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1" style={{ marginBottom: 16, opacity: 0.4 }}><path d="M12 2C12 2 8 6 8 10C8 14 12 16 12 16C12 16 16 14 16 10C16 6 12 2 12 2Z"/><path d="M8 16L4 20M16 16L20 20"/></svg>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>No outfit today</div>
+              <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5 }}>Check back tomorrow for a new daily outfit to judge.</div>
+            </div>
+          ) : (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+              {/* Swipeable card */}
+              <div
+                className="hanger-card"
+                style={{
+                  flex: 1,
+                  margin: "0 16px",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  position: "relative",
+                  transform: `translateX(${hangerSwipeX}px) rotate(${hangerSwipeX * 0.03}deg)`,
+                  transition: hangerSwipeX === 0 ? "transform 0.3s cubic-bezier(.4,0,.2,1)" : "none",
+                  userSelect: "none",
+                  touchAction: "pan-y",
+                }}
+                onTouchStart={(e) => {
+                  if (hangerUserVote) return;
+                  hangerTouchRef.current = { x: e.touches[0].clientX, time: Date.now() };
+                }}
+                onTouchMove={(e) => {
+                  if (hangerUserVote || !hangerTouchRef.current) return;
+                  const dx = e.touches[0].clientX - hangerTouchRef.current.x;
+                  setHangerSwipeX(dx);
+                }}
+                onTouchEnd={() => {
+                  if (hangerUserVote || !hangerTouchRef.current) return;
+                  const dx = hangerSwipeX;
+                  if (Math.abs(dx) > 80) {
+                    handleHangerVote(dx > 0 ? "wear" : "pass");
+                  }
+                  setHangerSwipeX(0);
+                  hangerTouchRef.current = null;
+                }}
+              >
+                {/* Outfit image */}
+                <img
+                  src={hangerOutfit.image_url}
+                  alt="Today's outfit"
+                  style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                  draggable={false}
+                />
+
+                {/* Gradient overlay */}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%)" }} />
+
+                {/* Swipe indicators */}
+                {hangerSwipeX > 30 && !hangerUserVote && (
+                  <div className="hanger-swipe-label" style={{ position: "absolute", top: "40%", left: 20, transform: `rotate(-15deg) scale(${Math.min(1, hangerSwipeX / 100)})`, border: "3px solid #4CAF50", color: "#4CAF50", padding: "8px 20px", borderRadius: 8, fontSize: 24, fontWeight: 800, letterSpacing: 2 }}>
+                    WEAR
+                  </div>
+                )}
+                {hangerSwipeX < -30 && !hangerUserVote && (
+                  <div className="hanger-swipe-label" style={{ position: "absolute", top: "40%", right: 20, transform: `rotate(15deg) scale(${Math.min(1, Math.abs(hangerSwipeX) / 100)})`, border: "3px solid #FF5252", color: "#FF5252", padding: "8px 20px", borderRadius: 8, fontSize: 24, fontWeight: 800, letterSpacing: 2 }}>
+                    PASS
+                  </div>
+                )}
+
+                {/* Vote animation flash */}
+                {hangerVoteAnim && (
+                  <div className="hanger-vote-flash" style={{ position: "absolute", inset: 0, background: hangerVoteAnim === "wear" ? "rgba(76,175,80,0.3)" : "rgba(255,82,82,0.3)", display: "flex", alignItems: "center", justifyContent: "center", animation: "hangerFlash 0.6s ease forwards" }}>
+                    <div style={{ fontSize: 64, fontWeight: 800, color: "#fff", textShadow: "0 4px 20px rgba(0,0,0,.5)", letterSpacing: 4 }}>
+                      {hangerVoteAnim === "wear" ? "WEAR" : "PASS"}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bottom info + style tags */}
+                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 20px 16px" }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "#fff", marginBottom: 6, lineHeight: 1.3 }}>
+                    {hangerOutfit.description}
+                  </div>
+                  {hangerOutfit.style_tags && hangerOutfit.style_tags.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                      {hangerOutfit.style_tags.slice(0, 4).map(tag => (
+                        <span key={tag} style={{ fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "rgba(255,255,255,.15)", color: "rgba(255,255,255,.9)", backdropFilter: "blur(8px)" }}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Community results (shown after voting) */}
+                  {hangerUserVote && hangerStats && (
+                    <div className="animate-slide-up" style={{ marginTop: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <div style={{ flex: 1, height: 8, borderRadius: 4, background: "rgba(255,255,255,.15)", overflow: "hidden" }}>
+                          <div style={{ width: `${hangerStats.wear_pct}%`, height: "100%", borderRadius: 4, background: "linear-gradient(90deg, #4CAF50, #81C784)", transition: "width 0.8s cubic-bezier(.4,0,.2,1)" }} />
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
+                        <span style={{ color: "#81C784" }}>{hangerStats.wear_pct}% Would Wear</span>
+                        <span style={{ color: "rgba(255,255,255,.5)" }}>{hangerStats.pass_pct}% Pass</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)", marginTop: 4 }}>
+                        {hangerStats.total_votes} vote{hangerStats.total_votes !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Vote buttons */}
+              <div style={{ flexShrink: 0, padding: "16px 20px max(env(safe-area-inset-bottom), 16px)", display: "flex", gap: 12 }}>
+                {!hangerUserVote ? (
+                  <>
+                    <button
+                      onClick={() => handleHangerVote("pass")}
+                      disabled={hangerVoting}
+                      className="hanger-btn-pass"
+                      style={{ flex: 1, minHeight: 52, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(255,82,82,.08)", border: "2px solid rgba(255,82,82,.3)", borderRadius: 16, color: "#FF5252", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all 0.15s" }}
+                    >
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      Pass
+                    </button>
+                    <button
+                      onClick={() => handleHangerVote("wear")}
+                      disabled={hangerVoting}
+                      className="hanger-btn-wear"
+                      style={{ flex: 1, minHeight: 52, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", border: "none", borderRadius: 16, color: "#000", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all 0.15s" }}
+                    >
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      Would Wear
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+                    <button
+                      onClick={() => { setHangerFullscreen(false); setTab("scan"); }}
+                      className="btn-primary"
+                      style={{ width: "100%", padding: "14px 0", borderRadius: 16, fontSize: 15 }}
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: 6, verticalAlign: -3 }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                      Find Similar Items
+                    </button>
+                    <button
+                      onClick={() => setHangerFullscreen(false)}
+                      className="btn-ghost"
+                      style={{ width: "100%", padding: "10px 0", fontSize: 13 }}
+                    >
+                      Back to feed
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Swipe hint (only before first vote) */}
+              {!hangerUserVote && (
+                <div style={{ textAlign: "center", paddingBottom: 8, fontSize: 11, color: "var(--text-tertiary)", opacity: 0.6 }}>
+                  Swipe right to wear, left to pass
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ Hanger Test Style Insight Modal ═══ */}
+      {hangerInsight && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10002, background: "rgba(0,0,0,.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setHangerInsight(null)}>
+          <div className="animate-scale-in" onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: "var(--bg-card)", borderRadius: 24, padding: "28px 24px", border: "1px solid var(--accent-border)" }}>
+            {hangerInsight.gated ? (
+              <>
+                <div style={{ textAlign: "center", marginBottom: 16 }}>
+                  <div style={{ fontSize: 40, marginBottom: 8 }}>&#128274;</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>Style Insight Locked</div>
+                  <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.5 }}>{hangerInsight.message}</div>
+                </div>
+                <button onClick={() => { setHangerInsight(null); setUpgradeModal("hanger_insight"); }} className="btn-primary" style={{ width: "100%", borderRadius: 14, padding: "14px 0" }}>Unlock with Pro</button>
+                <button onClick={() => setHangerInsight(null)} className="btn-ghost" style={{ width: "100%", marginTop: 8 }}>Maybe later</button>
+              </>
+            ) : (
+              <>
+                <div style={{ textAlign: "center", marginBottom: 16 }}>
+                  <div style={{ fontSize: 40, marginBottom: 8 }}>&#10024;</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>Your Style Insight</div>
+                  {hangerInsight.archetype && (
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--accent)", marginTop: 4 }}>{hangerInsight.archetype}</div>
+                  )}
+                </div>
+                <div style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 16, textAlign: "center" }}>
+                  {hangerInsight.insight}
+                </div>
+                {hangerInsight.style_breakdown && (
+                  <div style={{ marginBottom: 16 }}>
+                    {hangerInsight.style_breakdown.map((s, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                        <div style={{ width: 60, fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", textTransform: "capitalize" }}>{s.style}</div>
+                        <div style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--bg-input)", overflow: "hidden" }}>
+                          <div style={{ width: `${s.pct}%`, height: "100%", borderRadius: 3, background: i === 0 ? "var(--accent)" : i === 1 ? "rgba(201,169,110,.5)" : "rgba(201,169,110,.25)", transition: "width 0.8s ease" }} />
+                        </div>
+                        <div style={{ width: 30, fontSize: 11, fontWeight: 700, color: "var(--text-primary)", textAlign: "right" }}>{s.pct}%</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {hangerInsight.favorite_vibes && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 12 }}>
+                    {hangerInsight.favorite_vibes.map(v => (
+                      <span key={v} style={{ fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "rgba(201,169,110,.1)", color: "var(--accent)", border: "1px solid rgba(201,169,110,.2)" }}>{v}</span>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => setHangerInsight(null)} className="btn-primary" style={{ width: "100%", borderRadius: 14, padding: "14px 0" }}>Nice!</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Hanger Test History Modal ═══ */}
+      {hangerHistoryOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-primary)", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(env(safe-area-inset-top), 12px) 16px 12px", borderBottom: "1px solid var(--border)" }}>
+            <button onClick={() => setHangerHistoryOpen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 13, cursor: "pointer", padding: "8px 4px", fontFamily: "var(--font-sans)" }}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: -4, marginRight: 4 }}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              Back
+            </button>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>My Verdicts</div>
+            <div style={{ width: 60 }} />
+          </div>
+
+          {/* Streak summary */}
+          {hangerStreak && (
+            <div style={{ display: "flex", justifyContent: "center", gap: 24, padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--accent)" }}>{hangerStreak.current_streak || 0}</div>
+                <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>Current</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>{hangerStreak.longest_streak || 0}</div>
+                <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>Best</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>{hangerStreak.total_votes || 0}</div>
+                <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>Total</div>
+              </div>
+              {hangerStreak.taste_badge && (
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 20 }}>&#127942;</div>
+                  <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>Badge</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ flex: 1, overflow: "auto", padding: "12px 12px 80px" }}>
+            {hangerHistory.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "60px 20px" }}>
+                <div style={{ fontSize: 13, color: "var(--text-tertiary)" }}>No votes yet. Start your streak!</div>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {hangerHistory.map(h => (
+                  <div key={h.id} style={{ borderRadius: 14, overflow: "hidden", background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                    {h.outfit?.image_url && (
+                      <div style={{ position: "relative", width: "100%", aspectRatio: "3/4", overflow: "hidden" }}>
+                        <img src={h.outfit.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <div style={{ position: "absolute", top: 8, right: 8, padding: "3px 10px", borderRadius: 100, fontSize: 10, fontWeight: 700, background: h.verdict === "wear" ? "rgba(76,175,80,.85)" : "rgba(255,82,82,.85)", color: "#fff", backdropFilter: "blur(4px)" }}>
+                          {h.verdict === "wear" ? "Wear" : "Pass"}
+                        </div>
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 10px 8px", background: "linear-gradient(transparent, rgba(0,0,0,.7))" }}>
+                          {h.outfit.wear_pct != null && (
+                            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.8)" }}>{h.outfit.wear_pct}% would wear</div>
+                          )}
+                          <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", marginTop: 2 }}>{h.outfit.date}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   </>);
 }

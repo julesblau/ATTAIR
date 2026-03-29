@@ -1838,6 +1838,24 @@
 
 .app[data-theme='light'] .dupe-alert-pill { box-shadow: 0 2px 8px rgba(201,169,110,0.3); }
 
+/* ── Dupe Finder Button ── */
+.dupe-finder-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateY(2px);
+}
+.card-press:hover .dupe-finder-btn,
+.card-press:active .dupe-finder-btn {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Always visible on mobile (no hover) */
+@media (hover: none) {
+  .dupe-finder-btn { opacity: 1 !important; transform: translateY(0) !important; }
+}
+.dupe-finder-btn:active { transform: scale(0.96) !important; }
+.app[data-theme='light'] .dupe-finder-btn { background: rgba(76,175,80,0.95) !important; }
+
 /* ── Style Match Score Pill ── */
 .style-match-pill {
   position: absolute;
@@ -3599,4 +3617,59 @@
   .sdna-trait { padding: 10px 24px; font-size: 17px; }
   .sdna-colors { gap: 12px; }
   .sdna-swatch { width: 36px; height: 36px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HANGER TEST — Daily Outfit Verdict
+   ═══════════════════════════════════════════════════════════════ */
+
+.hanger-overlay {
+  animation: hangerSlideIn 0.3s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes hangerSlideIn {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes hangerFlash {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.hanger-card {
+  box-shadow: 0 8px 40px rgba(0,0,0,.4);
+  will-change: transform;
+}
+
+.hanger-swipe-label {
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.hanger-btn-wear:active {
+  transform: scale(0.95);
+  filter: brightness(1.1);
+}
+.hanger-btn-pass:active {
+  transform: scale(0.95);
+  filter: brightness(1.1);
+}
+
+.hanger-home-card {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.hanger-home-card:active {
+  transform: scale(0.98);
+}
+
+/* Animate the scale-in for insight modal */
+@keyframes hangerScaleIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.animate-scale-in {
+  animation: hangerScaleIn 0.3s cubic-bezier(.4,0,.2,1);
 }
