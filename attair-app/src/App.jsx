@@ -3494,6 +3494,8 @@ export default function App() {
 
   useEffect(() => {
     if (tab === "search" && searchSubTab === "twins" && authed && !styleTwinsHasFetched && !styleTwinsLoadingRef.current && !styleTwinsError) {
+      // Set loading synchronously to prevent "Unlock" CTA flash during fetch gap
+      setStyleTwinsLoading(true);
       loadStyleTwins();
     }
   }, [tab, searchSubTab, authed, styleTwinsHasFetched, styleTwinsError, loadStyleTwins]);
@@ -5029,7 +5031,9 @@ export default function App() {
                 <button className={`feed-tab${searchSubTab === "products" ? " active" : ""}`} onClick={() => setSearchSubTab("products")}>Products</button>
                 <button className={`feed-tab${searchSubTab === "twins" ? " active" : ""}`} onClick={() => {
                   setSearchSubTab("twins");
+                  // Set loading immediately on tab switch to prevent "Unlock" flash for authed users
                   if (authed && !styleTwinsHasFetched && !styleTwinsLoadingRef.current && !styleTwinsError) {
+                    setStyleTwinsLoading(true);
                     loadStyleTwins();
                   }
                 }}>
