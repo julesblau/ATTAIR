@@ -213,10 +213,10 @@ const API = {
     await authFetch(`${API_BASE}/api/user/saved/${id}`, { method: "DELETE" });
   },
 
-  async logAdEvent(ad_type, ad_placement, action) {
+  async logAdEvent(ad_type, ad_placement, action, retailer) {
     authFetch(`${API_BASE}/api/ad-events`, {
       method: "POST",
-      body: JSON.stringify({ ad_type, ad_placement, action }),
+      body: JSON.stringify({ ad_type, ad_placement, action, retailer }),
     }).catch(() => {});
   },
 
@@ -739,32 +739,45 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
   );
 };
 
-// ─── Interstitial Ad Placeholder ────────────────────────────
+// ─── Retailer Spotlight Data ────────────────────────────────
+const RETAILER_SPOTLIGHTS = [
+  { name: "Nordstrom", tagline: "Free shipping. Free returns. All the time.", cta: "Shop Nordstrom", gradient: "linear-gradient(135deg, #1a1a2e 0%, #0d2137 100%)", accent: "#4A90D9", url: "https://www.nordstrom.com" },
+  { name: "ASOS", tagline: "Discover fashion online. 850+ brands.", cta: "Shop ASOS", gradient: "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)", accent: "#fff", url: "https://www.asos.com" },
+  { name: "Revolve", tagline: "Designer fashion at your fingertips.", cta: "Shop Revolve", gradient: "linear-gradient(135deg, #1a1a2e 0%, #2a1a3e 100%)", accent: "#C77DFF", url: "https://www.revolve.com" },
+  { name: "SSENSE", tagline: "Luxury & emerging designers. Curated.", cta: "Shop SSENSE", gradient: "linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)", accent: "#fff", url: "https://www.ssense.com" },
+  { name: "Shopbop", tagline: "Designer women's fashion. Free 2-day shipping.", cta: "Shop Shopbop", gradient: "linear-gradient(135deg, #1a2e1a 0%, #0d372d 100%)", accent: "#5AC8A0", url: "https://www.shopbop.com" },
+  { name: "Zara", tagline: "New collection just dropped.", cta: "Shop Zara", gradient: "linear-gradient(135deg, #1a1a1a 0%, #333333 100%)", accent: "#e0e0e0", url: "https://www.zara.com" },
+  { name: "Madewell", tagline: "Jeans, tees & more. Designed to be lived in.", cta: "Shop Madewell", gradient: "linear-gradient(135deg, #2e261a 0%, #3e2e1a 100%)", accent: "#D4A76A", url: "https://www.madewell.com" },
+  { name: "Lululemon", tagline: "Technical gear for yoga, running & training.", cta: "Shop Lululemon", gradient: "linear-gradient(135deg, #1a0a0a 0%, #2e1414 100%)", accent: "#D32F2F", url: "https://www.lululemon.com" },
+];
+const getSpotlight = () => RETAILER_SPOTLIGHTS[Math.floor(Math.random() * RETAILER_SPOTLIGHTS.length)];
+
+// ─── Retailer Spotlight Interstitial ────────────────────────
 const InterstitialAd = ({ onClose }) => {
   const [timer, setTimer] = useState(5);
+  const [spot] = useState(getSpotlight);
   useEffect(() => {
-    API.logAdEvent("interstitial", "post_scan", "impression");
+    API.logAdEvent("interstitial", "post_scan", "impression", spot.name);
     const iv = setInterval(() => setTimer(t => { if (t <= 1) { clearInterval(iv); } return t - 1; }), 1000);
     return () => clearInterval(iv);
   }, []);
   return (
     <div className="modal-overlay" onClick={() => timer <= 3 && onClose()}>
       <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, aspectRatio: "9/16", background: "#111114", border: "1px solid rgba(255,255,255,.06)", borderRadius: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, position: "relative" }}>
-        <div className="ad-slot" style={{ width: "90%", height: "70%", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)", border: "1px solid rgba(255,255,255,.08)" }}>
+        <div className="ad-slot" style={{ width: "90%", height: "70%", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", background: spot.gradient, border: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,.3)", letterSpacing: 1, textTransform: "uppercase" }}>Sponsored</span>
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,.15)" }}>Ad</span>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,.3)", letterSpacing: 1, textTransform: "uppercase" }}>Featured Retailer</span>
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,.15)" }}>Spotlight</span>
           </div>
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>&#128247;</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", marginBottom: 6, fontFamily: "var(--font-sans)" }}>New Arrivals</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginBottom: 16 }}>Discover this season's top looks</div>
-              <button onClick={() => { API.logAdEvent("interstitial", "post_scan", "click"); onClose(); }} style={{ display: "inline-block", padding: "10px 24px", background: "#C9A96E", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "#0C0C0E", fontFamily: "var(--font-sans)", border: "none", cursor: "pointer" }}>Shop Now</button>
+              <div style={{ fontSize: 32, fontWeight: 900, color: spot.accent, marginBottom: 8, fontFamily: "var(--font-sans)", letterSpacing: -1 }}>{spot.name}</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,.55)", marginBottom: 20, lineHeight: 1.5 }}>{spot.tagline}</div>
+              <a href={spot.url} target="_blank" rel="noopener noreferrer" onClick={() => { API.logAdEvent("interstitial", "post_scan", "click", spot.name); }} style={{ display: "inline-block", padding: "12px 28px", background: spot.accent, borderRadius: 100, fontSize: 13, fontWeight: 700, color: spot.accent === "#fff" || spot.accent === "#e0e0e0" ? "#0C0C0E" : "#fff", fontFamily: "var(--font-sans)", textDecoration: "none", border: "none", cursor: "pointer" }}>{spot.cta}</a>
             </div>
           </div>
           <div style={{ padding: "8px 12px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,.06)" }}>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>Featured Partner</span>
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>Discover on ATTAIRE</span>
           </div>
         </div>
         <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)" }}>Upgrade to Pro to remove ads</div>
@@ -4279,19 +4292,21 @@ export default function App() {
                 </div>
               )}
 
-              {/* ─── Banner ad slot (free users) ─── */}
-              {showAds && (
-                <div className="ad-slot ad-banner" style={{ margin: "0 20px 8px", height: "auto", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", background: "var(--accent-bg)" }}>
+              {/* ─── Retailer Spotlight banner (free users) ─── */}
+              {showAds && (() => { const s = RETAILER_SPOTLIGHTS[(results?.items?.length || 0) % RETAILER_SPOTLIGHTS.length]; return (
+                <a href={s.url} target="_blank" rel="noopener noreferrer" onClick={() => API.logAdEvent("banner", "results", "click", s.name)} className="ad-slot ad-banner" style={{ margin: "0 20px 8px", height: "auto", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", background: "var(--accent-bg)", textDecoration: "none", display: "block" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 8, background: "rgba(201,169,110,.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>✦</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>Trending This Week</div>
-                      <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>Discover curated styles from top brands</div>
+                    <div style={{ width: 38, height: 38, borderRadius: 8, background: s.gradient, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 900, color: s.accent, fontFamily: "var(--font-sans)" }}>{s.name.charAt(0)}</span>
                     </div>
-                    <div style={{ fontSize: 9, color: "var(--text-tertiary)", letterSpacing: .5, textTransform: "uppercase", flexShrink: 0 }}>Sponsored</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>{s.name}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{s.tagline}</div>
+                    </div>
+                    <div style={{ fontSize: 9, color: "var(--accent)", fontWeight: 700, letterSpacing: .3, flexShrink: 0 }}>Shop</div>
                   </div>
-                </div>
-              )}
+                </a>
+              ); })()}
 
               {/* ═══════════════════════════════════════════════════════════
                   COMPLETE THE LOOK — always visible
