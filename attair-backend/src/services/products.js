@@ -458,16 +458,42 @@ async function getCache(key) {
   return null;
 }
 
-// Cache TTLs — shorter for price-sensitive text search, longer for visual matches
+// Cache TTLs — tiered by retailer velocity
 const CACHE_TTL_LENS = 12 * 60 * 60 * 1000;   // 12 hours — Lens visual matches are stable
-const CACHE_TTL_TEXT = 24 * 60 * 60 * 1000;    // 24 hours — product listings don't change that fast
+const CACHE_TTL_TEXT = 24 * 60 * 60 * 1000;    // 24 hours — default for standard retailers
+const CACHE_TTL_FAST_FASHION = 6 * 60 * 60 * 1000;  // 6 hours — Zara, ASOS, H&M, Shein
+const CACHE_TTL_LUXURY = 48 * 60 * 60 * 1000;       // 48 hours — Net-a-Porter, Ssense, Farfetch
 
-async function setCache(key, results, ttlMs = CACHE_TTL_TEXT) {
+// Fast fashion domains that change inventory rapidly
+const FAST_FASHION_DOMAINS = new Set([
+  "zara.com", "asos.com", "hm.com", "shein.com", "shein.co.uk",
+  "forever21.com", "fashionnova.com", "prettylittlething.com",
+  "boohoo.com", "missguided.com", "romwe.com",
+]);
+const LUXURY_DOMAINS = new Set([
+  "net-a-porter.com", "ssense.com", "farfetch.com", "mytheresa.com",
+  "matchesfashion.com", "luisaviaroma.com",
+]);
+
+function getCacheTTLForResults(results) {
+  if (!results || results.length === 0) return CACHE_TTL_TEXT;
+  // Check the first result's domain to determine retailer tier
+  const link = results[0]?.link || results[0]?.product_link || "";
+  try {
+    const domain = new URL(link).hostname.replace(/^www\./, "");
+    if (FAST_FASHION_DOMAINS.has(domain)) return CACHE_TTL_FAST_FASHION;
+    if (LUXURY_DOMAINS.has(domain)) return CACHE_TTL_LUXURY;
+  } catch {}
+  return CACHE_TTL_TEXT;
+}
+
+async function setCache(key, results, ttlMs) {
+  const ttl = ttlMs || getCacheTTLForResults(results);
   const now = new Date();
   await supabase.from("product_cache").upsert({
     cache_key: key, results,
     cached_at: now.toISOString(),
-    expires_at: new Date(now.getTime() + ttlMs).toISOString(),
+    expires_at: new Date(now.getTime() + ttl).toISOString(),
   });
 }
 
@@ -730,15 +756,15 @@ async function textSearch(query, priceMin, priceMax) {
     gl: "us",
     num: "20",
   });
-  // Add price bounds to Google Shopping query — this tells Google to filter results
-  // to the user's budget range. We use 0.5x min as floor and 1.5x max as ceiling
-  // to give some breathing room for dupes/alternatives while still being budget-driven.
+  // Asymmetric price expansion — tight floor (0.6x) keeps out junk; generous
+  // ceiling (2.0x) lets aspirational / premium alternatives through. This aligns
+  // with user behavior: people rarely buy far below budget but often stretch above.
   if (priceMin != null && priceMax != null) {
-    params.set("tbs", `price:1,ppr_min:${Math.floor(priceMin * 0.5)},ppr_max:${Math.ceil(priceMax * 1.5)}`);
+    params.set("tbs", `price:1,ppr_min:${Math.floor(priceMin * 0.6)},ppr_max:${Math.ceil(priceMax * 2.0)}`);
   } else if (priceMax != null) {
-    params.set("tbs", `price:1,ppr_max:${Math.ceil(priceMax * 1.5)}`);
+    params.set("tbs", `price:1,ppr_max:${Math.ceil(priceMax * 2.0)}`);
   } else if (priceMin != null) {
-    params.set("tbs", `price:1,ppr_min:${Math.floor(priceMin * 0.5)}`);
+    params.set("tbs", `price:1,ppr_min:${Math.floor(priceMin * 0.6)}`);
   }
 
   const controller = new AbortController();
@@ -847,6 +873,40 @@ const SHOPPING_NOISE_WORDS = [
  * @param {string} q - Query string
  * @returns {string} Cleaned query string
  */
+// ─── Token-weighted query builder ────────────────────────────
+// Assigns Shopping-indexability scores to each token and builds
+// the query by filling highest-value tokens first until maxLen.
+const HIGH_VALUE_PATTERNS = /^(men'?s|women'?s|nike|adidas|zara|h&m|gucci|prada|louis|chanel|hermes|burberry|ralph|tommy|calvin|levi'?s|puma|new balance|converse|vans|reebok|under armour|north face|patagonia|lululemon|uniqlo|gap|j\.?crew|madewell|anthropologie|free people|coach|michael kors|tory burch|kate spade|allsaints|cos|arket|& other stories|massimo dutti|mango|reiss|ted baker|hugo boss|theory|vince|eileen fisher|equipment|rag & bone|acne studios|apc|ami|sandro|maje|isabel marant|jacquemus|bottega|valentino|versace|fendi|dior|saint laurent|balenciaga|givenchy|celine|loewe|marni|jil sander|the row|toteme|lemaire|nanushka|ganni)$/i;
+const MID_VALUE_PATTERNS = /^(black|white|blue|navy|red|green|brown|beige|grey|gray|pink|cream|khaki|olive|tan|burgundy|camel|charcoal|ivory|coral|teal|mauve|lavender|rust|sage|forest|mustard|plum|cotton|silk|linen|denim|leather|wool|cashmere|polyester|satin|velvet|suede|nylon|fleece|tweed|chiffon|knit|jersey|poplin|chambray|organza|tulle|mesh|crepe|dress|shirt|blouse|skirt|pants|jeans|shorts|jacket|coat|blazer|sweater|hoodie|sneaker|boot|heel|sandal|loafer|flat|slide|mule|oxford|derby|chelsea|tank|tee|t-shirt|polo|cardigan|vest|romper|jumpsuit|bodysuit|crop|midi|maxi|mini|parka|trench|bomber|puffer|windbreaker|anorak|slim|straight|wide|relaxed|fitted|oversized|cropped|flared|bootcut|tapered|skinny|regular|petite|plus|tall)$/i;
+
+function tokenWeightedTruncate(query, maxLen) {
+  if (query.length <= maxLen) return query;
+  const tokens = query.split(/\s+/).filter(Boolean);
+  // Score each token
+  const scored = tokens.map(t => {
+    let weight = 1; // default: low value (adjectives, filler)
+    if (HIGH_VALUE_PATTERNS.test(t)) weight = 10; // brand, gender
+    else if (MID_VALUE_PATTERNS.test(t)) weight = 5; // color, material, subcategory, fit
+    else if (t.length <= 2) weight = 0; // very short tokens are noise
+    return { token: t, weight };
+  });
+  // Sort by weight descending, keeping original order for ties
+  const sorted = scored.map((s, i) => ({ ...s, idx: i })).sort((a, b) => b.weight - a.weight || a.idx - b.idx);
+  // Fill until maxLen
+  const picked = [];
+  let len = 0;
+  for (const s of sorted) {
+    const needed = len === 0 ? s.token.length : s.token.length + 1;
+    if (len + needed <= maxLen) {
+      picked.push(s);
+      len += needed;
+    }
+  }
+  // Restore original order
+  picked.sort((a, b) => a.idx - b.idx);
+  return picked.map(s => s.token).join(" ");
+}
+
 function stripShoppingNoise(q) {
   let out = q;
   for (const word of SHOPPING_NOISE_WORDS) {
@@ -980,8 +1040,8 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
     // Append occasion modifier when set (only if not already present in query)
     if (occasionTerm && !q.toLowerCase().includes(occasionTerm.split(" ")[0])) q = `${q} ${occasionTerm}`;
     q = q.replace(/\s{2,}/g, " ").trim();
-    // Truncate to MAX_QUERY_LEN before appending notes (keeps the query tight)
-    if (q.length > MAX_QUERY_LEN) q = q.slice(0, MAX_QUERY_LEN).trim();
+    // Token-weighted truncation: keeps brand/color/category, drops adjectives
+    if (q.length > MAX_QUERY_LEN) q = tokenWeightedTruncate(q, MAX_QUERY_LEN);
     if (notes && !q.toLowerCase().includes(notes.toLowerCase())) {
       const withNotes = `${q} ${notes}`;
       if (withNotes.length <= MAX_QUERY_LEN) q = withNotes;
@@ -1551,7 +1611,7 @@ function fallbackTier(item, tier, tierBounds) {
 //
 // ── budget_min / budget_max ──────────────────────────────────────────────────
 //   Budget values drive search in THREE ways (Option C — full budget integration):
-//     1. textSearch(): BOTH ppr_min (0.5 × budget_min) and ppr_max (1.5 × budget_max)
+//     1. textSearch(): BOTH ppr_min (0.6 × budget_min) and ppr_max (2.0 × budget_max)
 //        are passed to Google Shopping when the user has a custom budget.
 //        This tells Google to return results in the user's actual price range,
 //        dramatically reducing irrelevant results at the API level.
