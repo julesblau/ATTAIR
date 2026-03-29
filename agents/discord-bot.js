@@ -594,7 +594,7 @@ async function buildFromBacklog(chatChannel, logsChannel) {
 // ─── Backlog Management ─────────────────────────────────────────────────────
 function readBacklog() {
   if (!existsSync(BACKLOG_PATH)) return "";
-  return readFileSync(BACKLOG_PATH, "utf-8");
+  return readFileSync(BACKLOG_PATH, "utf-8").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
 function getNextBacklogTask() {
@@ -605,20 +605,20 @@ function getNextBacklogTask() {
   const priorities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 
   for (const priority of priorities) {
-    // Find tasks in this priority section that aren't DONE/DEFERRED
-    const sectionRegex = new RegExp(`## ${priority}[\\s\\S]*?(?=## |$)`, "i");
+    // Find tasks in this priority section (match until next ## section header or EOF)
+    const sectionRegex = new RegExp(`## ${priority}[^\\n]*\\n[\\s\\S]*?(?=\\n## [^#]|$)`, "i");
     const section = content.match(sectionRegex);
     if (!section) continue;
 
     // Find individual tasks (### headers) that have actionable status
-    const taskRegex = /### (.+)\n([\s\S]*?)(?=###|$)/g;
+    const taskRegex = /### (.+)\n([\s\S]*?)(?=\n###|$)/g;
     let match;
     while ((match = taskRegex.exec(section[0])) !== null) {
       const title = match[1].trim();
       const body = match[2].trim();
 
-      // Skip done, deferred, or implemented tasks
-      if (/status:\s*(done|deferred|implemented|completed)/i.test(body)) continue;
+      // Skip done, deferred, or implemented tasks (handles **Status:** markdown bold)
+      if (/status:\*?\*?\s*(done|deferred|implemented|completed)/i.test(body)) continue;
 
       // Extract summary
       const summaryMatch = body.match(/\*\*Summary:\*\*\s*(.+)/);
@@ -633,22 +633,24 @@ function getNextBacklogTask() {
   }
 
   // Also check "Approved" sections
-  const approvedRegex = /## Approved[\s\S]*?(?=## |$)/gi;
-  let approvedMatch;
-  while ((approvedMatch = approvedRegex.exec(content)) !== null) {
-    const taskRegex = /### (.+)\n([\s\S]*?)(?=###|$)/g;
+  // Also check Approved and Proposed sections
+  const extraRegex = /## (?:Approved|Proposed)[^\n]*\n[\s\S]*?(?=\n## [^#]|$)/gi;
+  let extraMatch;
+  while ((extraMatch = extraRegex.exec(content)) !== null) {
+    const taskRegex = /### (.+)\n([\s\S]*?)(?=\n###|$)/g;
     let match;
-    while ((match = taskRegex.exec(approvedMatch[0])) !== null) {
+    while ((match = taskRegex.exec(extraMatch[0])) !== null) {
       const title = match[1].trim();
       const body = match[2].trim();
-      if (/status:\s*(done|deferred|implemented|completed)/i.test(body)) continue;
+      if (/status:\*?\*?\s*(done|deferred|implemented|completed)/i.test(body)) continue;
 
       const summaryMatch = body.match(/\*\*Summary:\*\*\s*(.+)/);
       const summary = summaryMatch ? summaryMatch[1].trim() : body.split("\n")[0];
       const sizeMatch = body.match(/\*\*Effort:\*\*\s*(\S+)/);
       const size = sizeMatch ? sizeMatch[1].trim() : "M";
+      const sectionType = extraMatch[0].includes("Proposed") ? "PROPOSED" : "APPROVED";
 
-      return { title, summary, priority: "APPROVED", size };
+      return { title, summary, priority: sectionType, size };
     }
   }
 
