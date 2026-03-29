@@ -499,6 +499,60 @@ const LUXURY_DOMAINS = new Set([
   "matchesfashion.com", "luisaviaroma.com",
 ]);
 
+// ─── Search telemetry ───────────────────────────────────────
+// Lightweight per-search metrics — logged to console and optionally
+// persisted to Supabase for analysis. Tracks cache performance,
+// result quality, and timing to guide future optimization.
+// Module-level telemetry accumulator — reset at the start of each search.
+// Accessible from inner functions (textSearch, lensSearch) without threading.
+let _tel = null;
+
+function createSearchTelemetry() {
+  _tel = {
+    startTime: Date.now(),
+    cacheHits: 0,
+    cacheMisses: 0,
+    serpApiCalls: 0,
+    lensResults: 0,
+    textResults: 0,
+    pricedResults: 0,
+    unpricedResults: 0,
+    uniqueDomains: new Set(),
+    tierCounts: { budget: 0, mid: 0, premium: 0, resale: 0 },
+    diversityFills: 0,
+    rerankItems: 0,
+  };
+  return _tel;
+}
+
+function logSearchTelemetry(tel, searchMode, itemCount) {
+  const elapsed = Date.now() - tel.startTime;
+  const hitRate = tel.cacheHits + tel.cacheMisses > 0
+    ? Math.round((tel.cacheHits / (tel.cacheHits + tel.cacheMisses)) * 100) : 0;
+  const total = tel.tierCounts.budget + tel.tierCounts.mid + tel.tierCounts.premium + tel.tierCounts.resale;
+  console.log(`[Telemetry] ${searchMode} | ${itemCount} items | ${elapsed}ms | cache ${hitRate}% (${tel.cacheHits}/${tel.cacheHits + tel.cacheMisses}) | serp calls: ${tel.serpApiCalls} | results: ${total} (${tel.pricedResults} priced) | domains: ${tel.uniqueDomains.size} | diversity fills: ${tel.diversityFills}`);
+  // Fire-and-forget persist — don't block the response
+  supabase.from("events").insert({
+    event_type: "search_telemetry",
+    data: {
+      search_mode: searchMode,
+      item_count: itemCount,
+      elapsed_ms: elapsed,
+      cache_hit_rate: hitRate,
+      cache_hits: tel.cacheHits,
+      cache_misses: tel.cacheMisses,
+      serp_api_calls: tel.serpApiCalls,
+      lens_results: tel.lensResults,
+      text_results: tel.textResults,
+      priced_results: tel.pricedResults,
+      unique_domains: tel.uniqueDomains.size,
+      tier_counts: tel.tierCounts,
+      diversity_fills: tel.diversityFills,
+      rerank_items: tel.rerankItems,
+    },
+  }).catch(() => {}); // silent — telemetry must never break search
+}
+
 function getCacheTTLForResults(results) {
   if (!results || results.length === 0) return CACHE_TTL_TEXT;
   // Check the first result's domain to determine retailer tier
@@ -582,9 +636,11 @@ async function googleLensSearch(imageUrl) {
   const cached = await getCache(cacheKey);
   if (cached) {
     console.log(`[cache] HIT: ${cacheKey}`);
+    if (_tel) { _tel.cacheHits++; _tel.lensResults += cached.length; }
     return cached;
   }
   console.log(`[cache] MISS: ${cacheKey}`);
+  if (_tel) _tel.cacheMisses++;
 
   console.log(`\n[Lens] Searching with image: ${imageUrl.slice(0, 80)}...`);
 
@@ -598,6 +654,7 @@ async function googleLensSearch(imageUrl) {
   const timeout = setTimeout(() => controller.abort(), 10000);
 
   await serpAcquire();
+  if (_tel) _tel.serpApiCalls++;
   try {
     const res = await fetch(`${SERPAPI_URL}?${params}`, { signal: controller.signal });
     clearTimeout(timeout);
@@ -612,6 +669,7 @@ async function googleLensSearch(imageUrl) {
 
     // Google Lens returns visual_matches (product pages that look like the image)
     const visualMatches = data.visual_matches || [];
+    if (_tel) _tel.lensResults += visualMatches.length;
     console.log(`[Lens] Got ${visualMatches.length} visual matches`);
 
     if (visualMatches.length > 0) {
@@ -771,9 +829,11 @@ async function textSearch(query, priceMin, priceMax) {
   const cached = await getCache(cacheKey);
   if (cached) {
     console.log(`[cache] HIT: ${cacheKey}`);
+    if (_tel) { _tel.cacheHits++; _tel.textResults += cached.length; }
     return cached;
   }
   console.log(`[cache] MISS: ${cacheKey}`);
+  if (_tel) _tel.cacheMisses++;
 
   const params = new URLSearchParams({
     engine: "google_shopping",
@@ -798,6 +858,7 @@ async function textSearch(query, priceMin, priceMax) {
   const timeout = setTimeout(() => controller.abort(), 8000);
 
   await serpAcquire();
+  if (_tel) _tel.serpApiCalls++;
   try {
     console.log(`  [Text] Query: "${query}"`);
     const res = await fetch(`${SERPAPI_URL}?${params}`, { signal: controller.signal });
@@ -805,6 +866,7 @@ async function textSearch(query, priceMin, priceMax) {
     if (!res.ok) return [];
     const data = await res.json();
     const results = data.shopping_results || [];
+    if (_tel) _tel.textResults += results.length;
     console.log(`  [Text] Got ${results.length} results`);
 
     // Persist non-empty results before returning. Empty arrays are skipped for
@@ -1715,6 +1777,7 @@ const OCCASION_MODIFIERS = {
  */
 export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null, searchMode = "fast", preferenceProfile = null) {
   console.log(`[Search] Mode: ${searchMode} | Items: ${items.length} | Image: ${!!imageUrl} | Occasion: ${occasion || "none"}`);
+  const tel = createSearchTelemetry();
   cleanupExpiredCache();
 
   // Build rejected product fingerprint set from preference profile
@@ -2304,16 +2367,32 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
 
   // ── Search quality telemetry ─────────────────────────────────
   // Structured log emitted after every search request. Surfaces 0-result bugs,
-  // Lens failure patterns, and fallback usage in production logs.
-  // Parse with: jq 'select(.event == "search_quality")' from your log aggregator.
+  // Lens failure patterns, cache performance, and fallback usage.
   const lensVendorResults = lensResults.filter(r => isVendorPage(r)).length;
+
+  // Collect unique domains and tier counts from final output
+  for (const result of output) {
+    for (const tierKey of ["budget", "mid", "premium", "resale"]) {
+      const products = result.tiers?.[tierKey] || [];
+      tel.tierCounts[tierKey] += products.length;
+      for (const p of products) {
+        if (p.price && p.price !== "N/A") tel.pricedResults++;
+        try { tel.uniqueDomains.add(new URL(p.url || "").hostname.replace(/^www\./, "")); } catch {}
+      }
+    }
+  }
+
   const telemetry = {
     event: "search_quality",
     searchMode,
+    elapsed_ms: Date.now() - tel.startTime,
     imageUrl: !!imageUrl,
     lensAttempted: !!imageUrl,
     lensResultsTotal: lensResults.length,
     lensVendorResults,
+    cache: { hits: tel.cacheHits, misses: tel.cacheMisses, hitRate: tel.cacheHits + tel.cacheMisses > 0 ? Math.round((tel.cacheHits / (tel.cacheHits + tel.cacheMisses)) * 100) : 0 },
+    serpApiCalls: tel.serpApiCalls,
+    uniqueDomains: tel.uniqueDomains.size,
     items: items.map((item, i) => {
       const tierResult = output[i];
       const budgetTier = tierResult?.tiers?.budget ?? [];
@@ -2328,8 +2407,6 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           budget: budgetTier.length,
           mid: midTier.length,
           premium: premiumTier.length,
-          // hasFallback = true when ALL results in a tier are Google Shopping
-          // fallback links (is_product_page === false) — indicates 0 real products found.
           hasFallback:
             (budgetTier.length > 0 && budgetTier.every(t => t?.is_product_page === false)) ||
             (midTier.length > 0 && midTier.every(t => t?.is_product_page === false)) ||
@@ -2341,7 +2418,6 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
   console.log(JSON.stringify(telemetry));
 
   // Warn when ALL tiers for ANY item are pure fallback Shopping links.
-  // This means 0 real products were found — the search completely failed for that item.
   const allFallbackItems = telemetry.items.filter(t => t.finalTiers.hasFallback);
   if (allFallbackItems.length > 0) {
     console.warn(
@@ -2349,6 +2425,9 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       allFallbackItems.map(t => `"${t.name}"`).join(", ")
     );
   }
+
+  // Persist telemetry to Supabase (fire-and-forget — never blocks response)
+  logSearchTelemetry(tel, searchMode, items.length);
 
   return output;
 }
