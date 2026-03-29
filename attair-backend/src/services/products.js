@@ -545,7 +545,7 @@ async function googleLensSearch(imageUrl) {
   });
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
     const res = await fetch(`${SERPAPI_URL}?${params}`, { signal: controller.signal });
@@ -741,7 +741,7 @@ async function textSearch(query, priceMin, priceMax) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
   try {
     console.log(`  [Text] Query: "${query}"`);
@@ -1619,50 +1619,60 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     return item._market_pref || "both";
   }
 
-  // ── Step 1: Google Lens on the full image ─────────
-  const lensResults = await googleLensSearch(imageUrl);
-
-  // ── Step 2: Match Lens results to identified items ─
-  // Each item gets a pool of matched products.
-  // textQueryCount is stored for telemetry (search_quality log).
+  // ── Steps 1-3: Lens + Text search ────────────────
+  // FAST MODE: run Lens and text search in PARALLEL to stay under 5s.
+  // EXTENDED MODE: run Lens first, then text with early-exit optimization.
   const itemPools = items.map(() => ({ lens: [], text: [], textQueryCount: 0 }));
 
-  for (const result of lensResults) {
-    const matchIdx = matchLensResultToItem(result, items);
-    if (matchIdx >= 0) {
-      itemPools[matchIdx].lens.push(result);
-    }
-  }
-
-  // Log Lens matching
-  for (let i = 0; i < items.length; i++) {
-    console.log(`[Match] "${items[i].name}" ← ${itemPools[i].lens.length} Lens matches`);
-  }
-
-  // ── Step 3: Text search fallback — EARLY EXIT when Lens has good coverage ──
-  // If Lens returned 5+ priced results for an item, skip text search entirely.
-  // This is the single biggest cost saver — Lens is free-er than text (1 call vs 2-3).
-  const textPromises = items.map(async (item, i) => {
-    const pricedLens = itemPools[i].lens.filter(r => {
-      const p = extractPrice(r.price) || extractPrice(r.extracted_price);
-      return p !== null;
+  if (searchMode === "fast") {
+    // ── FAST MODE: Lens + all text queries fire simultaneously ──
+    const startTime = Date.now();
+    const lensPromise = googleLensSearch(imageUrl);
+    const textPromises = items.map(async (item, i) => {
+      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
+      itemPools[i].text = textResults;
+      itemPools[i].textQueryCount = Math.min(2, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0));
     });
 
-    // EARLY EXIT: 5+ priced Lens results = Lens covered this item well, skip text
-    if (pricedLens.length >= 5) {
-      console.log(`[Match] "${item.name}" ← ${pricedLens.length} priced Lens results — SKIPPING text search (early exit)`);
-      return;
+    const [lensResults] = await Promise.all([lensPromise, ...textPromises]);
+
+    // Match Lens results to items
+    for (const result of lensResults) {
+      const matchIdx = matchLensResultToItem(result, items);
+      if (matchIdx >= 0) itemPools[matchIdx].lens.push(result);
     }
 
-    // Standard text search if < 5 priced Lens results
-    const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
-    itemPools[i].text = textResults;
-    itemPools[i].textQueryCount = Math.min(2, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0));
-    console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
+    for (let i = 0; i < items.length; i++) {
+      console.log(`[Match] "${items[i].name}" ← ${itemPools[i].lens.length} Lens + ${itemPools[i].text.length} text (${Date.now() - startTime}ms)`);
+    }
+  } else {
+    // ── EXTENDED MODE: Lens first, then text with early-exit ──
+    const lensResults = await googleLensSearch(imageUrl);
 
-    // Extended mode: only escalate when fast-mode results are thin.
-    // If Lens + text already produced 10+ results, extended queries are wasteful.
-    if (searchMode === "extended") {
+    for (const result of lensResults) {
+      const matchIdx = matchLensResultToItem(result, items);
+      if (matchIdx >= 0) itemPools[matchIdx].lens.push(result);
+    }
+    for (let i = 0; i < items.length; i++) {
+      console.log(`[Match] "${items[i].name}" ← ${itemPools[i].lens.length} Lens matches`);
+    }
+
+    const textPromises = items.map(async (item, i) => {
+      const pricedLens = itemPools[i].lens.filter(r => {
+        const p = extractPrice(r.price) || extractPrice(r.extracted_price);
+        return p !== null;
+      });
+
+      if (pricedLens.length >= 5) {
+        console.log(`[Match] "${item.name}" ← ${pricedLens.length} priced Lens — SKIPPING text (early exit)`);
+        return;
+      }
+
+      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
+      itemPools[i].text = textResults;
+      itemPools[i].textQueryCount = Math.min(2, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0));
+      console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${pricedLens.length} priced Lens)`);
+
       const totalResults = itemPools[i].lens.length + itemPools[i].text.length;
       if (totalResults >= 10) {
         console.log(`[ExtendedText] "${item.name}" — SKIPPING extended (${totalResults} results already sufficient)`);
@@ -1670,7 +1680,6 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       }
       const extResults = await extendedTextSearch(item, gender, getItemTierBounds(item));
       if (extResults.length > 0) {
-        // Merge into text pool, dedup by URL
         const existingUrls = new Set(itemPools[i].text.map(r => r.link || r.product_link || ""));
         const newResults = extResults.filter(r => {
           const url = r.link || r.product_link || "";
@@ -1678,11 +1687,11 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
         });
         itemPools[i].text.push(...newResults);
         itemPools[i].textQueryCount += newResults.length > 0 ? 2 : 0;
-        console.log(`[ExtendedText] "${item.name}" ← ${newResults.length} new results (${extResults.length} total, ${extResults.length - newResults.length} dupes)`);
+        console.log(`[ExtendedText] "${item.name}" ← ${newResults.length} new results`);
       }
-    }
-  });
-  await Promise.all(textPromises);
+    });
+    await Promise.all(textPromises);
+  }
 
   // ── Step 4: Score, tier, and pick for each item ───
   // NEW ARCHITECTURE:

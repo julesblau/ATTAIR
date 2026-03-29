@@ -99,24 +99,13 @@ router.post("/", requireAuth, async (req, res) => {
   }
 
   try {
-    // Get user's profile defaults (used as fallback when no per-item override)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("budget_min, budget_max, size_prefs")
-      .eq("id", req.userId)
-      .single();
-
-    // Get the scan's image URL for Google Lens visual search
-    let imageUrl = null;
-    if (scan_id) {
-      const { data: scan } = await supabase
-        .from("scans")
-        .select("image_url")
-        .eq("id", scan_id)
-        .eq("user_id", req.userId)
-        .single();
-      imageUrl = scan?.image_url || null;
-    }
+    // Run profile + image URL lookups in parallel to save ~100ms
+    const [profileResult, scanResult] = await Promise.all([
+      supabase.from("profiles").select("budget_min, budget_max, size_prefs").eq("id", req.userId).single(),
+      scan_id ? supabase.from("scans").select("image_url").eq("id", scan_id).eq("user_id", req.userId).single() : { data: null },
+    ]);
+    const profile = profileResult.data;
+    const imageUrl = scanResult.data?.image_url || null;
 
     const results = await findProductsForItems(
       items,
