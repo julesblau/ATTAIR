@@ -882,6 +882,277 @@ const ts = ${JSON.stringify(String(timestamp))};
       });
       await page.waitForTimeout(500);
     }},
+    // ─── Style Twins: Empty/Locked state ───
+    { name: "discover-twins-empty", url: "http://localhost:5173/", action: async () => {
+      await page.waitForTimeout(2000);
+      // Click the Discover tab
+      const discoverBtn = page.locator('button[aria-label="Discover"]').first();
+      if (await discoverBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await discoverBtn.click();
+        await page.waitForTimeout(800);
+      }
+      // Click the Twins sub-tab
+      const twinsBtn = page.locator('button.feed-tab:has-text("Twins")').first();
+      if (await twinsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await twinsBtn.click();
+        await page.waitForTimeout(800);
+      }
+    }},
+    // ─── Style Twins: Twin cards rendered ───
+    { name: "discover-twins-cards", url: "http://localhost:5173/", action: async () => {
+      await page.waitForTimeout(2000);
+      // Click the Discover tab
+      const discoverBtn = page.locator('button[aria-label="Discover"]').first();
+      if (await discoverBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await discoverBtn.click();
+        await page.waitForTimeout(800);
+      }
+      // Click the Twins sub-tab
+      const twinsBtn = page.locator('button.feed-tab:has-text("Twins")').first();
+      if (await twinsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await twinsBtn.click();
+        await page.waitForTimeout(500);
+      }
+      // Inject synthetic twin cards into the twins section
+      await page.evaluate(() => {
+        const container = document.querySelector('.style-twins-empty');
+        if (!container) return;
+        const parent = container.parentElement;
+        // Remove the empty state
+        container.remove();
+        // Inject fully rendered twin cards
+        parent.innerHTML = \`
+          <div class="animate-fade-in">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-top:4px">
+              <div>
+                <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;margin-bottom:4px">Your Style Twins</div>
+                <div style="font-size:13px;color:var(--text-secondary)">
+                  <span style="color:var(--text-primary);font-weight:600">Modern Classic</span> · 6 matches
+                </div>
+              </div>
+              <button class="style-twins-refresh-btn" title="Refresh">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              </button>
+            </div>
+            <!-- Featured twin card -->
+            <div class="style-twin-featured" style="animation:none">
+              <div class="style-twin-featured-glow"></div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Closest Match</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:14px">
+                <div class="style-twin-avatar-lg"><span>EM</span></div>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+                    <span style="font-size:16px;font-weight:700;color:var(--text-primary)">Emma Morrison</span>
+                    <span class="style-twin-match-badge style-twin-match-high">94%</span>
+                  </div>
+                  <div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:4px">Modern Classic</div>
+                  <div style="font-size:12px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Clean lines, neutral palettes, timeless pieces</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+                <span class="style-twin-axis-chip">Minimal</span>
+                <span class="style-twin-axis-chip">Classic</span>
+                <span class="style-twin-trait-chip">Chic</span>
+                <span class="style-twin-trait-chip">Polished</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+                <span style="font-size:11px;color:var(--text-tertiary);margin-right:2px">Palette</span>
+                <span class="style-twin-color-dot" style="background:#1A1A2E"></span>
+                <span class="style-twin-color-dot" style="background:#E8DCC8"></span>
+                <span class="style-twin-color-dot" style="background:#8B7355"></span>
+              </div>
+              <div class="style-twin-shared-saves">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <span>3 shared saves: Wool Overcoat, Cashmere Sweater, Silk Blouse</span>
+              </div>
+              <div style="margin-top:14px;display:flex;gap:10px">
+                <button class="user-search-follow-btn follow" style="flex:1;min-height:40px;font-size:13px;border-radius:10px;font-weight:600">Follow Twin</button>
+                <button class="btn-ghost" style="min-height:40px;font-size:13px;border-radius:10px;font-weight:600;padding:0 16px">Compare</button>
+              </div>
+            </div>
+            <!-- Remaining twins grid -->
+            <div class="style-twins-grid">
+              <div class="style-twin-card" style="animation:none">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                  <div class="style-twin-avatar-sm"><span>JK</span></div>
+                  <span class="style-twin-match-badge style-twin-match-high">87%</span>
+                </div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">James Kim</div>
+                <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Refined Edge</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Minimal</span>
+                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Formal</span>
+                </div>
+                <div style="display:flex;gap:4px;margin-bottom:6px">
+                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#2C3E50"></span>
+                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#BDC3C7"></span>
+                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#ECF0F1"></span>
+                </div>
+                <button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button>
+              </div>
+              <div class="style-twin-card" style="animation:none">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                  <div class="style-twin-avatar-sm"><span>SP</span></div>
+                  <span class="style-twin-match-badge style-twin-match-mid">76%</span>
+                </div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">Sofia Patel</div>
+                <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Elegant Minimal</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Classic</span>
+                </div>
+                <div style="display:flex;gap:4px;margin-bottom:6px">
+                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#C9A96E"></span>
+                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#F5F5DC"></span>
+                </div>
+                <div style="font-size:11px;color:var(--accent);display:flex;align-items:center;gap:4px;margin-bottom:8px">
+                  <svg viewBox="0 0 24 24" width="11" height="11" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  1 shared
+                </div>
+                <button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button>
+              </div>
+              <div class="style-twin-card" style="animation:none">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                  <div class="style-twin-avatar-sm"><span>AR</span></div>
+                  <span class="style-twin-match-badge style-twin-match-mid">72%</span>
+                </div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">Alex Rivera</div>
+                <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Street Luxe</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Trendy</span>
+                </div>
+                <button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button>
+              </div>
+              <div class="style-twin-card" style="animation:none">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                  <div class="style-twin-avatar-sm"><span>MW</span></div>
+                  <span class="style-twin-match-badge style-twin-match-low">63%</span>
+                </div>
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">Maya Williams</div>
+                <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Boho Chic</div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Balanced</span>
+                </div>
+                <button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button>
+              </div>
+            </div>
+          </div>
+        \`;
+      });
+      await page.waitForTimeout(500);
+    }},
+    // ─── Style Twins: Comparison bottom sheet ───
+    { name: "discover-twins-compare", url: "http://localhost:5173/", action: async () => {
+      await page.waitForTimeout(2000);
+      // Inject a synthetic comparison bottom sheet
+      await page.evaluate(() => {
+        const existing = document.querySelector('[data-screenshot-twin-compare]');
+        if (existing) return;
+        const overlay = document.createElement('div');
+        overlay.setAttribute('data-screenshot-twin-compare', '1');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10001';
+        overlay.innerHTML = \`
+          <div class="bottom-sheet-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px)"></div>
+          <div class="bottom-sheet style-twin-compare-sheet" style="position:absolute;bottom:0;left:0;right:0;background:var(--bg-card,#1A1A1A);border-radius:24px 24px 0 0;padding:24px 24px 32px;max-height:85vh;overflow-y:auto;border-top:1px solid rgba(255,255,255,0.08)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+              <div style="font-size:18px;font-weight:800;color:var(--text-primary,#fff);font-family:var(--font-display)">Style Comparison</div>
+              <button style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;border-radius:50%;color:var(--text-secondary)">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <!-- Match ring -->
+            <div style="display:flex;justify-content:center;margin-bottom:24px">
+              <div class="style-twin-compare-ring">
+                <span class="style-twin-compare-pct">94%</span>
+                <span style="font-size:10px;color:var(--text-secondary,rgba(255,255,255,0.6));font-weight:500">match</span>
+              </div>
+            </div>
+            <!-- Side by side -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;text-align:center;margin-bottom:24px">
+              <div>
+                <div class="style-twin-avatar-sm" style="margin:0 auto 8px;width:48px;height:48px">
+                  <span style="font-size:16px">ME</span>
+                </div>
+                <div style="font-size:13px;font-weight:600;color:var(--text-primary,#fff)">You</div>
+                <div style="font-size:11px;color:var(--accent,#C9A96E);font-weight:500;margin-top:2px">Modern Classic</div>
+              </div>
+              <div>
+                <div class="style-twin-avatar-sm" style="margin:0 auto 8px;width:48px;height:48px">
+                  <span style="font-size:16px">EM</span>
+                </div>
+                <div style="font-size:13px;font-weight:600;color:var(--text-primary,#fff)">Emma Morrison</div>
+                <div style="font-size:11px;color:var(--accent,#C9A96E);font-weight:500;margin-top:2px">Modern Classic</div>
+              </div>
+            </div>
+            <!-- Shared style traits -->
+            <div style="margin-bottom:20px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Shared Style Traits</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+                <span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Minimal</span>
+                <span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Classic</span>
+                <span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Formal</span>
+              </div>
+            </div>
+            <!-- Their traits -->
+            <div style="margin-bottom:20px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Their Top Traits</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+                <span class="style-twin-trait-chip" style="font-size:12px;padding:5px 14px">Chic</span>
+                <span class="style-twin-trait-chip" style="font-size:12px;padding:5px 14px">Polished</span>
+              </div>
+            </div>
+            <!-- Color palette -->
+            <div style="margin-bottom:20px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Their Palette</div>
+              <div style="display:flex;justify-content:center;gap:10px">
+                <span class="style-twin-color-dot" style="width:32px;height:32px;background:#1A1A2E;font-size:0"></span>
+                <span class="style-twin-color-dot" style="width:32px;height:32px;background:#E8DCC8;font-size:0"></span>
+                <span class="style-twin-color-dot" style="width:32px;height:32px;background:#8B7355;font-size:0"></span>
+              </div>
+            </div>
+            <!-- Shared saves -->
+            <div style="margin-bottom:20px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Shared Saves</div>
+              <div class="style-twin-shared-saves" style="margin-top:0;justify-content:center">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                <span>3 items you both saved: Wool Overcoat, Cashmere Sweater, Silk Blouse</span>
+              </div>
+            </div>
+            <!-- Follow button -->
+            <button class="user-search-follow-btn follow" style="width:100%;min-height:48px;font-size:15px;border-radius:12px;font-weight:700;margin-top:8px">Follow Your Style Twin</button>
+          </div>
+        \`;
+        document.body.appendChild(overlay);
+      });
+      await page.waitForTimeout(500);
+    }},
+    // ─── Style Twin: Shared save toast banner ───
+    { name: "discover-twins-save-toast", url: "http://localhost:5173/", action: async () => {
+      await page.waitForTimeout(2000);
+      // Inject the shared save toast banner
+      await page.evaluate(() => {
+        const existing = document.querySelector('[data-screenshot-twin-toast]');
+        if (existing) return;
+        const toast = document.createElement('div');
+        toast.setAttribute('data-screenshot-twin-toast', '1');
+        toast.className = 'animate-slide-up style-twin-save-toast';
+        toast.style.cssText = 'position:fixed;top:56px;left:12px;right:12px;background:linear-gradient(135deg,rgba(201,169,110,0.14),rgba(201,169,110,0.04));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(201,169,110,0.3);border-radius:16px;padding:14px 16px;z-index:9998;display:flex;gap:12px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);cursor:pointer';
+        toast.innerHTML = \`
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(201,169,110,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#C9A96E" stroke-width="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:var(--text-primary,#fff);margin-bottom:2px">Style Twin Match!</div>
+            <div style="font-size:11px;color:var(--text-secondary,rgba(255,255,255,0.6));line-height:1.4">Your Style Twin Emma Morrison also saved this!</div>
+          </div>
+          <button style="background:var(--accent,#C9A96E);color:#000;border:none;border-radius:100px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">View Twins</button>
+        \`;
+        document.body.appendChild(toast);
+      });
+      await page.waitForTimeout(500);
+    }},
   ];
 
   const paths = [];
