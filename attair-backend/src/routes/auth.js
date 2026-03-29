@@ -62,7 +62,7 @@ router.post("/signup", async (req, res) => {
     // Update profile with preferences + name/phone
     const profileUpdates = {};
     if (phone) profileUpdates.phone = phone;
-    if (display_name) profileUpdates.display_name = display_name;
+    if (display_name) profileUpdates.display_name = String(display_name).slice(0, 100);
     if (gender_pref) profileUpdates.gender_pref = gender_pref;
     if (budget_min != null) profileUpdates.budget_min = budget_min;
     if (budget_max != null) profileUpdates.budget_max = budget_max;

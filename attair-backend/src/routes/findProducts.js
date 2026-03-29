@@ -9,7 +9,9 @@ const router = Router();
 
 // ─── Custom occasion cache (in-memory, process-lifetime) ────
 // Maps sanitized occasion string → comma-separated keyword modifiers
+// SECURITY: Capped at 1000 entries to prevent unbounded memory growth from distinct user inputs
 const occasionCache = new Map();
+const OCCASION_CACHE_MAX = 1000;
 
 /**
  * Calls Claude haiku to interpret a free-text occasion into Shopping query
@@ -39,6 +41,11 @@ async function getCustomOccasionModifiers(occasionStr) {
     // Sanitize Claude's response: keep only alphanumeric, spaces, commas, hyphens
     const keywords = raw.replace(/[^a-zA-Z0-9 ,\-]/g, "").trim();
     const result = keywords || occasionStr;
+    // Evict oldest entry if cache is full
+    if (occasionCache.size >= OCCASION_CACHE_MAX) {
+      const oldest = occasionCache.keys().next().value;
+      occasionCache.delete(oldest);
+    }
     occasionCache.set(occasionStr, result);
     return result;
   } catch (err) {
@@ -82,7 +89,7 @@ router.post("/", requireAuth, async (req, res) => {
     } else {
       // Unknown occasion — ask Claude to interpret it into search modifiers
       customOccasionModifiers = await getCustomOccasionModifiers(sanitizedOccasionRaw);
-      console.log(`[CustomOccasion] "${sanitizedOccasionRaw}" → "${customOccasionModifiers}"`);
+      console.log(`[CustomOccasion] custom occasion received, length=${sanitizedOccasionRaw.length}`);
     }
   }
 

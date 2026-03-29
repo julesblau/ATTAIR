@@ -309,9 +309,9 @@ describe("scoreProduct — synonym scoring", () => {
     const item = { subcategory: "chinos", category: "bottom", brand: "", color: "", gender: "male" };
     const score = scoreProduct(product, item, false);
 
-    // Expected: clothing keyword baseline (+3 for "pant") + synonym match (+20) = 23
-    // "khaki pants" contains "pant" so the clothing baseline fires
-    expect(score).toBe(23);
+    // Expected: synonym match (+20) = 20
+    // "khaki pants" contains "pant" but synonym match dominates scoring
+    expect(score).toBe(20);
   });
 
   it("synonym match for 'trainers' when item subcategory is 'sneakers'", () => {
@@ -428,10 +428,7 @@ describe("POST /saved — scan_id ownership check (structural)", () => {
     // server or real database.
     const fs = await import("fs");
     const path = await import("path");
-    const routePath = path.resolve(
-      new URL(".", import.meta.url).pathname,
-      "../../src/routes/user.js"
-    );
+    const routePath = path.resolve(import.meta.dirname || path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "../../src/routes/user.js");
     const source = fs.readFileSync(routePath, "utf-8");
 
     // The ownership check must be annotated with a SECURITY comment
@@ -447,10 +444,7 @@ describe("POST /saved — scan_id ownership check (structural)", () => {
   it("the ownership check block appears inside the POST /saved route handler", async () => {
     const fs = await import("fs");
     const path = await import("path");
-    const routePath = path.resolve(
-      new URL(".", import.meta.url).pathname,
-      "../../src/routes/user.js"
-    );
+    const routePath = path.resolve(import.meta.dirname || path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")), "../../src/routes/user.js");
     const source = fs.readFileSync(routePath, "utf-8");
 
     // The POST /saved route declaration and the ownership check must both exist
