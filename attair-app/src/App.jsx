@@ -3493,12 +3493,13 @@ export default function App() {
   }, [authed]);
 
   useEffect(() => {
-    if (tab === "search" && searchSubTab === "twins" && authed && !styleTwinsHasFetched && !styleTwinsLoadingRef.current && !styleTwinsError) {
-      // Set loading synchronously to prevent "Unlock" CTA flash during fetch gap
+    if (tab === "search" && searchSubTab === "twins" && authed && !styleTwinsLoadingRef.current) {
+      // Always set loading synchronously on tab activation to guarantee loading spinner shows
+      // before any async gap. loadStyleTwins has internal guards (ref + hasFetched check is optional).
       setStyleTwinsLoading(true);
       loadStyleTwins();
     }
-  }, [tab, searchSubTab, authed, styleTwinsHasFetched, styleTwinsError, loadStyleTwins]);
+  }, [tab, searchSubTab, authed, loadStyleTwins]);
 
   const handleFollowFromSearch = async (userId) => {
     try {
@@ -5031,8 +5032,9 @@ export default function App() {
                 <button className={`feed-tab${searchSubTab === "products" ? " active" : ""}`} onClick={() => setSearchSubTab("products")}>Products</button>
                 <button className={`feed-tab${searchSubTab === "twins" ? " active" : ""}`} onClick={() => {
                   setSearchSubTab("twins");
-                  // Set loading immediately on tab switch to prevent "Unlock" flash for authed users
-                  if (authed && !styleTwinsHasFetched && !styleTwinsLoadingRef.current && !styleTwinsError) {
+                  // Always set loading synchronously on tab switch to guarantee no "Unlock" flash.
+                  // loadStyleTwins guards against concurrent fetches via ref, so calling it is safe.
+                  if (authed && !styleTwinsLoadingRef.current) {
                     setStyleTwinsLoading(true);
                     loadStyleTwins();
                   }
@@ -5216,8 +5218,9 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Loading state — also shown before initial fetch to prevent "Unlock" flash */}
-                  {authed && (styleTwinsLoading || (!styleTwinsHasFetched && !styleTwinsReady && !styleTwinsError)) && (
+                  {/* Loading state — shown during fetch AND before initial fetch to prevent "Unlock" CTA flash.
+                       The key guard: if hasFetched is false, ALWAYS show loading (never Unlock CTA). */}
+                  {authed && (styleTwinsLoading || !styleTwinsHasFetched) && !styleTwinsError && (
                     <div className="style-twins-loading">
                       <div className="style-twins-loading-orbit">
                         <div className="style-twins-loading-ring" />
@@ -5248,8 +5251,9 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Unlock state — no Style DNA yet (only show after fetch confirms no DNA) */}
-                  {authed && !styleTwinsLoading && !styleTwinsError && !styleTwinsReady && styleTwinsHasFetched && (
+                  {/* Unlock state — no Style DNA yet (ONLY after fetch completes AND confirms no DNA).
+                       styleTwinsHasFetched must be true AND styleTwinsLoading must be false — both required to prevent flash. */}
+                  {authed && styleTwinsHasFetched && !styleTwinsLoading && !styleTwinsError && !styleTwinsReady && (
                     <div className="style-twins-empty">
                       <div className="style-twins-empty-icon">
                         <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
