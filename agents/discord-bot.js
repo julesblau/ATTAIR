@@ -93,7 +93,7 @@ ACTIONS YOU CAN TRIGGER:
 Include the action tag in your response. The system will execute it and strip the tag.
 
 - [ACTION:BUILD:description] — Build ONE specific feature with the quality loop. Only when Jules asks to build.
-- [ACTION:BUILD_NEXT] — Grind through backlog continuously. ONLY when Jules EXPLICITLY asks for this (e.g. "burn tokens", "grind the backlog", "max it out", "keep building until you run out").
+- [ACTION:BUILD_NEXT] — Grind through backlog continuously. When Jules tells you to start building, kick off the loop, go, etc. Don't ask for confirmation — just do it.
 - [ACTION:STOP] — Stop whatever is currently running
 - [ACTION:STATUS] — Check what's running
 - [ACTION:KILL_STALE] — Kill orphaned processes
@@ -103,7 +103,7 @@ Include the action tag in your response. The system will execute it and strip th
 Combine actions with text. Example: "On it. [ACTION:BUILD:add dupe alert pills to results cards]"
 Be smart about intent:
 - "build this" / "let's do it" / "ship it" = BUILD with description from context
-- "burn tokens" / "grind the backlog" / "max it out" / "keep building" = BUILD_NEXT (ONLY these explicit phrases)
+- "burn tokens" / "grind the backlog" / "max it out" / "keep building" / "kick off build loop" / "start building" / "go" (when context is clearly about building) = BUILD_NEXT
 - "save for later" / "backlog that" = BACKLOG
 - "come up with ideas" / "brainstorm" = CREATIVE
 - "what's running" = STATUS
@@ -189,7 +189,7 @@ async function chatWithOpus(userMessage) {
       "Bash(railway *)", "Bash(curl *)",
     ].join(" ");
     const relPromptFile = "agents/.tmp/" + sysPromptFile.split(/[/\\]/).pop();
-    const cmd = `claude -p "Respond to Jules latest message. See system prompt for context." --system-prompt-file ${relPromptFile} --model opus --output-format text --dangerously-skip-permissions --allowedTools ${toolsList}`;
+    const cmd = `claude -p "Respond to Jules latest message. See system prompt for context." --system-prompt-file ${relPromptFile} --model opus --output-format text --dangerously-skip-permissions --max-turns 3 --allowedTools ${toolsList}`;
 
     console.log("[chatWithOpus] spawning:", cmd.slice(0, 200) + "...");
 
