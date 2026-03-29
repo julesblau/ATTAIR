@@ -2,6 +2,7 @@ import { Router } from "express";
 import { randomBytes } from "crypto";
 import { requireAuth } from "../middleware/auth.js";
 import supabase from "../lib/supabase.js";
+import { recordSignal, computePreferenceProfile, getPreferenceProfile } from "../services/preferences.js";
 
 const router = Router();
 
@@ -203,7 +204,7 @@ router.get("/history", requireAuth, async (req, res) => {
 
     let query = supabase
       .from("scans")
-      .select("id, scan_name, image_thumbnail, image_url, detected_gender, summary, items, tiers, created_at")
+      .select("id, scan_name, image_thumbnail, image_url, detected_gender, summary, items, tiers, verdict, created_at")
       .eq("user_id", req.userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -536,16 +537,55 @@ router.patch("/scan/:scanId/verdict", requireAuth, async (req, res) => {
       .update({ verdict })
       .eq("id", scanId)
       .eq("user_id", req.userId)
-      .select("id")
+      .select("id, items")
       .single();
 
     if (error) throw error;
     if (!data) return res.status(404).json({ error: "Scan not found" });
+
+    // Record preference signals for each item in the scan (non-blocking)
+    if (verdict && data.items && Array.isArray(data.items)) {
+      Promise.all(data.items.map((item, idx) =>
+        recordSignal(req.userId, scanId, idx, verdict, item).catch(() => {})
+      )).then(() => {
+        // Recompute preference profile after enough signals
+        computePreferenceProfile(req.userId).catch(() => {});
+      });
+    }
+
     return res.json({ verdict });
   } catch (err) {
     console.error("Verdict error:", err.message);
     if (err.code === "PGRST116") return res.status(404).json({ error: "Scan not found" });
     return res.status(500).json({ error: "Failed to set verdict" });
+  }
+});
+
+// ─── POST /api/user/preference-signal ───────────────────────
+// Record a preference signal for a specific item (per-item verdict)
+router.post("/preference-signal", requireAuth, async (req, res) => {
+  const { scan_id, item_index, verdict, item_data } = req.body;
+  if (!verdict || !["would_wear", "on_the_fence", "not_for_me"].includes(verdict)) {
+    return res.status(400).json({ error: "Invalid verdict" });
+  }
+  try {
+    const signal = await recordSignal(req.userId, scan_id || null, item_index ?? 0, verdict, item_data || {});
+    return res.json({ signal });
+  } catch (err) {
+    console.error("Preference signal error:", err.message);
+    return res.status(500).json({ error: "Failed to record preference" });
+  }
+});
+
+// ─── GET /api/user/preferences ──────────────────────────────
+// Return the user's computed preference profile
+router.get("/preferences", requireAuth, async (req, res) => {
+  try {
+    const profile = await getPreferenceProfile(req.userId);
+    return res.json({ preferences: profile });
+  } catch (err) {
+    console.error("Preferences error:", err.message);
+    return res.status(500).json({ error: "Failed to get preferences" });
   }
 });
 

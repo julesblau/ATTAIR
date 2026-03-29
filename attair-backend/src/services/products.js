@@ -1598,7 +1598,7 @@ const OCCASION_MODIFIERS = {
  *   Fast: Lens on full image + 3 text queries per item. ~5-10s.
  *   Extended: Lens on full image + per-item Lens + 3 text queries + AI re-ranking. ~15-25s.
  */
-export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null, searchMode = "fast") {
+export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null, searchMode = "fast", preferenceProfile = null) {
   console.log(`[Search] Mode: ${searchMode} | Items: ${items.length} | Image: ${!!imageUrl} | Occasion: ${occasion || "none"}`);
   cleanupExpiredCache();
   const defaultTierBounds = getTierBounds(budgetMin, budgetMax);
@@ -1758,6 +1758,27 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           if (isTrusted) score += 10;
           else score += 5; // smaller bonus for unknown domains
         }
+
+        // ── Preference-based scoring ───────────────────────
+        // Boost products from brands/categories the user has liked,
+        // penalize ones they've consistently rejected.
+        if (preferenceProfile && score > 0) {
+          const title = (product.title || "").toLowerCase();
+          const source = (product.source || "").toLowerCase();
+          // Liked brands get a boost
+          if (preferenceProfile.liked_brands?.some(b => title.includes(b.toLowerCase()) || source.includes(b.toLowerCase()))) {
+            score += 15;
+          }
+          // Avoided brands get a penalty
+          if (preferenceProfile.avoided_brands?.some(b => title.includes(b.toLowerCase()) || source.includes(b.toLowerCase()))) {
+            score -= 20;
+          }
+          // Preferred colors get a small boost
+          if (preferenceProfile.color_preferences?.positive?.some(c => title.includes(c))) {
+            score += 5;
+          }
+        }
+
         return {
           product,
           isLens,

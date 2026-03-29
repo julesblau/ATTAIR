@@ -1941,7 +1941,7 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [saved, setSaved] = useState([]);
   const [fade, setFade] = useState("fi");
-  const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "saved"
+  const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "saved" | "picks"
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); // scan id awaiting inline delete confirm
   const [upgradeModal, setUpgradeModal] = useState(null); // null | trigger string
   const [upgradeLoading, setUpgradeLoading] = useState(false);
@@ -4492,8 +4492,11 @@ export default function App() {
 
           {/* ─── Saved tab (Scan History Library with Card Flip) ─────────── */}
           {tab === "likes" && (() => {
-            // Filter scans by active wishlist, then by search query
+            // Filter scans by verdict filter, then wishlist, then search query
             let filteredScans = history;
+            if (historyFilter === "picks") {
+              filteredScans = filteredScans.filter(scan => scan.verdict === "would_wear" || scanVerdicts[scan.id] === "would_wear");
+            }
             if (activeWishlist) {
               const wishlistScanIds = new Set(saved.filter(s => s.wishlist_id === activeWishlist.id).map(s => s.scan_id).filter(Boolean));
               filteredScans = filteredScans.filter(scan => wishlistScanIds.has(scan.id));
@@ -4656,12 +4659,24 @@ export default function App() {
                   {history.length > 0 && <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{history.length} scan{history.length !== 1 ? "s" : ""}</span>}
                 </div>
 
-                {/* Wishlist filter row */}
+                {/* Filter row: My Picks + Wishlists */}
+                <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "8px 16px 0", scrollbarWidth: "none" }}>
+                  <button
+                    className={`scan-vis-chip${historyFilter === "all" && !activeWishlist ? " active" : ""}`}
+                    onClick={() => { setHistoryFilter("all"); setActiveWishlist(null); }}
+                    style={{ flexShrink: 0 }}
+                  >All</button>
+                  <button
+                    className={`scan-vis-chip${historyFilter === "picks" ? " active" : ""}`}
+                    onClick={() => { setHistoryFilter(historyFilter === "picks" ? "all" : "picks"); setActiveWishlist(null); }}
+                    style={{ flexShrink: 0 }}
+                  >My Picks</button>
+                </div>
                 {wishlists.length > 0 && (
-                  <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "8px 16px 0", scrollbarWidth: "none" }}>
+                  <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "4px 16px 0", scrollbarWidth: "none" }}>
                     <button
-                      className={`scan-vis-chip${!activeWishlist ? " active" : ""}`}
-                      onClick={() => setActiveWishlist(null)}
+                      className={`scan-vis-chip${!activeWishlist && historyFilter === "all" ? " active" : ""}`}
+                      onClick={() => { setActiveWishlist(null); setHistoryFilter("all"); }}
                       style={{ flexShrink: 0 }}
                     >All Scans</button>
                     {wishlists.map(wl => (

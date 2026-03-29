@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { requireAuth } from "../middleware/auth.js";
 import { findProductsForItems } from "../services/products.js";
 import supabase from "../lib/supabase.js";
+import { getPreferenceProfile } from "../services/preferences.js";
 
 const router = Router();
 
@@ -99,10 +100,11 @@ router.post("/", requireAuth, async (req, res) => {
   }
 
   try {
-    // Run profile + image URL lookups in parallel to save ~100ms
-    const [profileResult, scanResult] = await Promise.all([
-      supabase.from("profiles").select("budget_min, budget_max, size_prefs").eq("id", req.userId).single(),
+    // Run profile + image URL + preference lookups in parallel
+    const [profileResult, scanResult, prefProfile] = await Promise.all([
+      supabase.from("profiles").select("budget_min, budget_max, size_prefs, preference_profile").eq("id", req.userId).single(),
       scan_id ? supabase.from("scans").select("image_url").eq("id", scan_id).eq("user_id", req.userId).single() : { data: null },
+      getPreferenceProfile(req.userId).catch(() => null),
     ]);
     const profile = profileResult.data;
     const imageUrl = scanResult.data?.image_url || null;
@@ -118,6 +120,7 @@ router.post("/", requireAuth, async (req, res) => {
       search_notes,
       customOccasionModifiers,
       searchMode,
+      prefProfile,
     );
 
     // Persist tier results back to the scan row
