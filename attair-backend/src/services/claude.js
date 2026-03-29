@@ -48,7 +48,7 @@ The search_query goes directly into Google Shopping. Follow these rules exactly:
 1. Start with "${genderLabel || "men's"}" or "${genderLabel || "women's"}"
 2. If brand is confirmed/high confidence: "${genderLabel || "men's"} [Brand] [Product Line/Model] [subcategory]" (e.g. "men's Ralph Lauren Classic Fit Polo shirt")
 3. If brand is unidentified: "${genderLabel || "men's"} [color] [material] [subcategory] [key detail]" (e.g. "men's navy cotton piqué polo shirt")
-4. Keep under 60 characters
+4. Keep under 80 characters
 5. NO adjectives like "stylish", "elegant", "premium", "beautiful"
 6. NO occasion words like "casual", "formal", "everyday"
 7. Use Google Shopping product terms, not fashion editorial language
@@ -73,7 +73,7 @@ Return JSON only — no markdown, no backticks:
       "construction_details": "notable details (e.g. 'contrast stitching, brass snaps, raw hem', 'raglan sleeves, kangaroo pocket')",
       "position_y": 0.0 to 1.0,
       "visibility_pct": 50 to 100,
-      "search_query": "Google Shopping optimised query under 60 chars — follow the SEARCH QUERY RULES above",
+      "search_query": "Google Shopping optimised query under 80 chars — follow the SEARCH QUERY RULES above",
       "style_keywords": ["max 5 keywords describing the vibe/aesthetic, e.g. 'streetwear', 'minimalist', 'preppy', 'athleisure', 'boho'"],
       "alt_search": "brand-agnostic alternative: ${genderLabel || "men's"} [color] [material] [subcategory] [detail]",
       "identification_confidence": 20 to 99,
@@ -106,7 +106,7 @@ export async function refineItem(originalItem, userMessage, chatHistory = []) {
 
   const systemPrompt = `You are refining a clothing identification. The user is correcting or adjusting what was initially detected in their photo. Update the item JSON to reflect the correction.
 
-SEARCH QUERY RULES: The search_query goes directly into Google Shopping. Keep under 60 chars. Start with "men's" or "women's". If brand is known, include it. NO adjectives like "stylish" or "elegant". Use product terms only.
+SEARCH QUERY RULES: The search_query goes directly into Google Shopping. Keep under 80 chars. Start with "men's" or "women's". If brand is known, include it. NO adjectives like "stylish" or "elegant". Use product terms only.
 
 Return ONLY valid JSON in this exact format (no markdown, no backticks):
 {
@@ -122,7 +122,7 @@ Return ONLY valid JSON in this exact format (no markdown, no backticks):
     "material": "specific material with type (e.g. 'cotton french terry', 'stretch denim')",
     "fit": "slim|regular|relaxed|oversized|cropped|tailored|boxy",
     "construction_details": "notable details (e.g. 'contrast stitching, raw hem')",
-    "search_query": "Google Shopping query under 60 chars following rules above",
+    "search_query": "Google Shopping query under 80 chars following rules above",
     "style_keywords": ["vibe keywords like 'streetwear', 'minimalist', 'preppy'"],
     "alt_search": "brand-agnostic alternative: [gender] [color] [material] [subcategory]"
   },
