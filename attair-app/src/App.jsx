@@ -2798,6 +2798,7 @@ export default function App() {
     if (params.get("tab") === "twins" && authed) {
       setTab("search");
       setSearchSubTab("twins");
+      setStyleTwinsLoading(true); // eagerly show spinner, prevent "Unlock" CTA flash
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [authed]);
@@ -2948,6 +2949,8 @@ export default function App() {
   const [styleTwinSaveBanner, setStyleTwinSaveBanner] = useState(null); // { message, twin_name }
   const [styleTwinCompare, setStyleTwinCompare] = useState(null); // twin object for comparison sheet
   const [styleTwinsMyScore, setStyleTwinsMyScore] = useState(null); // user's own style_score for comparison bars
+  const [styleTwinsHasFetched, setStyleTwinsHasFetched] = useState(false); // tracks if we've attempted a fetch
+  const styleTwinsLoadingRef = useRef(false); // ref guard to prevent concurrent fetches
 
   // ─── Style Challenges ──────────────────────────────────────
   const [challenges, setChallenges] = useState([]);
@@ -3462,7 +3465,8 @@ export default function App() {
 
   // ─── Load Style Twins when user taps the Twins sub-tab ───
   const loadStyleTwins = useCallback(async () => {
-    if (!authed || styleTwinsLoading) return;
+    if (!authed || styleTwinsLoadingRef.current) return;
+    styleTwinsLoadingRef.current = true;
     setStyleTwinsLoading(true);
     setStyleTwinsError(null);
     try {
@@ -3482,15 +3486,17 @@ export default function App() {
       setStyleTwinsError("Could not load Style Twins. Tap to retry.");
       setStyleTwins([]);
     } finally {
+      styleTwinsLoadingRef.current = false;
       setStyleTwinsLoading(false);
+      setStyleTwinsHasFetched(true);
     }
-  }, [authed, styleTwinsLoading]);
+  }, [authed]);
 
   useEffect(() => {
-    if (tab === "search" && searchSubTab === "twins" && authed && styleTwins.length === 0 && !styleTwinsLoading && !styleTwinsError) {
+    if (tab === "search" && searchSubTab === "twins" && authed && !styleTwinsHasFetched && !styleTwinsLoadingRef.current && !styleTwinsError) {
       loadStyleTwins();
     }
-  }, [tab, searchSubTab, authed, loadStyleTwins]);
+  }, [tab, searchSubTab, authed, styleTwinsHasFetched, styleTwinsError, loadStyleTwins]);
 
   const handleFollowFromSearch = async (userId) => {
     try {
@@ -5021,7 +5027,12 @@ export default function App() {
               <div className="feed-tabs-wrap">
                 <button className={`feed-tab${searchSubTab === "people" ? " active" : ""}`} onClick={() => setSearchSubTab("people")}>People</button>
                 <button className={`feed-tab${searchSubTab === "products" ? " active" : ""}`} onClick={() => setSearchSubTab("products")}>Products</button>
-                <button className={`feed-tab${searchSubTab === "twins" ? " active" : ""}`} onClick={() => setSearchSubTab("twins")}>
+                <button className={`feed-tab${searchSubTab === "twins" ? " active" : ""}`} onClick={() => {
+                  setSearchSubTab("twins");
+                  if (authed && !styleTwinsHasFetched && !styleTwinsLoadingRef.current && !styleTwinsError) {
+                    loadStyleTwins();
+                  }
+                }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg>
                     Twins
@@ -5201,8 +5212,8 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Loading state */}
-                  {authed && styleTwinsLoading && (
+                  {/* Loading state — also shown before initial fetch to prevent "Unlock" flash */}
+                  {authed && (styleTwinsLoading || (!styleTwinsHasFetched && !styleTwinsReady && !styleTwinsError)) && (
                     <div className="style-twins-loading">
                       <div className="style-twins-loading-orbit">
                         <div className="style-twins-loading-ring" />
@@ -5233,8 +5244,8 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Unlock state — no Style DNA yet */}
-                  {authed && !styleTwinsLoading && !styleTwinsError && !styleTwinsReady && (
+                  {/* Unlock state — no Style DNA yet (only show after fetch confirms no DNA) */}
+                  {authed && !styleTwinsLoading && !styleTwinsError && !styleTwinsReady && styleTwinsHasFetched && (
                     <div className="style-twins-empty">
                       <div className="style-twins-empty-icon">
                         <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
