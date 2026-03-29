@@ -777,21 +777,21 @@ function matchLensResultToItem(result, items) {
 
     // Subcategory match (most specific)
     const sub = (item.subcategory || "").toLowerCase();
-    if (sub && sub.length > 2 && title.includes(sub)) score += 30;
+    if (sub && sub.length > 2 && wordMatch(title, sub)) score += 30;
     // Handle plurals: "sneaker" matches "sneakers"
-    else if (sub && sub.length > 4 && title.includes(sub.slice(0, -1))) score += 20;
+    else if (sub && sub.length > 4 && wordMatch(title, sub.slice(0, -1))) score += 20;
 
     // Category match (broader)
     const cat = (item.category || "").toLowerCase();
-    if (cat && title.includes(cat)) score += 10;
+    if (cat && wordMatch(title, cat)) score += 10;
 
     // Brand match
     const brand = (item.brand || "").toLowerCase();
-    if (brand && brand !== "unidentified" && title.includes(brand)) score += 25;
+    if (brand && brand !== "unidentified" && wordMatch(title, brand)) score += 25;
 
     // Color match
     const color = (item.color || "").toLowerCase();
-    if (color && color.length > 2 && title.includes(color)) score += 10;
+    if (color && color.length > 2 && wordMatch(title, color)) score += 10;
 
     // Common clothing keywords to help disambiguate
     const keywords = {
@@ -806,7 +806,7 @@ function matchLensResultToItem(result, items) {
 
     // Check if the title contains keywords for this item's category
     const catKeywords = keywords[cat] || [];
-    if (catKeywords.some(kw => title.includes(kw))) score += 15;
+    if (catKeywords.some(kw => wordMatch(title, kw))) score += 15;
 
     if (score > bestScore) {
       bestScore = score;
@@ -1398,12 +1398,12 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   // Color match — check full color and individual color words
   const color = (item.color || "").toLowerCase();
   if (color && color.length > 2) {
-    if (title.includes(color)) {
+    if (wordMatch(title, color)) {
       score += 12; // exact color match (e.g. "heather grey")
     } else {
       // Multi-word color: "heather grey" → check "heather" and "grey" independently
       const colorWords = color.split(/\s+/).filter(w => w.length > 2);
-      const colorMatches = colorWords.filter(w => title.includes(w)).length;
+      const colorMatches = colorWords.filter(w => wordMatch(title, w)).length;
       if (colorMatches >= 2) score += 10;
       else if (colorMatches === 1 && colorWords.length <= 2) score += 6; // single match on a short color
     }
@@ -1412,12 +1412,12 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   // Material match — check individual material words for compound materials
   const material = (item.material || "").toLowerCase();
   if (material && material.length > 3) {
-    if (title.includes(material)) {
+    if (wordMatch(title, material)) {
       score += 5;
     } else {
       // "heavyweight cotton french terry" → check "cotton", "french terry", "terry"
       const matWords = material.split(/\s+/).filter(w => w.length > 3);
-      const matMatches = matWords.filter(w => title.includes(w)).length;
+      const matMatches = matWords.filter(w => wordMatch(title, w)).length;
       if (matMatches >= 2) score += 4;
       else if (matMatches === 1) score += 2;
     }
@@ -1563,7 +1563,7 @@ function explainMatch(product, item, tier, isFromLens) {
   if (line && line.length > 2 && title.includes(line)) reasons.push(item.product_line);
 
   const color = (item.color || "").toLowerCase();
-  if (color && title.includes(color)) reasons.push(item.color);
+  if (color && wordMatch(title, color)) reasons.push(item.color);
 
   const price = extractPrice(product.price);
   if (price) reasons.push(`$${price.toFixed(0)}`);
@@ -1964,11 +1964,11 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
             score -= 20;
           }
           // Preferred colors get a boost
-          if (preferenceProfile.color_preferences?.positive?.some(c => title.includes(c))) {
+          if (preferenceProfile.color_preferences?.positive?.some(c => wordMatch(title, c))) {
             score += 5;
           }
           // Negative colors get a penalty
-          if (preferenceProfile.color_preferences?.negative?.some(c => title.includes(c))) {
+          if (preferenceProfile.color_preferences?.negative?.some(c => wordMatch(title, c))) {
             score -= 8;
           }
           // Preferred categories get a boost
