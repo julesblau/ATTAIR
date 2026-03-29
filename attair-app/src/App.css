@@ -2089,7 +2089,7 @@
 .scan-counter strong{color:var(--accent)}
 
 /* ─── Tab Bar (Instagram/TikTok style) ─── */
-.tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;align-items:stretch;background:rgba(12,12,14,.92);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-top:1px solid rgba(255,255,255,.06);padding:0;padding-bottom:max(4px,env(safe-area-inset-bottom));z-index:100}
+.tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;align-items:stretch;background:rgba(12,12,14,.92);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-top:1px solid rgba(255,255,255,.06);padding:0;padding-bottom:max(4px,env(safe-area-inset-bottom));z-index:200}
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 0;cursor:pointer;background:none;border:none;color:var(--text-tertiary);transition:color .2s,transform .1s;font-family:var(--font-sans);min-height:50px;position:relative;-webkit-tap-highlight-color:transparent}
 .tab:active{transform:scale(0.92)}
 .tab.on{color:var(--text-primary)}
