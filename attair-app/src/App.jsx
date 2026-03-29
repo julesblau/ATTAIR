@@ -1119,6 +1119,122 @@ const OB_STEPS = [
   { id: "welcome", type: "info", icon: "✦", title: "Scan any outfit.\nFind where to buy it.", sub: "Upload any outfit photo. Our AI identifies every piece and finds you budget, mid, and premium options instantly.", cta: "Get Started" },
 ];
 
+// Demo data for TikTok-speed onboarding animation
+const OB_DEMO_ITEMS = [
+  { emoji: "👕", name: "Cotton Crewneck Tee", color: "White", price: "$28" },
+  { emoji: "👖", name: "Slim Straight Jeans", color: "Indigo", price: "$65" },
+  { emoji: "👟", name: "Leather Sneakers", color: "White", price: "$95" },
+];
+const OB_DEMO_RESULTS = [
+  { tier: "budget", store: "H&M", price: "$19", name: "Basic Cotton Tee" },
+  { tier: "mid", store: "Everlane", price: "$35", name: "Premium Weight Tee" },
+  { tier: "premium", store: "APC", price: "$95", name: "Petit New Standard" },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// ONBOARDING DEMO — TikTok-speed animated welcome
+// ═══════════════════════════════════════════════════════════════
+function OnboardingDemo({ fade, onGetStarted, onLogin }) {
+  const [demoPhase, setDemoPhase] = useState(0); // 0=photo, 1=scanning, 2=items, 3=results, 4=fade-out
+  const [cycleKey, setCycleKey] = useState(0);
+
+  useEffect(() => {
+    const timings = [1200, 1000, 1200, 1800, 600]; // ms per phase (last = fade-out before reset)
+    const timer = setTimeout(() => {
+      setDemoPhase(p => {
+        if (p >= 4) {
+          setCycleKey(k => k + 1);
+          return 0;
+        }
+        return p + 1;
+      });
+    }, timings[demoPhase]);
+    return () => clearTimeout(timer);
+  }, [demoPhase, cycleKey]);
+
+  return (
+    <div className={`ob ob-demo ${fade}`}>
+      {/* Animated demo viewport */}
+      <div className="ob-demo-viewport">
+        {/* Mock phone frame */}
+        <div className="ob-demo-phone" style={{ opacity: demoPhase === 4 ? 0 : 1, transition: "opacity 0.5s ease" }}>
+          {/* Phase 0-1: Outfit photo with gradient */}
+          <div className="ob-demo-photo" style={{ opacity: 1 }}>
+            <div className="ob-demo-outfit-placeholder">
+              <div className="ob-demo-outfit-icon">📸</div>
+              <div className="ob-demo-outfit-label">Your outfit photo</div>
+            </div>
+
+            {/* Phase 1: Scanning laser line */}
+            <div key={cycleKey} className={`ob-demo-scan-line ${demoPhase >= 1 && demoPhase < 4 ? "active" : ""}`} />
+
+            {/* Phase 2: Item labels pop in */}
+            <div className="ob-demo-items">
+              {OB_DEMO_ITEMS.map((item, i) => (
+                <div
+                  key={i}
+                  className={`ob-demo-item-tag ${demoPhase >= 2 && demoPhase < 4 ? "visible" : ""}`}
+                  style={{ transitionDelay: `${i * 150}ms`, top: `${18 + i * 28}%` }}
+                >
+                  <span className="ob-demo-item-emoji">{item.emoji}</span>
+                  <span className="ob-demo-item-name">{item.name}</span>
+                  <span className="ob-demo-item-check">✓</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Phase 3: Results cards slide up */}
+          <div className={`ob-demo-results ${demoPhase >= 3 && demoPhase < 4 ? "visible" : ""}`}>
+            <div className="ob-demo-results-header">
+              <span className="ob-demo-results-dot" />
+              Products found
+            </div>
+            {OB_DEMO_RESULTS.map((r, i) => (
+              <div
+                key={i}
+                className={`ob-demo-result-card ${demoPhase >= 3 && demoPhase < 4 ? "visible" : ""}`}
+                style={{ transitionDelay: `${i * 120}ms` }}
+              >
+                <div className={`ob-demo-tier-badge ob-demo-tier-${r.tier}`}>{r.tier}</div>
+                <div className="ob-demo-result-info">
+                  <div className="ob-demo-result-name">{r.name}</div>
+                  <div className="ob-demo-result-store">{r.store}</div>
+                </div>
+                <div className="ob-demo-result-price">{r.price}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Phase indicator dots */}
+        <div className="ob-demo-dots">
+          {["Photo", "Scan", "Identify", "Shop"].map((label, i) => (
+            <div key={i} className={`ob-demo-dot ${demoPhase >= i && demoPhase < 4 ? "active" : ""}`}>
+              <div className="ob-demo-dot-circle" />
+              <span className="ob-demo-dot-label">{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CTA section */}
+      <div className="ob-demo-cta">
+        <h1 className="ob-demo-title">
+          See it. Scan it.<br /><span className="ob-demo-title-gold">Shop it.</span>
+        </h1>
+        <p className="ob-demo-sub">
+          Point your camera at any outfit. AI finds where to buy every piece — at every price point.
+        </p>
+        <button className="cta" onClick={onGetStarted}>Get Started</button>
+        <button className="ob-demo-login" onClick={onLogin}>
+          Already have an account? Log in
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SHARE CARD GENERATOR — Canvas API (Instagram story 9:16)
 // ═══════════════════════════════════════════════════════════════
@@ -2488,19 +2604,13 @@ export default function App() {
     {/* REMOVED: ~690 lines of inline <style> */}
 
     <div className="app" data-theme={theme}>
-      {/* ─── ONBOARDING ──────────────────────────────────── */}
+      {/* ─── ONBOARDING (TikTok-speed visual demo) ──────── */}
       {screen === "onboarding" && (
-        <div className={`ob ${fade}`}>
-          <div className="ob-bar"><div className="ob-fill" style={{ width: `${prog}%` }} /></div>
-          <div className="ob-body">
-            {step.icon && <div className="ob-icon">{step.icon}</div>}
-            <h1 className="ob-title">{step.title}</h1>
-            <p className="ob-sub">{step.sub}</p>
-            {step.stats && <div className="ob-stats">{step.stats.map((s,i) => <div key={i}><div className="ob-sn">{s.n}</div><div className="ob-sl">{s.l}</div></div>)}</div>}
-            {step.type === "info" && <button className="cta" onClick={() => obNext()}>{step.cta}</button>}
-            <button style={{background:"none",border:"none",color:"var(--text-tertiary)",fontSize:13,cursor:"pointer",fontFamily:"var(--font-sans)",padding:"12px 0",marginTop:8,minHeight:44}} onClick={() => { setScreen("auth"); setAuthScreen("login"); }}>Already have an account? Log in</button>
-          </div>
-        </div>
+        <OnboardingDemo
+          fade={fade}
+          onGetStarted={() => obNext()}
+          onLogin={() => { setScreen("auth"); setAuthScreen("login"); }}
+        />
       )}
 
       {/* ─── PAYWALL ─────────────────────────────────────── */}
