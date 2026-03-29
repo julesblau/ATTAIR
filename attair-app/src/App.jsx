@@ -3446,12 +3446,43 @@ export default function App() {
             </div>
           )}
 
-          {/* ─── Error ─────────────────────────────────── */}
+          {/* ─── Error (enhanced) ──────────────────────── */}
           {tab === "scan" && error && phase === "idle" && (
-            <div className="animate-slide-up">
-              {img && <img src={img} style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)"}} alt="" />}
-              <div className="err">{error}</div>
-              <div style={{padding:"0 20px",marginTop:12}}><button className="btn-secondary" style={{width:"100%"}} onClick={reset}>Try again</button></div>
+            <div className="animate-slide-up" style={{ padding: "0 20px 80px" }}>
+              {img && <img src={img} style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)",borderRadius:16,marginBottom:16}} alt="" />}
+              <div className="scan-error-state">
+                <div className="scan-error-icon">
+                  {error.includes("internet") || error.includes("server") ? "📡" : error.includes("scan") && error.includes("limit") ? "🔒" : "🔍"}
+                </div>
+                <div className="scan-error-title">
+                  {error.includes("internet") || error.includes("server") ? "Connection issue" : error.includes("scan") && error.includes("limit") ? "Scan limit reached" : "Scan didn't work"}
+                </div>
+                <div className="scan-error-msg">{error}</div>
+                <div className="scan-error-tips">
+                  <div className="scan-error-tip">Make sure the outfit is clearly visible</div>
+                  <div className="scan-error-tip">Try a well-lit, head-to-toe photo</div>
+                  <div className="scan-error-tip">Screenshots from social media work great</div>
+                </div>
+                <button className="btn-primary" style={{width:"100%",marginTop:16}} onClick={reset}>Try another photo</button>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Empty identification (0 items found) ──── */}
+          {tab === "scan" && results && results.items.length === 0 && phase === "picking" && (
+            <div className="animate-slide-up" style={{ padding: "0 20px 80px" }}>
+              {img && <img src={img} style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)",borderRadius:16,marginBottom:16}} alt="" />}
+              <div className="scan-error-state">
+                <div className="scan-error-icon">👀</div>
+                <div className="scan-error-title">No clothing detected</div>
+                <div className="scan-error-msg">Our AI couldn't identify any clothing items in this photo. This usually means the image doesn't contain a clear outfit.</div>
+                <div className="scan-error-tips">
+                  <div className="scan-error-tip">Upload a photo with visible clothing</div>
+                  <div className="scan-error-tip">Close-ups of single items work too</div>
+                  <div className="scan-error-tip">Avoid photos that are mostly scenery</div>
+                </div>
+                <button className="btn-primary" style={{width:"100%",marginTop:16}} onClick={reset}>Try another photo</button>
+              </div>
             </div>
           )}
 
@@ -4213,6 +4244,21 @@ export default function App() {
                           Share This Look
                         </button>
                   </>)}
+                </div>
+              )}
+
+              {/* All searches failed banner */}
+              {phase === "done" && results.items.filter(it => pickedItems.has(results.items.indexOf(it))).every(it => it.status === "failed") && (
+                <div className="scan-error-state" style={{ margin: "0 20px 16px" }}>
+                  <div className="scan-error-icon">🔍</div>
+                  <div className="scan-error-title">No products found</div>
+                  <div className="scan-error-msg">We couldn't find matching products for these items. This can happen with very unique or niche items.</div>
+                  <div className="scan-error-tips">
+                    <div className="scan-error-tip">Try adjusting your budget range</div>
+                    <div className="scan-error-tip">Use the Deep Search mode for better results</div>
+                    <div className="scan-error-tip">Add search notes to describe what you're looking for</div>
+                  </div>
+                  <button className="btn-secondary" style={{width:"100%",marginTop:12}} onClick={() => { setPhase("picking"); }}>Back to items</button>
                 </div>
               )}
 

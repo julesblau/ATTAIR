@@ -1838,6 +1838,62 @@
 
 .app[data-theme='light'] .dupe-alert-pill { box-shadow: 0 2px 8px rgba(201,169,110,0.3); }
 
+/* ── Scan Error State ── */
+.scan-error-state {
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.scan-error-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.scan-error-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.scan-error-msg {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.scan-error-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.scan-error-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--accent-bg);
+  border-radius: 8px;
+}
+
+.scan-error-tip::before {
+  content: "💡";
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.app[data-theme='light'] .scan-error-state { background: #FFF; border-color: rgba(0,0,0,0.06); }
+.app[data-theme='light'] .scan-error-tip { background: rgba(0,0,0,0.02); }
+
 /* ── Inspiration Picker ── */
 .ob-inspo {
   padding: 0 !important;
