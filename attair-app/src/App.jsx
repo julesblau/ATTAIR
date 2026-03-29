@@ -2946,6 +2946,7 @@ export default function App() {
   const [styleTwinsTotalMatches, setStyleTwinsTotalMatches] = useState(0);
   const [styleTwinSaveBanner, setStyleTwinSaveBanner] = useState(null); // { message, twin_name }
   const [styleTwinCompare, setStyleTwinCompare] = useState(null); // twin object for comparison sheet
+  const [styleTwinsMyScore, setStyleTwinsMyScore] = useState(null); // user's own style_score for comparison bars
 
   // ─── Style Challenges ──────────────────────────────────────
   const [challenges, setChallenges] = useState([]);
@@ -3468,6 +3469,7 @@ export default function App() {
         setStyleTwins(data.twins || []);
         setStyleTwinsReady(true);
         setStyleTwinsMyArchetype(data.my_archetype);
+        setStyleTwinsMyScore(data.my_style_score || null);
         setStyleTwinsTotalMatches(data.total_matches || 0);
       } else {
         setStyleTwinsReady(false);
@@ -4030,6 +4032,15 @@ export default function App() {
         refreshStatus();
         refreshLooks();
         track("item_saved", { item_name: item.name }, sid, "scan");
+        // Check if a Style Twin also saved this (non-blocking)
+        if (item.name) {
+          API.checkSharedSave(item.name).then(d => {
+            if (d.match) {
+              setStyleTwinSaveBanner({ message: d.message, twin_name: d.twin_name });
+              setTimeout(() => setStyleTwinSaveBanner(null), 5000);
+            }
+          }).catch(() => {});
+        }
       } catch (err) {
         if (err.message?.includes("limit")) setUpgradeModal("save_limit");
       }
@@ -4576,6 +4587,44 @@ export default function App() {
                 {styleTwinCompare.archetype && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 500, marginTop: 2 }}>{styleTwinCompare.archetype}</div>}
               </div>
             </div>
+
+            {/* Style Score Comparison Bars */}
+            {styleTwinsMyScore && styleTwinCompare.style_score && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 14 }}>Style DNA Comparison</div>
+                {[
+                  { key: "classic_vs_trendy", low: "Classic", high: "Trendy" },
+                  { key: "minimal_vs_maximal", low: "Minimal", high: "Maximal" },
+                  { key: "casual_vs_formal", low: "Casual", high: "Formal" },
+                  { key: "budget_vs_luxury", low: "Budget", high: "Luxury" },
+                ].map(({ key, low, high }) => {
+                  const myVal = styleTwinsMyScore[key] ?? 5;
+                  const theirVal = styleTwinCompare.style_score[key] ?? 5;
+                  const myPct = ((myVal - 1) / 9) * 100;
+                  const theirPct = ((theirVal - 1) / 9) * 100;
+                  return (
+                    <div key={key} className="style-twin-compare-axis">
+                      <div className="style-twin-compare-axis-labels">
+                        <span>{low}</span>
+                        <span>{high}</span>
+                      </div>
+                      <div className="style-twin-compare-axis-track">
+                        <div className="style-twin-compare-axis-marker style-twin-compare-marker-you" style={{ left: `${myPct}%` }} title={`You: ${myVal}`}>
+                          <span className="style-twin-compare-marker-dot" />
+                        </div>
+                        <div className="style-twin-compare-axis-marker style-twin-compare-marker-twin" style={{ left: `${theirPct}%` }} title={`${styleTwinCompare.display_name || "Twin"}: ${theirVal}`}>
+                          <span className="style-twin-compare-marker-dot" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="style-twin-compare-legend">
+                  <span><span className="style-twin-compare-legend-dot" style={{ background: "var(--accent)" }} /> You</span>
+                  <span><span className="style-twin-compare-legend-dot" style={{ background: "#78b478" }} /> {styleTwinCompare.display_name || "Twin"}</span>
+                </div>
+              </div>
+            )}
 
             {/* Shared style axes */}
             {styleTwinCompare.shared_axes && styleTwinCompare.shared_axes.length > 0 && (

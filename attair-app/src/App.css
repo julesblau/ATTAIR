@@ -4354,6 +4354,83 @@
   box-shadow: 0 0 32px rgba(201, 169, 110, 0.08);
 }
 
+/* Style Score Comparison Bars */
+.style-twin-compare-axis {
+  margin-bottom: 16px;
+}
+
+.style-twin-compare-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+  font-family: var(--font-sans);
+}
+
+.style-twin-compare-axis-track {
+  position: relative;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.style-twin-compare-axis-marker {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  transition: left var(--transition-slow);
+}
+
+.style-twin-compare-marker-dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.style-twin-compare-marker-you .style-twin-compare-marker-dot {
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(201, 169, 110, 0.35);
+}
+
+.style-twin-compare-marker-twin .style-twin-compare-marker-dot {
+  background: #78b478;
+  box-shadow: 0 0 10px rgba(120, 180, 120, 0.35);
+}
+
+.style-twin-compare-legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+}
+
+.style-twin-compare-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.style-twin-compare-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+[data-theme='light'] .style-twin-compare-axis-track {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   .style-twins-loading-ring { animation: none; }

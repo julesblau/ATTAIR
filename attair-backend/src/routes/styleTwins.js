@@ -125,6 +125,7 @@ router.get("/", requireAuth, twinsLimiter, async (req, res) => {
           traits: (dna.traits || []).slice(0, 2),
           dominant_colors: (dna.stats?.dominant_colors || []).slice(0, 3).map(c => c.value),
           shared_axes: getSharedAxes(myDna.style_score, dna.style_score),
+          style_score: dna.style_score || null,
         });
       }
     }
@@ -200,6 +201,7 @@ router.get("/", requireAuth, twinsLimiter, async (req, res) => {
       ready: true,
       twins: topTwins,
       my_archetype: myDna.archetype || null,
+      my_style_score: myDna.style_score || null,
       total_matches: twins.length,
     });
   } catch (err) {
