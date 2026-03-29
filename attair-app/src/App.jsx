@@ -333,10 +333,12 @@ const API = {
     return res.json();
   },
 
-  async refineItem(scanId, itemIndex, originalItem, userMessage, chatHistory, gender) {
+  async refineItem(scanId, itemIndex, originalItem, userMessage, chatHistory, gender, memory = null) {
+    // When memory exists, only send recent chat messages (last 4) — memory carries the rest
+    const recentChat = memory && chatHistory.length > 4 ? chatHistory.slice(-4) : chatHistory;
     const res = await authFetch(`${API_BASE}/api/refine-item`, {
       method: "POST",
-      body: JSON.stringify({ scan_id: scanId, item_index: itemIndex, original_item: originalItem, user_message: userMessage, chat_history: chatHistory, gender }),
+      body: JSON.stringify({ scan_id: scanId, item_index: itemIndex, original_item: originalItem, user_message: userMessage, chat_history: recentChat, gender, memory }),
     });
     if (!res.ok) { const d = await res.json(); throw new Error(d.message || "Refinement failed"); }
     return await res.json();
@@ -2958,8 +2960,32 @@ export default function App() {
   // ─── AI refinement (ID/Shop toggle + chat per item) ───────
   const [itemViewModes, setItemViewModes] = useState({}); // { [idx]: "id" | "shop" }
   const [itemChats, setItemChats] = useState({});          // { [idx]: [{role, content}] }
+  const [itemMemories, setItemMemories] = useState({});    // { [idx]: { corrections, confirmed_facts, user_preferences, context_notes, turn_count } }
   const [refineInputs, setRefineInputs] = useState({});    // { [idx]: string }
   const [refineLoadings, setRefineLoadings] = useState({}); // { [idx]: bool }
+
+  // ─── Restore chat memories from localStorage when scan loads ─
+  useEffect(() => {
+    if (!scanId) return;
+    try {
+      const stored = JSON.parse(localStorage.getItem(`attaire_mem_${scanId}`) || "{}");
+      if (Object.keys(stored).length > 0) setItemMemories(stored);
+    } catch { /* corrupt localStorage — ignore */ }
+  }, [scanId]);
+
+  // ─── Restore memories from Supabase _memory fields on historical scan load ─
+  useEffect(() => {
+    if (!results?.items?.length) return;
+    const restored = {};
+    results.items.forEach((item, idx) => {
+      if (item._memory && typeof item._memory === "object") {
+        restored[idx] = item._memory;
+      }
+    });
+    if (Object.keys(restored).length > 0) {
+      setItemMemories(prev => ({ ...restored, ...prev })); // localStorage takes priority
+    }
+  }, [results?.items?.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Dupe Finder state ────────────────────────────────────
   const [dupeModal, setDupeModal] = useState(null);         // null | { product, itemIdx, tierKey }
@@ -3833,7 +3859,7 @@ export default function App() {
     }
   };
 
-  const reset = () => { if (nudgeScheduledRef.current) { API.cancelNudge(nudgeScheduledRef.current); nudgeScheduledRef.current = null; } setNudgeBanner(null); setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); setShowAdvanced(false); setExpandedItems(new Set()); setShowAllPickItems(false); };
+  const reset = () => { if (nudgeScheduledRef.current) { API.cancelNudge(nudgeScheduledRef.current); nudgeScheduledRef.current = null; } setNudgeBanner(null); setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setItemMemories({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); setShowAdvanced(false); setExpandedItems(new Set()); setShowAllPickItems(false); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -3847,12 +3873,24 @@ export default function App() {
     }
     const item = results.items[itemIdx];
     const chat = itemChats[itemIdx] || [];
+    const memory = itemMemories[itemIdx] || null;
     setRefineLoadings(l => ({ ...l, [itemIdx]: true }));
     setRefineInputs(i => ({ ...i, [itemIdx]: "" }));
     try {
-      const res = await API.refineItem(scanId, itemIdx, item, msg, chat, results.gender);
+      const res = await API.refineItem(scanId, itemIdx, item, msg, chat, results.gender, memory);
       const newChat = [...chat, { role: "user", content: msg }, { role: "assistant", content: res.ai_message || "Updated." }];
       setItemChats(c => ({ ...c, [itemIdx]: newChat }));
+      // Update memory from response — this replaces reliance on full chat history
+      if (res.memory) {
+        setItemMemories(m => ({ ...m, [itemIdx]: res.memory }));
+        // Persist memory to localStorage for session recovery
+        try {
+          const key = `attaire_mem_${scanId}`;
+          const stored = JSON.parse(localStorage.getItem(key) || "{}");
+          stored[itemIdx] = res.memory;
+          localStorage.setItem(key, JSON.stringify(stored));
+        } catch { /* localStorage quota exceeded — non-critical */ }
+      }
       // Merge updated_item fields, preserving status/tiers
       setResults(prev => {
         if (!prev) return prev;
@@ -3861,7 +3899,7 @@ export default function App() {
       });
       // Auto-switch to shop if new tiers came back
       if (res.new_tiers) setItemViewModes(m => ({ ...m, [itemIdx]: "shop" }));
-      track("item_refined", { item_index: itemIdx }, scanId, "scan");
+      track("item_refined", { item_index: itemIdx, memory_turns: res.memory?.turn_count || 0 }, scanId, "scan");
     } catch (err) {
       setItemChats(c => ({ ...c, [itemIdx]: [...(c[itemIdx] || []), { role: "user", content: msg }, { role: "assistant", content: "Sorry, I couldn't process that. Try rephrasing." }] }));
     }

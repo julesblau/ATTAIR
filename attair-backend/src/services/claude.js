@@ -97,16 +97,156 @@ function parseJSON(text) {
 }
 
 /**
- * Refine an identified clothing item based on user correction/input.
- * Returns { updated_item, ai_message }.
+ * Build a compact memory block string from structured memory for injection into prompts.
+ * Memory captures key corrections and context from prior conversation turns so we don't
+ * need to replay the full chat history every time.
  */
-export async function refineItem(originalItem, userMessage, chatHistory = []) {
+function buildMemoryBlock(memory) {
+  if (!memory) return "";
+  const parts = [];
+
+  if (memory.corrections?.length) {
+    parts.push("PRIOR CORRECTIONS (apply these — the user already told us):");
+    for (const c of memory.corrections) {
+      if (c.from) {
+        parts.push(`  • ${c.field}: "${c.from}" → "${c.to}"`);
+      } else {
+        parts.push(`  • ${c.field}: set to "${c.to}"`);
+      }
+    }
+  }
+
+  if (memory.confirmed_facts?.length) {
+    parts.push("CONFIRMED FACTS:");
+    for (const f of memory.confirmed_facts) {
+      parts.push(`  • ${f}`);
+    }
+  }
+
+  if (memory.user_preferences?.length) {
+    parts.push("USER PREFERENCES (mentioned during conversation):");
+    for (const p of memory.user_preferences) {
+      parts.push(`  • ${p}`);
+    }
+  }
+
+  if (memory.context_notes?.length) {
+    parts.push("CONTEXT NOTES:");
+    for (const n of memory.context_notes) {
+      parts.push(`  • ${n}`);
+    }
+  }
+
+  return parts.length ? "\n\nCONVERSATION MEMORY:\n" + parts.join("\n") : "";
+}
+
+/**
+ * Extract/update structured memory from the conversation so far.
+ * Uses Claude Haiku for speed and cost efficiency.
+ * Returns a compact memory object that replaces the need for full chat history.
+ *
+ * @param {object} originalItem - The original identified item
+ * @param {object} updatedItem - The item after this refinement
+ * @param {string} userMessage - The latest user message
+ * @param {string} aiMessage - The latest AI response
+ * @param {object|null} existingMemory - Previous memory to update (or null for first turn)
+ * @returns {Promise<object>} Updated memory object
+ */
+export async function extractMemory(originalItem, updatedItem, userMessage, aiMessage, existingMemory = null) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  const existingBlock = existingMemory ? `\nExisting memory to update:\n${JSON.stringify(existingMemory, null, 2)}` : "";
+
+  const prompt = `Extract key context from this clothing item refinement conversation turn into a structured memory object. This memory will be passed to future AI calls instead of replaying the full conversation.
+${existingBlock}
+
+Original item: ${JSON.stringify(originalItem, null, 2)}
+Updated item: ${JSON.stringify(updatedItem, null, 2)}
+User said: "${userMessage}"
+AI responded: "${aiMessage}"
+
+Return ONLY valid JSON (no markdown, no backticks):
+{
+  "corrections": [
+    { "field": "brand", "from": "Unidentified", "to": "Nike" }
+  ],
+  "confirmed_facts": ["User confirmed it's a vintage piece from the 90s"],
+  "user_preferences": ["Prefers exact brand match over alternatives"],
+  "context_notes": ["Item was partially obscured in photo"],
+  "turn_count": ${(existingMemory?.turn_count || 0) + 1}
+}
+
+RULES:
+- "corrections": Merge with existing corrections. If the same field was corrected again, keep only the latest. Each entry needs "field" and "to", optionally "from".
+- "confirmed_facts": Key facts the user confirmed or stated. Deduplicate with existing. Max 5.
+- "user_preferences": Shopping/style preferences mentioned. Deduplicate. Max 3.
+- "context_notes": Important context about the photo or item. Max 3.
+- Keep everything concise — this is a memory aid, not a transcript.
+- If existing memory has entries that are still valid, preserve them.`;
+
+  try {
+    const res = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 600,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.error(`[Memory] API ${res.status}`);
+      return existingMemory || null; // fail open — keep old memory
+    }
+
+    const data = await res.json();
+    const text = data.content?.map(c => c.text || "").join("") || "";
+    const parsed = parseJSON(text);
+
+    // Validate and sanitize
+    return {
+      corrections: Array.isArray(parsed.corrections) ? parsed.corrections.slice(0, 10) : [],
+      confirmed_facts: Array.isArray(parsed.confirmed_facts) ? parsed.confirmed_facts.slice(0, 5) : [],
+      user_preferences: Array.isArray(parsed.user_preferences) ? parsed.user_preferences.slice(0, 3) : [],
+      context_notes: Array.isArray(parsed.context_notes) ? parsed.context_notes.slice(0, 3) : [],
+      turn_count: (existingMemory?.turn_count || 0) + 1,
+    };
+  } catch (err) {
+    clearTimeout(timeout);
+    console.error(`[Memory] Error: ${err.message}`);
+    return existingMemory || null; // fail open
+  }
+}
+
+/**
+ * Refine an identified clothing item based on user correction/input.
+ * Uses structured memory for context persistence instead of replaying full chat history.
+ * Returns { updated_item, ai_message }.
+ *
+ * @param {object} originalItem - The item to refine
+ * @param {string} userMessage - User's correction/input
+ * @param {object[]} chatHistory - Recent chat turns (kept short — last 4 messages max)
+ * @param {object|null} memory - Structured memory from previous turns
+ */
+export async function refineItem(originalItem, userMessage, chatHistory = [], memory = null) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
 
-  const systemPrompt = `You are refining a clothing identification. The user is correcting or adjusting what was initially detected in their photo. Update the item JSON to reflect the correction.
+  const memoryBlock = buildMemoryBlock(memory);
 
+  const systemPrompt = `You are refining a clothing identification. The user is correcting or adjusting what was initially detected in their photo. Update the item JSON to reflect the correction.
+${memoryBlock}
 SEARCH QUERY RULES: The search_query goes directly into Google Shopping. Keep under 80 chars. Start with "men's" or "women's". If brand is known, include it. NO adjectives like "stylish" or "elegant". Use product terms only.
+
+IMPORTANT: If CONVERSATION MEMORY is provided above, treat those corrections and facts as already established — apply them to the item AND incorporate the user's new message. Do not ask the user to re-confirm things already in memory.
 
 Return ONLY valid JSON in this exact format (no markdown, no backticks):
 {
@@ -129,8 +269,14 @@ Return ONLY valid JSON in this exact format (no markdown, no backticks):
   "ai_message": "Brief friendly confirmation of what you updated, 1-2 sentences."
 }`;
 
+  // When memory exists, only send the last 4 chat messages for immediate context
+  // (the rest is captured in the memory object). Without memory, send full history.
+  const recentHistory = memory && chatHistory.length > 4
+    ? chatHistory.slice(-4)
+    : chatHistory;
+
   const messages = [
-    ...chatHistory.map(m => ({ role: m.role, content: m.content })),
+    ...recentHistory.map(m => ({ role: m.role, content: m.content })),
     {
       role: "user",
       content: `Original item: ${JSON.stringify(originalItem, null, 2)}\n\nUser says: "${userMessage}"\n\nPlease update the item identification accordingly.`,
