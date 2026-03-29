@@ -784,14 +784,62 @@ async function takeScreenshots() {
   writeFileSync(scriptPath, `
 import { chromium } from "playwright";
 import { join } from "path";
+import { spawn } from "child_process";
+import http from "http";
 
 const dir = ${JSON.stringify(screenshotDir)};
 const ts = ${JSON.stringify(String(timestamp))};
 const MOCK_TWINS_DATA = ${JSON.stringify(mockTwinsData)};
 const COMPARE_SHEET_HTML = ${JSON.stringify(compareSheetHTML)};
 const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
+const VITE_URL = "http://localhost:5173";
+const APP_DIR = ${JSON.stringify(join(REPO_ROOT, "attair-app"))};
+
+// ── Pre-flight: ensure Vite dev server is running ──
+function checkServer(url, timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    const req = http.get(url, (res) => { res.resume(); resolve(true); });
+    req.on("error", () => resolve(false));
+    req.setTimeout(timeoutMs, () => { req.destroy(); resolve(false); });
+  });
+}
+
+async function startViteAndWait(maxWaitMs = 30000) {
+  console.error("[Screenshot] Vite dev server not running — starting it automatically...");
+  const vite = spawn("npx", ["vite", "--port", "5173", "--host"], {
+    cwd: APP_DIR,
+    stdio: "ignore",
+    detached: true,
+    shell: true,
+  });
+  vite.unref(); // let it keep running after this script exits
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const alive = await checkServer(VITE_URL);
+    if (alive) {
+      console.error("[Screenshot] Vite dev server is now running.");
+      return true;
+    }
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  return false;
+}
 
 (async () => {
+  // ── CRITICAL: Verify dev server is reachable BEFORE launching browser ──
+  let serverReady = await checkServer(VITE_URL);
+  if (!serverReady) {
+    serverReady = await startViteAndWait();
+    if (!serverReady) {
+      console.error("[Screenshot] FATAL: Vite dev server at " + VITE_URL + " is not reachable after 30s. Cannot capture screenshots.");
+      console.error("[Screenshot] Please start the dev server manually: cd attair-app && npm run dev");
+      // Output empty array so caller knows no screenshots were taken
+      console.log(JSON.stringify([]));
+      process.exit(1);
+    }
+  }
+  console.error("[Screenshot] Vite dev server confirmed running at " + VITE_URL);
+
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -812,15 +860,11 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
   }
 
   try {
-    // Set mock auth token BEFORE the app loads by navigating to the origin first,
-    // setting localStorage via page.evaluate, then navigating to the actual page.
-    // This bypasses the addInitScript timing issue where React's useState initializer
-    // evaluates Auth.getToken() before addInitScript has a chance to run.
+    // Build mock JWT token for auth bypass
     const mockJwtPayload = btoa(JSON.stringify({email:"demo@attaire.com",sub:"demo-user",iat:1774800000,exp:1974800000})).replace(/=/g,"");
     const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + mockJwtPayload + ".mock-sig";
 
     // Intercept ALL network requests to APIs — return mock data so React renders natively
-    // (must be set up BEFORE any navigation to catch all requests)
     await page.route("**/api/**", async (route) => {
       const url = route.request().url();
       if (url.includes("/api/user/status")) {
@@ -852,64 +896,78 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
       }
     });
 
-    // Step 1: Navigate to the app origin (blank page) so we can set localStorage on the correct domain.
-    // The Vite dev server serves index.html for any path, so we use a non-app path to avoid
-    // triggering React mount. We abort all requests to make this instant.
-    await page.goto("http://localhost:5173/__blank", { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
-    await page.waitForTimeout(500);
+    // Step 1: Navigate to a minimal page on the Vite origin so we can set localStorage.
+    // DO NOT use .catch(() => {}) — if this fails, we WANT it to throw so the error is visible.
+    console.error("[Screenshot] Step 1: Navigating to Vite origin to set localStorage...");
+    await page.goto(VITE_URL + "/__blank", { waitUntil: "domcontentloaded", timeout: 15000 });
+    console.error("[Screenshot] Step 1: Successfully loaded Vite origin page.");
 
-    // Step 2: Set localStorage BEFORE React initializes — this is the critical fix.
+    // Step 2: Set localStorage BEFORE React initializes.
     // React's useState initializer calls Auth.getToken() synchronously on mount.
-    // By setting the token here (via page.evaluate), it's guaranteed to be in localStorage
-    // when the app JavaScript evaluates on the next navigation.
     await page.evaluate((token) => {
       localStorage.setItem("attair_token", token);
       localStorage.setItem("attair_interests_picked", "1");
       localStorage.setItem("attair_notif_prompted", "1");
       localStorage.setItem("attair_pref_sheet_shown", "1");
     }, mockToken);
-    console.error("[Screenshot] localStorage set with auth token — ready to load app");
+    console.error("[Screenshot] Step 2: localStorage set with auth token — ready to load app");
 
     // Step 3: Navigate to the app with ?tab=twins deep link.
-    // Now React will see the token in localStorage during useState initialization,
+    // React will see the token in localStorage during useState initialization,
     // setting screen="app" immediately (skipping onboarding).
-    await page.goto("http://localhost:5173/?tab=twins", { waitUntil: "networkidle", timeout: 20000 });
+    console.error("[Screenshot] Step 3: Navigating to app with ?tab=twins deep link...");
+    await page.goto(VITE_URL + "/?tab=twins", { waitUntil: "networkidle", timeout: 30000 });
+    console.error("[Screenshot] Step 3: App page loaded.");
 
     // Wait for the tab bar (.tb) — with Auth token set, screen starts as "app" immediately
     console.error("[Screenshot] Waiting for tab bar (.tb)...");
     try {
-      await page.waitForSelector(".tb", { timeout: 10000 });
+      await page.waitForSelector(".tb", { timeout: 12000 });
       console.error("[Screenshot] Tab bar found — app screen is active");
     } catch (e) {
-      console.error("[Screenshot] Tab bar not found after 10s, forcing screen via JS...");
-      // Force: directly set React-consumed localStorage and reload
-      await page.evaluate(() => {
-        localStorage.setItem("attair_force_screen", "app");
-      });
-      // Try clicking "Get Started" or similar CTA to skip onboarding
-      const cta = await page.$("button.cta");
-      if (cta) {
-        await cta.click();
-        await page.waitForTimeout(1500);
-      }
-      try {
-        await page.waitForSelector(".tb", { timeout: 8000 });
-        console.error("[Screenshot] Tab bar found after fallback");
-      } catch {
-        console.error("[Screenshot] FATAL: Could not reach app screen — reloading with deep link");
-        await page.goto("http://localhost:5173/?tab=twins", { waitUntil: "networkidle", timeout: 15000 });
-        await page.waitForTimeout(3000);
-        // Last resort: take whatever is on screen
-        const hasTb = await page.$(".tb");
-        if (!hasTb) {
-          console.error("[Screenshot] FATAL: Tab bar never appeared. Taking debug screenshots.");
-          await snap("home");
-          await snap("scan");
-          await snap("profile");
-          await browser.close();
-          console.log(JSON.stringify(paths));
-          return;
+      console.error("[Screenshot] Tab bar not found after 12s — attempting recovery...");
+      // Debug: log the current page content to understand what's visible
+      const bodyText = await page.evaluate(() => document.body?.innerText?.slice(0, 500) || "EMPTY");
+      console.error("[Screenshot] Current page text: " + bodyText);
+      const currentUrl = page.url();
+      console.error("[Screenshot] Current URL: " + currentUrl);
+
+      // Recovery attempt: try to skip onboarding if we're stuck there
+      const skipBtns = await page.$$("button");
+      for (const btn of skipBtns) {
+        const text = await btn.textContent().catch(() => "");
+        if (text.includes("Get Started") || text.includes("Skip") || text.includes("Continue")) {
+          console.error("[Screenshot] Found skip button: " + text + " — clicking...");
+          await btn.click();
+          await page.waitForTimeout(1500);
+          break;
         }
+      }
+
+      // Force localStorage again and reload
+      await page.evaluate((token) => {
+        localStorage.setItem("attair_token", token);
+        localStorage.setItem("attair_interests_picked", "1");
+        localStorage.setItem("attair_notif_prompted", "1");
+        localStorage.setItem("attair_pref_sheet_shown", "1");
+      }, mockToken);
+      await page.goto(VITE_URL + "/?tab=twins", { waitUntil: "networkidle", timeout: 20000 });
+      await page.waitForTimeout(2000);
+
+      try {
+        await page.waitForSelector(".tb", { timeout: 10000 });
+        console.error("[Screenshot] Tab bar found after recovery");
+      } catch {
+        console.error("[Screenshot] FATAL: Tab bar never appeared. Dumping page HTML...");
+        const html = await page.evaluate(() => document.documentElement.outerHTML.slice(0, 2000));
+        console.error("[Screenshot] HTML snapshot: " + html);
+        // Take debug screenshots anyway
+        await snap("home");
+        await snap("scan");
+        await snap("profile");
+        await browser.close();
+        console.log(JSON.stringify(paths));
+        return;
       }
     }
 
@@ -921,24 +979,40 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
     const twinsTabActive = await page.$('.feed-tab.active:has-text("Twins")');
     if (!twinsTabActive) {
       console.error("[Screenshot] Twins tab not auto-activated, clicking manually...");
-      // First ensure we're on Discover tab
+      // First ensure we're on Discover tab (search tab internally)
       try {
-        await page.click('button[aria-label="Discover"]', { timeout: 3000 });
-      } catch {
-        await page.evaluate(() => {
-          const btns = document.querySelectorAll('.tb button');
-          for (const b of btns) { if (b.textContent.includes('Discover')) { b.click(); break; } }
-        });
+        const discoverBtn = await page.$('button[aria-label="Discover"]');
+        if (discoverBtn) {
+          await discoverBtn.click();
+          console.error("[Screenshot] Clicked Discover tab via aria-label");
+        } else {
+          // Fallback: find by text content
+          await page.evaluate(() => {
+            const btns = document.querySelectorAll('.tb button');
+            for (const b of btns) { if (b.textContent.includes('Discover') || b.getAttribute('aria-label') === 'Discover') { b.click(); break; } }
+          });
+          console.error("[Screenshot] Clicked Discover tab via text search");
+        }
+      } catch (e) {
+        console.error("[Screenshot] Failed to click Discover: " + e.message);
       }
       await page.waitForTimeout(800);
+
       // Then click Twins sub-tab
       try {
-        await page.click('.feed-tab:has-text("Twins")', { timeout: 3000 });
-      } catch {
-        await page.evaluate(() => {
-          const btns = document.querySelectorAll('button');
-          for (const b of btns) { if (b.textContent.trim().includes('Twins')) { b.click(); break; } }
-        });
+        const twinsBtn = await page.$('.feed-tab:has-text("Twins")');
+        if (twinsBtn) {
+          await twinsBtn.click();
+          console.error("[Screenshot] Clicked Twins sub-tab");
+        } else {
+          await page.evaluate(() => {
+            const btns = document.querySelectorAll('.feed-tab, button');
+            for (const b of btns) { if (b.textContent.trim() === 'Twins') { b.click(); break; } }
+          });
+          console.error("[Screenshot] Clicked Twins sub-tab via text search");
+        }
+      } catch (e) {
+        console.error("[Screenshot] Failed to click Twins sub-tab: " + e.message);
       }
     } else {
       console.error("[Screenshot] Twins tab already active from deep link");
@@ -947,10 +1021,17 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
     // Wait for the featured twin card to appear — confirms twins data rendered from mock API
     console.error("[Screenshot] Waiting for twins grid to render (.style-twin-featured)...");
     try {
-      await page.waitForSelector('.style-twin-featured', { timeout: 8000 });
+      await page.waitForSelector('.style-twin-featured', { timeout: 10000 });
       console.error("[Screenshot] Twins featured card found — twins UI is rendered!");
     } catch {
-      console.error("[Screenshot] Featured twin card NOT found after 8s, waiting extra...");
+      console.error("[Screenshot] Featured twin card NOT found after 10s...");
+      // Debug: check what's visible
+      const visibleClasses = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('[class*=style-twin]')).map(el => el.className).join(', ');
+      });
+      console.error("[Screenshot] Style twin elements found: " + (visibleClasses || "NONE"));
+      const visibleText = await page.evaluate(() => document.body?.innerText?.slice(0, 500) || "EMPTY");
+      console.error("[Screenshot] Visible text: " + visibleText);
       await page.waitForTimeout(3000);
     }
 
