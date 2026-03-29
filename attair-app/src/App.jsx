@@ -4466,7 +4466,7 @@ export default function App() {
               setHistory(prev => prev.map(s => s.id === scan.id ? { ...s, visibility: "public" } : s));
               setSharePublicToast(true);
               setTimeout(() => setSharePublicToast(false), 2500);
-              const shareUrl = `${window.location.origin}/scan/${scan.id}`;
+              const shareUrl = `${API_BASE}/share/${scan.id}`;
               if (navigator.share) {
                 try { await navigator.share({ title: scan.scan_name || "ATTAIR Scan", url: shareUrl }); } catch {}
               } else {
@@ -5702,7 +5702,7 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
               {/* Copy Link */}
               <button onClick={async () => {
-                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                const shareUrl = `${API_BASE}/share/${scanId}`;
                 try {
                   await navigator.clipboard.writeText(shareUrl);
                   setShareLinkCopied(true);
@@ -5718,7 +5718,7 @@ export default function App() {
 
               {/* Text / Native Share */}
               <button onClick={async () => {
-                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                const shareUrl = `${API_BASE}/share/${scanId}`;
                 const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
                 if (navigator.share) {
                   try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
@@ -5735,7 +5735,7 @@ export default function App() {
 
               {/* Instagram */}
               <button onClick={async () => {
-                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                const shareUrl = `${API_BASE}/share/${scanId}`;
                 if (navigator.share) {
                   try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "instagram" }, scanId, "scan"); } catch {}
                 } else {
@@ -5751,7 +5751,7 @@ export default function App() {
 
               {/* TikTok */}
               <button onClick={async () => {
-                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                const shareUrl = `${API_BASE}/share/${scanId}`;
                 if (navigator.share) {
                   try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "tiktok" }, scanId, "scan"); } catch {}
                 } else {
@@ -5770,7 +5770,7 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
               {/* Snapchat */}
               <button onClick={async () => {
-                const shareUrl = `${window.location.origin}/scan/${scanId}`;
+                const shareUrl = `${API_BASE}/share/${scanId}`;
                 if (navigator.share) {
                   try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "snapchat" }, scanId, "scan"); } catch {}
                 } else {

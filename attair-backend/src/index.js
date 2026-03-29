@@ -164,6 +164,78 @@ app.get("/api/stats", async (req, res) => {
   }
 });
 
+// ─── Share link with OG meta (crawlers + redirect) ─────────
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://attaire.app";
+
+app.get("/share/:scanId", async (req, res) => {
+  const { scanId } = req.params;
+
+  // Validate UUID
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(scanId)) {
+    return res.redirect(FRONTEND_URL);
+  }
+
+  try {
+    const { data: scan } = await supabase
+      .from("scans")
+      .select("id, image_url, summary, items, user_id, visibility")
+      .eq("id", scanId)
+      .eq("visibility", "public")
+      .single();
+
+    if (!scan) return res.redirect(`${FRONTEND_URL}/scan/${scanId}`);
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", scan.user_id)
+      .single();
+
+    const userName = profile?.display_name || "Someone";
+    const itemCount = Array.isArray(scan.items) ? scan.items.length : 0;
+    const title = `${userName}'s outfit on ATTAIRE`;
+    const description = scan.summary || `${itemCount} items identified — find where to buy them`;
+    const imageUrl = scan.image_url || "";
+    const canonicalUrl = `${FRONTEND_URL}/scan/${scanId}`;
+
+    // Escape HTML in dynamic values
+    const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${esc(title)}</title>
+  <meta name="description" content="${esc(description)}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="${esc(title)}">
+  <meta property="og:description" content="${esc(description)}">
+  <meta property="og:image" content="${esc(imageUrl)}">
+  <meta property="og:url" content="${esc(canonicalUrl)}">
+  <meta property="og:site_name" content="ATTAIRE">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${esc(title)}">
+  <meta name="twitter:description" content="${esc(description)}">
+  <meta name="twitter:image" content="${esc(imageUrl)}">
+  <meta http-equiv="refresh" content="0;url=${esc(canonicalUrl)}">
+  <style>body{font-family:system-ui;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}a{color:#C9A96E}</style>
+</head>
+<body>
+  <div style="text-align:center;padding:20px">
+    <p>Redirecting to ATTAIRE...</p>
+    <a href="${esc(canonicalUrl)}">Open outfit</a>
+  </div>
+  <script>window.location.replace(${JSON.stringify(canonicalUrl)});</script>
+</body>
+</html>`);
+  } catch (err) {
+    console.error("[SHARE]", err.message);
+    res.redirect(`${FRONTEND_URL}/scan/${scanId}`);
+  }
+});
+
 // Health check
 app.get("/", (req, res) => {
   res.json({
