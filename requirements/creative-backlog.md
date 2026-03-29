@@ -124,6 +124,51 @@
 **Effort:** L
 **Summary:** Weekly AI-verified outfit challenges with voting + winner badges. Needs critical mass of users.
 
+## Proposed — Creative Run 2026-03-25 (Pending Jules Approval)
+
+### Budget Dupe Finder — "Find the $38 bag that looks like the $1,200 one"
+**PM Verdict:** BUILD NEXT — Highest viral potential of any feature. Dupes are TikTok gold.
+**Effort:** S-M (1-2 agents)
+**Summary:** When AI detects a luxury item ($200+), show a "Find the Dupe" button. Triggers specialized search for visually similar items at 80% less. Results shown in side-by-side comparison card. Shareable "Dupe Card" image for TikTok/Instagram with ATTAIR watermark. Dupe Feed section on trending tab.
+**Revenue:** Fast-fashion dupe purchases ($20-80) have higher affiliate conversion than luxury items. Each share card drives organic installs.
+**Risk:** Avoid using brand trademarks in search queries. Call it "Similar Look" in UI, let users say "dupe" in shares.
+
+### Hanger Test — Daily Outfit Verdict Habit
+**PM Verdict:** BUILD NEXT — Strongest daily retention mechanic possible. Tiny effort.
+**Effort:** S (1 agent)
+**Summary:** Daily push notification at 8am with trending outfit. "Would you wear this?" — one-tap verdict. Extends scan streak. After 7 days: Style Insight from Claude. After 30 days: Taste Badge on profile. Full-screen verdict card reuses existing verdict buttons.
+**Revenue:** Daily session = daily ad impression for free. Style Insights gated behind Pro for engagement paywall.
+**Risk:** Needs push notification infrastructure. Rich notifications need iOS entitlements.
+
+### Style Twins — Find Your Fashion Doppelganger
+**PM Verdict:** QUEUE — Clever use of existing Style DNA data. Great retention.
+**Effort:** M (1-2 agents)
+**Summary:** Compute Euclidean distance between Style DNA scores. Surface 5-10 "Style Twins" on Discover tab. Weekly notification: "3 new style twins discovered." Shared saves trigger: "Your Style Twin also saved this."
+**Revenue:** Retention mechanic + social flywheel acceleration.
+**Risk:** Needs 50+ users with Style DNA before launching. Privacy opt-in required.
+
+### Outfit of the Week — AI Editorial That Runs on Autopilot
+**PM Verdict:** QUEUE — Low effort, high retention. Uses existing AI content infra.
+**Effort:** S-M (1 agent)
+**Summary:** Monday cron picks top 10 trending scans. Claude writes editorial caption. Pinned "This Week's Look" card on Feed. Pro users get Sunday "Weekly Style Report" push with 3 personalized looks.
+**Revenue:** Monday habit loop. Pro benefit: exclusive Weekly Style Report.
+
+### Shop My Feed — Shoppable User Storefronts
+**PM Verdict:** LATER — Strong monetization but needs social graph maturity.
+**Effort:** M (2 agents)
+**Summary:** Pro users enable "Shop My Style" on profile. Each public scan gets "Shop This Look" with affiliate links. Vanity URL: attair.app/@username. Revenue split for top creators (future).
+**Revenue:** Every public profile becomes an affiliate distribution channel. SEO surface area.
+
+### "Spotted This" Share Extension
+**PM Verdict:** LATER — Highest viral potential but needs native app (Capacitor).
+**Effort:** M+ (needs native setup)
+**Summary:** iOS Share Sheet / Android Intent handler. Share any image from Instagram/TikTok directly to ATTAIR. Compact modal shows results without leaving source app.
+
+### Budget Lock — Real-Time Outfit Budget Guard
+**PM Verdict:** LATER — Good UX but less viral than other options.
+**Effort:** M (2 agents)
+**Summary:** "I want to spend $____ on this outfit" input. Running total with progress bar. Auto-adjusts tier suggestions. "Mix and Match" optimizer. Shareable "Budget Build" links.
+
 ## Priority 2 — Later Runs
 
 ### Style DNA Feed
