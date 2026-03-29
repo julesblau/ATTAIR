@@ -1,7 +1,6 @@
 # Creative Backlog — Approved Ideas
 
-> Ideas proposed by the creative agent, filtered by PM, pending Jules approval.
-> The agent army implements these alongside today.md requirements.
+> Feature backlog for ATTAIRE. Discord bot pulls from here by priority.
 > Remove items after they're built.
 
 ## CRITICAL — Build This Run (Jules priority update 2026-03-28)
@@ -23,7 +22,7 @@
 **Effort:** S (1 agent)
 
 ### Overnight / Autonomous Mode
-**Status:** DONE (Run 5, 2026-03-28) — --overnight flag on run.js
+**Status:** DONE (Run 5, 2026-03-28) — autonomous mode implemented
 **Effort:** S (1 agent)
 
 ## HIGH
@@ -33,13 +32,17 @@
 **Effort:** S
 **Summary:** Each agent commits after completing each sub-task rather than batching at the end. Prevents losing work on process death.
 
+### Migrate Discord Bot to Hosted Environment
+**Status:** HIGH — Queued
+**Effort:** M
+**Summary:** Move the Discord bot off Jules' laptop to a hosted environment (Railway, VPS, or similar). Currently requires laptop to stay on and awake. Should run 24/7 without depending on personal hardware.
+**Added:** 2026-03-29 via Discord
+
 ## MEDIUM
 
 ### Social Proof Signals on Feed
-**Status:** MEDIUM — Approved by Jules
+**Status:** DONE (Run 5, 2026-03-28)
 **Effort:** S (1 agent)
-**Summary:** Add "Saved by N people" pills and trending badges to feed cards. Backend adds save_count subquery to feed endpoint.
-**Why:** Social proof is the most powerful conversion mechanism.
 
 ### Process Keep-Alive Pings
 **Status:** MEDIUM
@@ -85,24 +88,20 @@
 ## Approved — Creative Run 5 Proposals (2026-03-28)
 
 ### Retailer Spotlight
-**Status:** Approved — backlogged
+**Status:** DONE (Run 5, 2026-03-28)
 **Effort:** S
-**Summary:** Replace placeholder interstitial ad with real retailer branding + affiliate CTA. Highest revenue/effort ratio, unblocks brand deals.
 
 ### Dupe Alert
-**Status:** Approved — backlogged
+**Status:** DONE (Run 5, 2026-03-28)
 **Effort:** S
-**Summary:** "Dupe found — $47 at Zara" pill on results when budget tier is 40%+ cheaper. Viral, frontend-only, uses existing tier data.
 
 ### Trending Feed
-**Status:** Approved — backlogged
+**Status:** DONE (Run 5, 2026-03-28)
 **Effort:** M
-**Summary:** Add trending score (saves × recency) + "Trending" tab to Home feed. Fixes empty state for new users.
 
 ### Interactive Share Link
-**Status:** Approved — backlogged
+**Status:** DONE (Run 5, 2026-03-28)
 **Effort:** M
-**Summary:** Shareable URL with OG meta + styled landing page per scan. Viral acquisition loop.
 
 ### Style Match Score
 **Status:** Approved — backlogged
@@ -212,6 +211,17 @@
 - Budget Tracker + Tier Mixer
 - Real Product Images in Pairings
 - Smart Re-Search / Alt-Search Button
+
+### Run 6 (2026-03-29)
+- VAPID keys generated and set on Railway (push notifications enabled)
+- scan-images bucket verified (exists, public)
+- style_challenges table + RPCs created and verified (endpoints working)
+- CRON_SECRET set on Railway (AI content endpoints unlocked)
+- NODE_ENV + FRONTEND_URL set on Railway
+- Seeded 119 AI users with ~1009 diverse fashion scans, 624 saved items
+- Gender-diverse content: 56 female / 44 male AI users with 15+ style archetypes
+- Style DNA 400 error diagnosed: depleted Anthropic API credits (code handles gracefully)
+- Backlog cleanup: marked 5 completed items as DONE
 
 ### Run 5 (2026-03-28)
 - ATTAIRE rename across codebase
