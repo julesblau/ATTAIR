@@ -219,7 +219,7 @@ export async function suggestPairings(identifiedItems, gender, budget) {
  * @param {string} occasion - Optional occasion context
  * @returns {Promise<object[]>} candidates with added `ai_score` (0-100) and `ai_reason` fields
  */
-export async function rerankCandidates(item, candidates, occasion = null) {
+export async function rerankCandidates(item, candidates, occasion = null, userContext = null) {
   if (!candidates.length) return [];
 
   const controller = new AbortController();
@@ -231,6 +231,40 @@ export async function rerankCandidates(item, candidates, occasion = null) {
     brand: (c.brand || c.source || "").slice(0, 40),
     price: c.price || "unknown",
   }));
+
+  // Build user preference context block if available
+  let userPrefBlock = "";
+  if (userContext) {
+    const parts = [];
+    if (userContext.budgetMin != null || userContext.budgetMax != null) {
+      const range = userContext.budgetMin && userContext.budgetMax
+        ? `$${userContext.budgetMin}–$${userContext.budgetMax}`
+        : userContext.budgetMax ? `up to $${userContext.budgetMax}` : `$${userContext.budgetMin}+`;
+      parts.push(`Budget: ${range}`);
+    }
+    if (userContext.likedBrands?.length) {
+      parts.push(`Brands they love: ${userContext.likedBrands.slice(0, 8).join(", ")}`);
+    }
+    if (userContext.avoidedBrands?.length) {
+      parts.push(`Brands they avoid: ${userContext.avoidedBrands.slice(0, 5).join(", ")}`);
+    }
+    if (userContext.preferredCategories?.length) {
+      parts.push(`Preferred categories: ${userContext.preferredCategories.slice(0, 5).join(", ")}`);
+    }
+    if (userContext.positiveColors?.length) {
+      parts.push(`Favorite colors: ${userContext.positiveColors.slice(0, 5).join(", ")}`);
+    }
+    if (userContext.negativeColors?.length) {
+      parts.push(`Colors they dislike: ${userContext.negativeColors.slice(0, 5).join(", ")}`);
+    }
+    if (userContext.styleKeywords?.length) {
+      parts.push(`Style vibe: ${userContext.styleKeywords.slice(0, 6).join(", ")}`);
+    }
+    if (parts.length) {
+      userPrefBlock = `\nUSER PREFERENCES (from their history — use this to break ties and boost personalized matches):
+${parts.map(p => `- ${p}`).join("\n")}`;
+    }
+  }
 
   const prompt = `You are a fashion stylist evaluating product search results. Rate how well each candidate matches the target item.
 
@@ -244,6 +278,7 @@ TARGET ITEM:
 - Style vibe: ${(item.style_keywords || []).join(", ") || "not specified"}
 - Construction: ${item.construction_details || "not specified"}
 ${occasion ? `- Occasion: ${occasion}` : ""}
+${userPrefBlock}
 
 CANDIDATES:
 ${candidateList.map(c => `[${c.idx}] "${c.title}" by ${c.brand} — ${c.price}`).join("\n")}
@@ -256,6 +291,7 @@ For each candidate, score 0-100 on how well it matches the target item:
 - 0-29: Poor match (wrong item, wrong style, clearly not what the user is looking for)
 
 Consider: brand tier match, material quality match, style/aesthetic match, silhouette match, and color match. A $15 fast-fashion dupe of a $500 designer item should score 30-50 (right look, wrong tier). A same-tier same-vibe alternative should score 70+.
+${userPrefBlock ? "\nPERSONALIZATION: When two candidates score similarly on item match, boost the one that aligns with the user's brand/color/style preferences. A candidate from an avoided brand should lose 5-10 points. A candidate in a favorite color or from a loved brand gains 5-10 points. Budget fit matters — products near the middle of their budget range are ideal." : ""}
 
 IMPORTANT: You MUST return a score for EVERY candidate idx listed above. Do not skip any.
 

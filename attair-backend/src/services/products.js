@@ -2097,7 +2097,18 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
 
       // Send up to 15 candidates to Claude for re-ranking (cost control)
       const toRerank = allProducts.slice(0, 15);
-      const reranked = await rerankCandidates(item, toRerank, occasion);
+      // Build user context for personalized re-ranking
+      const userContext = preferenceProfile ? {
+        budgetMin: budgetMin,
+        budgetMax: budgetMax,
+        likedBrands: preferenceProfile.liked_brands || [],
+        avoidedBrands: preferenceProfile.avoided_brands || [],
+        preferredCategories: preferenceProfile.preferred_categories || [],
+        positiveColors: preferenceProfile.color_preferences?.positive || [],
+        negativeColors: preferenceProfile.color_preferences?.negative || [],
+        styleKeywords: preferenceProfile.style_keywords || [],
+      } : null;
+      const reranked = await rerankCandidates(item, toRerank, occasion, userContext);
 
       // Build a map of URL → ai_score for re-sorting within tiers
       const aiScoreMap = new Map();
