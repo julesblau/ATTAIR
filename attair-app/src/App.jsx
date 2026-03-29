@@ -5177,7 +5177,7 @@ export default function App() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <span className="tab-l">Discover</span>
           </button>
-          <button className="tab-scan" onClick={() => { track("tab_switched", { tab: "scan" }); setTab("scan"); setShowUserSearch(false); }} aria-label="Scan outfit">
+          <button className="tab-scan" onClick={() => { track("tab_switched", { tab: "scan" }); if (tab === "scan" && phase !== "idle") { setPhase("idle"); setImg(null); setResults(null); setError(null); setScanId(null); setPickedItems(new Set()); setSelIdx(null); setExpandedItems(new Set()); } setTab("scan"); setShowUserSearch(false); }} aria-label="Scan outfit">
             <div className="tab-scan-icon">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </div>
