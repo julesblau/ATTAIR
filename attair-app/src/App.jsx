@@ -4936,6 +4936,74 @@ export default function App() {
                   </div>
                 )}
 
+                {/* ── My Outfits: saved items grouped by scan ── */}
+                {(() => {
+                  // Group saved items by scan_id
+                  const outfitMap = new Map();
+                  saved.forEach(s => {
+                    if (!s.scan_id) return;
+                    if (!outfitMap.has(s.scan_id)) outfitMap.set(s.scan_id, []);
+                    outfitMap.get(s.scan_id).push(s);
+                  });
+                  // Match with scan history for item counts
+                  const outfits = [];
+                  outfitMap.forEach((savedItems, scanId) => {
+                    const scan = history.find(h => h.id === scanId);
+                    const totalItems = scan?.items?.length || savedItems.length;
+                    outfits.push({
+                      scanId,
+                      scanName: scan?.scan_name || scan?.summary || "Outfit",
+                      scanImg: scan?.image_url || scan?.image_thumbnail,
+                      savedItems,
+                      totalItems,
+                      progress: Math.min(1, savedItems.length / Math.max(1, totalItems)),
+                    });
+                  });
+                  outfits.sort((a, b) => b.savedItems.length - a.savedItems.length);
+
+                  if (outfits.length === 0) return null;
+                  return (
+                    <div style={{ padding: "12px 0 0" }}>
+                      <div style={{ padding: "0 16px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase" }}>My Outfits</span>
+                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{outfits.length} outfit{outfits.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      <div className="scroll-x" style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 16px 12px", scrollSnapType: "x mandatory", scrollbarWidth: "none" }}>
+                        {outfits.map(o => {
+                          const pct = Math.round(o.progress * 100);
+                          const radius = 20, stroke = 3, circumference = 2 * Math.PI * radius;
+                          const dashOffset = circumference * (1 - o.progress);
+                          const allUrls = o.savedItems.map(s => (s.item_data || s).url || (s.tier_product || {}).url).filter(Boolean);
+                          return (
+                            <div key={o.scanId} className="card-press" style={{ flexShrink: 0, width: 160, scrollSnapAlign: "start", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+                              <div style={{ position: "relative", height: 100, background: "var(--bg-input)" }}>
+                                {o.scanImg && <img src={o.scanImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                                {/* Progress ring overlay */}
+                                <div style={{ position: "absolute", bottom: -18, right: 8, width: 46, height: 46, background: "var(--bg-card)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--bg-card)" }}>
+                                  <svg width="46" height="46" viewBox="0 0 46 46">
+                                    <circle cx="23" cy="23" r={radius} fill="none" stroke="var(--border)" strokeWidth={stroke} />
+                                    <circle cx="23" cy="23" r={radius} fill="none" stroke={pct === 100 ? "#5AC8A0" : "var(--accent)"} strokeWidth={stroke} strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" transform="rotate(-90 23 23)" style={{ transition: "stroke-dashoffset .4s ease" }} />
+                                  </svg>
+                                  <span style={{ position: "absolute", fontSize: 10, fontWeight: 700, color: pct === 100 ? "#5AC8A0" : "var(--accent)" }}>{pct}%</span>
+                                </div>
+                              </div>
+                              <div style={{ padding: "22px 10px 10px" }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.scanName}</div>
+                                <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 2 }}>{o.savedItems.length}/{o.totalItems} items saved</div>
+                                {allUrls.length > 0 && (
+                                  <button onClick={(e) => { e.stopPropagation(); allUrls.forEach(url => window.open(url, "_blank")); track("buy_all_clicked", { scan_id: o.scanId, count: allUrls.length }); }} style={{ width: "100%", marginTop: 8, padding: "7px 0", background: "var(--accent)", border: "none", borderRadius: 8, fontSize: 11, fontWeight: 700, color: "var(--text-inverse)", cursor: "pointer", fontFamily: "var(--font-sans)" }}>
+                                    Buy All ({allUrls.length})
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Content */}
                 {filteredScans.length === 0 ? (
                   <div style={{ padding: "80px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
