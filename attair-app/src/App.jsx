@@ -8230,7 +8230,12 @@ export default function App() {
                     document.body.removeChild(a);
                     track("reel_shared", { method: "download_fallback" }, scanId, "scan");
                   }
-                } catch (e) { console.error("Reel share failed:", e); }
+                } catch (e) {
+                  // User-cancel (AbortError) is not a real failure — silently ignore
+                  if (e?.name === "AbortError") return;
+                  console.error("Reel share failed:", e);
+                  setReelError("Sharing failed — try downloading the video instead.");
+                }
               }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                 Share
@@ -8245,7 +8250,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Reel error toast */}
+      {/* Reel error toast — auto-dismisses after 4s, or tap × to close */}
       {reelError && (
         <div style={{
           position: "fixed", bottom: 140, left: "50%", transform: "translateX(-50%)", zIndex: 10001,
@@ -8256,6 +8261,11 @@ export default function App() {
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           {reelError}
+          <button onClick={() => setReelError(null)} style={{
+            background: "none", border: "none", color: "#fff", cursor: "pointer",
+            padding: "0 0 0 4px", fontSize: 18, lineHeight: 1, fontWeight: 700,
+            opacity: 0.8, flexShrink: 0,
+          }} aria-label="Dismiss error">&times;</button>
         </div>
       )}
 

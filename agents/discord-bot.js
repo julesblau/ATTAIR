@@ -789,6 +789,99 @@ const ts = ${JSON.stringify(String(timestamp))};
       if (await profileBtn.isVisible().catch(() => false)) await profileBtn.click();
       await page.waitForTimeout(1000);
     }},
+    // Share sheet with Create Reel button
+    { name: "share-sheet", url: "http://localhost:5173/", action: async () => {
+      // Wait for any scan results to load
+      await page.waitForTimeout(2000);
+      // Try clicking the Share button to open the share sheet
+      const shareBtn = page.locator('button:has-text("Share Your Look"), button[aria-label="Share Your Look"]').first();
+      if (await shareBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await shareBtn.click();
+        await page.waitForTimeout(800);
+      }
+    }},
+    // Reel preview modal (inject via JS to show the modal in demo state)
+    { name: "reel-preview", url: "http://localhost:5173/", action: async () => {
+      await page.waitForTimeout(2000);
+      // Inject a synthetic reel preview modal into the DOM for screenshot
+      await page.evaluate(() => {
+        const existing = document.querySelector('.reel-preview-overlay');
+        if (existing) return; // already showing
+        const overlay = document.createElement('div');
+        overlay.className = 'reel-preview-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(20px)';
+        overlay.innerHTML = \`
+          <div class="reel-preview-container" style="width:min(340px,90vw);background:var(--bg-card,#1A1A1A);border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px">
+              <button style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:20;cursor:pointer">&times;</button>
+              <div style="font-size:16px;font-weight:700;color:#fff;font-family:var(--font-display)">Your Reel</div>
+              <div style="width:36px"></div>
+            </div>
+            <div style="position:relative;aspect-ratio:9/16;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;margin:0 16px;overflow:hidden;display:flex;align-items:center;justify-content:center">
+              <div style="text-align:center;color:rgba(255,255,255,0.4);font-size:14px">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.6)" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                <div style="margin-top:8px">5s Reel Preview</div>
+              </div>
+              <div style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);color:#C9A96E;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;backdrop-filter:blur(10px)">9:16</div>
+            </div>
+            <div style="display:flex;gap:12px;padding:20px 16px">
+              <button style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--accent,#C9A96E);color:#000;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Save Video
+              </button>
+              <button style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:14px;font-size:14px;font-weight:700;cursor:pointer">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                Share
+              </button>
+            </div>
+            <div style="text-align:center;padding:0 16px 20px;font-size:12px;color:rgba(255,255,255,0.35)">Optimized for TikTok, Reels & Shorts</div>
+          </div>
+        \`;
+        document.body.appendChild(overlay);
+      });
+      await page.waitForTimeout(500);
+    }},
+    // Pro upgrade modal (for free users tapping Create Reel)
+    { name: "pro-gate", url: "http://localhost:5173/", action: async () => {
+      await page.waitForTimeout(2000);
+      // Inject synthetic upgrade modal
+      await page.evaluate(() => {
+        const existing = document.querySelector('[data-screenshot-upgrade]');
+        if (existing) return;
+        const overlay = document.createElement('div');
+        overlay.setAttribute('data-screenshot-upgrade', '1');
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:10001;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)';
+        overlay.innerHTML = \`
+          <div style="width:100%;max-width:420px;background:var(--bg-card,#1A1A1A);border-radius:24px 24px 0 0;padding:32px 24px 40px;text-align:center;border-top:1px solid rgba(201,169,110,0.3)">
+            <div style="font-size:40px;margin-bottom:12px">👑</div>
+            <div style="font-size:20px;font-weight:800;color:#fff;font-family:var(--font-display);margin-bottom:8px">Upgrade to Pro</div>
+            <div style="font-size:14px;color:rgba(255,255,255,0.55);margin-bottom:24px;line-height:1.5">Create shareable video reels of your outfit scans. Export 9:16 videos optimized for TikTok, Reels & Shorts.</div>
+            <button style="width:100%;padding:16px;background:var(--accent,#C9A96E);color:#000;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:var(--font-display)">Upgrade — \\$4.99/mo</button>
+            <button style="width:100%;padding:14px;background:none;border:none;color:rgba(255,255,255,0.4);font-size:14px;cursor:pointer;margin-top:8px">Maybe later</button>
+          </div>
+        \`;
+        document.body.appendChild(overlay);
+      });
+      await page.waitForTimeout(500);
+    }},
+    // Error toast for reel generation failure
+    { name: "reel-error-toast", url: "http://localhost:5173/", action: async () => {
+      await page.waitForTimeout(2000);
+      await page.evaluate(() => {
+        const existing = document.querySelector('[data-screenshot-error]');
+        if (existing) return;
+        const toast = document.createElement('div');
+        toast.setAttribute('data-screenshot-error', '1');
+        toast.style.cssText = 'position:fixed;bottom:140px;left:50%;transform:translateX(-50%);z-index:10001;background:#FF5252;color:#fff;padding:12px 20px;border-radius:14px;font-weight:700;font-size:13px;box-shadow:0 4px 24px rgba(0,0,0,.4);display:flex;align-items:center;gap:8px;max-width:90vw;text-align:center';
+        toast.innerHTML = \`
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          Reel creation failed — your browser may not support video recording.
+          <button style="background:none;border:none;color:#fff;cursor:pointer;padding:0 0 0 4px;font-size:18px;line-height:1;font-weight:700;opacity:0.8">&times;</button>
+        \`;
+        document.body.appendChild(toast);
+      });
+      await page.waitForTimeout(500);
+    }},
   ];
 
   const paths = [];
