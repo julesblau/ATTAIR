@@ -4,23 +4,30 @@
  * ─────────────────────────────────────────────────────────────
  * Run: node discord-bot.js
  *
+ * Hosted deployment (Railway, VPS, etc.) — no Claude CLI dependency.
+ * Uses Anthropic SDK directly for chat + agentic tool-use loops for builds.
+ *
  * Features:
- *   - Opus-powered chat: brainstorm, plan, interview for features
- *   - Build→Judge→Fix loop: builds features to production quality
+ *   - Opus-powered chat via Anthropic API (no CLI needed)
+ *   - Build→Judge→Fix loop with agentic tool-use (read/write/bash)
  *   - Token-maximizing: finishes one task, pulls next from backlog
  *   - Backlog management with priority + sizing
  *   - Creative agent for generating feature ideas
  *   - Screenshot-based visual QA against reference apps
+ *   - Health check HTTP server for Railway/hosting platforms
+ *   - Cross-platform (Linux/macOS/Windows)
  */
 
 import { Client, GatewayIntentBits, Partials, EmbedBuilder } from "discord.js";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, createWriteStream, unlinkSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, createWriteStream, unlinkSync, statSync } from "fs";
 import { spawn, execSync } from "child_process";
 import { pipeline } from "stream/promises";
 import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { dirname, join, resolve, relative, isAbsolute } from "path";
 import { config } from "dotenv";
 import { randomUUID } from "crypto";
+import { createServer } from "http";
+import Anthropic from "@anthropic-ai/sdk";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, ".env") });
@@ -29,14 +36,45 @@ config({ path: join(__dirname, ".env") });
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHAT_CHANNEL_ID = process.env.DISCORD_CHAT_CHANNEL_ID;
 const LOGS_CHANNEL_ID = process.env.DISCORD_LOGS_CHANNEL_ID;
-const REPO_ROOT = join(__dirname, "..");
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const REPO_ROOT = process.env.REPO_ROOT || join(__dirname, "..");
 const BACKLOG_PATH = join(__dirname, "backlog.md");
-const CLAUDE_BIN = "claude"; // shell: true resolves from PATH on Windows
+const HEALTH_PORT = parseInt(process.env.HEALTH_PORT || process.env.PORT || "8081", 10);
+const IS_HOSTED = process.env.RAILWAY_ENVIRONMENT || process.env.RENDER || process.env.FLY_APP_NAME || process.env.HOSTED === "true";
+const GH_TOKEN = process.env.GH_TOKEN || "";
+const GH_REPO = process.env.GH_REPO || ""; // e.g. "username/ATTAIR"
 
 if (!DISCORD_TOKEN) {
-  console.error("Missing DISCORD_TOKEN in agents/.env");
+  console.error("Missing DISCORD_TOKEN in environment");
   process.exit(1);
 }
+if (!ANTHROPIC_API_KEY) {
+  console.error("Missing ANTHROPIC_API_KEY in environment");
+  process.exit(1);
+}
+
+// ─── Anthropic Client ────────────────────────────────────────────────────────
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+
+// ─── Health Check Server (for Railway / hosting platforms) ───────────────────
+const healthServer = createServer((req, res) => {
+  if (req.url === "/health" || req.url === "/") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      status: "ok",
+      bot: client.isReady() ? "connected" : "connecting",
+      uptime: Math.floor(process.uptime()),
+      activeTask: activeTaskLabel || null,
+      buildLoopRunning,
+    }));
+  } else {
+    res.writeHead(404);
+    res.end("Not found");
+  }
+});
+healthServer.listen(HEALTH_PORT, () => {
+  console.log(`Health check server listening on port ${HEALTH_PORT}`);
+});
 
 // ─── Discord Client ──────────────────────────────────────────────────────────
 const client = new Client({
@@ -49,7 +87,7 @@ const client = new Client({
 });
 
 // ─── State ───────────────────────────────────────────────────────────────────
-let activeProcess = null;           // current child process (build agent, creative agent, etc.)
+let activeProcess = null;           // current agent abort controller or child process
 let activeTaskLabel = null;         // what's currently running (for status)
 let conversationHistory = [];       // Claude conversation context
 let buildLoopRunning = false;       // is the build→judge→fix loop active?
@@ -64,7 +102,7 @@ RULES:
 - If he says something vague, ask ONE clarifying question.
 - You can push back, suggest things, and start conversations.
 - Format for mobile: short lines, no walls of text, use bullet points sparingly.
-- When Jules reports a bug or issue, INVESTIGATE IT YOURSELF. You have tools — read the code, check Railway logs (railway logs), hit endpoints (curl), read files. Do NOT ask Jules to check browser console or do debugging for you. You are the engineer.
+- When Jules reports a bug or issue, INVESTIGATE IT YOURSELF. You have tools — read the code, check Railway logs, hit endpoints (curl), read files. Do NOT ask Jules to check browser console or do debugging for you. You are the engineer.
 
 CONTEXT: React 19 + Vite, Node/Express on Railway, Supabase, Claude AI vision, SerpAPI, freemium model.
 Backlog lives at agents/backlog.md — markdown with priority sections and sizing.
@@ -73,7 +111,7 @@ DEPLOYMENT:
 - Frontend: Vercel at https://attair.vercel.app (React + Vite, env vars: VITE_API_BASE, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
 - Backend: Railway at https://attair-production.up.railway.app (Node/Express, port 8080)
 - Database: Supabase (project ref: cmlgqztjkrfipzknwnfm)
-- Use "railway logs" to check backend logs, "curl https://attair-production.up.railway.app/health" to check backend health
+- Use "curl https://attair-production.up.railway.app/health" to check backend health
 - Frontend code is in attair-app/, backend in attair-backend/
 
 HOW YOU WORK:
@@ -157,7 +195,281 @@ async function sendToChannel(channel, text) {
   }
 }
 
-// ─── Helper: Chat with Opus via Claude Code CLI ─────────────────────────────
+// ─── Helper: Execute shell command (cross-platform) ─────────────────────────
+function execCommand(cmd, { cwd = REPO_ROOT, timeout = 60000 } = {}) {
+  try {
+    return execSync(cmd, {
+      cwd,
+      encoding: "utf-8",
+      timeout,
+      shell: true,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    });
+  } catch (err) {
+    return err.stdout || err.stderr || err.message || "";
+  }
+}
+
+// ─── Helper: Spawn shell command (cross-platform, async) ────────────────────
+function spawnCommand(cmd, { cwd = REPO_ROOT } = {}) {
+  const isWindows = process.platform === "win32";
+  if (isWindows) {
+    return spawn("cmd.exe", ["/s", "/c", cmd], { stdio: ["ignore", "pipe", "pipe"], cwd, shell: false });
+  }
+  return spawn("sh", ["-c", cmd], { stdio: ["ignore", "pipe", "pipe"], cwd });
+}
+
+// ─── Agentic Tool Definitions ───────────────────────────────────────────────
+const AGENT_TOOLS = [
+  {
+    name: "read_file",
+    description: "Read a file from the repository. Returns file contents with line numbers.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Path relative to repo root (e.g. 'attair-backend/src/index.js')" },
+        offset: { type: "number", description: "Line number to start reading from (1-based)" },
+        limit: { type: "number", description: "Maximum number of lines to read" },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "write_file",
+    description: "Write content to a file (creates or overwrites).",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Path relative to repo root" },
+        content: { type: "string", description: "Full file content to write" },
+      },
+      required: ["path", "content"],
+    },
+  },
+  {
+    name: "edit_file",
+    description: "Replace a specific string in a file. old_string must be unique in the file.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Path relative to repo root" },
+        old_string: { type: "string", description: "The exact string to find and replace" },
+        new_string: { type: "string", description: "The replacement string" },
+      },
+      required: ["path", "old_string", "new_string"],
+    },
+  },
+  {
+    name: "list_files",
+    description: "List files matching a glob pattern in the repository.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Glob pattern (e.g. 'attair-backend/src/**/*.js')" },
+      },
+      required: ["pattern"],
+    },
+  },
+  {
+    name: "search_files",
+    description: "Search for a regex pattern across files. Returns matching lines with file paths.",
+    input_schema: {
+      type: "object",
+      properties: {
+        pattern: { type: "string", description: "Regex pattern to search for" },
+        path: { type: "string", description: "Directory or file to search in (relative to repo root)" },
+        glob: { type: "string", description: "File glob filter (e.g. '*.js')" },
+      },
+      required: ["pattern"],
+    },
+  },
+  {
+    name: "bash",
+    description: "Execute a shell command. Use for: git, npm, node, curl, etc. Commands run from repo root.",
+    input_schema: {
+      type: "object",
+      properties: {
+        command: { type: "string", description: "The shell command to execute" },
+        cwd: { type: "string", description: "Working directory (relative to repo root)" },
+        timeout: { type: "number", description: "Timeout in ms (default 120000)" },
+      },
+      required: ["command"],
+    },
+  },
+];
+
+// ─── Tool Executor ──────────────────────────────────────────────────────────
+function executeToolCall(name, input) {
+  try {
+    switch (name) {
+      case "read_file": {
+        const filePath = resolve(REPO_ROOT, input.path);
+        if (!existsSync(filePath)) return `Error: File not found: ${input.path}`;
+        const content = readFileSync(filePath, "utf-8");
+        const lines = content.split("\n");
+        const offset = (input.offset || 1) - 1;
+        const limit = input.limit || lines.length;
+        const slice = lines.slice(offset, offset + limit);
+        return slice.map((line, i) => `${offset + i + 1}\t${line}`).join("\n");
+      }
+
+      case "write_file": {
+        const filePath = resolve(REPO_ROOT, input.path);
+        const dir = dirname(filePath);
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        writeFileSync(filePath, input.content);
+        return `Written ${input.content.length} bytes to ${input.path}`;
+      }
+
+      case "edit_file": {
+        const filePath = resolve(REPO_ROOT, input.path);
+        if (!existsSync(filePath)) return `Error: File not found: ${input.path}`;
+        let content = readFileSync(filePath, "utf-8");
+        const occurrences = content.split(input.old_string).length - 1;
+        if (occurrences === 0) return `Error: old_string not found in ${input.path}`;
+        if (occurrences > 1) return `Error: old_string found ${occurrences} times in ${input.path} — must be unique. Provide more context.`;
+        content = content.replace(input.old_string, input.new_string);
+        writeFileSync(filePath, content);
+        return `Edited ${input.path} — replaced 1 occurrence`;
+      }
+
+      case "list_files": {
+        // Simple glob using find/dir command
+        const result = execCommand(
+          process.platform === "win32"
+            ? `dir /s /b "${input.pattern}" 2>nul`
+            : `find . -path "./${input.pattern}" -type f 2>/dev/null | head -100`,
+          { timeout: 10000 }
+        );
+        if (!result.trim()) {
+          // Fallback: use a node-based approach
+          const parts = input.pattern.split("/");
+          const dir = parts.slice(0, -1).join("/") || ".";
+          const fullDir = resolve(REPO_ROOT, dir);
+          if (!existsSync(fullDir)) return `No files found matching ${input.pattern}`;
+          try {
+            const files = readdirSync(fullDir, { recursive: true })
+              .slice(0, 100)
+              .map(f => join(dir, f));
+            return files.join("\n") || `No files found matching ${input.pattern}`;
+          } catch { return `No files found matching ${input.pattern}`; }
+        }
+        return result.trim();
+      }
+
+      case "search_files": {
+        const searchPath = input.path ? resolve(REPO_ROOT, input.path) : REPO_ROOT;
+        const globFlag = input.glob ? `--include="${input.glob}"` : "";
+        const cmd = process.platform === "win32"
+          ? `findstr /s /n /r "${input.pattern}" ${input.glob || "*.*"}`
+          : `grep -rn ${globFlag} -E "${input.pattern.replace(/"/g, '\\"')}" "${searchPath}" 2>/dev/null | head -50`;
+        const result = execCommand(cmd, { cwd: searchPath, timeout: 15000 });
+        return result.trim() || `No matches found for: ${input.pattern}`;
+      }
+
+      case "bash": {
+        const cwd = input.cwd ? resolve(REPO_ROOT, input.cwd) : REPO_ROOT;
+        const timeout = input.timeout || 120000;
+
+        // Safety: block dangerous commands
+        const cmd = input.command.trim();
+        const dangerous = ["rm -rf /", "mkfs", "dd if=", "> /dev/sd"];
+        if (dangerous.some(d => cmd.includes(d))) {
+          return "Error: Command blocked for safety reasons.";
+        }
+
+        try {
+          const result = execSync(cmd, {
+            cwd,
+            encoding: "utf-8",
+            timeout,
+            shell: true,
+            maxBuffer: 10 * 1024 * 1024, // 10MB
+            env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+          });
+          return result.trim() || "(no output)";
+        } catch (err) {
+          const output = [err.stdout, err.stderr, err.message].filter(Boolean).join("\n");
+          return `Exit code ${err.status || "unknown"}:\n${output.slice(0, 5000)}`;
+        }
+      }
+
+      default:
+        return `Unknown tool: ${name}`;
+    }
+  } catch (err) {
+    return `Error executing ${name}: ${err.message}`;
+  }
+}
+
+// ─── Agentic Loop: Run Claude with tools until complete ─────────────────────
+async function runAgentLoop(systemPrompt, userPrompt, { label = "agent", maxTurns = 200, model = "claude-sonnet-4-20250514", onLog, abortSignal } = {}) {
+  const messages = [{ role: "user", content: userPrompt }];
+  let turnCount = 0;
+  let finalText = "";
+
+  while (turnCount < maxTurns) {
+    if (abortSignal?.aborted) throw new Error("Agent aborted by user");
+    turnCount++;
+
+    if (onLog) onLog(`[${label}] Turn ${turnCount}...`);
+
+    let response;
+    try {
+      response = await anthropic.messages.create({
+        model,
+        max_tokens: 16000,
+        system: systemPrompt,
+        tools: AGENT_TOOLS,
+        messages,
+      });
+    } catch (err) {
+      console.error(`[${label}] API error on turn ${turnCount}:`, err.message);
+      if (err.status === 529 || err.status === 429) {
+        // Overloaded or rate limited — wait and retry
+        await new Promise(r => setTimeout(r, 5000));
+        continue;
+      }
+      throw err;
+    }
+
+    // Collect text blocks
+    const textBlocks = response.content.filter(b => b.type === "text").map(b => b.text);
+    if (textBlocks.length) {
+      finalText = textBlocks.join("\n");
+      if (onLog) onLog(`[${label}] ${finalText.slice(0, 500)}`);
+    }
+
+    // Check for tool use
+    const toolBlocks = response.content.filter(b => b.type === "tool_use");
+
+    if (toolBlocks.length === 0 || response.stop_reason === "end_turn") {
+      // Agent is done
+      break;
+    }
+
+    // Execute tools and continue
+    messages.push({ role: "assistant", content: response.content });
+
+    const toolResults = [];
+    for (const tool of toolBlocks) {
+      if (abortSignal?.aborted) throw new Error("Agent aborted by user");
+      console.log(`[${label}] Tool: ${tool.name}(${JSON.stringify(tool.input).slice(0, 100)})`);
+      const result = executeToolCall(tool.name, tool.input);
+      toolResults.push({
+        type: "tool_result",
+        tool_use_id: tool.id,
+        content: result.slice(0, 50000), // Cap tool results to avoid context overflow
+      });
+    }
+
+    messages.push({ role: "user", content: toolResults });
+  }
+
+  return finalText;
+}
+
+// ─── Helper: Chat with Claude via Anthropic API ─────────────────────────────
 async function chatWithOpus(userMessage) {
   conversationHistory.push({ role: "user", content: userMessage });
 
@@ -165,157 +477,89 @@ async function chatWithOpus(userMessage) {
     conversationHistory = conversationHistory.slice(-40);
   }
 
-  const context = conversationHistory.slice(0, -1).map(m =>
-    `${m.role === "user" ? "Jules" : "ATTAIRE"}: ${m.content}`
-  ).join("\n\n");
+  // Build messages array for the API
+  const messages = conversationHistory.map(m => ({
+    role: m.role,
+    content: m.content,
+  }));
 
-  // Write everything to system prompt file — Windows shell mangles -p args with spaces
-  const tmpDir = join(__dirname, ".tmp");
-  if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true });
-  const sysPromptFile = join(tmpDir, `chat-${randomUUID()}.txt`);
-  const fullSystemPrompt = [
-    SYSTEM_PROMPT,
-    context ? `\nCONVERSATION HISTORY (for context — respond to the LATEST message only):\n${context}` : "",
-    `\nLATEST MESSAGE FROM JULES (respond to THIS):\n${userMessage}`,
-  ].filter(Boolean).join("\n");
-  writeFileSync(sysPromptFile, fullSystemPrompt);
-
-  const reply = await new Promise((resolve, reject) => {
-    // Build command as a single string for cmd.exe to avoid arg splitting issues
-    const toolsList = [
-      "Read", "Write", "Edit", "Glob", "Grep",
-      "Bash(git *)", "Bash(npm *)", "Bash(node *)", "Bash(npx *)",
-      "Bash(cat *)", "Bash(ls *)", "Bash(wc *)", "Bash(head *)", "Bash(tail *)",
-      "Bash(railway *)", "Bash(curl *)",
-    ].join(" ");
-    const relPromptFile = "agents/.tmp/" + sysPromptFile.split(/[/\\]/).pop();
-    const cmd = `claude -p "Respond to Jules latest message. See system prompt for context." --system-prompt-file ${relPromptFile} --model opus --output-format text --dangerously-skip-permissions --allowedTools ${toolsList}`;
-
-    console.log("[chatWithOpus] spawning:", cmd.slice(0, 200) + "...");
-
-    const proc = spawn("cmd.exe", ["/s", "/c", cmd], {
-      stdio: ["ignore", "pipe", "pipe"],
-      cwd: REPO_ROOT,
-      env: { ...process.env, ANTHROPIC_API_KEY: "", GH_TOKEN: process.env.GH_TOKEN ?? "" },
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      messages,
+      tools: AGENT_TOOLS, // Give chat access to tools for investigating bugs
     });
 
-    let output = "";
-    let stderr = "";
-    proc.stdout.on("data", d => { output += d.toString(); });
-    proc.stderr.on("data", d => { stderr += d.toString(); console.error("[chatWithOpus stderr]", d.toString().slice(0, 200)); });
-    proc.on("close", (code) => {
-      console.log("[chatWithOpus] exited code:", code, "output length:", output.length);
-      try { unlinkSync(sysPromptFile); } catch {}
-      if (code !== 0 && !output.trim()) {
-        reject(new Error(stderr.trim() || `claude exited with code ${code}`));
-      } else {
-        resolve(output.trim());
-      }
-    });
-    proc.on("error", (err) => {
-      console.error("[chatWithOpus] spawn error:", err.message);
-      try { unlinkSync(sysPromptFile); } catch {}
-      reject(err);
-    });
-  });
+    // If Claude wants to use tools, run the agentic loop
+    const toolBlocks = response.content.filter(b => b.type === "tool_use");
+    let reply;
 
-  conversationHistory.push({ role: "assistant", content: reply });
-  return reply;
+    if (toolBlocks.length > 0) {
+      // Run a mini agent loop for tool-using chat (max 10 turns for investigation)
+      reply = await runAgentLoop(SYSTEM_PROMPT, userMessage, {
+        label: "chat-investigate",
+        maxTurns: 10,
+        model: "claude-sonnet-4-20250514",
+      });
+    } else {
+      // Simple text response
+      reply = response.content
+        .filter(b => b.type === "text")
+        .map(b => b.text)
+        .join("\n");
+    }
+
+    if (!reply) reply = "(no response)";
+
+    conversationHistory.push({ role: "assistant", content: reply });
+    return reply;
+  } catch (err) {
+    console.error("[chatWithOpus] API error:", err.message);
+    throw err;
+  }
 }
 
 // ─── Helper: Run a Claude agent with a prompt, return its output ────────────
-function runAgent(prompt, { label = "agent", onLog } = {}) {
-  return new Promise((resolve, reject) => {
-    // Write prompt to temp file for long build prompts
-    const tmpDir = join(__dirname, ".tmp");
-    if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true });
-    const agentId = randomUUID();
-    const agentPromptFile = join(tmpDir, `agent-${agentId}.txt`);
-    writeFileSync(agentPromptFile, prompt);
-    const relPromptFile = "agents/.tmp/agent-" + agentId + ".txt";
+async function runAgent(prompt, { label = "agent", onLog } = {}) {
+  const abortController = new AbortController();
+  activeProcess = abortController; // Store abort controller so STOP can cancel it
+  activeTaskLabel = label;
 
-    const toolsList = [
-      "Read", "Write", "Edit", "Glob", "Grep",
-      "Bash(git *)", "Bash(npm *)", "Bash(node *)", "Bash(npx *)",
-      "Bash(cat *)", "Bash(ls *)", "Bash(wc *)", "Bash(head *)", "Bash(tail *)",
-      "Bash(mkdir *)", "Bash(cp *)", "Bash(mv *)",
-      "Bash(railway *)", "Bash(curl *)", "Bash(npx supabase *)",
-      "Bash(cd *)", "Bash(pwd)",
-    ].join(" ");
-    const cmd = `claude -p "Follow the instructions in the system prompt file." --system-prompt-file ${relPromptFile} --model opus --output-format text --dangerously-skip-permissions --max-turns 200 --allowedTools ${toolsList}`;
+  try {
+    const systemPrompt = `You are a senior full-stack engineer working on the ATTAIRE codebase.
+You have access to tools to read files, write files, edit files, search code, and run shell commands.
+The repository root is: ${REPO_ROOT}
+Use the tools to complete the task described in the user message.
+Work methodically: read relevant files first, plan your changes, implement them, then verify.
+When running shell commands, the working directory is the repo root unless you specify cwd.`;
 
-    console.log("[runAgent] spawning:", label, cmd.slice(0, 150) + "...");
-
-    const proc = spawn("cmd.exe", ["/s", "/c", cmd], {
-      stdio: ["ignore", "pipe", "pipe"],
-      cwd: REPO_ROOT,
-      env: { ...process.env, ANTHROPIC_API_KEY: "" },
+    const result = await runAgentLoop(systemPrompt, prompt, {
+      label,
+      maxTurns: 200,
+      model: "claude-sonnet-4-20250514",
+      onLog,
+      abortSignal: abortController.signal,
     });
 
-    activeProcess = proc;
-    activeTaskLabel = label;
-
-    let output = "";
-    let logBuffer = "";
-
-    proc.stdout.on("data", (d) => {
-      const text = d.toString();
-      output += text;
-      logBuffer += text;
-      process.stdout.write(text);
-    });
-
-    proc.stderr.on("data", (d) => {
-      const text = d.toString();
-      logBuffer += text;
-      process.stderr.write(text);
-    });
-
-    // Flush logs periodically
-    const logInterval = setInterval(() => {
-      if (logBuffer.trim() && onLog) {
-        onLog(logBuffer.slice(0, 1900));
-        logBuffer = logBuffer.length > 1900 ? logBuffer.slice(1900) : "";
-      }
-    }, 5000);
-
-    proc.on("close", (code) => {
-      clearInterval(logInterval);
-      if (logBuffer.trim() && onLog) onLog(logBuffer.slice(0, 1900));
-      try { unlinkSync(agentPromptFile); } catch {}
-      activeProcess = null;
-      activeTaskLabel = null;
-      if (code !== 0 && !output.trim()) {
-        reject(new Error(`${label} exited with code ${code}`));
-      } else {
-        resolve(output.trim());
-      }
-    });
-
-    proc.on("error", (err) => {
-      clearInterval(logInterval);
-      try { unlinkSync(agentPromptFile); } catch {}
-      activeProcess = null;
-      activeTaskLabel = null;
-      reject(err);
-    });
-  });
+    return result;
+  } finally {
+    activeProcess = null;
+    activeTaskLabel = null;
+  }
 }
 
 // ─── Safety Commit: catch orphaned changes after agent exit ────────────────
 function safetyCommit(label = "agent") {
   try {
-    const status = execSync("git status --porcelain", { cwd: REPO_ROOT, encoding: "utf-8", timeout: 10000 }).trim();
+    const status = execCommand("git status --porcelain", { timeout: 10000 }).trim();
     if (!status) return false; // nothing to commit
 
     console.log(`[safetyCommit] Found uncommitted changes after ${label}:\n${status.slice(0, 500)}`);
-    execSync("git add -A", { cwd: REPO_ROOT, timeout: 10000 });
+    execCommand("git add -A", { timeout: 10000 });
     const shortLabel = label.replace(/^build:/, "").slice(0, 50);
-    execSync(`git commit -m "wip: safety commit — ${shortLabel} (agent exited with uncommitted work)"`, {
-      cwd: REPO_ROOT,
-      encoding: "utf-8",
-      timeout: 15000,
-    });
+    execCommand(`git commit -m "wip: safety commit — ${shortLabel} (agent exited with uncommitted work)"`, { timeout: 15000 });
     console.log("[safetyCommit] Committed orphaned changes.");
     return true;
   } catch (err) {
@@ -412,6 +656,7 @@ Do NOT change function signatures in attair-backend/src/services/products.js.`;
         cwd: join(REPO_ROOT, "attair-backend"),
         encoding: "utf-8",
         timeout: 120000,
+        shell: true,
       });
     } catch (err) {
       testOutput = err.stdout || err.message;
@@ -526,7 +771,6 @@ const ts = ${JSON.stringify(String(timestamp))};
   const screens = [
     { name: "home", url: "http://localhost:5173/", waitFor: 3000 },
     { name: "scan", url: "http://localhost:5173/", action: async () => {
-      // Try clicking scan button if it exists
       const scanBtn = page.locator('[class*="scan"], [class*="camera"], button:has-text("Scan")').first();
       if (await scanBtn.isVisible().catch(() => false)) await scanBtn.click();
       await page.waitForTimeout(1000);
@@ -564,16 +808,14 @@ const ts = ${JSON.stringify(String(timestamp))};
       cwd: REPO_ROOT,
       encoding: "utf-8",
       timeout: 60000,
-      env: { ...process.env, ANTHROPIC_API_KEY: "" },
+      shell: true,
     });
 
-    // Parse the JSON array of paths from the script output
     const match = result.match(/\[.*\]/);
     return match ? JSON.parse(match[0]) : [];
   } catch (err) {
     throw new Error(`Screenshot capture failed: ${err.message.slice(0, 200)}`);
   } finally {
-    // Clean up temp script
     try { writeFileSync(scriptPath, ""); } catch {}
   }
 }
@@ -628,30 +870,24 @@ function getNextBacklogTask() {
   const content = readBacklog();
   if (!content) return null;
 
-  // Parse backlog sections by priority order
   const priorities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 
   for (const priority of priorities) {
-    // Find tasks in this priority section (match until next ## section header or EOF)
     const sectionRegex = new RegExp(`## ${priority}[^\\n]*\\n[\\s\\S]*?(?=\\n## [^#]|$)`, "i");
     const section = content.match(sectionRegex);
     if (!section) continue;
 
-    // Find individual tasks (### headers) that have actionable status
     const taskRegex = /### (.+)\n([\s\S]*?)(?=\n###|$)/g;
     let match;
     while ((match = taskRegex.exec(section[0])) !== null) {
       const title = match[1].trim();
       const body = match[2].trim();
 
-      // Skip done, deferred, or implemented tasks (handles **Status:** markdown bold)
       if (/status:\*?\*?\s*(done|deferred|implemented|completed)/i.test(body)) continue;
 
-      // Extract summary
       const summaryMatch = body.match(/\*\*Summary:\*\*\s*(.+)/);
       const summary = summaryMatch ? summaryMatch[1].trim() : body.split("\n")[0];
 
-      // Extract size
       const sizeMatch = body.match(/\*\*Effort:\*\*\s*(\S+)/);
       const size = sizeMatch ? sizeMatch[1].trim() : "M";
 
@@ -659,8 +895,6 @@ function getNextBacklogTask() {
     }
   }
 
-  // Also check "Approved" sections
-  // Also check Approved and Proposed sections
   const extraRegex = /## (?:Approved|Proposed)[^\n]*\n[\s\S]*?(?=\n## [^#]|$)/gi;
   let extraMatch;
   while ((extraMatch = extraRegex.exec(content)) !== null) {
@@ -688,7 +922,6 @@ function markBacklogTaskDone(title) {
   let content = readBacklog();
   if (!content) return;
 
-  // Find the task and update its status
   const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const taskRegex = new RegExp(`(### ${escaped}\\n[\\s\\S]*?\\*\\*Status:\\*\\*)\\s*[^\\n]+`, "i");
   const match = content.match(taskRegex);
@@ -711,17 +944,14 @@ function addToBacklog(priority, size, idea) {
 **Added:** ${date} via Discord
 `;
 
-  // Try to insert under the right priority section
   const sectionHeader = `## ${priority}`;
   const sectionIndex = content.indexOf(sectionHeader);
 
   if (sectionIndex >= 0) {
-    // Find the end of this section (next ## header or EOF)
     const nextSection = content.indexOf("\n## ", sectionIndex + sectionHeader.length);
     const insertAt = nextSection >= 0 ? nextSection : content.length;
     content = content.slice(0, insertAt) + entry + content.slice(insertAt);
   } else {
-    // Create new section
     content += `\n${sectionHeader}\n${entry}`;
   }
 
@@ -866,7 +1096,6 @@ async function executeActions(reply, channel) {
     const description = buildMatch[1].trim();
     text = text.replace(buildMatch[0], "").trim();
     const logsChannel = LOGS_CHANNEL_ID ? await client.channels.fetch(LOGS_CHANNEL_ID).catch(() => null) : null;
-    // Run build loop in background so we can keep chatting
     buildWithQualityLoop(description || "Build feature as described in conversation", channel, logsChannel).catch(err => {
       console.error("[BUILD] error:", err.message, err.stack?.slice(0, 300));
       channel.send(`Build loop error: ${(err.message || "unknown error").slice(0, 200)}`).catch(() => {});
@@ -888,7 +1117,12 @@ async function executeActions(reply, channel) {
     text = text.replace(/\[ACTION:STOP\]/g, "").trim();
     stopRequested = true;
     if (activeProcess) {
-      activeProcess.kill("SIGTERM");
+      // AbortController or child process
+      if (typeof activeProcess.abort === "function") {
+        activeProcess.abort();
+      } else if (typeof activeProcess.kill === "function") {
+        activeProcess.kill("SIGTERM");
+      }
       text = text || "Sent stop signal.";
     } else if (!buildLoopRunning) {
       text = text || "Nothing running.";
@@ -908,6 +1142,10 @@ async function executeActions(reply, channel) {
     } else {
       status = "Nothing running.";
     }
+    const uptime = Math.floor(process.uptime());
+    const hours = Math.floor(uptime / 3600);
+    const mins = Math.floor((uptime % 3600) / 60);
+    status += `\nUptime: ${hours}h ${mins}m`;
     text = text ? `${text}\n${status}` : status;
   }
 
@@ -916,21 +1154,26 @@ async function executeActions(reply, channel) {
     text = text.replace(/\[ACTION:KILL_STALE\]/g, "").trim();
     try {
       const myPid = process.pid;
-      const ps = execSync("ps aux", { encoding: "utf-8" });
+      const isWindows = process.platform === "win32";
+      const ps = execCommand(isWindows ? "tasklist" : "ps aux", { timeout: 10000 });
       const stale = ps.split("\n").filter(line => {
         if (!line.includes("claude") && !line.includes("node")) return false;
         if (line.includes("grep")) return false;
         if (line.includes("Code Helper")) return false;
         if (line.includes("node discord-bot.js")) return false;
-        const pidMatch = line.match(/^\S+\s+(\d+)/);
+        const pidMatch = isWindows
+          ? line.match(/\s+(\d+)\s+/)
+          : line.match(/^\S+\s+(\d+)/);
         if (!pidMatch) return false;
         const pid = parseInt(pidMatch[1]);
         if (pid === myPid) return false;
-        return line.includes("claude -p") || line.includes("node agents/");
+        return line.includes("claude") || line.includes("node agents/");
       });
       let killed = 0;
       for (const line of stale) {
-        const pidMatch = line.match(/^\S+\s+(\d+)/);
+        const pidMatch = process.platform === "win32"
+          ? line.match(/\s+(\d+)\s+/)
+          : line.match(/^\S+\s+(\d+)/);
         if (pidMatch) {
           try { process.kill(parseInt(pidMatch[1])); killed++; } catch {}
         }
@@ -965,16 +1208,51 @@ async function executeActions(reply, channel) {
   return text;
 }
 
+// ─── Git Sync (for hosted environments — pull latest before builds) ────────
+async function gitSync() {
+  if (!IS_HOSTED) return;
+  try {
+    const remote = execCommand("git remote -v", { timeout: 5000 });
+    if (!remote.includes("origin")) {
+      console.log("[gitSync] No remote origin configured, skipping sync");
+      return;
+    }
+    console.log("[gitSync] Pulling latest changes...");
+    const result = execCommand("git pull --rebase origin main", { timeout: 30000 });
+    console.log("[gitSync]", result.slice(0, 200));
+  } catch (err) {
+    console.error("[gitSync] Failed:", err.message?.slice(0, 200));
+  }
+}
+
+// ─── Git Push (for hosted environments — push commits after builds) ────────
+async function gitPush() {
+  if (!IS_HOSTED) return;
+  try {
+    console.log("[gitPush] Pushing changes...");
+    const result = execCommand("git push origin HEAD", { timeout: 30000 });
+    console.log("[gitPush]", result.slice(0, 200));
+  } catch (err) {
+    console.error("[gitPush] Failed:", err.message?.slice(0, 200));
+  }
+}
+
 // ─── Discord Events ──────────────────────────────────────────────────────────
-client.once("ready", () => {
+client.once("ready", async () => {
   console.log(`\nATTAIRE Bot online as ${client.user.tag}`);
+  console.log(`Environment: ${IS_HOSTED ? "HOSTED" : "LOCAL"}`);
   console.log(`Chat channel: ${CHAT_CHANNEL_ID || "(not set)"}`);
   console.log(`Logs channel: ${LOGS_CHANNEL_ID || "(not set)"}`);
+  console.log(`Health check: http://localhost:${HEALTH_PORT}/health`);
   console.log("Waiting for messages...\n");
+
+  // Sync repo on startup if hosted
+  await gitSync();
 
   if (CHAT_CHANNEL_ID) {
     client.channels.fetch(CHAT_CHANNEL_ID).then(ch => {
-      ch.send("ATTAIRE is online. What are we building?");
+      const env = IS_HOSTED ? "hosted" : "local";
+      ch.send(`ATTAIRE is online (${env}). What are we building?`);
     }).catch(() => {});
   }
 });
@@ -1006,6 +1284,51 @@ setInterval(async () => {
     lastMessageTime = Date.now();
   } catch {}
 }, 30 * 60 * 1000);
+
+// ─── Graceful Shutdown ──────────────────────────────────────────────────────
+async function shutdown(signal) {
+  console.log(`\n${signal} received — shutting down gracefully...`);
+
+  // Stop any running builds
+  stopRequested = true;
+  if (activeProcess) {
+    if (typeof activeProcess.abort === "function") activeProcess.abort();
+    else if (typeof activeProcess.kill === "function") activeProcess.kill("SIGTERM");
+  }
+
+  // Safety commit any pending work
+  safetyCommit("shutdown");
+
+  // Push if hosted
+  await gitPush();
+
+  // Notify Discord
+  if (CHAT_CHANNEL_ID && client.isReady()) {
+    try {
+      const ch = await client.channels.fetch(CHAT_CHANNEL_ID);
+      await ch.send("ATTAIRE going offline. See you soon.");
+    } catch {}
+  }
+
+  // Close connections
+  healthServer.close();
+  client.destroy();
+
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+// Handle uncaught errors gracefully
+process.on("uncaughtException", (err) => {
+  console.error("[FATAL] Uncaught exception:", err.message, err.stack?.slice(0, 500));
+  safetyCommit("crash");
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[FATAL] Unhandled rejection:", reason);
+});
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 console.log("Connecting to Discord...");
