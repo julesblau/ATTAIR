@@ -291,6 +291,34 @@ app.listen(PORT, "0.0.0.0", () => {
 
   // Start the follow-up nudge processor (checks every 60s)
   startNudgeProcessor();
+
+  // ─── Weekly Style Twins cron ──────────────────────────────
+  // Runs every 7 days (604800000 ms). On startup, schedule first
+  // check after 60s, then repeat weekly. In production this could
+  // also be triggered by an external cron service via POST /api/style-twins/weekly-notify.
+  const WEEKLY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const runWeeklyTwinsNotify = async () => {
+    try {
+      const url = `http://127.0.0.1:${PORT}/api/style-twins/weekly-notify`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-cron-key": process.env.CRON_SECRET_KEY || "internal-cron",
+        },
+      });
+      const data = await res.json();
+      console.log(`[Cron] Style Twins weekly notify: notified=${data.notified || 0}`);
+    } catch (err) {
+      console.error("[Cron] Style Twins weekly notify failed:", err.message);
+    }
+  };
+  // First run after 60s (let server fully warm up), then every 7 days
+  setTimeout(() => {
+    runWeeklyTwinsNotify();
+    setInterval(runWeeklyTwinsNotify, WEEKLY_MS);
+  }, 60_000);
+  console.log("  📅 Style Twins weekly cron scheduled (every 7 days)");
 });
 
 export default app;

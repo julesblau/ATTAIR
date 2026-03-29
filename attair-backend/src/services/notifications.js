@@ -72,6 +72,7 @@ export async function sendNotification(userId, type, title, body, data = {}) {
     price_drop: "price_drops",
     style_dna: "style_dna",
     social: "social_activity",
+    style_twins: "style_twins",
     new_post: "new_posts",
     digest: "weekly_digest",
     hanger_test: "hanger_test",

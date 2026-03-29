@@ -2942,6 +2942,7 @@ export default function App() {
   const [styleTwins, setStyleTwins] = useState([]);
   const [styleTwinsLoading, setStyleTwinsLoading] = useState(false);
   const [styleTwinsReady, setStyleTwinsReady] = useState(false);
+  const [styleTwinsError, setStyleTwinsError] = useState(null);
   const [styleTwinsMyArchetype, setStyleTwinsMyArchetype] = useState(null);
   const [styleTwinsTotalMatches, setStyleTwinsTotalMatches] = useState(0);
   const [styleTwinSaveBanner, setStyleTwinSaveBanner] = useState(null); // { message, twin_name }
@@ -3463,27 +3464,33 @@ export default function App() {
   const loadStyleTwins = useCallback(async () => {
     if (!authed || styleTwinsLoading) return;
     setStyleTwinsLoading(true);
+    setStyleTwinsError(null);
     try {
       const data = await API.getStyleTwins();
       if (data.ready) {
         setStyleTwins(data.twins || []);
         setStyleTwinsReady(true);
-        setStyleTwinsMyArchetype(data.my_archetype);
+        setStyleTwinsMyArchetype(data.my_archetype || null);
         setStyleTwinsMyScore(data.my_style_score || null);
         setStyleTwinsTotalMatches(data.total_matches || 0);
       } else {
         setStyleTwinsReady(false);
         setStyleTwins([]);
       }
-    } catch { setStyleTwins([]); }
-    finally { setStyleTwinsLoading(false); }
-  }, [authed]);
+    } catch (err) {
+      console.error("[StyleTwins] load error:", err);
+      setStyleTwinsError("Could not load Style Twins. Tap to retry.");
+      setStyleTwins([]);
+    } finally {
+      setStyleTwinsLoading(false);
+    }
+  }, [authed, styleTwinsLoading]);
 
   useEffect(() => {
-    if (tab === "search" && searchSubTab === "twins" && authed && styleTwins.length === 0 && !styleTwinsLoading) {
+    if (tab === "search" && searchSubTab === "twins" && authed && styleTwins.length === 0 && !styleTwinsLoading && !styleTwinsError) {
       loadStyleTwins();
     }
-  }, [tab, searchSubTab, authed]);
+  }, [tab, searchSubTab, authed, loadStyleTwins]);
 
   const handleFollowFromSearch = async (userId) => {
     try {
@@ -4732,10 +4739,10 @@ export default function App() {
                   <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4, opacity: 0.7 }}>Price drops, followers, and posts will show up here</div>
                 </div>
               ) : notifications.map(n => (
-                <div key={n.id} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: n.read_at ? "transparent" : "rgba(201,169,110,.04)", cursor: n.data?.url ? "pointer" : "default" }} onClick={() => { if (n.data?.url) { setShowNotifPanel(false); if (!n.data.url.startsWith("/")) window.open(n.data.url, "_blank", "noopener"); } }}>
+                <div key={n.id} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: n.read_at ? "transparent" : "rgba(201,169,110,.04)", cursor: n.data?.url ? "pointer" : "default" }} onClick={() => { if (n.data?.url) { setShowNotifPanel(false); if (n.data.url === "/discover?tab=twins") { setTab("search"); setSearchSubTab("twins"); } else if (!n.data.url.startsWith("/")) { window.open(n.data.url, "_blank", "noopener"); } } }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: n.type === "price_drop" ? "rgba(76,175,80,.15)" : n.type === "social" ? "rgba(201,169,110,.15)" : n.type === "new_post" ? "rgba(100,181,246,.15)" : n.type === "follow_up" ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.08)" }}>
-                      {n.type === "price_drop" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" strokeWidth="2"><path d="M12 2v20M17 17l-5 5-5-5"/></svg> : n.type === "social" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> : n.type === "new_post" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m21 15-5-5L5 21"/></svg> : n.type === "follow_up" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>}
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: n.type === "price_drop" ? "rgba(76,175,80,.15)" : n.type === "social" ? "rgba(201,169,110,.15)" : n.type === "style_twins" ? "rgba(201,169,110,.15)" : n.type === "new_post" ? "rgba(100,181,246,.15)" : n.type === "follow_up" ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.08)" }}>
+                      {n.type === "price_drop" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" strokeWidth="2"><path d="M12 2v20M17 17l-5 5-5-5"/></svg> : n.type === "social" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> : n.type === "style_twins" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg> : n.type === "new_post" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m21 15-5-5L5 21"/></svg> : n.type === "follow_up" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>{n.title}</div>
@@ -5176,7 +5183,26 @@ export default function App() {
               {/* ─── Style Twins section ─── */}
               {searchSubTab === "twins" && (
                 <div style={{ padding: "12px 16px" }}>
-                  {styleTwinsLoading && (
+                  {/* Not logged in */}
+                  {!authed && (
+                    <div className="style-twins-empty">
+                      <div className="style-twins-empty-icon">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/>
+                        </svg>
+                      </div>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: "16px 0 8px" }}>Sign In to Find Twins</h3>
+                      <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 280, margin: "0 auto 20px" }}>
+                        Create an account and scan outfits to discover people who dress just like you.
+                      </p>
+                      <button className="btn-primary" onClick={() => { setShowAuth(true); }} style={{ padding: "12px 32px", borderRadius: 12, fontSize: 14, fontWeight: 600 }}>
+                        Sign In
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Loading state */}
+                  {authed && styleTwinsLoading && (
                     <div className="style-twins-loading">
                       <div className="style-twins-loading-orbit">
                         <div className="style-twins-loading-ring" />
@@ -5189,7 +5215,26 @@ export default function App() {
                     </div>
                   )}
 
-                  {!styleTwinsLoading && !styleTwinsReady && (
+                  {/* Error state with retry */}
+                  {authed && !styleTwinsLoading && styleTwinsError && (
+                    <div className="style-twins-empty">
+                      <div className="style-twins-empty-icon">
+                        <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                      </div>
+                      <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: "16px 0 8px" }}>Something Went Wrong</h3>
+                      <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 280, margin: "0 auto 20px" }}>
+                        {styleTwinsError}
+                      </p>
+                      <button className="btn-primary" onClick={() => { setStyleTwinsError(null); loadStyleTwins(); }} style={{ padding: "12px 32px", borderRadius: 12, fontSize: 14, fontWeight: 600 }}>
+                        Try Again
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Unlock state — no Style DNA yet */}
+                  {authed && !styleTwinsLoading && !styleTwinsError && !styleTwinsReady && (
                     <div className="style-twins-empty">
                       <div className="style-twins-empty-icon">
                         <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--accent)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
@@ -5206,7 +5251,8 @@ export default function App() {
                     </div>
                   )}
 
-                  {!styleTwinsLoading && styleTwinsReady && styleTwins.length === 0 && (
+                  {/* Ready but no matches yet */}
+                  {authed && !styleTwinsLoading && !styleTwinsError && styleTwinsReady && styleTwins.length === 0 && (
                     <div className="style-twins-empty">
                       <div className="style-twins-empty-icon">
                         <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.2">
@@ -5214,13 +5260,19 @@ export default function App() {
                         </svg>
                       </div>
                       <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: "16px 0 8px" }}>No Twins Yet</h3>
-                      <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 280, margin: "0 auto" }}>
-                        As more people join ATTAIRE and build their Style DNA, your twins will appear here.
+                      <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 280, margin: "0 auto 20px" }}>
+                        As more people join ATTAIRE and build their Style DNA, your twins will appear here. Check back soon!
                       </p>
+                      <button className="btn-ghost" onClick={loadStyleTwins} style={{ padding: "10px 24px", borderRadius: 10, fontSize: 13, fontWeight: 600 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                          Refresh
+                        </span>
+                      </button>
                     </div>
                   )}
 
-                  {!styleTwinsLoading && styleTwinsReady && styleTwins.length > 0 && (
+                  {authed && !styleTwinsLoading && !styleTwinsError && styleTwinsReady && styleTwins.length > 0 && (
                     <div className="animate-fade-in">
                       {/* Header with archetype */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingTop: 4 }}>
@@ -7433,6 +7485,20 @@ export default function App() {
                             API.updateNotifPrefs({ follow_up_nudges: !current });
                           }} style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", position: "relative", background: localStorage.getItem("attair_nudge_off") === "1" ? "var(--border)" : "var(--accent)", transition: "background .2s" }}>
                             <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", position: "absolute", top: 2, transition: "left .2s", left: localStorage.getItem("attair_nudge_off") === "1" ? 2 : 20 }} />
+                          </button>
+                        </div>
+                        {/* Style Twins weekly notification toggle */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4, padding: "8px 0" }}>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Style Twins</div>
+                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.3 }}>Weekly "new style twins discovered" alerts</div>
+                          </div>
+                          <button onClick={() => {
+                            const current = !(localStorage.getItem("attair_twins_notif_off") === "1");
+                            localStorage.setItem("attair_twins_notif_off", current ? "1" : "0");
+                            API.updateNotifPrefs({ style_twins: !current });
+                          }} style={{ width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", position: "relative", background: localStorage.getItem("attair_twins_notif_off") === "1" ? "var(--border)" : "var(--accent)", transition: "background .2s" }}>
+                            <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", position: "absolute", top: 2, transition: "left .2s", left: localStorage.getItem("attair_twins_notif_off") === "1" ? 2 : 20 }} />
                           </button>
                         </div>
                       </>

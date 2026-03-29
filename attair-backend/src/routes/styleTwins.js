@@ -321,7 +321,7 @@ router.post("/weekly-notify", async (req, res) => {
       if (twinCount > 0) {
         await sendNotification(
           user.id,
-          "social",
+          "style_twins",
           "New Style Twins discovered",
           `${twinCount} new style twin${twinCount === 1 ? "" : "s"} discovered. See who shares your taste!`,
           { url: "/discover?tab=twins" }
