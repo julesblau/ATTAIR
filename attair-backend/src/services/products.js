@@ -1331,6 +1331,31 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   return score;
 }
 
+// ─── Product-level deduplication fingerprint ────────────────
+/**
+ * Generate a normalized fingerprint for a product to detect duplicates
+ * across different retailers. Two products with the same fingerprint
+ * are considered the same product (e.g. "Nike Air Max 90 White" from
+ * Nordstrom and Foot Locker).
+ *
+ * Normalization: lowercase, strip retailer names, strip size/color variants,
+ * strip punctuation, sort remaining words alphabetically.
+ */
+function productFingerprint(product) {
+  let title = (product.title || "").toLowerCase();
+  // Strip common retailer suffixes that appear in titles
+  title = title.replace(/\b(nordstrom|farfetch|ssense|asos|zappos|revolve|shopbop|macy'?s?|bloomingdale'?s?|saks|neiman marcus|net-a-porter)\b/gi, "");
+  // Strip size indicators (S, M, L, XL, size 8, etc.)
+  title = title.replace(/\b(x{0,3}[sml]|size\s*\d+|us\s*\d+)\b/gi, "");
+  // Strip color words that vary between listings
+  title = title.replace(/\b(black|white|grey|gray|navy|blue|red|green|brown|beige|cream|pink|purple|orange|yellow|tan|olive|burgundy|maroon|teal|coral|ivory)\b/gi, "");
+  // Strip punctuation and extra whitespace
+  title = title.replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+  // Sort words to handle different word orders ("Nike Air Max" vs "Air Max Nike")
+  const words = title.split(" ").filter(w => w.length > 1).sort();
+  return words.join(" ");
+}
+
 // ─── Format for frontend ────────────────────────────────────
 function formatProduct(product, isOriginalBrand) {
   const price = extractPrice(product.price) || extractPrice(product.extracted_price);
@@ -1734,6 +1759,24 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       .filter(s => s.score > 0)
       .sort((a, b) => b.score - a.score);
 
+    // ── Product-level deduplication ─────────────────────
+    // Same product from different retailers (e.g. "Nike Air Max 90" at Nordstrom
+    // and Foot Locker) shows up as separate entries. Dedup by normalized title
+    // fingerprint, keeping the highest-scored version of each product.
+    const deduped = [];
+    const seenFingerprints = new Set();
+    for (const s of allScored) {
+      const fp = productFingerprint(s.product);
+      if (!seenFingerprints.has(fp)) {
+        seenFingerprints.add(fp);
+        deduped.push(s);
+      }
+    }
+    const allScoredDeduped = deduped;
+    if (allScored.length !== allScoredDeduped.length) {
+      console.log(`[Dedup] "${item.name}": ${allScored.length} → ${allScoredDeduped.length} after product-level dedup`);
+    }
+
     // Hard floor: exclude products priced implausibly below the user's budget minimum.
     // e.g. a $15 cap when budget min is $1000 is almost certainly a different product.
     const isCustomBudget = itemTierBounds.min > DEFAULT_BUDGET.min;
@@ -1741,8 +1784,8 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
 
     // ── Separate resale from retail before tiering ──────────
     // Resale products get their own dedicated tier; retail-only pool feeds budget/mid/premium.
-    const resaleScored = allScored.filter(s => classifyMarket(s.product) === "resale");
-    const retailScored = allScored.filter(s => classifyMarket(s.product) !== "resale");
+    const resaleScored = allScoredDeduped.filter(s => classifyMarket(s.product) === "resale");
+    const retailScored = allScoredDeduped.filter(s => classifyMarket(s.product) !== "resale");
 
     // Rebuild retail-only priced/unpriced pools
     const pricedRetail = retailScored.filter(s => s.price !== null && s.price >= priceFloor);
