@@ -14,6 +14,7 @@
 
 import supabase from "../lib/supabase.js";
 import crypto from "crypto";
+import { sendNotification } from "../services/notifications.js";
 
 const SERPAPI_URL = "https://serpapi.com/search.json";
 const MAX_CHECKS_PER_USER = 5;     // SerpAPI cost guard — max 5 checks per user per run
@@ -276,8 +277,16 @@ export async function checkPriceDrops() {
           summary.errors.push(`insert alert for item ${item.id}: ${insertError.message}`);
         } else {
           summary.alertsCreated++;
-          // Add to the local set so subsequent items don't also trigger (edge case)
           recentlyAlertedIds.add(item.id);
+
+          // Send push notification for the price drop (non-blocking)
+          sendNotification(
+            profile.id,
+            "price_drop",
+            "Price Drop Alert",
+            `${productName} dropped ${dropPct.toFixed(0)}% to $${lowestPrice.toFixed(2)}`,
+            { url: productUrl || "/" }
+          ).catch(() => {});
         }
       }
     } catch (err) {

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import supabase from "../lib/supabase.js";
+import { sendNotification } from "../services/notifications.js";
 
 const router = Router();
 
@@ -28,6 +29,23 @@ router.post("/social/follow/:userId", requireAuth, async (req, res) => {
       }
       throw error;
     }
+
+    // Send push notification to the followed user (non-blocking)
+    supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", req.userId)
+      .single()
+      .then(({ data: followerProfile }) => {
+        const name = followerProfile?.display_name || "Someone";
+        sendNotification(
+          targetId,
+          "social",
+          "New Follower",
+          `${name} started following you`,
+          { url: `/profile/${req.userId}` }
+        ).catch(() => {});
+      });
 
     return res.json({ following: true });
   } catch (err) {

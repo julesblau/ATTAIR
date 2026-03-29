@@ -412,7 +412,90 @@ const API = {
   async priceAlertSeen(id) {
     await authFetch(`${API_BASE}/api/price-alerts/${id}/seen`, { method: "PATCH" });
   },
+
+  // ─── Push Notifications ───────────────────────────────────
+  async getVapidKey() {
+    const res = await fetch(`${API_BASE}/api/notifications/vapid-key`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.vapidPublicKey;
+  },
+
+  async subscribePush(subscription) {
+    const res = await authFetch(`${API_BASE}/api/notifications/subscribe`, {
+      method: "POST",
+      body: JSON.stringify({ subscription }),
+    });
+    return res.ok;
+  },
+
+  async unsubscribePush(endpoint) {
+    const res = await authFetch(`${API_BASE}/api/notifications/unsubscribe`, {
+      method: "DELETE",
+      body: JSON.stringify({ endpoint }),
+    });
+    return res.ok;
+  },
+
+  async getNotifications(limit = 20) {
+    const res = await authFetch(`${API_BASE}/api/notifications?limit=${limit}`);
+    if (!res.ok) return { notifications: [] };
+    return await res.json();
+  },
+
+  async getUnreadNotifCount() {
+    const res = await authFetch(`${API_BASE}/api/notifications/unread-count`);
+    if (!res.ok) return { count: 0 };
+    return await res.json();
+  },
+
+  async markNotifsRead(notificationIds) {
+    await authFetch(`${API_BASE}/api/notifications/read`, {
+      method: "PATCH",
+      body: JSON.stringify({ notificationIds }),
+    });
+  },
+
+  async updateNotifPrefs(preferences) {
+    const res = await authFetch(`${API_BASE}/api/notifications/preferences`, {
+      method: "PATCH",
+      body: JSON.stringify({ preferences }),
+    });
+    return res.ok ? (await res.json()).preferences : null;
+  },
 };
+
+// ─── Push subscription helper ────────────────────────────────
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function subscribeToPush() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  try {
+    const vapidKey = await API.getVapidKey();
+    if (!vapidKey) return false;
+
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
+    });
+
+    await API.subscribePush(subscription.toJSON());
+    return true;
+  } catch (err) {
+    console.error("[Push] Subscribe error:", err);
+    return false;
+  }
+}
 
 // ─── Relative date formatting helper ──────────────────────────
 function relativeDate(dateStr) {
@@ -503,7 +586,7 @@ function resizeImage(dataUrl, maxDim = 1024) {
 const StatusPill = ({ status }) => {
   const cfg = {
     identified: { text: "AI IDENTIFIED", bg: "var(--bg-input)", color: "var(--text-tertiary)", dot: "var(--text-tertiary)" },
-    searching: { text: "SEARCHING…", bg: "var(--accent-bg)", color: "var(--accent)", dot: "var(--accent)", pulse: true },
+    searching: { text: "SEARCHING...", bg: "var(--accent-bg)", color: "var(--accent)", dot: "var(--accent)", pulse: true },
     verified: { text: "WEB VERIFIED", bg: "rgba(201,169,110,0.1)", color: "var(--accent)", dot: "var(--accent)" },
     failed: { text: "AI ONLY", bg: "var(--bg-input)", color: "var(--text-tertiary)", dot: "var(--text-tertiary)" },
   }[status] || {};
@@ -541,7 +624,7 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
         </>
       ) : (
         <>
-          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{data.product_name || "Loading…"}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{data.product_name || "Loading..."}</div>
           <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{data.brand}</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: tierCfg.accent, fontFamily: "var(--font-sans)" }}>{data.price}</div>
           {data.why && <div style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.4, fontStyle: "italic" }}>{data.why}</div>}
@@ -638,7 +721,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
           </div>
         </div>
         <button className="cta" onClick={handleCta} disabled={loadingPlan} style={{ opacity: loadingPlan ? 0.7 : 1 }}>
-          {loadingPlan ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(12,12,14,.3)", borderTopColor: "#0C0C0E", borderRadius: "50%", animation: "spin .7s linear infinite" }} />Processing…</span> : m.cta}
+          {loadingPlan ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(12,12,14,.3)", borderTopColor: "#0C0C0E", borderRadius: "50%", animation: "spin .7s linear infinite" }} />Processing...</span> : m.cta}
         </button>
         <button className="modal-later" onClick={() => onStartTrial && onStartTrial()} style={{ color: "var(--accent)", fontSize: 12, marginTop: -4 }}>
           Or start a 7-day free trial →
@@ -714,8 +797,8 @@ const STRINGS = {
     saved: "Saved",
     profile: "Profile",
     new_scan: "New scan",
-    analyzing: "Analyzing the look…",
-    searching: "Searching the web…",
+    analyzing: "Analyzing the look...",
+    searching: "Searching the web...",
     shop_item: "Shop this item",
     save: "Save",
     splurge: "Splurge",
@@ -729,7 +812,7 @@ const STRINGS = {
     light_mode: "Switch to Light Mode",
     dark_mode: "Switch to Dark Mode",
     language: "Language",
-    search_notes_placeholder: "Add search notes (e.g., 'sustainable brands', 'linen fabric')…",
+    search_notes_placeholder: "Add search notes (e.g., 'sustainable brands', 'linen fabric')...",
     select_items: "Select items to search",
     no_scans: "No scans yet. Take your first photo!",
     no_saves: "No saved items yet",
@@ -765,8 +848,8 @@ const STRINGS = {
     saved: "Guardados",
     profile: "Perfil",
     new_scan: "Nuevo escaneo",
-    analyzing: "Analizando el look…",
-    searching: "Buscando en la web…",
+    analyzing: "Analizando el look...",
+    searching: "Buscando en la web...",
     shop_item: "Comprar este artículo",
     save: "Económico",
     splurge: "Premium",
@@ -780,7 +863,7 @@ const STRINGS = {
     light_mode: "Cambiar a Modo Claro",
     dark_mode: "Cambiar a Modo Oscuro",
     language: "Idioma",
-    search_notes_placeholder: "Añadir notas (ej. 'marcas sostenibles', 'tela de lino')…",
+    search_notes_placeholder: "Añadir notas (ej. 'marcas sostenibles', 'tela de lino')...",
     select_items: "Seleccionar artículos",
     no_scans: "Sin escaneos. ¡Toma tu primera foto!",
     no_saves: "Sin artículos guardados",
@@ -816,8 +899,8 @@ const STRINGS = {
     saved: "Sauvegardes",
     profile: "Profil",
     new_scan: "Nouveau scan",
-    analyzing: "Analyse du look…",
-    searching: "Recherche en cours…",
+    analyzing: "Analyse du look...",
+    searching: "Recherche en cours...",
     shop_item: "Acheter cet article",
     save: "Économique",
     splurge: "Premium",
@@ -831,7 +914,7 @@ const STRINGS = {
     light_mode: "Passer en Mode Clair",
     dark_mode: "Passer en Mode Sombre",
     language: "Langue",
-    search_notes_placeholder: "Notes de recherche (ex. 'marques durables', 'tissu lin')…",
+    search_notes_placeholder: "Notes de recherche (ex. 'marques durables', 'tissu lin')...",
     select_items: "Sélectionner des articles",
     no_scans: "Aucun scan. Prenez votre première photo!",
     no_saves: "Aucun article sauvegardé",
@@ -867,8 +950,8 @@ const STRINGS = {
     saved: "Gespeichert",
     profile: "Profil",
     new_scan: "Neuer Scan",
-    analyzing: "Look wird analysiert…",
-    searching: "Web wird durchsucht…",
+    analyzing: "Look wird analysiert...",
+    searching: "Web wird durchsucht...",
     shop_item: "Artikel kaufen",
     save: "Günstig",
     splurge: "Premium",
@@ -882,7 +965,7 @@ const STRINGS = {
     light_mode: "Zum hellen Modus",
     dark_mode: "Zum dunklen Modus",
     language: "Sprache",
-    search_notes_placeholder: "Suchnotizen (z.B. 'nachhaltige Marken', 'Leinenstoff')…",
+    search_notes_placeholder: "Suchnotizen (z.B. 'nachhaltige Marken', 'Leinenstoff')...",
     select_items: "Artikel auswählen",
     no_scans: "Noch keine Scans. Mach dein erstes Foto!",
     no_saves: "Keine gespeicherten Artikel",
@@ -918,8 +1001,8 @@ const STRINGS = {
     saved: "已保存",
     profile: "个人",
     new_scan: "新扫描",
-    analyzing: "正在分析穿搭…",
-    searching: "正在搜索…",
+    analyzing: "正在分析穿搭...",
+    searching: "正在搜索...",
     shop_item: "购买此商品",
     save: "经济实惠",
     splurge: "高端奢华",
@@ -933,7 +1016,7 @@ const STRINGS = {
     light_mode: "切换浅色模式",
     dark_mode: "切换深色模式",
     language: "语言",
-    search_notes_placeholder: "添加搜索备注（如'可持续品牌'、'亚麻面料'）…",
+    search_notes_placeholder: "添加搜索备注（如'可持续品牌'、'亚麻面料'）...",
     select_items: "选择要搜索的商品",
     no_scans: "暂无扫描记录，拍摄你的第一张照片吧！",
     no_saves: "暂无保存的商品",
@@ -969,8 +1052,8 @@ const STRINGS = {
     saved: "保存済み",
     profile: "プロフィール",
     new_scan: "新規スキャン",
-    analyzing: "コーデを分析中…",
-    searching: "検索中…",
+    analyzing: "コーデを分析中...",
+    searching: "検索中...",
     shop_item: "このアイテムを購入",
     save: "プチプラ",
     splurge: "プレミアム",
@@ -984,7 +1067,7 @@ const STRINGS = {
     light_mode: "ライトモードに切替",
     dark_mode: "ダークモードに切替",
     language: "言語",
-    search_notes_placeholder: "検索メモ（例：'サステナブルブランド'、'リネン素材'）…",
+    search_notes_placeholder: "検索メモ（例：'サステナブルブランド'、'リネン素材'）...",
     select_items: "アイテムを選択",
     no_scans: "スキャン履歴なし。最初の写真を撮りましょう！",
     no_saves: "保存アイテムなし",
@@ -1020,8 +1103,8 @@ const STRINGS = {
     saved: "저장됨",
     profile: "프로필",
     new_scan: "새 스캔",
-    analyzing: "스타일 분석 중…",
-    searching: "검색 중…",
+    analyzing: "스타일 분석 중...",
+    searching: "검색 중...",
     shop_item: "이 아이템 구매",
     save: "저렴한",
     splurge: "프리미엄",
@@ -1035,7 +1118,7 @@ const STRINGS = {
     light_mode: "라이트 모드로 전환",
     dark_mode: "다크 모드로 전환",
     language: "언어",
-    search_notes_placeholder: "검색 메모 추가 (예: '지속가능 브랜드', '린넨 소재')…",
+    search_notes_placeholder: "검색 메모 추가 (예: '지속가능 브랜드', '린넨 소재')...",
     select_items: "검색할 아이템 선택",
     no_scans: "스캔 기록 없음. 첫 번째 사진을 찍어보세요!",
     no_saves: "저장된 아이템 없음",
@@ -1071,8 +1154,8 @@ const STRINGS = {
     saved: "Salvos",
     profile: "Perfil",
     new_scan: "Novo scan",
-    analyzing: "Analisando o look…",
-    searching: "Pesquisando na web…",
+    analyzing: "Analisando o look...",
+    searching: "Pesquisando na web...",
     shop_item: "Comprar este item",
     save: "Econômico",
     splurge: "Premium",
@@ -1086,7 +1169,7 @@ const STRINGS = {
     light_mode: "Mudar para Modo Claro",
     dark_mode: "Mudar para Modo Escuro",
     language: "Idioma",
-    search_notes_placeholder: "Notas de busca (ex: 'marcas sustentáveis', 'tecido linho')…",
+    search_notes_placeholder: "Notas de busca (ex: 'marcas sustentáveis', 'tecido linho')...",
     select_items: "Selecionar itens",
     no_scans: "Sem scans. Tire sua primeira foto!",
     no_saves: "Nenhum item salvo",
@@ -1676,28 +1759,28 @@ async function generateStyleDnaCard(dna, userName) {
 // ═══════════════════════════════════════════════════════════════
 // ─── Loading message arrays ──────────────────────────────────
 const SCAN_MESSAGES = [
-  "Analyzing the look…",
-  "Reading colors and silhouettes…",
-  "Identifying brands and styles…",
-  "Checking for visual details…",
-  "Mapping the outfit…",
-  "Almost there…",
+  "Analyzing the look...",
+  "Reading colors and silhouettes...",
+  "Identifying brands and styles...",
+  "Checking for visual details...",
+  "Mapping the outfit...",
+  "Almost there...",
 ];
 const SEARCH_MESSAGES = [
-  "Analyzing your photo…",
-  "Searching stores…",
-  "Finding matches…",
-  "Comparing prices…",
-  "Checking stock…",
-  "Almost ready…",
+  "Analyzing your photo...",
+  "Searching stores...",
+  "Finding matches...",
+  "Comparing prices...",
+  "Checking stock...",
+  "Almost ready...",
 ];
 const RESEARCH_MESSAGES = [
-  "Re-running search…",
-  "Finding better matches…",
-  "Applying your changes…",
-  "Searching with new criteria…",
-  "Comparing results…",
-  "Almost there…",
+  "Re-running search...",
+  "Finding better matches...",
+  "Applying your changes...",
+  "Searching with new criteria...",
+  "Comparing results...",
+  "Almost there...",
 ];
 
 // ─── Circle to Search canvas overlay ────────────────────────
@@ -1940,6 +2023,13 @@ export default function App() {
     setInstallPrompt(null);
     setShowInstallBanner(false);
   };
+
+  // ─── Push Notifications ──────────────────────────────────
+  const [notifCount, setNotifCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
   // ─── App state ────────────────────────────────────────────
   const [screen, setScreen] = useState("onboarding");
@@ -2248,6 +2338,19 @@ export default function App() {
       API.getWishlists().then(d => setWishlists(d.wishlists || [])).catch(() => {});
       API.getStreak().then(s => { if (s?.streak > 0) setScanStreak(s.streak); }).catch(() => {});
       API.priceAlertCount().then(d => setPriceAlertCount(d.unseen_count || 0)).catch(() => {});
+      API.getUnreadNotifCount().then(d => setNotifCount(d.count || 0)).catch(() => {});
+
+      // Auto-subscribe to push if permission already granted
+      if ("Notification" in window && Notification.permission === "granted") {
+        subscribeToPush().then(ok => setPushEnabled(ok)).catch(() => {});
+      } else if ("Notification" in window && Notification.permission === "default") {
+        // Show prompt after a short delay (not on first visit)
+        const prompted = localStorage.getItem("attair_notif_prompted");
+        if (!prompted) {
+          setTimeout(() => setShowNotifPrompt(true), 8000);
+        }
+      }
+
       if (!styleDna && !styleDnaLoading) {
         setStyleDnaLoading(true);
         API.styleDna().then(data => setStyleDna(data)).catch(() => {}).finally(() => setStyleDnaLoading(false));
@@ -2921,7 +3024,7 @@ export default function App() {
               trans(() => setScreen("auth"));
             }
           }}>
-            {authed ? (upgradeLoading ? "Loading…" : `Start Pro — ${selPlan === "yearly" ? "$30/yr" : "$5/mo"}`) : "Get started"}
+            {authed ? (upgradeLoading ? "Loading..." : `Start Pro — ${selPlan === "yearly" ? "$30/yr" : "$5/mo"}`) : "Get started"}
           </button>
           <div className="pw-terms">12 free scans per month. Upgrade anytime.</div>
         </div>
@@ -2972,7 +3075,7 @@ export default function App() {
             <div style={{ fontSize: 11, color: "rgba(255,150,100,.5)", marginTop: -4, marginBottom: 4 }}>Password must be at least 6 characters</div>
           )}
           <button className="cta" style={{ marginTop: 8, opacity: (!authEmail || authPass.length < 6) ? 0.4 : 1 }} onClick={handleAuth} disabled={authLoading || !authEmail || authPass.length < 6}>
-            {authLoading ? "Loading…" : authScreen === "signup" ? "Create Account" : "Log In"}
+            {authLoading ? "Loading..." : authScreen === "signup" ? "Create Account" : "Log In"}
           </button>
           <button className="auth-toggle" onClick={() => { setAuthScreen(authScreen === "login" ? "signup" : "login"); setAuthErr(null); setShowPass(false); }}>
             {authScreen === "login" ? "Don't have an account? Sign up" : "Already have an account? Log in"}
@@ -3102,6 +3205,12 @@ export default function App() {
         <div className="hdr">
           <img src="/logo-option-3.svg" alt="ATTAIRE" className="logo-img" />
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {authed && !isGuest && (
+              <button onClick={async () => { setShowNotifPanel(p => !p); if (!showNotifPanel) { const data = await API.getNotifications(); setNotifications(data.notifications || []); const uids = (data.notifications || []).filter(n => !n.read_at).map(n => n.id); if (uids.length > 0) API.markNotifsRead(uids).then(() => setNotifCount(0)).catch(() => {}); } }} style={{ position: "relative", background: "none", border: "none", padding: "4px 6px", cursor: "pointer", display: "flex", alignItems: "center" }} aria-label="Notifications">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                {notifCount > 0 && (<span style={{ position: "absolute", top: 0, right: 2, minWidth: 16, height: 16, background: "#E53935", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{notifCount > 99 ? "99+" : notifCount}</span>)}
+              </button>
+            )}
             {isGuest
               ? <button className="cta" style={{ padding: "6px 16px", fontSize: 12, borderRadius: 100 }} onClick={() => trans(() => { setScreen("auth"); setAuthScreen("signup"); })}>Sign Up Free</button>
               : isPro
@@ -3114,6 +3223,64 @@ export default function App() {
             })()}
           </div>
         </div>
+
+        {/* Notification panel overlay */}
+        {showNotifPanel && (<div onClick={() => setShowNotifPanel(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />)}
+        {showNotifPanel && (
+          <div style={{ position: "fixed", top: 52, right: 8, width: "min(360px, calc(100vw - 16px))", maxHeight: "70vh", background: "var(--card-bg)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,.5)", zIndex: 9999, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Notifications</div>
+              <button onClick={() => setShowNotifPanel(false)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>x</button>
+            </div>
+            {("Notification" in window) && Notification.permission === "default" && !pushEnabled && (
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "rgba(201,169,110,.06)" }}>
+                <div style={{ fontSize: 13, color: "var(--text-primary)", marginBottom: 8 }}>Enable push notifications for price drops, new posts, and more.</div>
+                <button onClick={async () => { const perm = await Notification.requestPermission(); if (perm === "granted") { const ok = await subscribeToPush(); setPushEnabled(ok); } localStorage.setItem("attair_notif_prompted", "1"); setShowNotifPrompt(false); }} className="cta" style={{ padding: "8px 20px", fontSize: 12, borderRadius: 100, width: "100%" }}>Enable Notifications</button>
+              </div>
+            )}
+            <div style={{ overflow: "auto", flex: 1 }}>
+              {notifications.length === 0 ? (
+                <div style={{ padding: "40px 16px", textAlign: "center" }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="1.5" style={{ opacity: 0.3, marginBottom: 8 }}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  <div style={{ fontSize: 13, color: "var(--text-tertiary)" }}>No notifications yet</div>
+                  <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4, opacity: 0.7 }}>Price drops, followers, and posts will show up here</div>
+                </div>
+              ) : notifications.map(n => (
+                <div key={n.id} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: n.read_at ? "transparent" : "rgba(201,169,110,.04)", cursor: n.data?.url ? "pointer" : "default" }} onClick={() => { if (n.data?.url) { setShowNotifPanel(false); if (!n.data.url.startsWith("/")) window.open(n.data.url, "_blank", "noopener"); } }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: n.type === "price_drop" ? "rgba(76,175,80,.15)" : n.type === "social" ? "rgba(201,169,110,.15)" : n.type === "new_post" ? "rgba(100,181,246,.15)" : "rgba(255,255,255,.08)" }}>
+                      {n.type === "price_drop" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" strokeWidth="2"><path d="M12 2v20M17 17l-5 5-5-5"/></svg> : n.type === "social" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> : n.type === "new_post" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m21 15-5-5L5 21"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>{n.title}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{n.body}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 4 }}>{relativeDate(n.sent_at)}</div>
+                    </div>
+                    {!n.read_at && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0, marginTop: 4 }} />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Push notification permission prompt */}
+        {showNotifPrompt && !showNotifPanel && (
+          <div className="animate-slide-up" style={{ position: "fixed", bottom: 90, left: 16, right: 16, background: "var(--card-bg)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 12px 40px rgba(0,0,0,.5)", padding: "16px", zIndex: 9990, display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(201,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>Stay in the loop</div>
+              <div style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.4 }}>Get notified about price drops, new posts, and more.</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <button onClick={async () => { localStorage.setItem("attair_notif_prompted", "1"); const perm = await Notification.requestPermission(); if (perm === "granted") { const ok = await subscribeToPush(); setPushEnabled(ok); } setShowNotifPrompt(false); }} style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>Enable</button>
+              <button onClick={() => { setShowNotifPrompt(false); localStorage.setItem("attair_notif_prompted", "1"); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 10, cursor: "pointer" }}>Not now</button>
+            </div>
+          </div>
+        )}
+
         <div className="as">
           <input ref={fileRef} type="file" accept="image/*,.heic,.heif" capture="environment" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
           <input ref={galleryRef} type="file" accept=".jpg,.jpeg,.png,.heic,.heif,.webp,.gif" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
@@ -4184,7 +4351,7 @@ export default function App() {
                         value={searchNotes}
                         onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
                         onKeyDown={e => { if (e.key === "Enter" && searchNotes.trim()) { e.target.blur(); runProductSearch(); } }}
-                        placeholder="Refine your results with AI…"
+                        placeholder="Refine your results with AI..."
                         className="refine-input"
                         style={{ flex: 1, minHeight: 44 }}
                       />
@@ -4972,6 +5139,18 @@ export default function App() {
                       Upgrade to Pro
                     </button>
                   )}
+
+                  {/* Push Notifications */}
+                  <div style={{ padding: "14px 0", borderTop: "1px solid var(--border)" }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 10 }}>Notifications</div>
+                    {("Notification" in window) && Notification.permission !== "granted" ? (
+                      <button className="btn-secondary" style={{ width: "100%", padding: "10px 0", fontSize: 13 }} onClick={async () => { const perm = await Notification.requestPermission(); if (perm === "granted") { const ok = await subscribeToPush(); setPushEnabled(ok); } }}>
+                        Enable Push Notifications
+                      </button>
+                    ) : (
+                      <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 4 }}>Push notifications are enabled</div>
+                    )}
+                  </div>
 
                   {/* Referral */}
                   {referralCode && (
