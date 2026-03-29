@@ -151,7 +151,9 @@ async function sendToChannel(channel, text) {
   }
 
   for (const chunk of chunks) {
-    if (chunk.trim()) await channel.send(chunk);
+    if (chunk.trim()) {
+      try { await channel.send(chunk); } catch (e) { console.error("[sendToChannel] failed:", e.message); }
+    }
   }
 }
 
@@ -302,6 +304,16 @@ function runAgent(prompt, { label = "agent", onLog } = {}) {
 
 // ─── Build → Judge → Fix Loop ───────────────────────────────────────────────
 async function buildWithQualityLoop(taskDescription, chatChannel, logsChannel) {
+  if (activeProcess || buildLoopRunning) {
+    await chatChannel.send("A build is already in progress. Say `stop` first.");
+    return false;
+  }
+
+  if (!taskDescription || !taskDescription.trim()) {
+    await chatChannel.send("No task description provided.");
+    return false;
+  }
+
   const MAX_ITERATIONS = 10;
   let iteration = 0;
 
@@ -842,8 +854,9 @@ async function executeActions(reply, channel) {
     text = text.replace(buildMatch[0], "").trim();
     const logsChannel = LOGS_CHANNEL_ID ? await client.channels.fetch(LOGS_CHANNEL_ID).catch(() => null) : null;
     // Run build loop in background so we can keep chatting
-    buildWithQualityLoop(description, channel, logsChannel).catch(err => {
-      channel.send(`Build loop error: ${err.message.slice(0, 200)}`).catch(() => {});
+    buildWithQualityLoop(description || "Build feature as described in conversation", channel, logsChannel).catch(err => {
+      console.error("[BUILD] error:", err.message, err.stack?.slice(0, 300));
+      channel.send(`Build loop error: ${(err.message || "unknown error").slice(0, 200)}`).catch(() => {});
     });
   }
 
@@ -852,7 +865,8 @@ async function executeActions(reply, channel) {
     text = text.replace(/\[ACTION:BUILD_NEXT\]/g, "").trim();
     const logsChannel = LOGS_CHANNEL_ID ? await client.channels.fetch(LOGS_CHANNEL_ID).catch(() => null) : null;
     buildFromBacklog(channel, logsChannel).catch(err => {
-      channel.send(`Backlog loop error: ${err.message.slice(0, 200)}`).catch(() => {});
+      console.error("[BUILD_NEXT] error:", err.message, err.stack?.slice(0, 500));
+      channel.send(`Backlog loop error: ${(err.message || "unknown error").slice(0, 200)}`).catch(() => {});
     });
   }
 
