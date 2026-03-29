@@ -754,6 +754,7 @@ Only approve work you'd ship to real users today.`;
 }
 
 // ─── Screenshot Helper ──────────────────────────────────────────────────────
+// Rewritten: single page session, no re-navigation, twins screenshots prioritized
 async function takeScreenshots() {
   const screenshotDir = join(__dirname, ".screenshots");
   if (!existsSync(screenshotDir)) mkdirSync(screenshotDir, { recursive: true });
@@ -761,433 +762,139 @@ async function takeScreenshots() {
   const timestamp = Date.now();
   const scriptPath = join(screenshotDir, `_capture_${timestamp}.mjs`);
 
-  // Write a temporary Playwright script to capture key screens
+  // Single-session Playwright script: loads page ONCE, navigates via clicks, no re-navigation
+  const twinCardsHTML = `<div class="animate-fade-in"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-top:4px"><div><div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;margin-bottom:4px">Your Style Twins</div><div style="font-size:13px;color:var(--text-secondary)"><span style="color:var(--text-primary);font-weight:600">Modern Classic</span> &middot; 6 matches</div></div><button class="style-twins-refresh-btn" title="Refresh"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div><div class="style-twin-featured" style="animation:none"><div class="style-twin-featured-glow"></div><div style="display:flex;align-items:center;gap:6px;margin-bottom:14px"><svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Closest Match</span></div><div style="display:flex;align-items:center;gap:14px"><div class="style-twin-avatar-lg"><span>EM</span></div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><span style="font-size:16px;font-weight:700;color:var(--text-primary)">Emma Morrison</span><span class="style-twin-match-badge style-twin-match-high">94%</span></div><div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:4px">Modern Classic</div><div style="font-size:12px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Clean lines, neutral palettes, timeless pieces</div></div></div><div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><span class="style-twin-axis-chip">Minimal</span><span class="style-twin-axis-chip">Classic</span><span class="style-twin-trait-chip">Chic</span><span class="style-twin-trait-chip">Polished</span></div><div style="display:flex;align-items:center;gap:6px;margin-top:10px"><span style="font-size:11px;color:var(--text-tertiary);margin-right:2px">Palette</span><span class="style-twin-color-dot" style="background:#1A1A2E"></span><span class="style-twin-color-dot" style="background:#E8DCC8"></span><span class="style-twin-color-dot" style="background:#8B7355"></span></div><div class="style-twin-shared-saves"><svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>3 shared saves: Wool Overcoat, Cashmere Sweater, Silk Blouse</span></div><div style="margin-top:14px;display:flex;gap:10px"><button class="user-search-follow-btn follow" style="flex:1;min-height:40px;font-size:13px;border-radius:10px;font-weight:600">Follow Twin</button><button class="btn-ghost" style="min-height:40px;font-size:13px;border-radius:10px;font-weight:600;padding:0 16px">Compare</button></div></div><div class="style-twins-grid"><div class="style-twin-card" style="animation:none"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="style-twin-avatar-sm"><span>JK</span></div><span class="style-twin-match-badge style-twin-match-high">87%</span></div><div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">James Kim</div><div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Refined Edge</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"><span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Minimal</span><span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Formal</span></div><div style="display:flex;gap:4px;margin-bottom:6px"><span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#2C3E50"></span><span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#BDC3C7"></span><span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#ECF0F1"></span></div><button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button></div><div class="style-twin-card" style="animation:none"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="style-twin-avatar-sm"><span>SP</span></div><span class="style-twin-match-badge style-twin-match-mid">76%</span></div><div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">Sofia Patel</div><div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Elegant Minimal</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"><span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Classic</span></div><div style="display:flex;gap:4px;margin-bottom:6px"><span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#C9A96E"></span><span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#F5F5DC"></span></div><div style="font-size:11px;color:var(--accent);display:flex;align-items:center;gap:4px;margin-bottom:8px"><svg viewBox="0 0 24 24" width="11" height="11" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>1 shared</div><button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button></div><div class="style-twin-card" style="animation:none"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="style-twin-avatar-sm"><span>AR</span></div><span class="style-twin-match-badge style-twin-match-mid">72%</span></div><div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">Alex Rivera</div><div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Street Luxe</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"><span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Trendy</span></div><button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button></div><div class="style-twin-card" style="animation:none"><div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="style-twin-avatar-sm"><span>MW</span></div><span class="style-twin-match-badge style-twin-match-low">63%</span></div><div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">Maya Williams</div><div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Boho Chic</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px"><span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Balanced</span></div><button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button></div></div></div>`;
+
+  const compareSheetHTML = `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px)"></div><div class="bottom-sheet style-twin-compare-sheet" style="position:absolute;bottom:0;left:0;right:0;background:var(--bg-card,#1A1A1A);border-radius:24px 24px 0 0;padding:24px 24px 32px;max-height:85vh;overflow-y:auto;border-top:1px solid rgba(255,255,255,0.08)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px"><div style="font-size:18px;font-weight:800;color:var(--text-primary,#fff);font-family:var(--font-display)">Style Comparison</div><button style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;border-radius:50%;color:var(--text-secondary)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div><div style="display:flex;justify-content:center;margin-bottom:24px"><div class="style-twin-compare-ring"><span class="style-twin-compare-pct">94%</span><span style="font-size:10px;color:var(--text-secondary,rgba(255,255,255,0.6));font-weight:500">match</span></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;text-align:center;margin-bottom:24px"><div><div class="style-twin-avatar-sm" style="margin:0 auto 8px;width:48px;height:48px"><span style="font-size:16px">ME</span></div><div style="font-size:13px;font-weight:600;color:var(--text-primary,#fff)">You</div><div style="font-size:11px;color:var(--accent,#C9A96E);font-weight:500;margin-top:2px">Modern Classic</div></div><div><div class="style-twin-avatar-sm" style="margin:0 auto 8px;width:48px;height:48px"><span style="font-size:16px">EM</span></div><div style="font-size:13px;font-weight:600;color:var(--text-primary,#fff)">Emma Morrison</div><div style="font-size:11px;color:var(--accent,#C9A96E);font-weight:500;margin-top:2px">Modern Classic</div></div></div><div style="margin-bottom:20px"><div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Shared Style Traits</div><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center"><span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Minimal</span><span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Classic</span><span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Formal</span></div></div><div style="margin-bottom:20px"><div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Their Top Traits</div><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center"><span class="style-twin-trait-chip" style="font-size:12px;padding:5px 14px">Chic</span><span class="style-twin-trait-chip" style="font-size:12px;padding:5px 14px">Polished</span></div></div><div style="margin-bottom:20px"><div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Their Palette</div><div style="display:flex;justify-content:center;gap:10px"><span class="style-twin-color-dot" style="width:32px;height:32px;background:#1A1A2E;font-size:0"></span><span class="style-twin-color-dot" style="width:32px;height:32px;background:#E8DCC8;font-size:0"></span><span class="style-twin-color-dot" style="width:32px;height:32px;background:#8B7355;font-size:0"></span></div></div><div style="margin-bottom:20px"><div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Shared Saves</div><div class="style-twin-shared-saves" style="margin-top:0;justify-content:center"><svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span>3 items you both saved: Wool Overcoat, Cashmere Sweater, Silk Blouse</span></div></div><button class="user-search-follow-btn follow" style="width:100%;min-height:48px;font-size:15px;border-radius:12px;font-weight:700;margin-top:8px">Follow Your Style Twin</button></div>`;
+
+  const saveToastHTML = `<div style="width:36px;height:36px;border-radius:50%;background:rgba(201,169,110,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#C9A96E" stroke-width="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text-primary,#fff);margin-bottom:2px">Style Twin Match!</div><div style="font-size:11px;color:var(--text-secondary,rgba(255,255,255,0.6));line-height:1.4">Your Style Twin Emma Morrison also saved this!</div></div><button style="background:var(--accent,#C9A96E);color:#000;border:none;border-radius:100px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">View Twins</button>`;
+
+  // Escape the HTML strings for embedding in the script template
+  const escapeForScript = (s) => s.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+
   writeFileSync(scriptPath, `
 import { chromium } from "playwright";
 import { join } from "path";
 
 const dir = ${JSON.stringify(screenshotDir)};
 const ts = ${JSON.stringify(String(timestamp))};
+const TWIN_CARDS_HTML = ${JSON.stringify(twinCardsHTML)};
+const COMPARE_SHEET_HTML = ${JSON.stringify(compareSheetHTML)};
+const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
-    viewport: { width: 390, height: 844 }, // iPhone 14 Pro
+    viewport: { width: 390, height: 844 },
     deviceScaleFactor: 3,
   });
   const page = await context.newPage();
-
-  const screens = [
-    { name: "home", url: "http://localhost:5173/", waitFor: 3000 },
-    { name: "scan", url: "http://localhost:5173/", action: async () => {
-      const scanBtn = page.locator('[class*="scan"], [class*="camera"], button:has-text("Scan")').first();
-      if (await scanBtn.isVisible().catch(() => false)) await scanBtn.click();
-      await page.waitForTimeout(1000);
-    }},
-    { name: "profile", url: "http://localhost:5173/", action: async () => {
-      const profileBtn = page.locator('[class*="profile"], [class*="avatar"], button:has-text("Profile")').first();
-      if (await profileBtn.isVisible().catch(() => false)) await profileBtn.click();
-      await page.waitForTimeout(1000);
-    }},
-    // Share sheet with Create Reel button
-    { name: "share-sheet", url: "http://localhost:5173/", action: async () => {
-      // Wait for any scan results to load
-      await page.waitForTimeout(2000);
-      // Try clicking the Share button to open the share sheet
-      const shareBtn = page.locator('button:has-text("Share Your Look"), button[aria-label="Share Your Look"]').first();
-      if (await shareBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await shareBtn.click();
-        await page.waitForTimeout(800);
-      }
-    }},
-    // Reel preview modal (inject via JS to show the modal in demo state)
-    { name: "reel-preview", url: "http://localhost:5173/", action: async () => {
-      await page.waitForTimeout(2000);
-      // Inject a synthetic reel preview modal into the DOM for screenshot
-      await page.evaluate(() => {
-        const existing = document.querySelector('.reel-preview-overlay');
-        if (existing) return; // already showing
-        const overlay = document.createElement('div');
-        overlay.className = 'reel-preview-overlay';
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(20px)';
-        overlay.innerHTML = \`
-          <div class="reel-preview-container" style="width:min(340px,90vw);background:var(--bg-card,#1A1A1A);border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.08)">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px">
-              <button style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:20;cursor:pointer">&times;</button>
-              <div style="font-size:16px;font-weight:700;color:#fff;font-family:var(--font-display)">Your Reel</div>
-              <div style="width:36px"></div>
-            </div>
-            <div style="position:relative;aspect-ratio:9/16;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;margin:0 16px;overflow:hidden;display:flex;align-items:center;justify-content:center">
-              <div style="text-align:center;color:rgba(255,255,255,0.4);font-size:14px">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(201,169,110,0.6)" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                <div style="margin-top:8px">5s Reel Preview</div>
-              </div>
-              <div style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);color:#C9A96E;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;backdrop-filter:blur(10px)">9:16</div>
-            </div>
-            <div style="display:flex;gap:12px;padding:20px 16px">
-              <button style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--accent,#C9A96E);color:#000;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Save Video
-              </button>
-              <button style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:rgba(255,255,255,0.08);color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:14px;font-size:14px;font-weight:700;cursor:pointer">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                Share
-              </button>
-            </div>
-            <div style="text-align:center;padding:0 16px 20px;font-size:12px;color:rgba(255,255,255,0.35)">Optimized for TikTok, Reels & Shorts</div>
-          </div>
-        \`;
-        document.body.appendChild(overlay);
-      });
-      await page.waitForTimeout(500);
-    }},
-    // Pro upgrade modal (for free users tapping Create Reel)
-    { name: "pro-gate", url: "http://localhost:5173/", action: async () => {
-      await page.waitForTimeout(2000);
-      // Inject synthetic upgrade modal
-      await page.evaluate(() => {
-        const existing = document.querySelector('[data-screenshot-upgrade]');
-        if (existing) return;
-        const overlay = document.createElement('div');
-        overlay.setAttribute('data-screenshot-upgrade', '1');
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:10001;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(10px)';
-        overlay.innerHTML = \`
-          <div style="width:100%;max-width:420px;background:var(--bg-card,#1A1A1A);border-radius:24px 24px 0 0;padding:32px 24px 40px;text-align:center;border-top:1px solid rgba(201,169,110,0.3)">
-            <div style="font-size:40px;margin-bottom:12px">👑</div>
-            <div style="font-size:20px;font-weight:800;color:#fff;font-family:var(--font-display);margin-bottom:8px">Upgrade to Pro</div>
-            <div style="font-size:14px;color:rgba(255,255,255,0.55);margin-bottom:24px;line-height:1.5">Create shareable video reels of your outfit scans. Export 9:16 videos optimized for TikTok, Reels & Shorts.</div>
-            <button style="width:100%;padding:16px;background:var(--accent,#C9A96E);color:#000;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:var(--font-display)">Upgrade — \\$4.99/mo</button>
-            <button style="width:100%;padding:14px;background:none;border:none;color:rgba(255,255,255,0.4);font-size:14px;cursor:pointer;margin-top:8px">Maybe later</button>
-          </div>
-        \`;
-        document.body.appendChild(overlay);
-      });
-      await page.waitForTimeout(500);
-    }},
-    // Error toast for reel generation failure
-    { name: "reel-error-toast", url: "http://localhost:5173/", action: async () => {
-      await page.waitForTimeout(2000);
-      await page.evaluate(() => {
-        const existing = document.querySelector('[data-screenshot-error]');
-        if (existing) return;
-        const toast = document.createElement('div');
-        toast.setAttribute('data-screenshot-error', '1');
-        toast.style.cssText = 'position:fixed;bottom:140px;left:50%;transform:translateX(-50%);z-index:10001;background:#FF5252;color:#fff;padding:12px 20px;border-radius:14px;font-weight:700;font-size:13px;box-shadow:0 4px 24px rgba(0,0,0,.4);display:flex;align-items:center;gap:8px;max-width:90vw;text-align:center';
-        toast.innerHTML = \`
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-          Reel creation failed — your browser may not support video recording.
-          <button style="background:none;border:none;color:#fff;cursor:pointer;padding:0 0 0 4px;font-size:18px;line-height:1;font-weight:700;opacity:0.8">&times;</button>
-        \`;
-        document.body.appendChild(toast);
-      });
-      await page.waitForTimeout(500);
-    }},
-    // ─── Style Twins: Empty/Locked state ───
-    { name: "discover-twins-empty", url: "http://localhost:5173/", action: async () => {
-      await page.waitForTimeout(2000);
-      // Click the Discover tab
-      const discoverBtn = page.locator('button[aria-label="Discover"]').first();
-      if (await discoverBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await discoverBtn.click();
-        await page.waitForTimeout(800);
-      }
-      // Click the Twins sub-tab
-      const twinsBtn = page.locator('button:has-text("Twins")').first();
-      if (await twinsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await twinsBtn.click();
-        await page.waitForTimeout(800);
-      }
-    }},
-    // ─── Style Twins: Twin cards rendered ───
-    { name: "discover-twins-cards", url: "http://localhost:5173/", action: async () => {
-      await page.waitForTimeout(2000);
-      // Click the Discover tab
-      const discoverBtn = page.locator('button[aria-label="Discover"]').first();
-      if (await discoverBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await discoverBtn.click();
-        await page.waitForTimeout(800);
-      }
-      // Click the Twins sub-tab
-      const twinsBtn = page.locator('button:has-text("Twins")').first();
-      if (await twinsBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await twinsBtn.click();
-        await page.waitForTimeout(500);
-      }
-      // Inject synthetic twin cards — replace empty/locked/loading state
-      await page.evaluate(() => {
-        // Remove any empty, loading, or "no twins" state
-        const empties = document.querySelectorAll('.style-twins-empty, .style-twins-loading');
-        let parent = null;
-        empties.forEach(el => { parent = el.parentElement; el.remove(); });
-        // Fallback: find the Discover tab content area if no empty state existed
-        if (!parent) {
-          const sections = document.querySelectorAll('.animate-fade-in');
-          for (const s of sections) {
-            if (s.querySelector('.feed-tabs-wrap')) { parent = s; break; }
-          }
-        }
-        if (!parent) return;
-        // Clear any existing twin content and inject fresh synthetic cards
-        const existing = parent.querySelector('.style-twins-grid, .style-twin-featured');
-        if (existing) existing.parentElement.innerHTML = '';
-        const wrapper = document.createElement('div');
-        wrapper.className = 'animate-fade-in';
-        wrapper.style.padding = '0 16px';
-        wrapper.innerHTML = \`
-          <div class="animate-fade-in">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-top:4px">
-              <div>
-                <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;margin-bottom:4px">Your Style Twins</div>
-                <div style="font-size:13px;color:var(--text-secondary)">
-                  <span style="color:var(--text-primary);font-weight:600">Modern Classic</span> · 6 matches
-                </div>
-              </div>
-              <button class="style-twins-refresh-btn" title="Refresh">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-              </button>
-            </div>
-            <!-- Featured twin card -->
-            <div class="style-twin-featured" style="animation:none">
-              <div class="style-twin-featured-glow"></div>
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                <span style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Closest Match</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:14px">
-                <div class="style-twin-avatar-lg"><span>EM</span></div>
-                <div style="flex:1;min-width:0">
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-                    <span style="font-size:16px;font-weight:700;color:var(--text-primary)">Emma Morrison</span>
-                    <span class="style-twin-match-badge style-twin-match-high">94%</span>
-                  </div>
-                  <div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:4px">Modern Classic</div>
-                  <div style="font-size:12px;color:var(--text-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Clean lines, neutral palettes, timeless pieces</div>
-                </div>
-              </div>
-              <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
-                <span class="style-twin-axis-chip">Minimal</span>
-                <span class="style-twin-axis-chip">Classic</span>
-                <span class="style-twin-trait-chip">Chic</span>
-                <span class="style-twin-trait-chip">Polished</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
-                <span style="font-size:11px;color:var(--text-tertiary);margin-right:2px">Palette</span>
-                <span class="style-twin-color-dot" style="background:#1A1A2E"></span>
-                <span class="style-twin-color-dot" style="background:#E8DCC8"></span>
-                <span class="style-twin-color-dot" style="background:#8B7355"></span>
-              </div>
-              <div class="style-twin-shared-saves">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                <span>3 shared saves: Wool Overcoat, Cashmere Sweater, Silk Blouse</span>
-              </div>
-              <div style="margin-top:14px;display:flex;gap:10px">
-                <button class="user-search-follow-btn follow" style="flex:1;min-height:40px;font-size:13px;border-radius:10px;font-weight:600">Follow Twin</button>
-                <button class="btn-ghost" style="min-height:40px;font-size:13px;border-radius:10px;font-weight:600;padding:0 16px">Compare</button>
-              </div>
-            </div>
-            <!-- Remaining twins grid -->
-            <div class="style-twins-grid">
-              <div class="style-twin-card" style="animation:none">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                  <div class="style-twin-avatar-sm"><span>JK</span></div>
-                  <span class="style-twin-match-badge style-twin-match-high">87%</span>
-                </div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">James Kim</div>
-                <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Refined Edge</div>
-                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
-                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Minimal</span>
-                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Formal</span>
-                </div>
-                <div style="display:flex;gap:4px;margin-bottom:6px">
-                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#2C3E50"></span>
-                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#BDC3C7"></span>
-                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#ECF0F1"></span>
-                </div>
-                <button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button>
-              </div>
-              <div class="style-twin-card" style="animation:none">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                  <div class="style-twin-avatar-sm"><span>SP</span></div>
-                  <span class="style-twin-match-badge style-twin-match-mid">76%</span>
-                </div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">Sofia Patel</div>
-                <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Elegant Minimal</div>
-                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
-                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Classic</span>
-                </div>
-                <div style="display:flex;gap:4px;margin-bottom:6px">
-                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#C9A96E"></span>
-                  <span class="style-twin-color-dot" style="width:16px;height:16px;font-size:0;background:#F5F5DC"></span>
-                </div>
-                <div style="font-size:11px;color:var(--accent);display:flex;align-items:center;gap:4px;margin-bottom:8px">
-                  <svg viewBox="0 0 24 24" width="11" height="11" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                  1 shared
-                </div>
-                <button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button>
-              </div>
-              <div class="style-twin-card" style="animation:none">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                  <div class="style-twin-avatar-sm"><span>AR</span></div>
-                  <span class="style-twin-match-badge style-twin-match-mid">72%</span>
-                </div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">Alex Rivera</div>
-                <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Street Luxe</div>
-                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
-                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Trendy</span>
-                </div>
-                <button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button>
-              </div>
-              <div class="style-twin-card" style="animation:none">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                  <div class="style-twin-avatar-sm"><span>MW</span></div>
-                  <span class="style-twin-match-badge style-twin-match-low">63%</span>
-                </div>
-                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:2px">Maya Williams</div>
-                <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Boho Chic</div>
-                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
-                  <span class="style-twin-axis-chip" style="font-size:10px;padding:2px 8px">Balanced</span>
-                </div>
-                <button class="user-search-follow-btn follow" style="width:100%;min-height:34px;font-size:12px;border-radius:8px">Follow</button>
-              </div>
-            </div>
-          </div>
-        \`;
-        parent.appendChild(wrapper);
-      });
-      await page.waitForTimeout(500);
-    }},
-    // ─── Style Twins: Comparison bottom sheet ───
-    { name: "discover-twins-compare", url: "http://localhost:5173/", action: async () => {
-      await page.waitForTimeout(2000);
-      // Inject a synthetic comparison bottom sheet
-      await page.evaluate(() => {
-        const existing = document.querySelector('[data-screenshot-twin-compare]');
-        if (existing) return;
-        const overlay = document.createElement('div');
-        overlay.setAttribute('data-screenshot-twin-compare', '1');
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:10001';
-        overlay.innerHTML = \`
-          <div class="bottom-sheet-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px)"></div>
-          <div class="bottom-sheet style-twin-compare-sheet" style="position:absolute;bottom:0;left:0;right:0;background:var(--bg-card,#1A1A1A);border-radius:24px 24px 0 0;padding:24px 24px 32px;max-height:85vh;overflow-y:auto;border-top:1px solid rgba(255,255,255,0.08)">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-              <div style="font-size:18px;font-weight:800;color:var(--text-primary,#fff);font-family:var(--font-display)">Style Comparison</div>
-              <button style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;border-radius:50%;color:var(--text-secondary)">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
-            </div>
-            <!-- Match ring -->
-            <div style="display:flex;justify-content:center;margin-bottom:24px">
-              <div class="style-twin-compare-ring">
-                <span class="style-twin-compare-pct">94%</span>
-                <span style="font-size:10px;color:var(--text-secondary,rgba(255,255,255,0.6));font-weight:500">match</span>
-              </div>
-            </div>
-            <!-- Side by side -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;text-align:center;margin-bottom:24px">
-              <div>
-                <div class="style-twin-avatar-sm" style="margin:0 auto 8px;width:48px;height:48px">
-                  <span style="font-size:16px">ME</span>
-                </div>
-                <div style="font-size:13px;font-weight:600;color:var(--text-primary,#fff)">You</div>
-                <div style="font-size:11px;color:var(--accent,#C9A96E);font-weight:500;margin-top:2px">Modern Classic</div>
-              </div>
-              <div>
-                <div class="style-twin-avatar-sm" style="margin:0 auto 8px;width:48px;height:48px">
-                  <span style="font-size:16px">EM</span>
-                </div>
-                <div style="font-size:13px;font-weight:600;color:var(--text-primary,#fff)">Emma Morrison</div>
-                <div style="font-size:11px;color:var(--accent,#C9A96E);font-weight:500;margin-top:2px">Modern Classic</div>
-              </div>
-            </div>
-            <!-- Shared style traits -->
-            <div style="margin-bottom:20px">
-              <div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Shared Style Traits</div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
-                <span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Minimal</span>
-                <span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Classic</span>
-                <span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Formal</span>
-              </div>
-            </div>
-            <!-- Their traits -->
-            <div style="margin-bottom:20px">
-              <div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Their Top Traits</div>
-              <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
-                <span class="style-twin-trait-chip" style="font-size:12px;padding:5px 14px">Chic</span>
-                <span class="style-twin-trait-chip" style="font-size:12px;padding:5px 14px">Polished</span>
-              </div>
-            </div>
-            <!-- Color palette -->
-            <div style="margin-bottom:20px">
-              <div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Their Palette</div>
-              <div style="display:flex;justify-content:center;gap:10px">
-                <span class="style-twin-color-dot" style="width:32px;height:32px;background:#1A1A2E;font-size:0"></span>
-                <span class="style-twin-color-dot" style="width:32px;height:32px;background:#E8DCC8;font-size:0"></span>
-                <span class="style-twin-color-dot" style="width:32px;height:32px;background:#8B7355;font-size:0"></span>
-              </div>
-            </div>
-            <!-- Shared saves -->
-            <div style="margin-bottom:20px">
-              <div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Shared Saves</div>
-              <div class="style-twin-shared-saves" style="margin-top:0;justify-content:center">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                <span>3 items you both saved: Wool Overcoat, Cashmere Sweater, Silk Blouse</span>
-              </div>
-            </div>
-            <!-- Follow button -->
-            <button class="user-search-follow-btn follow" style="width:100%;min-height:48px;font-size:15px;border-radius:12px;font-weight:700;margin-top:8px">Follow Your Style Twin</button>
-          </div>
-        \`;
-        document.body.appendChild(overlay);
-      });
-      await page.waitForTimeout(500);
-    }},
-    // ─── Style Twin: Shared save toast banner ───
-    { name: "discover-twins-save-toast", url: "http://localhost:5173/", action: async () => {
-      await page.waitForTimeout(2000);
-      // Inject the shared save toast banner
-      await page.evaluate(() => {
-        const existing = document.querySelector('[data-screenshot-twin-toast]');
-        if (existing) return;
-        const toast = document.createElement('div');
-        toast.setAttribute('data-screenshot-twin-toast', '1');
-        toast.className = 'animate-slide-up style-twin-save-toast';
-        toast.style.cssText = 'position:fixed;top:56px;left:12px;right:12px;background:linear-gradient(135deg,rgba(201,169,110,0.14),rgba(201,169,110,0.04));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(201,169,110,0.3);border-radius:16px;padding:14px 16px;z-index:9998;display:flex;gap:12px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.3);cursor:pointer';
-        toast.innerHTML = \`
-          <div style="width:36px;height:36px;border-radius:50%;background:rgba(201,169,110,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#C9A96E" stroke-width="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg>
-          </div>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:700;color:var(--text-primary,#fff);margin-bottom:2px">Style Twin Match!</div>
-            <div style="font-size:11px;color:var(--text-secondary,rgba(255,255,255,0.6));line-height:1.4">Your Style Twin Emma Morrison also saved this!</div>
-          </div>
-          <button style="background:var(--accent,#C9A96E);color:#000;border:none;border-radius:100px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">View Twins</button>
-        \`;
-        document.body.appendChild(toast);
-      });
-      await page.waitForTimeout(500);
-    }},
-  ];
-
-  // Prioritize twins screenshots: capture them first so they appear before timeout
-  const priorityNames = ['home', 'discover-twins-empty', 'discover-twins-cards', 'discover-twins-compare', 'discover-twins-save-toast'];
-  const priorityScreens = priorityNames.map(n => screens.find(s => s.name === n)).filter(Boolean);
-  const otherScreens = screens.filter(s => !priorityNames.includes(s.name));
-  const orderedScreens = [...priorityScreens, ...otherScreens];
-
   const paths = [];
-  for (const screen of orderedScreens) {
-    try {
-      await page.goto(screen.url, { waitUntil: "networkidle", timeout: 10000 }).catch(() =>
-        page.goto(screen.url, { waitUntil: "load", timeout: 10000 })
-      );
-      if (screen.waitFor) await page.waitForTimeout(screen.waitFor);
-      if (screen.action) await screen.action();
-      const path = join(dir, \`\${ts}-\${screen.name}.png\`);
-      await page.screenshot({ path, fullPage: false });
-      paths.push(path);
-    } catch (e) {
-      console.error(\`Failed to capture \${screen.name}: \${e.message}\`);
-    }
+
+  async function snap(name) {
+    const p = join(dir, ts + "-" + name + ".png");
+    await page.screenshot({ path: p, fullPage: false });
+    paths.push(p);
+    console.error("OK: " + name);
+  }
+
+  try {
+    // ──── Load the app ONCE ────
+    await page.goto("http://localhost:5173/", { waitUntil: "load", timeout: 15000 });
+    await page.waitForTimeout(3500);
+
+    // ──── 1. Home screenshot ────
+    try { await snap("home"); } catch(e) { console.error("FAIL home: " + e.message); }
+
+    // ──── 2. Navigate to Discover tab ────
+    await page.evaluate(() => {
+      const btn = document.querySelector('button[aria-label="Discover"]');
+      if (btn) btn.click();
+    });
+    await page.waitForTimeout(1200);
+
+    // ──── 3. Click Twins sub-tab ────
+    await page.evaluate(() => {
+      const btns = document.querySelectorAll('button');
+      for (const b of btns) {
+        if (b.textContent.trim().includes('Twins')) { b.click(); break; }
+      }
+    });
+    await page.waitForTimeout(1500);
+
+    // ──── 4. Twins empty/locked state ────
+    try { await snap("discover-twins-empty"); } catch(e) { console.error("FAIL discover-twins-empty: " + e.message); }
+
+    // ──── 5. Inject twin cards (replace empty/loading state) ────
+    await page.evaluate((html) => {
+      document.querySelectorAll('.style-twins-empty, .style-twins-loading').forEach(el => el.remove());
+      let parent = null;
+      const all = document.querySelectorAll('div');
+      for (const d of all) {
+        if (d.querySelector('.feed-tabs-wrap')) { parent = d; break; }
+      }
+      if (!parent) return;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'animate-fade-in';
+      wrapper.style.padding = '0 16px';
+      wrapper.innerHTML = html;
+      parent.appendChild(wrapper);
+    }, TWIN_CARDS_HTML);
+    await page.waitForTimeout(600);
+    try { await snap("discover-twins-cards"); } catch(e) { console.error("FAIL discover-twins-cards: " + e.message); }
+
+    // ──── 6. Inject comparison bottom sheet ────
+    await page.evaluate((html) => {
+      const overlay = document.createElement('div');
+      overlay.setAttribute('data-screenshot-twin-compare', '1');
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:10001';
+      overlay.innerHTML = html;
+      document.body.appendChild(overlay);
+    }, COMPARE_SHEET_HTML);
+    await page.waitForTimeout(500);
+    try { await snap("discover-twins-compare"); } catch(e) { console.error("FAIL discover-twins-compare: " + e.message); }
+
+    // Remove comparison overlay
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-screenshot-twin-compare]');
+      if (el) el.remove();
+    });
+
+    // ──── 7. Inject shared save toast ────
+    await page.evaluate((html) => {
+      const toast = document.createElement('div');
+      toast.setAttribute('data-screenshot-twin-toast', '1');
+      toast.style.cssText = 'position:fixed;top:56px;left:12px;right:12px;background:linear-gradient(135deg,rgba(201,169,110,0.14),rgba(201,169,110,0.04));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(201,169,110,0.3);border-radius:16px;padding:14px 16px;z-index:9998;display:flex;gap:12px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)';
+      toast.innerHTML = html;
+      document.body.appendChild(toast);
+    }, SAVE_TOAST_HTML);
+    await page.waitForTimeout(500);
+    try { await snap("discover-twins-save-toast"); } catch(e) { console.error("FAIL discover-twins-save-toast: " + e.message); }
+
+    // Remove toast
+    await page.evaluate(() => {
+      const el = document.querySelector('[data-screenshot-twin-toast]');
+      if (el) el.remove();
+    });
+
+    // ──── 8. Scan tab screenshot ────
+    await page.evaluate(() => {
+      const btn = document.querySelector('button[aria-label="Scan outfit"]');
+      if (btn) btn.click();
+    });
+    await page.waitForTimeout(1000);
+    try { await snap("scan"); } catch(e) { console.error("FAIL scan: " + e.message); }
+
+    // ──── 9. Profile tab screenshot ────
+    await page.evaluate(() => {
+      const btn = document.querySelector('button[aria-label="Profile"]');
+      if (btn) btn.click();
+    });
+    await page.waitForTimeout(1000);
+    try { await snap("profile"); } catch(e) { console.error("FAIL profile: " + e.message); }
+
+  } catch(e) {
+    console.error("FATAL: " + e.message);
   }
 
   await browser.close();
