@@ -1345,7 +1345,7 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
     "hat", "cap", "scarf", "belt", "watch", "bag", "purse", "sandal", "loafer",
     "oxford", "chino", "bomber", "parka", "bra", "underwear", "boxer",
   ];
-  if (CLOTHING_KEYWORDS.some(kw => title.includes(kw))) score += 3;
+  if (CLOTHING_KEYWORDS.some(kw => wordMatch(title, kw))) score += 3;
 
   // ── Subcategory match ────────────────────────────────────────
   const sub = (item.subcategory || "").toLowerCase();
@@ -1382,17 +1382,17 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   // Brand match — check exact brand, partial brand words, and product line
   const brand = (item.brand || "").toLowerCase();
   if (brand && brand !== "unidentified") {
-    if (title.includes(brand) || source.includes(brand)) {
+    if (wordMatch(title, brand) || wordMatch(source, brand)) {
       score += 30; // exact brand match
     } else {
       // Partial brand match for multi-word brands (e.g. "Ralph Lauren" → check "Ralph" and "Lauren")
       const brandWords = brand.split(/\s+/).filter(w => w.length > 3);
-      if (brandWords.length > 1 && brandWords.some(w => title.includes(w) || source.includes(w))) {
+      if (brandWords.length > 1 && brandWords.some(w => wordMatch(title, w) || wordMatch(source, w))) {
         score += 15; // partial brand word match
       }
     }
     const line = (item.product_line || "").toLowerCase();
-    if (line && line.length > 2 && title.includes(line)) score += 20;
+    if (line && line.length > 2 && wordMatch(title, line)) score += 20;
   }
 
   // Color match — check full color and individual color words
@@ -1431,7 +1431,7 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   if (styleKws.length > 0) {
     const kwMatches = styleKws.filter(kw => {
       const kwLower = (kw || "").toLowerCase();
-      return kwLower.length > 3 && (title.includes(kwLower) || source.includes(kwLower));
+      return kwLower.length > 3 && (wordMatch(title, kwLower) || wordMatch(source, kwLower));
     }).length;
     if (kwMatches >= 2) score += 8;
     else if (kwMatches === 1) score += 4;
@@ -1442,7 +1442,7 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   const construction = (item.construction_details || "").toLowerCase();
   if (construction && construction.length > 5) {
     const constructionWords = construction.split(/[,\s]+/).filter(w => w.length > 3);
-    const constMatches = constructionWords.filter(w => title.includes(w)).length;
+    const constMatches = constructionWords.filter(w => wordMatch(title, w)).length;
     if (constMatches >= 2) score += 6;
     else if (constMatches === 1) score += 3;
   }
@@ -1455,7 +1455,7 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   // ── Knockoff / counterfeit penalties ────────────────────────
   // Hard penalise known knockoff platforms and replica-signalling title keywords.
   if (KNOCKOFF_DOMAINS.some(d => link.includes(d))) score -= 50;
-  if (KNOCKOFF_TITLE_KEYWORDS.some(kw => title.includes(kw))) score -= 50;
+  if (KNOCKOFF_TITLE_KEYWORDS.some(kw => wordMatch(title, kw))) score -= 50;
 
   // Penalties
   const isMale = (item.gender || "male") === "male";
@@ -1468,16 +1468,16 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   const fitStyles = Array.isArray(sizePrefs.fit) ? sizePrefs.fit : (sizePrefs.fit ? [sizePrefs.fit] : []);
   for (const bt of bodyTypes) {
     const bodyTerm = BODY_TYPE_TERMS[bt];
-    if (bodyTerm && title.includes(bodyTerm.toLowerCase())) { score += 15; break; }
+    if (bodyTerm && wordMatch(title, bodyTerm.toLowerCase())) { score += 15; break; }
   }
   // Penalise if title mentions a body type incompatible with ALL user preferences
   const allOpposites = bodyTypes.flatMap(bt => BODY_TYPE_OPPOSITES[bt] || []);
   for (const opp of allOpposites) {
-    if (title.includes(opp.toLowerCase())) { score -= 25; break; }
+    if (wordMatch(title, opp.toLowerCase())) { score -= 25; break; }
   }
   for (const fs of fitStyles) {
     const fitTerm = FIT_TERMS[fs];
-    if (fitTerm && title.includes(fitTerm.toLowerCase())) { score += 10; break; }
+    if (fitTerm && wordMatch(title, fitTerm.toLowerCase())) { score += 10; break; }
   }
 
   // Price proximity — budget is the primary driver of result relevance.
@@ -1557,10 +1557,10 @@ function explainMatch(product, item, tier, isFromLens) {
   if (isFromLens) reasons.push("visual match");
 
   const brand = (item.brand || "").toLowerCase();
-  if (brand !== "unidentified" && (title.includes(brand) || source.includes(brand))) reasons.push("exact brand");
+  if (brand !== "unidentified" && (wordMatch(title, brand) || wordMatch(source, brand))) reasons.push("exact brand");
 
   const line = (item.product_line || "").toLowerCase();
-  if (line && line.length > 2 && title.includes(line)) reasons.push(item.product_line);
+  if (line && line.length > 2 && wordMatch(title, line)) reasons.push(item.product_line);
 
   const color = (item.color || "").toLowerCase();
   if (color && wordMatch(title, color)) reasons.push(item.color);
@@ -1956,11 +1956,11 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           const source = (product.source || "").toLowerCase();
 
           // Liked brands get a boost
-          if (preferenceProfile.liked_brands?.some(b => title.includes(b.toLowerCase()) || source.includes(b.toLowerCase()))) {
+          if (preferenceProfile.liked_brands?.some(b => wordMatch(title, b.toLowerCase()) || wordMatch(source, b.toLowerCase()))) {
             score += 15;
           }
           // Avoided brands get a penalty
-          if (preferenceProfile.avoided_brands?.some(b => title.includes(b.toLowerCase()) || source.includes(b.toLowerCase()))) {
+          if (preferenceProfile.avoided_brands?.some(b => wordMatch(title, b.toLowerCase()) || wordMatch(source, b.toLowerCase()))) {
             score -= 20;
           }
           // Preferred colors get a boost
@@ -1972,15 +1972,15 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
             score -= 8;
           }
           // Preferred categories get a boost
-          if (preferenceProfile.preferred_categories?.some(c => title.includes(c) || (item.category || "").toLowerCase() === c)) {
+          if (preferenceProfile.preferred_categories?.some(c => wordMatch(title, c) || (item.category || "").toLowerCase() === c)) {
             score += 8;
           }
           // Avoided categories get a penalty
-          if (preferenceProfile.avoided_categories?.some(c => title.includes(c) || (item.category || "").toLowerCase() === c)) {
+          if (preferenceProfile.avoided_categories?.some(c => wordMatch(title, c) || (item.category || "").toLowerCase() === c)) {
             score -= 12;
           }
           // Style keyword matches get a small boost
-          const kwMatches = (preferenceProfile.style_keywords || []).filter(kw => title.includes(kw.toLowerCase())).length;
+          const kwMatches = (preferenceProfile.style_keywords || []).filter(kw => wordMatch(title, kw.toLowerCase())).length;
           if (kwMatches > 0) score += Math.min(kwMatches * 3, 10);
 
           // Rejected product fingerprint check — if user said "Not for me"
@@ -2334,15 +2334,15 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       // Start at 50 (neutral), add/subtract up to ±50
       let score = 50;
       // Brand signals (strongest)
-      if (likedBrands.some(b => brand.includes(b) || title.includes(b))) score += 20;
-      if (avoidedBrands.some(b => brand.includes(b) || title.includes(b))) score -= 25;
+      if (likedBrands.some(b => wordMatch(brand, b) || wordMatch(title, b))) score += 20;
+      if (avoidedBrands.some(b => wordMatch(brand, b) || wordMatch(title, b))) score -= 25;
       // Color signals
-      if (prefColors.some(c => title.includes(c))) score += 12;
-      if (negColors.some(c => title.includes(c))) score -= 10;
+      if (prefColors.some(c => wordMatch(title, c))) score += 12;
+      if (negColors.some(c => wordMatch(title, c))) score -= 10;
       // Category signals
-      if (prefCats.some(c => title.includes(c))) score += 10;
+      if (prefCats.some(c => wordMatch(title, c))) score += 10;
       // Style keyword signals
-      const kwMatches = styleKws.filter(kw => title.includes(kw)).length;
+      const kwMatches = styleKws.filter(kw => wordMatch(title, kw)).length;
       score += Math.min(kwMatches * 5, 15);
       // Clamp 0-100
       return Math.max(0, Math.min(100, score));
