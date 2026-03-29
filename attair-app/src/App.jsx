@@ -3467,14 +3467,30 @@ export default function App() {
 
   // ─── Load Style Twins when user taps the Twins sub-tab ───
   const loadStyleTwins = useCallback(async () => {
-    if (!authed || styleTwinsLoadingRef.current) return;
+    if (!authed) return;
+    // Prevent concurrent calls but with safety timeout to avoid permanent deadlock
+    if (styleTwinsLoadingRef.current) {
+      console.log("[StyleTwins] skipping: already loading");
+      return;
+    }
     styleTwinsLoadingRef.current = true;
     setStyleTwinsLoading(true);
     setStyleTwinsError(null);
+    // Safety: auto-release ref after 15s to prevent deadlocks
+    const safetyTimer = setTimeout(() => {
+      if (styleTwinsLoadingRef.current) {
+        console.warn("[StyleTwins] safety timeout — releasing loading lock");
+        styleTwinsLoadingRef.current = false;
+        setStyleTwinsLoading(false);
+        setStyleTwinsHasFetched(true);
+        if (!styleTwinsReady) setStyleTwinsError("Request timed out. Tap to retry.");
+      }
+    }, 15000);
     try {
       const data = await API.getStyleTwins();
-      if (data.ready) {
-        setStyleTwins(data.twins || []);
+      if (data && data.ready) {
+        const twins = Array.isArray(data.twins) ? data.twins : [];
+        setStyleTwins(twins);
         setStyleTwinsReady(true);
         setStyleTwinsMyArchetype(data.my_archetype || null);
         setStyleTwinsMyScore(data.my_style_score || null);
@@ -3488,6 +3504,7 @@ export default function App() {
       setStyleTwinsError("Could not load Style Twins. Tap to retry.");
       setStyleTwins([]);
     } finally {
+      clearTimeout(safetyTimer);
       styleTwinsLoadingRef.current = false;
       setStyleTwinsLoading(false);
       setStyleTwinsHasFetched(true);
@@ -5034,14 +5051,13 @@ export default function App() {
                 <button className={`feed-tab${searchSubTab === "products" ? " active" : ""}`} onClick={() => setSearchSubTab("products")}>Products</button>
                 <button className={`feed-tab${searchSubTab === "twins" ? " active" : ""}`} onClick={() => {
                   setSearchSubTab("twins");
-                  // RACE CONDITION FIX: Always set loading=true synchronously on tab activation.
-                  // This guarantees the loading spinner shows immediately — never the "Unlock" CTA —
-                  // even if the user already visited twins before (hasFetched=true, ready=false).
+                  // Always trigger fresh fetch when tab is tapped. Reset ref if stuck to prevent deadlock.
                   if (authed) {
                     setStyleTwinsLoading(true);
-                    if (!styleTwinsLoadingRef.current) {
-                      loadStyleTwins();
-                    }
+                    setStyleTwinsHasFetched(false);
+                    // Force-release the ref lock to prevent permanent deadlock, then refetch
+                    styleTwinsLoadingRef.current = false;
+                    loadStyleTwins();
                   }
                 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -5297,7 +5313,7 @@ export default function App() {
                   )}
 
                   {authed && !styleTwinsLoading && !styleTwinsError && styleTwinsReady && styleTwins.length > 0 && (
-                    <div className="animate-fade-in">
+                    <div style={{ opacity: 1 }}>
                       {/* Header with archetype */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingTop: 4 }}>
                         <div>
@@ -5313,130 +5329,142 @@ export default function App() {
                       </div>
 
                       {/* Top Twin — featured card */}
-                      {styleTwins.length > 0 && (() => {
-                        const top = styleTwins[0];
-                        const ini = (top.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
-                        const isFlw = followingSet.has(top.id);
-                        return (
-                          <div className="style-twin-featured" key={top.id} onClick={() => setStyleTwinCompare(top)}>
-                            <div className="style-twin-featured-glow" />
-                            {/* Top match label */}
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
-                              <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 1 }}>Closest Match</span>
-                            </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                              <div className="style-twin-avatar-lg">
-                                {top.avatar_url ? (
-                                  <img src={top.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
-                                ) : (
-                                  <span>{ini}</span>
-                                )}
+                      {(() => {
+                        try {
+                          const top = styleTwins[0];
+                          if (!top) return null;
+                          const ini = ((top.display_name || "?") + "").split(" ").filter(Boolean).map(w => (w[0] || "")).join("").slice(0,2).toUpperCase() || "?";
+                          const isFlw = followingSet ? followingSet.has(top.id) : false;
+                          const matchTier = (top.match_pct || 0) >= 85 ? "high" : (top.match_pct || 0) >= 70 ? "mid" : "low";
+                          return (
+                            <div className="style-twin-featured" key={top.id} style={{ opacity: 1 }} onClick={() => setStyleTwinCompare(top)}>
+                              <div className="style-twin-featured-glow" />
+                              {/* Top match label */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 1 }}>Closest Match</span>
                               </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                                  <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{top.display_name || "Anonymous"}</span>
-                                  <span className="style-twin-match-badge style-twin-match-high">{top.match_pct}%</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                                <div className="style-twin-avatar-lg">
+                                  {top.avatar_url ? (
+                                    <img src={top.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                                  ) : (
+                                    <span>{ini}</span>
+                                  )}
                                 </div>
-                                {top.archetype && <div style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>{top.archetype}</div>}
-                                {top.bio && <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{top.bio}</div>}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                                    <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{top.display_name || "Anonymous"}</span>
+                                    <span className={`style-twin-match-badge style-twin-match-${matchTier}`}>{top.match_pct || 0}%</span>
+                                  </div>
+                                  {top.archetype && <div style={{ fontSize: 12, color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>{top.archetype}</div>}
+                                  {top.bio && <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{top.bio}</div>}
+                                </div>
+                              </div>
+                              {/* Shared style axes + traits */}
+                              {(Array.isArray(top.shared_axes) && top.shared_axes.length > 0 || Array.isArray(top.traits) && top.traits.length > 0) && (
+                                <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
+                                  {(top.shared_axes || []).map((axis, i) => (
+                                    <span key={i} className="style-twin-axis-chip">{axis}</span>
+                                  ))}
+                                  {(top.traits || []).map((t, i) => (
+                                    <span key={`t-${i}`} className="style-twin-trait-chip">{t}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {/* Color palette dots */}
+                              {Array.isArray(top.dominant_colors) && top.dominant_colors.length > 0 && (
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+                                  <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginRight: 2 }}>Palette</span>
+                                  {top.dominant_colors.map((c, i) => (
+                                    <span key={i} className="style-twin-color-dot" style={{ background: sdnaColorHex(c) }} title={c || ""} />
+                                  ))}
+                                </div>
+                              )}
+                              {/* Shared saves */}
+                              {(top.shared_saves_count || 0) > 0 && (
+                                <div className="style-twin-shared-saves">
+                                  <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                  <span>{top.shared_saves_count} shared save{top.shared_saves_count !== 1 ? "s" : ""}{Array.isArray(top.shared_saves) && top.shared_saves.length > 0 ? `: ${top.shared_saves.join(", ")}` : ""}</span>
+                                </div>
+                              )}
+                              {/* Actions */}
+                              <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
+                                <button
+                                  className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
+                                  onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(top.id); }}
+                                  style={{ flex: 1, minHeight: 40, fontSize: 13, borderRadius: 10, fontWeight: 600 }}
+                                >{isFlw ? "Following" : "Follow Twin"}</button>
+                                <button
+                                  className="btn-ghost"
+                                  onClick={(e) => { e.stopPropagation(); setStyleTwinCompare(top); }}
+                                  style={{ minHeight: 40, fontSize: 13, borderRadius: 10, fontWeight: 600, padding: "0 16px" }}
+                                >Compare</button>
                               </div>
                             </div>
-                            {/* Shared style axes + traits */}
-                            {((top.shared_axes && top.shared_axes.length > 0) || (top.traits && top.traits.length > 0)) && (
-                              <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-                                {(top.shared_axes || []).map((axis, i) => (
-                                  <span key={i} className="style-twin-axis-chip">{axis}</span>
-                                ))}
-                                {(top.traits || []).map((t, i) => (
-                                  <span key={`t-${i}`} className="style-twin-trait-chip">{t}</span>
-                                ))}
-                              </div>
-                            )}
-                            {/* Color palette dots — using sdnaColorHex for correct colors */}
-                            {top.dominant_colors && top.dominant_colors.length > 0 && (
-                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
-                                <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginRight: 2 }}>Palette</span>
-                                {top.dominant_colors.map((c, i) => (
-                                  <span key={i} className="style-twin-color-dot" style={{ background: sdnaColorHex(c) }} title={c} />
-                                ))}
-                              </div>
-                            )}
-                            {/* Shared saves */}
-                            {top.shared_saves_count > 0 && (
-                              <div className="style-twin-shared-saves">
-                                <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                                <span>{top.shared_saves_count} shared save{top.shared_saves_count !== 1 ? "s" : ""}{top.shared_saves.length > 0 ? `: ${top.shared_saves.join(", ")}` : ""}</span>
-                              </div>
-                            )}
-                            {/* Actions */}
-                            <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-                              <button
-                                className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
-                                onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(top.id); }}
-                                style={{ flex: 1, minHeight: 40, fontSize: 13, borderRadius: 10, fontWeight: 600 }}
-                              >{isFlw ? "Following" : "Follow Twin"}</button>
-                              <button
-                                className="btn-ghost"
-                                onClick={(e) => { e.stopPropagation(); setStyleTwinCompare(top); }}
-                                style={{ minHeight: 40, fontSize: 13, borderRadius: 10, fontWeight: 600, padding: "0 16px" }}
-                              >Compare</button>
-                            </div>
-                          </div>
-                        );
+                          );
+                        } catch (err) {
+                          console.error("[StyleTwins] featured card render error:", err);
+                          return null;
+                        }
                       })()}
 
                       {/* Remaining twins grid */}
                       {styleTwins.length > 1 && (
-                        <div className="style-twins-grid">
-                          {styleTwins.slice(1).map(twin => {
-                            const ini = (twin.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
-                            const isFlw = followingSet.has(twin.id);
-                            const matchTier = twin.match_pct >= 85 ? "high" : twin.match_pct >= 70 ? "mid" : "low";
-                            return (
-                              <div key={twin.id} className="style-twin-card" onClick={() => setStyleTwinCompare(twin)}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                                  <div className="style-twin-avatar-sm">
-                                    {twin.avatar_url ? (
-                                      <img src={twin.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
-                                    ) : (
-                                      <span>{ini}</span>
-                                    )}
+                        <div className="style-twins-grid" style={{ opacity: 1 }}>
+                          {styleTwins.slice(1).map((twin, idx) => {
+                            try {
+                              const ini = ((twin.display_name || "?") + "").split(" ").filter(Boolean).map(w => (w[0] || "")).join("").slice(0,2).toUpperCase() || "?";
+                              const isFlw = followingSet ? followingSet.has(twin.id) : false;
+                              const matchTier = (twin.match_pct || 0) >= 85 ? "high" : (twin.match_pct || 0) >= 70 ? "mid" : "low";
+                              return (
+                                <div key={twin.id || idx} className="style-twin-card" style={{ opacity: 1 }} onClick={() => setStyleTwinCompare(twin)}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                                    <div className="style-twin-avatar-sm">
+                                      {twin.avatar_url ? (
+                                        <img src={twin.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                                      ) : (
+                                        <span>{ini}</span>
+                                      )}
+                                    </div>
+                                    <span className={`style-twin-match-badge style-twin-match-${matchTier}`}>{twin.match_pct || 0}%</span>
                                   </div>
-                                  <span className={`style-twin-match-badge style-twin-match-${matchTier}`}>{twin.match_pct}%</span>
+                                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{twin.display_name || "Anonymous"}</div>
+                                  {twin.archetype && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600, marginBottom: 6 }}>{twin.archetype}</div>}
+                                  {/* Shared axes chips */}
+                                  {Array.isArray(twin.shared_axes) && twin.shared_axes.length > 0 && (
+                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
+                                      {twin.shared_axes.slice(0, 2).map((axis, i) => (
+                                        <span key={i} className="style-twin-axis-chip" style={{ fontSize: 10, padding: "2px 8px" }}>{axis}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {/* Color palette mini-dots */}
+                                  {Array.isArray(twin.dominant_colors) && twin.dominant_colors.length > 0 && (
+                                    <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+                                      {twin.dominant_colors.map((c, i) => (
+                                        <span key={i} className="style-twin-color-dot" style={{ width: 16, height: 16, fontSize: 0, background: sdnaColorHex(c) }} title={c || ""} />
+                                      ))}
+                                    </div>
+                                  )}
+                                  {/* Shared saves pill */}
+                                  {(twin.shared_saves_count || 0) > 0 && (
+                                    <div style={{ fontSize: 11, color: "var(--accent)", display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
+                                      <svg viewBox="0 0 24 24" width="11" height="11" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                      {twin.shared_saves_count} shared
+                                    </div>
+                                  )}
+                                  <button
+                                    className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
+                                    onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(twin.id); }}
+                                    style={{ width: "100%", minHeight: 34, fontSize: 12, borderRadius: 8 }}
+                                  >{isFlw ? "Following" : "Follow"}</button>
                                 </div>
-                                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{twin.display_name || "Anonymous"}</div>
-                                {twin.archetype && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600, marginBottom: 6 }}>{twin.archetype}</div>}
-                                {/* Shared axes chips */}
-                                {twin.shared_axes && twin.shared_axes.length > 0 && (
-                                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-                                    {twin.shared_axes.slice(0, 2).map((axis, i) => (
-                                      <span key={i} className="style-twin-axis-chip" style={{ fontSize: 10, padding: "2px 8px" }}>{axis}</span>
-                                    ))}
-                                  </div>
-                                )}
-                                {/* Color palette mini-dots */}
-                                {twin.dominant_colors && twin.dominant_colors.length > 0 && (
-                                  <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
-                                    {twin.dominant_colors.map((c, i) => (
-                                      <span key={i} className="style-twin-color-dot" style={{ width: 16, height: 16, fontSize: 0, background: sdnaColorHex(c) }} title={c} />
-                                    ))}
-                                  </div>
-                                )}
-                                {/* Shared saves pill */}
-                                {twin.shared_saves_count > 0 && (
-                                  <div style={{ fontSize: 11, color: "var(--accent)", display: "flex", alignItems: "center", gap: 4, marginBottom: 8 }}>
-                                    <svg viewBox="0 0 24 24" width="11" height="11" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                                    {twin.shared_saves_count} shared
-                                  </div>
-                                )}
-                                <button
-                                  className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
-                                  onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(twin.id); }}
-                                  style={{ width: "100%", minHeight: 34, fontSize: 12, borderRadius: 8 }}
-                                >{isFlw ? "Following" : "Follow"}</button>
-                              </div>
-                            );
+                              );
+                            } catch (err) {
+                              console.error("[StyleTwins] grid card render error:", err);
+                              return null;
+                            }
                           })}
                         </div>
                       )}

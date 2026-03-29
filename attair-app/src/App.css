@@ -4086,7 +4086,9 @@
   padding: 20px;
   margin-bottom: 16px;
   overflow: hidden;
-  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
 .style-twin-featured-glow {
@@ -4248,7 +4250,9 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 14px;
-  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: styleTwinCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   transition: border-color 0.2s ease, transform 0.15s ease;
 }
 
@@ -4435,5 +4439,11 @@
 @media (prefers-reduced-motion: reduce) {
   .style-twins-loading-ring { animation: none; }
   .style-twin-card,
-  .style-twin-featured { animation: none; }
+  .style-twin-featured { animation: none; opacity: 1 !important; transform: none !important; }
+}
+
+/* Ensure cards are always visible as a baseline — animations enhance, never hide */
+.style-twin-featured,
+.style-twin-card {
+  will-change: opacity, transform;
 }
