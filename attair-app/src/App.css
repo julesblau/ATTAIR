@@ -4286,6 +4286,51 @@
   cursor: pointer;
 }
 
+/* Refresh button */
+.style-twins-refresh-btn {
+  background: none;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 8px;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.style-twins-refresh-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+/* Comparison sheet */
+.style-twin-compare-sheet {
+  max-height: 85vh;
+  padding-bottom: 32px;
+}
+
+.style-twin-compare-ring {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(201, 169, 110, 0.06);
+  box-shadow: 0 0 32px rgba(201, 169, 110, 0.12);
+}
+
+.style-twin-compare-pct {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  font-family: var(--font-display);
+}
+
 /* Light mode overrides */
 [data-theme='light'] .style-twin-featured {
   border-color: rgba(201, 169, 110, 0.2);
@@ -4296,8 +4341,6 @@
 }
 
 [data-theme='light'] .style-twin-color-dot {
-  color: rgba(0, 0, 0, 0.5);
-  background: rgba(0, 0, 0, 0.05);
   border-color: rgba(0, 0, 0, 0.1);
 }
 
@@ -4305,6 +4348,10 @@
   background: linear-gradient(135deg, rgba(201, 169, 110, 0.12), rgba(255, 255, 255, 0.9));
   border-color: rgba(201, 169, 110, 0.25);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .style-twin-compare-ring {
+  box-shadow: 0 0 32px rgba(201, 169, 110, 0.08);
 }
 
 /* Reduce motion */

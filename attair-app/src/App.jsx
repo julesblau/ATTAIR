@@ -2945,6 +2945,7 @@ export default function App() {
   const [styleTwinsMyArchetype, setStyleTwinsMyArchetype] = useState(null);
   const [styleTwinsTotalMatches, setStyleTwinsTotalMatches] = useState(0);
   const [styleTwinSaveBanner, setStyleTwinSaveBanner] = useState(null); // { message, twin_name }
+  const [styleTwinCompare, setStyleTwinCompare] = useState(null); // twin object for comparison sheet
 
   // ─── Style Challenges ──────────────────────────────────────
   const [challenges, setChallenges] = useState([]);
@@ -4532,6 +4533,110 @@ export default function App() {
         </div>
       )}
 
+      {/* ─── Style Twin Comparison Sheet ─────────────────── */}
+      {styleTwinCompare && (
+        <>
+          <div className="bottom-sheet-overlay" onClick={() => setStyleTwinCompare(null)} />
+          <div className="bottom-sheet style-twin-compare-sheet" role="dialog" aria-label="Style comparison" aria-modal="true">
+            <div className="bottom-sheet-handle" />
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>Style Comparison</div>
+              <button onClick={() => setStyleTwinCompare(null)} aria-label="Close comparison" style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", borderRadius: "50%", color: "var(--text-secondary)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {/* Match circle */}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+              <div className="style-twin-compare-ring">
+                <span className="style-twin-compare-pct">{styleTwinCompare.match_pct}%</span>
+                <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>match</span>
+              </div>
+            </div>
+
+            {/* Two profiles side by side */}
+            <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 24 }}>
+              <div style={{ textAlign: "center" }}>
+                <div className="style-twin-avatar-sm" style={{ margin: "0 auto 8px", width: 48, height: 48 }}>
+                  <span style={{ fontSize: 16 }}>{(user?.display_name || "You").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}</span>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>You</div>
+                {styleTwinsMyArchetype && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 500, marginTop: 2 }}>{styleTwinsMyArchetype}</div>}
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div className="style-twin-avatar-sm" style={{ margin: "0 auto 8px", width: 48, height: 48 }}>
+                  {styleTwinCompare.avatar_url ? (
+                    <img src={styleTwinCompare.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                  ) : (
+                    <span style={{ fontSize: 16 }}>{(styleTwinCompare.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{styleTwinCompare.display_name || "Anonymous"}</div>
+                {styleTwinCompare.archetype && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 500, marginTop: 2 }}>{styleTwinCompare.archetype}</div>}
+              </div>
+            </div>
+
+            {/* Shared style axes */}
+            {styleTwinCompare.shared_axes && styleTwinCompare.shared_axes.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>You both lean</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {styleTwinCompare.shared_axes.map((axis, i) => (
+                    <span key={i} className="style-twin-axis-chip" style={{ fontSize: 13, padding: "6px 16px" }}>{axis}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Traits */}
+            {styleTwinCompare.traits && styleTwinCompare.traits.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Their style traits</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {styleTwinCompare.traits.map((t, i) => (
+                    <span key={i} className="style-twin-trait-chip" style={{ fontSize: 12, padding: "5px 14px" }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Color palette */}
+            {styleTwinCompare.dominant_colors && styleTwinCompare.dominant_colors.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Their palette</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {styleTwinCompare.dominant_colors.map((c, i) => (
+                    <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                      <span className="style-twin-color-dot" style={{ width: 32, height: 32, background: sdnaColorHex(c), fontSize: 0 }} />
+                      <span style={{ fontSize: 10, color: "var(--text-tertiary)", textTransform: "capitalize" }}>{c}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Shared saves */}
+            {styleTwinCompare.shared_saves_count > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>Shared saves</div>
+                <div className="style-twin-shared-saves" style={{ marginTop: 0 }}>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                  <span>{styleTwinCompare.shared_saves_count} item{styleTwinCompare.shared_saves_count !== 1 ? "s" : ""} you both saved{styleTwinCompare.shared_saves.length > 0 ? `: ${styleTwinCompare.shared_saves.join(", ")}` : ""}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Follow action */}
+            <button
+              className={`user-search-follow-btn ${followingSet.has(styleTwinCompare.id) ? "following" : "follow"}`}
+              onClick={() => handleFollowFromSearch(styleTwinCompare.id)}
+              style={{ width: "100%", minHeight: 48, fontSize: 15, borderRadius: 12, fontWeight: 600, marginTop: 8 }}
+            >{followingSet.has(styleTwinCompare.id) ? "Following" : "Follow Your Style Twin"}</button>
+          </div>
+        </>
+      )}
+
       {/* ─── MAIN APP ────────────────────────────────────── */}
       {screen === "app" && (<>
         <div className="hdr">
@@ -5068,15 +5173,16 @@ export default function App() {
 
                   {!styleTwinsLoading && styleTwinsReady && styleTwins.length > 0 && (
                     <div className="animate-fade-in">
-                      {/* Header */}
+                      {/* Header with archetype */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, paddingTop: 4 }}>
                         <div>
                           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--accent)", textTransform: "uppercase", marginBottom: 4 }}>Your Style Twins</div>
                           <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                            {styleTwinsTotalMatches} {styleTwinsTotalMatches === 1 ? "match" : "matches"} found
+                            {styleTwinsMyArchetype && <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{styleTwinsMyArchetype}</span>}
+                            {styleTwinsMyArchetype && " · "}{styleTwinsTotalMatches} {styleTwinsTotalMatches === 1 ? "match" : "matches"}
                           </div>
                         </div>
-                        <button onClick={loadStyleTwins} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, color: "var(--text-tertiary)" }} title="Refresh">
+                        <button onClick={loadStyleTwins} className="style-twins-refresh-btn" title="Refresh">
                           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                         </button>
                       </div>
@@ -5087,8 +5193,13 @@ export default function App() {
                         const ini = (top.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
                         const isFlw = followingSet.has(top.id);
                         return (
-                          <div className="style-twin-featured" key={top.id}>
+                          <div className="style-twin-featured" key={top.id} onClick={() => setStyleTwinCompare(top)}>
                             <div className="style-twin-featured-glow" />
+                            {/* Top match label */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+                              <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--accent)" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 1 }}>Closest Match</span>
+                            </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                               <div className="style-twin-avatar-lg">
                                 {top.avatar_url ? (
@@ -5106,23 +5217,23 @@ export default function App() {
                                 {top.bio && <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{top.bio}</div>}
                               </div>
                             </div>
-                            {/* Shared style axes */}
-                            {top.shared_axes && top.shared_axes.length > 0 && (
+                            {/* Shared style axes + traits */}
+                            {((top.shared_axes && top.shared_axes.length > 0) || (top.traits && top.traits.length > 0)) && (
                               <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-                                {top.shared_axes.map((axis, i) => (
+                                {(top.shared_axes || []).map((axis, i) => (
                                   <span key={i} className="style-twin-axis-chip">{axis}</span>
                                 ))}
-                                {top.traits && top.traits.map((t, i) => (
+                                {(top.traits || []).map((t, i) => (
                                   <span key={`t-${i}`} className="style-twin-trait-chip">{t}</span>
                                 ))}
                               </div>
                             )}
-                            {/* Color palette dots */}
+                            {/* Color palette dots — using sdnaColorHex for correct colors */}
                             {top.dominant_colors && top.dominant_colors.length > 0 && (
                               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
                                 <span style={{ fontSize: 11, color: "var(--text-tertiary)", marginRight: 2 }}>Palette</span>
                                 {top.dominant_colors.map((c, i) => (
-                                  <span key={i} className="style-twin-color-dot" style={{ background: c.includes("#") ? c : undefined }} title={c}>{c[0]?.toUpperCase()}</span>
+                                  <span key={i} className="style-twin-color-dot" style={{ background: sdnaColorHex(c) }} title={c} />
                                 ))}
                               </div>
                             )}
@@ -5133,13 +5244,18 @@ export default function App() {
                                 <span>{top.shared_saves_count} shared save{top.shared_saves_count !== 1 ? "s" : ""}{top.shared_saves.length > 0 ? `: ${top.shared_saves.join(", ")}` : ""}</span>
                               </div>
                             )}
-                            {/* Follow button */}
+                            {/* Actions */}
                             <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
                               <button
                                 className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
                                 onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(top.id); }}
                                 style={{ flex: 1, minHeight: 40, fontSize: 13, borderRadius: 10, fontWeight: 600 }}
                               >{isFlw ? "Following" : "Follow Twin"}</button>
+                              <button
+                                className="btn-ghost"
+                                onClick={(e) => { e.stopPropagation(); setStyleTwinCompare(top); }}
+                                style={{ minHeight: 40, fontSize: 13, borderRadius: 10, fontWeight: 600, padding: "0 16px" }}
+                              >Compare</button>
                             </div>
                           </div>
                         );
@@ -5153,7 +5269,7 @@ export default function App() {
                             const isFlw = followingSet.has(twin.id);
                             const matchTier = twin.match_pct >= 85 ? "high" : twin.match_pct >= 70 ? "mid" : "low";
                             return (
-                              <div key={twin.id} className="style-twin-card">
+                              <div key={twin.id} className="style-twin-card" onClick={() => setStyleTwinCompare(twin)}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                                   <div className="style-twin-avatar-sm">
                                     {twin.avatar_url ? (
@@ -5165,12 +5281,20 @@ export default function App() {
                                   <span className={`style-twin-match-badge style-twin-match-${matchTier}`}>{twin.match_pct}%</span>
                                 </div>
                                 <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{twin.display_name || "Anonymous"}</div>
-                                {twin.archetype && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600, marginBottom: 4 }}>{twin.archetype}</div>}
+                                {twin.archetype && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600, marginBottom: 6 }}>{twin.archetype}</div>}
                                 {/* Shared axes chips */}
                                 {twin.shared_axes && twin.shared_axes.length > 0 && (
-                                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
+                                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
                                     {twin.shared_axes.slice(0, 2).map((axis, i) => (
                                       <span key={i} className="style-twin-axis-chip" style={{ fontSize: 10, padding: "2px 8px" }}>{axis}</span>
+                                    ))}
+                                  </div>
+                                )}
+                                {/* Color palette mini-dots */}
+                                {twin.dominant_colors && twin.dominant_colors.length > 0 && (
+                                  <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+                                    {twin.dominant_colors.map((c, i) => (
+                                      <span key={i} className="style-twin-color-dot" style={{ width: 16, height: 16, fontSize: 0, background: sdnaColorHex(c) }} title={c} />
                                     ))}
                                   </div>
                                 )}
