@@ -237,6 +237,109 @@ describe("GET /api/style-twins — auth", () => {
     expect(status).toBe(200);
     expect(body.ready).toBe(false);
   });
+
+  it("returns twins sorted by match percentage (highest first)", async () => {
+    // Set up user's own profile with Style DNA
+    const myScore = { classic_vs_trendy: 5, minimal_vs_maximal: 5, casual_vs_formal: 5, budget_vs_luxury: 5 };
+    mockProfileData = {
+      style_dna_cache: {
+        ready: true,
+        style_score: myScore,
+        archetype: "Modern Classic",
+        traits: ["Minimalist", "Chic"],
+        stats: { dominant_colors: [{ value: "#000" }] },
+      },
+      display_name: "Me",
+    };
+
+    // Set up candidates with varying distances from the user
+    // Closest twin: scores are [5,5,5,6] — distance ≈ 1 → ~94%
+    // Middle twin: scores are [5,5,7,7] — distance ≈ 2.83 → ~84%
+    // Farthest twin (still >50%): scores are [5,8,8,5] — distance ≈ 4.24 → ~76%
+    // Below threshold (<50%): scores are [1,1,1,1] — distance ≈ 8 → ~56%... actually lets make it fail: [10,10,10,10] → distance=10 → ~44%
+    mockCandidates = [
+      {
+        id: "twin-far",
+        display_name: "Farthest",
+        bio: "bio3",
+        avatar_url: null,
+        style_dna_cache: {
+          ready: true,
+          style_score: { classic_vs_trendy: 5, minimal_vs_maximal: 8, casual_vs_formal: 8, budget_vs_luxury: 5 },
+          archetype: "Bold Explorer",
+          traits: ["Bold"],
+          stats: { dominant_colors: [{ value: "#f00" }] },
+        },
+      },
+      {
+        id: "twin-close",
+        display_name: "Closest",
+        bio: "bio1",
+        avatar_url: null,
+        style_dna_cache: {
+          ready: true,
+          style_score: { classic_vs_trendy: 5, minimal_vs_maximal: 5, casual_vs_formal: 5, budget_vs_luxury: 6 },
+          archetype: "Modern Classic",
+          traits: ["Minimalist"],
+          stats: { dominant_colors: [{ value: "#111" }] },
+        },
+      },
+      {
+        id: "twin-mid",
+        display_name: "Middle",
+        bio: "bio2",
+        avatar_url: null,
+        style_dna_cache: {
+          ready: true,
+          style_score: { classic_vs_trendy: 5, minimal_vs_maximal: 5, casual_vs_formal: 7, budget_vs_luxury: 7 },
+          archetype: "Refined Edge",
+          traits: ["Refined"],
+          stats: { dominant_colors: [{ value: "#222" }] },
+        },
+      },
+      {
+        id: "twin-excluded",
+        display_name: "TooFar",
+        bio: "bio4",
+        avatar_url: null,
+        style_dna_cache: {
+          ready: true,
+          style_score: { classic_vs_trendy: 10, minimal_vs_maximal: 10, casual_vs_formal: 10, budget_vs_luxury: 10 },
+          archetype: "Wild Card",
+          traits: ["Wild"],
+          stats: { dominant_colors: [{ value: "#999" }] },
+        },
+      },
+    ];
+
+    mockTwinSaves = [];
+    mockFollowRows = [];
+
+    const { status, body } = await request(port, "GET", "/api/style-twins");
+    expect(status).toBe(200);
+    expect(body.ready).toBe(true);
+
+    // Should exclude the too-far twin (<50% match)
+    const twinIds = body.twins.map(t => t.id);
+    expect(twinIds).not.toContain("twin-excluded");
+
+    // Should have 3 twins
+    expect(body.twins.length).toBe(3);
+
+    // Must be sorted highest match first
+    expect(body.twins[0].id).toBe("twin-close");
+    expect(body.twins[1].id).toBe("twin-mid");
+    expect(body.twins[2].id).toBe("twin-far");
+
+    // Verify match percentages are descending
+    for (let i = 1; i < body.twins.length; i++) {
+      expect(body.twins[i - 1].match_pct).toBeGreaterThanOrEqual(body.twins[i].match_pct);
+    }
+
+    // Verify archetype is passed through
+    expect(body.my_archetype).toBe("Modern Classic");
+    expect(body.total_matches).toBe(3);
+  });
 });
 
 describe("GET /api/style-twins/shared-save-check — auth", () => {
@@ -283,5 +386,39 @@ describe("POST /api/style-twins/weekly-notify", () => {
     // In test env (not production), the cron key check is skipped
     const { status } = await request(port, "POST", "/api/style-twins/weekly-notify", null, false);
     expect(status).not.toBe(401);
+  });
+
+  it("rejects unauthenticated calls in production mode", async () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalCronKey = process.env.CRON_SECRET_KEY;
+    try {
+      process.env.NODE_ENV = "production";
+      process.env.CRON_SECRET_KEY = "real-secret-key";
+
+      // No cron key header → should be rejected
+      const { status: noKey } = await request(port, "POST", "/api/style-twins/weekly-notify", null, false);
+      expect(noKey).toBe(401);
+
+      // Wrong cron key → should also be rejected
+      const { status: wrongKey } = await request(
+        port, "POST", "/api/style-twins/weekly-notify", null, false,
+        { "x-cron-key": "wrong-key" }
+      );
+      expect(wrongKey).toBe(401);
+
+      // Correct cron key → should be allowed
+      const { status: correctKey } = await request(
+        port, "POST", "/api/style-twins/weekly-notify", null, false,
+        { "x-cron-key": "real-secret-key" }
+      );
+      expect(correctKey).not.toBe(401);
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalCronKey !== undefined) {
+        process.env.CRON_SECRET_KEY = originalCronKey;
+      } else {
+        delete process.env.CRON_SECRET_KEY;
+      }
+    }
   });
 });
