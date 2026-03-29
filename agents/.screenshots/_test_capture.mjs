@@ -1,10 +1,15 @@
 import { chromium } from "playwright";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { spawn } from "child_process";
+import http from "http";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dir = __dirname;
 const ts = String(Date.now());
+
+const VITE_URL = "http://localhost:5173";
+const APP_DIR = join(__dirname, "..", "..", "attair-app");
 
 // Mock twin data — React renders it natively through normal code path (no HTML injection)
 const MOCK_TWINS_DATA = {
@@ -25,7 +30,49 @@ const COMPARE_SHEET_HTML = `<div style="position:absolute;inset:0;background:rgb
 
 const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;background:rgba(201,169,110,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#C9A96E" stroke-width="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text-primary,#fff);margin-bottom:2px">Style Twin Match!</div><div style="font-size:11px;color:var(--text-secondary,rgba(255,255,255,0.6));line-height:1.4">Your Style Twin Emma Morrison also saved this!</div></div><button style="background:var(--accent,#C9A96E);color:#000;border:none;border-radius:100px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">View Twins</button>`;
 
+// ── Pre-flight: ensure Vite dev server is running ──
+function checkServer(url, timeoutMs = 3000) {
+  return new Promise((resolve) => {
+    const req = http.get(url, (res) => { res.resume(); resolve(true); });
+    req.on("error", () => resolve(false));
+    req.setTimeout(timeoutMs, () => { req.destroy(); resolve(false); });
+  });
+}
+
+async function startViteAndWait(maxWaitMs = 30000) {
+  console.error("[Screenshot] Vite dev server not running — starting it automatically...");
+  const vite = spawn("npx", ["vite", "--port", "5173", "--host"], {
+    cwd: APP_DIR,
+    stdio: "ignore",
+    detached: true,
+    shell: true,
+  });
+  vite.unref();
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const alive = await checkServer(VITE_URL);
+    if (alive) {
+      console.error("[Screenshot] Vite dev server is now running.");
+      return true;
+    }
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  return false;
+}
+
 (async () => {
+  // ── CRITICAL: Verify dev server is reachable BEFORE launching browser ──
+  let serverReady = await checkServer(VITE_URL);
+  if (!serverReady) {
+    serverReady = await startViteAndWait();
+    if (!serverReady) {
+      console.error("[Screenshot] FATAL: Vite dev server at " + VITE_URL + " is not reachable after 30s.");
+      console.log(JSON.stringify([]));
+      process.exit(1);
+    }
+  }
+  console.error("[Screenshot] Vite dev server confirmed running at " + VITE_URL);
+
   const browser = await chromium.launch({ headless: true });
 
   // Build mock JWT token (Node.js Buffer-based for reliability, btoa can be inconsistent)
@@ -105,7 +152,7 @@ const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;ba
     // localStorage is already set via addInitScript, so React sees the token on first render.
     // Use "load" instead of "networkidle" — Vite's HMR WebSocket prevents networkidle from resolving.
     console.error("[Screenshot] Navigating to /?tab=twins with token pre-set...");
-    await page.goto("http://localhost:5173/?tab=twins", { waitUntil: "load", timeout: 20000 });
+    await page.goto(VITE_URL + "/?tab=twins", { waitUntil: "load", timeout: 20000 });
 
     // Wait for React to hydrate and render — look for the tab bar which confirms app screen
     console.error("[Screenshot] Waiting for tab bar (.tb)...");
