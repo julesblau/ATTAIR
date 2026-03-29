@@ -812,17 +812,15 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
   }
 
   try {
-    // Set mock auth token so app renders authenticated view
+    // Set mock auth token BEFORE the app loads by navigating to the origin first,
+    // setting localStorage via page.evaluate, then navigating to the actual page.
+    // This bypasses the addInitScript timing issue where React's useState initializer
+    // evaluates Auth.getToken() before addInitScript has a chance to run.
     const mockJwtPayload = btoa(JSON.stringify({email:"demo@attaire.com",sub:"demo-user",iat:1774800000,exp:1974800000})).replace(/=/g,"");
     const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + mockJwtPayload + ".mock-sig";
-    await page.addInitScript((token) => {
-      localStorage.setItem("attair_token", token);
-      localStorage.setItem("attair_interests_picked", "1");
-      localStorage.setItem("attair_notif_prompted", "1");
-      localStorage.setItem("attair_pref_sheet_shown", "1");
-    }, mockToken);
 
     // Intercept ALL network requests to APIs — return mock data so React renders natively
+    // (must be set up BEFORE any navigation to catch all requests)
     await page.route("**/api/**", async (route) => {
       const url = route.request().url();
       if (url.includes("/api/user/status")) {
@@ -854,8 +852,27 @@ const SAVE_TOAST_HTML = ${JSON.stringify(saveToastHTML)};
       }
     });
 
-    // Load the app with ?tab=twins deep link — app auto-skips onboarding for authed users
-    // and the deep link handler auto-navigates to Discover > Twins tab
+    // Step 1: Navigate to the app origin (blank page) so we can set localStorage on the correct domain.
+    // The Vite dev server serves index.html for any path, so we use a non-app path to avoid
+    // triggering React mount. We abort all requests to make this instant.
+    await page.goto("http://localhost:5173/__blank", { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(500);
+
+    // Step 2: Set localStorage BEFORE React initializes — this is the critical fix.
+    // React's useState initializer calls Auth.getToken() synchronously on mount.
+    // By setting the token here (via page.evaluate), it's guaranteed to be in localStorage
+    // when the app JavaScript evaluates on the next navigation.
+    await page.evaluate((token) => {
+      localStorage.setItem("attair_token", token);
+      localStorage.setItem("attair_interests_picked", "1");
+      localStorage.setItem("attair_notif_prompted", "1");
+      localStorage.setItem("attair_pref_sheet_shown", "1");
+    }, mockToken);
+    console.error("[Screenshot] localStorage set with auth token — ready to load app");
+
+    // Step 3: Navigate to the app with ?tab=twins deep link.
+    // Now React will see the token in localStorage during useState initialization,
+    // setting screen="app" immediately (skipping onboarding).
     await page.goto("http://localhost:5173/?tab=twins", { waitUntil: "networkidle", timeout: 20000 });
 
     // Wait for the tab bar (.tb) — with Auth token set, screen starts as "app" immediately

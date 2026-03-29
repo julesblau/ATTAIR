@@ -161,12 +161,12 @@
 **Summary:** 5-second animated video of scan results using Canvas + MediaRecorder API. Pro-only. Optimized for TikTok/Reels.
 
 ### Follow-up Nudge System
-**Status:** LOW — Deferred
+**Status:** DONE (2026-03-29)
 **Effort:** S (1 agent)
 **Summary:** Bot re-pings Jules after 10-15 min timeout if he misses a message that needs input.
 
 ### Chat Context Persistence
-**Status:** LOW — Deferred
+**Status:** DONE (2026-03-29)
 **Effort:** S
 **Summary:** Pass key context forward via memory system instead of relying on conversation compression.
 
@@ -223,7 +223,7 @@
 ## Approved — Creative Run 5 Proposals (2026-03-28)
 
 ### Retailer Spotlight
-**Status:** DONE (Run 5, 2026-03-28)
+**Status:** DONE (2026-03-29)
 **Effort:** S
 
 ### Dupe Alert
