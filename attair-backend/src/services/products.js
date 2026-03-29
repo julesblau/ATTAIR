@@ -2032,6 +2032,50 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     console.log("[Rerank] AI re-ranking complete.");
   }
 
+  // ── Step 6: Style Match Score ─────────────────────────────
+  // Compute a 0-100 "your style" match for each product using
+  // the user's preference profile (liked brands, colors, categories, keywords).
+  if (preferenceProfile && (preferenceProfile.signal_count || 0) >= 3) {
+    const likedBrands = (preferenceProfile.liked_brands || []).map(b => b.toLowerCase());
+    const avoidedBrands = (preferenceProfile.avoided_brands || []).map(b => b.toLowerCase());
+    const prefColors = (preferenceProfile.color_preferences?.positive || []).map(c => c.toLowerCase());
+    const negColors = (preferenceProfile.color_preferences?.negative || []).map(c => c.toLowerCase());
+    const prefCats = (preferenceProfile.preferred_categories || []).map(c => c.toLowerCase());
+    const styleKws = (preferenceProfile.style_keywords || []).map(k => k.toLowerCase());
+
+    const computeMatch = (product) => {
+      if (!product || product.is_product_page === false) return null;
+      const title = (product.product_name || "").toLowerCase();
+      const brand = (product.brand || "").toLowerCase();
+      // Start at 50 (neutral), add/subtract up to ±50
+      let score = 50;
+      // Brand signals (strongest)
+      if (likedBrands.some(b => brand.includes(b) || title.includes(b))) score += 20;
+      if (avoidedBrands.some(b => brand.includes(b) || title.includes(b))) score -= 25;
+      // Color signals
+      if (prefColors.some(c => title.includes(c))) score += 12;
+      if (negColors.some(c => title.includes(c))) score -= 10;
+      // Category signals
+      if (prefCats.some(c => title.includes(c))) score += 10;
+      // Style keyword signals
+      const kwMatches = styleKws.filter(kw => title.includes(kw)).length;
+      score += Math.min(kwMatches * 5, 15);
+      // Clamp 0-100
+      return Math.max(0, Math.min(100, score));
+    };
+
+    for (const result of output) {
+      for (const tierName of ["budget", "mid", "premium", "resale"]) {
+        const tier = result.tiers[tierName];
+        if (!tier) continue;
+        for (const product of tier) {
+          const match = computeMatch(product);
+          if (match !== null) product.style_match = match;
+        }
+      }
+    }
+  }
+
   // Clean up internal fields before returning
   for (const result of output) {
     delete result._item;

@@ -1838,6 +1838,25 @@
 
 .app[data-theme='light'] .dupe-alert-pill { box-shadow: 0 2px 8px rgba(201,169,110,0.3); }
 
+/* ── Style Match Score Pill ── */
+.style-match-pill {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  white-space: nowrap;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  padding: 3px 8px;
+  border-radius: 100px;
+  background: linear-gradient(135deg, #7B61FF, #C77DFF);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(123,97,255,0.35);
+  animation: dupeAlertIn 0.3s ease-out;
+}
+
 /* ── Scan Error State ── */
 .scan-error-state {
   padding: 24px;

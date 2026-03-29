@@ -4626,6 +4626,10 @@ export default function App() {
                                     const dupeInfo = dupeMap.get(`${tierKey}_${j}`);
                                     return (
                                       <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
+                                        {/* Style Match Score pill */}
+                                        {p.style_match != null && p.style_match >= 60 && (
+                                          <div className="style-match-pill">{p.style_match}% your style</div>
+                                        )}
                                         {/* Dupe Alert pill — shows savings vs most expensive + reference price */}
                                         {dupeInfo && (
                                           <div className="dupe-alert-pill" onClick={e => { e.preventDefault(); e.stopPropagation(); if (dupeInfo.vsUrl) window.open(dupeInfo.vsUrl, "_blank"); }} style={{ cursor: "pointer" }} title={`Compare: ${dupeInfo.vsStore} at ${dupeInfo.vsPrice}`}>
