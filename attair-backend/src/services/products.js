@@ -1228,6 +1228,24 @@ function getSynonyms(subcategory) {
   return [];
 }
 
+/**
+ * Word-boundary match — returns true only if `term` appears as whole word(s)
+ * in `text`. Prevents false positives like "tee" matching "steeple" or
+ * "vest" matching "investiture". For multi-word terms, checks that the entire
+ * phrase appears at word boundaries.
+ */
+const _wbCache = new Map();
+function wordMatch(text, term) {
+  if (!term || term.length < 2) return false;
+  let re = _wbCache.get(term);
+  if (!re) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    re = new RegExp(`\\b${escaped}\\b`, "i");
+    _wbCache.set(term, re);
+  }
+  return re.test(text);
+}
+
 // ═════════════════════════════════════════════════════════════
 // SCORING — How relevant is this product to the identified item?
 // ═════════════════════════════════════════════════════════════
@@ -1270,17 +1288,17 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   // ── Subcategory match ────────────────────────────────────────
   const sub = (item.subcategory || "").toLowerCase();
   if (sub && sub.length > 2) {
-    if (title.includes(sub)) {
+    if (wordMatch(title, sub)) {
       score += 25;                                              // exact: "dress shirt"
-    } else if (title.includes(sub + "s")) {
+    } else if (wordMatch(title, sub + "s")) {
       score += 22;                                              // singular→plural: "sneaker" → "sneakers"
-    } else if (sub.endsWith("s") && title.includes(sub.slice(0, -1))) {
+    } else if (sub.endsWith("s") && wordMatch(title, sub.slice(0, -1))) {
       score += 22;                                              // plural→singular: "sneakers" → "sneaker"
     } else {
       // Multi-word subcategory: "dress shirt" — check if all significant words match
       const subWords = sub.split(/\s+/).filter(w => w.length > 3);
-      if (subWords.length > 1 && subWords.every(w => title.includes(w))) score += 20;
-      else if (subWords.some(w => w.length > 4 && title.includes(w))) score += 10;
+      if (subWords.length > 1 && subWords.every(w => wordMatch(title, w))) score += 20;
+      else if (subWords.some(w => w.length > 4 && wordMatch(title, w))) score += 10;
       else {
         // ── Synonym match ──────────────────────────────────────
         // Claude and retailers use different names for the same garment.
@@ -1290,14 +1308,14 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
         // Without this, synonym-titled products score 0 and get filtered out
         // even though they are correct matches for the identified item.
         const synonyms = getSynonyms(sub);
-        if (synonyms.some(syn => title.includes(syn))) score += 20; // synonym match
+        if (synonyms.some(syn => wordMatch(title, syn))) score += 20; // synonym match
       }
     }
   }
 
   // ── Category match ───────────────────────────────────────────
   const cat = (item.category || "").toLowerCase();
-  if (cat && title.includes(cat)) score += 8;
+  if (cat && wordMatch(title, cat)) score += 8;
 
   // Brand match — check exact brand, partial brand words, and product line
   const brand = (item.brand || "").toLowerCase();
