@@ -2607,7 +2607,13 @@ export default function App() {
   const [obIdx, setObIdx] = useState(0);
   const [prefs, setPrefs] = useState({});
   const [selPlan, setSelPlan] = useState("yearly");
-  const [tab, setTab] = useState("home");
+  const [tab, setTab] = useState(() => {
+    if (Auth.getToken()) {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("tab") === "twins") return "search";
+    }
+    return "home";
+  });
   const [img, setImg] = useState(null);
   const [results, setResults] = useState(null);
   const [scanId, setScanId] = useState(null);
@@ -2946,13 +2952,25 @@ export default function App() {
   const [userSearchLoading, setUserSearchLoading] = useState(false);
   const [followingSet, setFollowingSet] = useState(new Set()); // user ids we follow
   const userSearchTimerRef = useRef(null);
-  const [searchSubTab, setSearchSubTab] = useState("people"); // "people" | "products" | "twins"
+  const [searchSubTab, setSearchSubTab] = useState(() => {
+    if (Auth.getToken()) {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("tab") === "twins") return "twins";
+    }
+    return "people";
+  }); // "people" | "products" | "twins"
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [productSearchResults, setProductSearchResults] = useState([]);
 
   // ─── Style Twins ────────────────────────────────────────────
   const [styleTwins, setStyleTwins] = useState([]);
-  const [styleTwinsLoading, setStyleTwinsLoading] = useState(false);
+  const [styleTwinsLoading, setStyleTwinsLoading] = useState(() => {
+    if (Auth.getToken()) {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get("tab") === "twins") return true;
+    }
+    return false;
+  });
   const [styleTwinsReady, setStyleTwinsReady] = useState(false);
   const [styleTwinsError, setStyleTwinsError] = useState(null);
   const [styleTwinsMyArchetype, setStyleTwinsMyArchetype] = useState(null);
