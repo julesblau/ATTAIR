@@ -460,7 +460,7 @@ async function getCache(key) {
 
 // Cache TTLs — shorter for price-sensitive text search, longer for visual matches
 const CACHE_TTL_LENS = 12 * 60 * 60 * 1000;   // 12 hours — Lens visual matches are stable
-const CACHE_TTL_TEXT = 6 * 60 * 60 * 1000;     // 6 hours — text/Shopping results have price volatility
+const CACHE_TTL_TEXT = 24 * 60 * 60 * 1000;    // 24 hours — product listings don't change that fast
 
 async function setCache(key, results, ttlMs = CACHE_TTL_TEXT) {
   const now = new Date();
@@ -1038,11 +1038,11 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
     queries.push(fullDesc);
   }
 
-  // Run up to 3 unique queries concurrently.
-  // We prioritise the first 3 as they are most specific. If those return 0 results
-  // the broadest fallback (last element from buildShoppingQueries) is guaranteed to
-  // return something, so we cap at 3 to avoid unnecessary API calls.
-  const uniqueQueries = [...new Set(queries.filter(Boolean))].slice(0, 3);
+  // Run up to 2 unique queries concurrently.
+  // We prioritise the first 2 as they are most specific (brand + search_query).
+  // Capped at 2 to control SerpAPI costs — the broadest fallback is still included
+  // so results are guaranteed even if specific queries miss.
+  const uniqueQueries = [...new Set(queries.filter(Boolean))].slice(0, 2);
   console.log(`[TextFallback] "${item.name}" → ${uniqueQueries.map(q => `"${q}"`).join(" | ")} budget=$${tierBounds.min}-$${tierBounds.max}${notes ? ` notes="${notes}"` : ""}`);
 
   const priceCeil = tierBounds.max > DEFAULT_BUDGET.max ? tierBounds.max : null;
@@ -1598,23 +1598,35 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     console.log(`[Match] "${items[i].name}" ← ${itemPools[i].lens.length} Lens matches`);
   }
 
-  // ── Step 3: Text search fallback for items with few USEFUL Lens matches
+  // ── Step 3: Text search fallback — EARLY EXIT when Lens has good coverage ──
+  // If Lens returned 5+ priced results for an item, skip text search entirely.
+  // This is the single biggest cost saver — Lens is free-er than text (1 call vs 2-3).
   const textPromises = items.map(async (item, i) => {
     const pricedLens = itemPools[i].lens.filter(r => {
       const p = extractPrice(r.price) || extractPrice(r.extracted_price);
       return p !== null;
     });
 
-    // Standard text search if < 3 priced Lens results
-    if (pricedLens.length < 3) {
-      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
-      itemPools[i].text = textResults;
-      itemPools[i].textQueryCount = Math.min(3, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0) + 1);
-      console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
+    // EARLY EXIT: 5+ priced Lens results = Lens covered this item well, skip text
+    if (pricedLens.length >= 5) {
+      console.log(`[Match] "${item.name}" ← ${pricedLens.length} priced Lens results — SKIPPING text search (early exit)`);
+      return;
     }
 
-    // Extended mode: run additional query variants (alt_search, material-based, construction-based, retailer-specific)
+    // Standard text search if < 5 priced Lens results
+    const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
+    itemPools[i].text = textResults;
+    itemPools[i].textQueryCount = Math.min(2, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0));
+    console.log(`[Match] "${item.name}" ← ${textResults.length} text results (supplementing ${itemPools[i].lens.length} Lens, ${pricedLens.length} with price)`);
+
+    // Extended mode: only escalate when fast-mode results are thin.
+    // If Lens + text already produced 10+ results, extended queries are wasteful.
     if (searchMode === "extended") {
+      const totalResults = itemPools[i].lens.length + itemPools[i].text.length;
+      if (totalResults >= 10) {
+        console.log(`[ExtendedText] "${item.name}" — SKIPPING extended (${totalResults} results already sufficient)`);
+        return;
+      }
       const extResults = await extendedTextSearch(item, gender, getItemTierBounds(item));
       if (extResults.length > 0) {
         // Merge into text pool, dedup by URL
@@ -1624,7 +1636,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           return url && !existingUrls.has(url);
         });
         itemPools[i].text.push(...newResults);
-        itemPools[i].textQueryCount += 3;
+        itemPools[i].textQueryCount += newResults.length > 0 ? 2 : 0;
         console.log(`[ExtendedText] "${item.name}" ← ${newResults.length} new results (${extResults.length} total, ${extResults.length - newResults.length} dupes)`);
       }
     }
