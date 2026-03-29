@@ -4885,15 +4885,18 @@ export default function App() {
                         <div className="sec-t">Identified Items</div>
                         {hsItems.map((it, idx) => {
                           const tierData = (hs.tiers || []).find(t2 => t2.item_index === idx);
-                          const bestProduct = tierData?.tiers?.flatMap(t => t.products || []).find(p => p.link);
+                          const tierObj = tierData?.tiers || {};
+                          const allTierProducts = [...(tierObj.mid || []), ...(tierObj.budget || []), ...(tierObj.premium || [])];
+                          const bestProduct = allTierProducts.find(p => p.url && p.is_product_page !== false);
+                          const cleanName = (it.name || "").replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}]/gu, "").trim();
                           return (
                           <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</div>
+                              <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cleanName || it.name}</div>
                               <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{it.brand || it.category}</div>
                             </div>
                             {bestProduct ? (
-                              <a href={bestProduct.link} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--accent)", textDecoration: "none", whiteSpace: "nowrap", padding: "4px 10px", border: "1px solid var(--accent)", borderRadius: "var(--radius-sm)", flexShrink: 0 }}>Shop this</a>
+                              <a href={bestProduct.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--accent)", textDecoration: "none", whiteSpace: "nowrap", padding: "4px 10px", border: "1px solid var(--accent)", borderRadius: "var(--radius-sm)", flexShrink: 0 }}>Shop this</a>
                             ) : (
                               <button onClick={(e) => { e.stopPropagation(); setResults({ gender: hs.detected_gender || "male", summary: hs.summary || "", items: hsItems.map(i => ({ ...i, status: hs.tiers ? "verified" : "identified", tiers: null })) }); if (hs.tiers && Array.isArray(hs.tiers)) setResults(prev => prev ? { ...prev, items: prev.items.map((item, i2) => { const sr = hs.tiers.find(t2 => t2.item_index === i2); return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev); setImg(hs.image_url || hs.image_thumbnail || null); setScanId(hs.id); setSelIdx(idx); setPickedItems(new Set((hs.tiers || []).map(t2 => t2.item_index))); setPhase("done"); setTab("scan"); setProfileScanOverlay(null); }} style={{ fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--accent)", background: "none", border: "1px solid var(--accent)", borderRadius: "var(--radius-sm)", padding: "4px 10px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>Find it</button>
                             )}
