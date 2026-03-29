@@ -1925,6 +1925,22 @@ export default function App() {
   // ─── User status (from backend) ───────────────────────────
   const [userStatus, setUserStatus] = useState(null); // { tier, scans_remaining_today, saved_count, show_ads, ... }
 
+  // ─── PWA install prompt ──────────────────────────────────
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); setShowInstallBanner(true); };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+    setShowInstallBanner(false);
+  };
+
   // ─── App state ────────────────────────────────────────────
   const [screen, setScreen] = useState("onboarding");
   const [obIdx, setObIdx] = useState(0);
@@ -5203,6 +5219,18 @@ export default function App() {
               {feedDetailScan.item_count > 0 && <div style={{ fontSize: 13, color: "var(--text-tertiary)", marginBottom: 16 }}>{feedDetailScan.item_count} item{feedDetailScan.item_count !== 1 ? "s" : ""} identified</div>}
               {feedDetailScan.user?.bio && <div style={{ fontSize: 13, color: "var(--text-tertiary)", padding: "12px 0", borderTop: "1px solid var(--border)" }}>{feedDetailScan.user.bio}</div>}
             </div>
+          </div>
+        )}
+
+        {/* ─── PWA Install Banner ── */}
+        {showInstallBanner && (
+          <div style={{ padding: "10px 16px", background: "linear-gradient(135deg, rgba(201,169,110,.12) 0%, rgba(201,169,110,.06) 100%)", borderTop: "1px solid rgba(201,169,110,.2)", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Add ATTAIRE to Home Screen</div>
+              <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Get the full app experience</div>
+            </div>
+            <button onClick={handleInstall} style={{ padding: "6px 16px", background: "var(--accent)", border: "none", borderRadius: 100, fontSize: 11, fontWeight: 700, color: "#0C0C0E", cursor: "pointer" }}>Install</button>
+            <button onClick={() => setShowInstallBanner(false)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: 4 }}>&times;</button>
           </div>
         )}
 
