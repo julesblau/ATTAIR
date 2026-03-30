@@ -1177,12 +1177,28 @@ async function executeActions(reply, channel) {
   return text;
 }
 
+// ─── Git Init (bootstrap .git in Docker containers that only have file copies) ─
+function ensureGitRepo() {
+  if (!IS_HOSTED) return;
+  try {
+    execCommand("git rev-parse --git-dir", { timeout: 5000 });
+    return; // already a git repo
+  } catch {
+    // No .git directory — init and set up
+    console.log("[gitInit] No .git found, initialising repo...");
+    execCommand("git init", { timeout: 10000 });
+    execCommand("git add -A", { timeout: 30000 });
+    execCommand('git commit -m "init: Docker container bootstrap"', { timeout: 30000 });
+    console.log("[gitInit] Repo initialised with initial commit");
+  }
+}
+
 // ─── Git Auth (configure remote with GH_TOKEN for hosted push/pull) ────────
 function configureGitAuth() {
   if (!IS_HOSTED || !GH_TOKEN || !GH_REPO) return;
   try {
-    const currentRemote = execCommand("git remote -v", { timeout: 5000 });
     const authedUrl = `https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git`;
+    const currentRemote = execCommand("git remote -v", { timeout: 5000 });
     if (currentRemote.includes("origin")) {
       execCommand(`git remote set-url origin ${authedUrl}`, { timeout: 5000 });
     } else {
@@ -1198,6 +1214,7 @@ function configureGitAuth() {
 async function gitSync() {
   if (!IS_HOSTED) return;
   try {
+    ensureGitRepo();
     configureGitAuth();
     const remote = execCommand("git remote -v", { timeout: 5000 });
     if (!remote.includes("origin")) {
@@ -1205,7 +1222,7 @@ async function gitSync() {
       return;
     }
     console.log("[gitSync] Pulling latest changes...");
-    const result = execCommand("git pull --rebase origin main", { timeout: 30000 });
+    const result = execCommand("git pull --rebase origin main --allow-unrelated-histories", { timeout: 30000 });
     console.log("[gitSync]", result.slice(0, 200));
   } catch (err) {
     console.error("[gitSync] Failed:", err.message?.slice(0, 200));
