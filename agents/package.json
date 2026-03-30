@@ -9,7 +9,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.52.0",
     "discord.js": "^14.16.3",
     "dotenv": "latest",
     "pg": "^8.20.0",

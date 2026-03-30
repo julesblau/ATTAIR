@@ -4,12 +4,12 @@
  * ─────────────────────────────────────────────────────────────
  * Run: node discord-bot.js
  *
- * Hosted deployment (Railway, VPS, etc.) — no Claude CLI dependency.
- * Uses Anthropic SDK directly for chat + agentic tool-use loops for builds.
+ * Uses Claude CLI (claude -p) for all AI interactions — covered by subscription.
+ * No Anthropic API SDK, no API costs.
  *
  * Features:
- *   - Opus-powered chat via Anthropic API (no CLI needed)
- *   - Build→Judge→Fix loop with agentic tool-use (read/write/bash)
+ *   - Chat via Claude CLI (no API key needed)
+ *   - Build→Judge→Fix loop using Claude CLI with full tool access
  *   - Token-maximizing: finishes one task, pulls next from backlog
  *   - Backlog management with priority + sizing
  *   - Creative agent for generating feature ideas
@@ -28,7 +28,6 @@ import { dirname, join, resolve, relative, isAbsolute } from "path";
 import { config } from "dotenv";
 import { randomUUID } from "crypto";
 import { createServer } from "http";
-import Anthropic from "@anthropic-ai/sdk";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, ".env") });
@@ -37,7 +36,6 @@ config({ path: join(__dirname, ".env") });
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CHAT_CHANNEL_ID = process.env.DISCORD_CHAT_CHANNEL_ID;
 const LOGS_CHANNEL_ID = process.env.DISCORD_LOGS_CHANNEL_ID;
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const REPO_ROOT = process.env.REPO_ROOT || join(__dirname, "..");
 const BACKLOG_PATH = join(__dirname, "backlog.md");
 const HEALTH_PORT = parseInt(process.env.HEALTH_PORT || process.env.PORT || "8081", 10);
@@ -49,13 +47,6 @@ if (!DISCORD_TOKEN) {
   console.error("Missing DISCORD_TOKEN in environment");
   process.exit(1);
 }
-if (!ANTHROPIC_API_KEY) {
-  console.error("Missing ANTHROPIC_API_KEY in environment");
-  process.exit(1);
-}
-
-// ─── Anthropic Client ────────────────────────────────────────────────────────
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 // ─── Health Check Server (for Railway / hosting platforms) ───────────────────
 const healthServer = createServer((req, res) => {
@@ -88,11 +79,12 @@ const client = new Client({
 });
 
 // ─── State ───────────────────────────────────────────────────────────────────
-let activeProcess = null;           // current agent abort controller or child process
+let activeProcess = null;           // current child process (for STOP)
 let activeTaskLabel = null;         // what's currently running (for status)
-let conversationHistory = [];       // Claude conversation context
+let conversationHistory = [];       // Chat conversation context (text-based)
 let buildLoopRunning = false;       // is the build→judge→fix loop active?
 let stopRequested = false;          // user asked to stop
+let chatSessionId = null;           // Claude CLI session ID for conversation continuity
 
 // ─── Keep-Alive State ───────────────────────────────────────────────────────
 let lastBuildHeartbeat = 0;          // timestamp of last build heartbeat ping
@@ -215,339 +207,133 @@ function execCommand(cmd, { cwd = REPO_ROOT, timeout = 60000 } = {}) {
   }
 }
 
-// ─── Helper: Spawn shell command (cross-platform, async) ────────────────────
-function spawnCommand(cmd, { cwd = REPO_ROOT } = {}) {
-  const isWindows = process.platform === "win32";
-  if (isWindows) {
-    return spawn("cmd.exe", ["/s", "/c", cmd], { stdio: ["ignore", "pipe", "pipe"], cwd, shell: false });
-  }
-  return spawn("sh", ["-c", cmd], { stdio: ["ignore", "pipe", "pipe"], cwd });
-}
+// ─── Claude CLI Runner ─────────────────────────────────────────────────────
+/**
+ * Run Claude CLI with a prompt. Returns the text output.
+ * Uses -p (print mode) with --dangerously-skip-permissions for automated use.
+ * The CLI handles its own tools (Read, Write, Edit, Bash, Glob, Grep).
+ */
+function runClaude(prompt, { systemPrompt, label = "claude", onLog, abortSignal, continueSession = false, sessionId = null, maxBudget = null } = {}) {
+  return new Promise((resolve, reject) => {
+    const args = ["-p", "--output-format", "text", "--dangerously-skip-permissions"];
 
-// ─── Agentic Tool Definitions ───────────────────────────────────────────────
-const AGENT_TOOLS = [
-  {
-    name: "read_file",
-    description: "Read a file from the repository. Returns file contents with line numbers.",
-    input_schema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Path relative to repo root (e.g. 'attair-backend/src/index.js')" },
-        offset: { type: "number", description: "Line number to start reading from (1-based)" },
-        limit: { type: "number", description: "Maximum number of lines to read" },
-      },
-      required: ["path"],
-    },
-  },
-  {
-    name: "write_file",
-    description: "Write content to a file (creates or overwrites).",
-    input_schema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Path relative to repo root" },
-        content: { type: "string", description: "Full file content to write" },
-      },
-      required: ["path", "content"],
-    },
-  },
-  {
-    name: "edit_file",
-    description: "Replace a specific string in a file. old_string must be unique in the file.",
-    input_schema: {
-      type: "object",
-      properties: {
-        path: { type: "string", description: "Path relative to repo root" },
-        old_string: { type: "string", description: "The exact string to find and replace" },
-        new_string: { type: "string", description: "The replacement string" },
-      },
-      required: ["path", "old_string", "new_string"],
-    },
-  },
-  {
-    name: "list_files",
-    description: "List files matching a glob pattern in the repository.",
-    input_schema: {
-      type: "object",
-      properties: {
-        pattern: { type: "string", description: "Glob pattern (e.g. 'attair-backend/src/**/*.js')" },
-      },
-      required: ["pattern"],
-    },
-  },
-  {
-    name: "search_files",
-    description: "Search for a regex pattern across files. Returns matching lines with file paths.",
-    input_schema: {
-      type: "object",
-      properties: {
-        pattern: { type: "string", description: "Regex pattern to search for" },
-        path: { type: "string", description: "Directory or file to search in (relative to repo root)" },
-        glob: { type: "string", description: "File glob filter (e.g. '*.js')" },
-      },
-      required: ["pattern"],
-    },
-  },
-  {
-    name: "bash",
-    description: "Execute a shell command. Use for: git, npm, node, curl, etc. Commands run from repo root.",
-    input_schema: {
-      type: "object",
-      properties: {
-        command: { type: "string", description: "The shell command to execute" },
-        cwd: { type: "string", description: "Working directory (relative to repo root)" },
-        timeout: { type: "number", description: "Timeout in ms (default 120000)" },
-      },
-      required: ["command"],
-    },
-  },
-];
-
-// ─── Tool Executor ──────────────────────────────────────────────────────────
-function executeToolCall(name, input) {
-  try {
-    switch (name) {
-      case "read_file": {
-        const filePath = resolve(REPO_ROOT, input.path);
-        if (!existsSync(filePath)) return `Error: File not found: ${input.path}`;
-        const content = readFileSync(filePath, "utf-8");
-        const lines = content.split("\n");
-        const offset = (input.offset || 1) - 1;
-        const limit = input.limit || lines.length;
-        const slice = lines.slice(offset, offset + limit);
-        return slice.map((line, i) => `${offset + i + 1}\t${line}`).join("\n");
-      }
-
-      case "write_file": {
-        const filePath = resolve(REPO_ROOT, input.path);
-        const dir = dirname(filePath);
-        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-        writeFileSync(filePath, input.content);
-        return `Written ${input.content.length} bytes to ${input.path}`;
-      }
-
-      case "edit_file": {
-        const filePath = resolve(REPO_ROOT, input.path);
-        if (!existsSync(filePath)) return `Error: File not found: ${input.path}`;
-        let content = readFileSync(filePath, "utf-8");
-        const occurrences = content.split(input.old_string).length - 1;
-        if (occurrences === 0) return `Error: old_string not found in ${input.path}`;
-        if (occurrences > 1) return `Error: old_string found ${occurrences} times in ${input.path} — must be unique. Provide more context.`;
-        content = content.replace(input.old_string, input.new_string);
-        writeFileSync(filePath, content);
-        return `Edited ${input.path} — replaced 1 occurrence`;
-      }
-
-      case "list_files": {
-        // Simple glob using find/dir command
-        const result = execCommand(
-          process.platform === "win32"
-            ? `dir /s /b "${input.pattern}" 2>nul`
-            : `find . -path "./${input.pattern}" -type f 2>/dev/null | head -100`,
-          { timeout: 10000 }
-        );
-        if (!result.trim()) {
-          // Fallback: use a node-based approach
-          const parts = input.pattern.split("/");
-          const dir = parts.slice(0, -1).join("/") || ".";
-          const fullDir = resolve(REPO_ROOT, dir);
-          if (!existsSync(fullDir)) return `No files found matching ${input.pattern}`;
-          try {
-            const files = readdirSync(fullDir, { recursive: true })
-              .slice(0, 100)
-              .map(f => join(dir, f));
-            return files.join("\n") || `No files found matching ${input.pattern}`;
-          } catch { return `No files found matching ${input.pattern}`; }
-        }
-        return result.trim();
-      }
-
-      case "search_files": {
-        const searchPath = input.path ? resolve(REPO_ROOT, input.path) : REPO_ROOT;
-        const globFlag = input.glob ? `--include="${input.glob}"` : "";
-        const cmd = process.platform === "win32"
-          ? `findstr /s /n /r "${input.pattern}" ${input.glob || "*.*"}`
-          : `grep -rn ${globFlag} -E "${input.pattern.replace(/"/g, '\\"')}" "${searchPath}" 2>/dev/null | head -50`;
-        const result = execCommand(cmd, { cwd: searchPath, timeout: 15000 });
-        return result.trim() || `No matches found for: ${input.pattern}`;
-      }
-
-      case "bash": {
-        const cwd = input.cwd ? resolve(REPO_ROOT, input.cwd) : REPO_ROOT;
-        const timeout = input.timeout || 120000;
-
-        // Safety: block dangerous commands
-        const cmd = input.command.trim();
-        const dangerous = ["rm -rf /", "mkfs", "dd if=", "> /dev/sd"];
-        if (dangerous.some(d => cmd.includes(d))) {
-          return "Error: Command blocked for safety reasons.";
-        }
-
-        try {
-          const result = execSync(cmd, {
-            cwd,
-            encoding: "utf-8",
-            timeout,
-            shell: true,
-            maxBuffer: 10 * 1024 * 1024, // 10MB
-            env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
-          });
-          return result.trim() || "(no output)";
-        } catch (err) {
-          const output = [err.stdout, err.stderr, err.message].filter(Boolean).join("\n");
-          return `Exit code ${err.status || "unknown"}:\n${output.slice(0, 5000)}`;
-        }
-      }
-
-      default:
-        return `Unknown tool: ${name}`;
-    }
-  } catch (err) {
-    return `Error executing ${name}: ${err.message}`;
-  }
-}
-
-// ─── Agentic Loop: Run Claude with tools until complete ─────────────────────
-async function runAgentLoop(systemPrompt, userPrompt, { label = "agent", maxTurns = 200, model = "claude-sonnet-4-20250514", onLog, abortSignal } = {}) {
-  const messages = [{ role: "user", content: userPrompt }];
-  let turnCount = 0;
-  let finalText = "";
-
-  while (turnCount < maxTurns) {
-    if (abortSignal?.aborted) throw new Error("Agent aborted by user");
-    turnCount++;
-
-    if (onLog) onLog(`[${label}] Turn ${turnCount}...`);
-
-    let response;
-    try {
-      response = await anthropic.messages.create({
-        model,
-        max_tokens: 16000,
-        system: systemPrompt,
-        tools: AGENT_TOOLS,
-        messages,
-      });
-    } catch (err) {
-      console.error(`[${label}] API error on turn ${turnCount}:`, err.message);
-      if (err.status === 529 || err.status === 429) {
-        // Overloaded or rate limited — wait and retry
-        await new Promise(r => setTimeout(r, 5000));
-        continue;
-      }
-      throw err;
+    if (systemPrompt) {
+      args.push("--system-prompt", systemPrompt);
     }
 
-    // Collect text blocks
-    const textBlocks = response.content.filter(b => b.type === "text").map(b => b.text);
-    if (textBlocks.length) {
-      finalText = textBlocks.join("\n");
-      if (onLog) onLog(`[${label}] ${finalText.slice(0, 500)}`);
+    if (continueSession && sessionId) {
+      args.push("--resume", sessionId);
     }
 
-    // Check for tool use
-    const toolBlocks = response.content.filter(b => b.type === "tool_use");
-
-    if (toolBlocks.length === 0 || response.stop_reason === "end_turn") {
-      // Agent is done
-      break;
+    if (maxBudget) {
+      args.push("--max-budget-usd", String(maxBudget));
     }
 
-    // Execute tools and continue
-    messages.push({ role: "assistant", content: response.content });
+    // Use sonnet for cost efficiency (covered by subscription)
+    args.push("--model", "sonnet");
 
-    const toolResults = [];
-    for (const tool of toolBlocks) {
-      if (abortSignal?.aborted) throw new Error("Agent aborted by user");
-      console.log(`[${label}] Tool: ${tool.name}(${JSON.stringify(tool.input).slice(0, 100)})`);
-      const result = executeToolCall(tool.name, tool.input);
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: tool.id,
-        content: result.slice(0, 50000), // Cap tool results to avoid context overflow
-      });
-    }
+    args.push(prompt);
 
-    messages.push({ role: "user", content: toolResults });
-  }
+    if (onLog) onLog(`[${label}] Starting Claude CLI...`);
 
-  return finalText;
-}
-
-// ─── Helper: Chat with Claude via Anthropic API ─────────────────────────────
-async function chatWithOpus(userMessage) {
-  conversationHistory.push({ role: "user", content: userMessage });
-
-  if (conversationHistory.length > 40) {
-    conversationHistory = conversationHistory.slice(-40);
-  }
-
-  // Build messages array for the API
-  const messages = conversationHistory.map(m => ({
-    role: m.role,
-    content: m.content,
-  }));
-
-  try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: SYSTEM_PROMPT,
-      messages,
-      tools: AGENT_TOOLS, // Give chat access to tools for investigating bugs
+    const child = spawn("claude", args, {
+      cwd: REPO_ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: true,
+      env: { ...process.env, CLAUDE_CODE_SIMPLE: "1" },
     });
 
-    // If Claude wants to use tools, run the agentic loop
-    const toolBlocks = response.content.filter(b => b.type === "tool_use");
-    let reply;
+    // Track as active process for STOP
+    activeProcess = child;
+    activeTaskLabel = label;
 
-    if (toolBlocks.length > 0) {
-      // Run a mini agent loop for tool-using chat (max 10 turns for investigation)
-      reply = await runAgentLoop(SYSTEM_PROMPT, userMessage, {
-        label: "chat-investigate",
-        maxTurns: 10,
-        model: "claude-sonnet-4-20250514",
-      });
-    } else {
-      // Simple text response
-      reply = response.content
-        .filter(b => b.type === "text")
-        .map(b => b.text)
-        .join("\n");
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (data) => {
+      const chunk = data.toString();
+      stdout += chunk;
+      // Log progress to Discord (last line, truncated)
+      if (onLog) {
+        const lastLine = chunk.trim().split("\n").pop();
+        if (lastLine && lastLine.length > 5) {
+          onLog(`[${label}] ${lastLine.slice(0, 500)}`);
+        }
+      }
+    });
+
+    child.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    if (abortSignal) {
+      abortSignal.addEventListener("abort", () => {
+        child.kill("SIGTERM");
+        reject(new Error("Agent aborted by user"));
+      }, { once: true });
     }
 
-    if (!reply) reply = "(no response)";
+    child.on("close", (code) => {
+      activeProcess = null;
+      activeTaskLabel = null;
+
+      if (code === 0 || stdout.trim()) {
+        resolve(stdout.trim() || "(no output)");
+      } else {
+        reject(new Error(`Claude CLI exited with code ${code}: ${stderr.slice(0, 500)}`));
+      }
+    });
+
+    child.on("error", (err) => {
+      activeProcess = null;
+      activeTaskLabel = null;
+      reject(new Error(`Failed to spawn Claude CLI: ${err.message}`));
+    });
+  });
+}
+
+// ─── Chat with Claude via CLI ───────────────────────────────────────────────
+async function chatWithClaude(userMessage) {
+  // Keep a simple text-based conversation history for context
+  conversationHistory.push({ role: "user", content: userMessage });
+  if (conversationHistory.length > 20) {
+    conversationHistory = conversationHistory.slice(-20);
+  }
+
+  // Build context from recent conversation history
+  const historyContext = conversationHistory.slice(0, -1).map(m =>
+    `${m.role === "user" ? "Jules" : "You"}: ${m.content}`
+  ).join("\n\n");
+
+  const fullPrompt = historyContext
+    ? `Recent conversation:\n${historyContext}\n\nJules' latest message:\n${userMessage}`
+    : userMessage;
+
+  try {
+    const reply = await runClaude(fullPrompt, {
+      systemPrompt: SYSTEM_PROMPT,
+      label: "chat",
+    });
 
     conversationHistory.push({ role: "assistant", content: reply });
     return reply;
   } catch (err) {
-    console.error("[chatWithOpus] API error:", err.message);
+    console.error("[chatWithClaude] CLI error:", err.message);
     throw err;
   }
 }
 
-// ─── Helper: Run a Claude agent with a prompt, return its output ────────────
+// ─── Run Agent (for builds, judge, creative) ────────────────────────────────
 async function runAgent(prompt, { label = "agent", onLog } = {}) {
   const abortController = new AbortController();
-  activeProcess = abortController; // Store abort controller so STOP can cancel it
-  activeTaskLabel = label;
+  activeProcess = null; // will be set by runClaude
 
   try {
-    const systemPrompt = `You are a senior full-stack engineer working on the ATTAIRE codebase.
-You have access to tools to read files, write files, edit files, search code, and run shell commands.
-The repository root is: ${REPO_ROOT}
-Use the tools to complete the task described in the user message.
-Work methodically: read relevant files first, plan your changes, implement them, then verify.
-When running shell commands, the working directory is the repo root unless you specify cwd.`;
-
-    const result = await runAgentLoop(systemPrompt, prompt, {
+    const result = await runClaude(prompt, {
       label,
-      maxTurns: 200,
-      model: "claude-sonnet-4-20250514",
       onLog,
       abortSignal: abortController.signal,
     });
-
     return result;
   } finally {
     activeProcess = null;
@@ -755,7 +541,6 @@ Only approve work you'd ship to real users today.`;
 
 // ─── Screenshot Helper ──────────────────────────────────────────────────────
 // v5: Run the standalone _test_capture.mjs directly — no dynamic script generation.
-// This eliminates template literal escaping issues that caused 6 iterations of blank screenshots.
 async function takeScreenshots() {
   const screenshotDir = join(__dirname, ".screenshots");
   if (!existsSync(screenshotDir)) mkdirSync(screenshotDir, { recursive: true });
@@ -1020,7 +805,7 @@ async function handleMessage(message) {
   try {
     const thinking = await message.channel.send("...");
 
-    const reply = await chatWithOpus(userMessage);
+    const reply = await chatWithClaude(userMessage);
 
     await thinking.delete().catch(() => {});
 
@@ -1074,10 +859,7 @@ async function executeActions(reply, channel) {
     text = text.replace(/\[ACTION:STOP\]/g, "").trim();
     stopRequested = true;
     if (activeProcess) {
-      // AbortController or child process
-      if (typeof activeProcess.abort === "function") {
-        activeProcess.abort();
-      } else if (typeof activeProcess.kill === "function") {
+      if (typeof activeProcess.kill === "function") {
         activeProcess.kill("SIGTERM");
       }
       text = text || "Sent stop signal.";
@@ -1209,11 +991,9 @@ async function gitBootstrap() {
 
   console.log("[gitBootstrap] No .git found — cloning from GitHub...");
   try {
-    // Save the uploaded files, clone the real repo, then restore any newer files
     execCommand(`git clone --depth 1 ${authedUrl} /tmp/repo-clone`, { timeout: 60000 });
     execCommand("cp -r /tmp/repo-clone/.git /app/.git", { timeout: 10000 });
     execCommand("rm -rf /tmp/repo-clone", { timeout: 10000 });
-    // Reset to match remote, then layer our container's files on top
     execCommand("git reset HEAD", { timeout: 10000 });
     console.log("[gitBootstrap] Cloned .git from remote — repo is live");
   } catch (err) {
@@ -1304,8 +1084,7 @@ async function performShutdown(reason = "unknown") {
   // Stop any running builds
   stopRequested = true;
   if (activeProcess) {
-    if (typeof activeProcess.abort === "function") activeProcess.abort();
-    else if (typeof activeProcess.kill === "function") activeProcess.kill("SIGTERM");
+    if (typeof activeProcess.kill === "function") activeProcess.kill("SIGTERM");
   }
 
   // Safety commit any pending work
