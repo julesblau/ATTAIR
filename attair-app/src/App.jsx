@@ -1506,7 +1506,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
 
       {/* CTA section */}
       <div className="ob-demo-cta">
-        <img src="/logo-option-3.svg" alt="ATTAIRE" className="logo-img" style={{ marginBottom: 16 }} />
+        <><img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img logo-img--dark" style={{ marginBottom: 16 }} /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" style={{ marginBottom: 16 }} /></>
         <h1 className="ob-demo-title">
           See it. Scan it.<br /><span className="ob-demo-title-gold">Shop it.</span>
         </h1>
@@ -4764,7 +4764,7 @@ export default function App() {
       {/* ─── MAIN APP ────────────────────────────────────── */}
       {screen === "app" && (<>
         <div className="hdr">
-          <img src="/logo-option-3.svg" alt="ATTAIRE" className="logo-img" />
+          <><img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" /></>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {authed && !isGuest && (
               <button onClick={async () => { setShowNotifPanel(p => !p); if (!showNotifPanel) { const data = await API.getNotifications(); setNotifications(data.notifications || []); const uids = (data.notifications || []).filter(n => !n.read_at).map(n => n.id); if (uids.length > 0) API.markNotifsRead(uids).then(() => setNotifCount(0)).catch(() => {}); } }} style={{ position: "relative", background: "none", border: "none", padding: "4px 6px", cursor: "pointer", display: "flex", alignItems: "center" }} aria-label="Notifications">
@@ -5568,7 +5568,7 @@ export default function App() {
                   <div className="identify-particle" />
                   <div className="identify-particle" />
                   <div className="identify-particle" />
-                  <img src="/logo-option-3.svg" alt="ATTAIRE" className="identify-logo-img" />
+                  <img src="/logo-dark.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" />
                 </div>
 
                 {/* Animated status text */}
@@ -6002,7 +6002,7 @@ export default function App() {
                   <div className="identify-particle" />
                   <div className="identify-particle" />
                   <div className="identify-particle" />
-                  <img src="/logo-option-3.svg" alt="ATTAIRE" className="identify-logo-img" />
+                  <img src="/logo-dark.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" />
                 </div>
 
                 {/* Cycling status text */}
@@ -7998,7 +7998,7 @@ export default function App() {
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-secondary, #0C0C0E)", display: "flex", flexDirection: "column", overflow: "auto" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
-            <img src="/logo-option-3.svg" alt="ATTAIRE" className="logo-img" />
+            <><img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" /></>
             <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
           </div>
 
