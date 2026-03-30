@@ -1177,36 +1177,56 @@ async function executeActions(reply, channel) {
   return text;
 }
 
-// ─── Git Init (bootstrap .git in Docker containers that only have file copies) ─
-function ensureGitRepo() {
+// ─── Git Bootstrap (init repo + clone from remote in Docker containers) ─────
+async function gitBootstrap() {
   if (!IS_HOSTED) return;
+  if (!GH_TOKEN || !GH_REPO) {
+    console.log("[gitBootstrap] GH_TOKEN or GH_REPO not set, skipping git setup");
+    return;
+  }
+
+  const authedUrl = `https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git`;
+
+  // Check if already a git repo
   try {
     execCommand("git rev-parse --git-dir", { timeout: 5000 });
-    return; // already a git repo
-  } catch {
-    // No .git directory — init and set up
-    console.log("[gitInit] No .git found, initialising repo...");
-    execCommand("git init", { timeout: 10000 });
-    execCommand("git add -A", { timeout: 30000 });
-    execCommand('git commit -m "init: Docker container bootstrap"', { timeout: 30000 });
-    console.log("[gitInit] Repo initialised with initial commit");
-  }
-}
-
-// ─── Git Auth (configure remote with GH_TOKEN for hosted push/pull) ────────
-function configureGitAuth() {
-  if (!IS_HOSTED || !GH_TOKEN || !GH_REPO) return;
-  try {
-    const authedUrl = `https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git`;
-    const currentRemote = execCommand("git remote -v", { timeout: 5000 });
-    if (currentRemote.includes("origin")) {
-      execCommand(`git remote set-url origin ${authedUrl}`, { timeout: 5000 });
-    } else {
-      execCommand(`git remote add origin ${authedUrl}`, { timeout: 5000 });
+    // Already a repo — just configure the remote
+    try {
+      const remote = execCommand("git remote -v", { timeout: 5000 });
+      if (remote.includes("origin")) {
+        execCommand(`git remote set-url origin ${authedUrl}`, { timeout: 5000 });
+      } else {
+        execCommand(`git remote add origin ${authedUrl}`, { timeout: 5000 });
+      }
+    } catch (err) {
+      console.error("[gitBootstrap] Remote config failed:", err.message?.slice(0, 200));
     }
-    console.log("[gitAuth] Remote origin configured with GH_TOKEN");
+    console.log("[gitBootstrap] Existing repo, remote configured");
+    return;
+  } catch {
+    // Not a git repo — need to bootstrap
+  }
+
+  console.log("[gitBootstrap] No .git found — cloning from GitHub...");
+  try {
+    // Save the uploaded files, clone the real repo, then restore any newer files
+    execCommand(`git clone --depth 1 ${authedUrl} /tmp/repo-clone`, { timeout: 60000 });
+    execCommand("cp -r /tmp/repo-clone/.git /app/.git", { timeout: 10000 });
+    execCommand("rm -rf /tmp/repo-clone", { timeout: 10000 });
+    // Reset to match remote, then layer our container's files on top
+    execCommand("git reset HEAD", { timeout: 10000 });
+    console.log("[gitBootstrap] Cloned .git from remote — repo is live");
   } catch (err) {
-    console.error("[gitAuth] Failed:", err.message?.slice(0, 200));
+    console.error("[gitBootstrap] Clone failed, falling back to git init:", err.message?.slice(0, 200));
+    try {
+      execCommand("git init", { timeout: 10000 });
+      execCommand(`git remote add origin ${authedUrl}`, { timeout: 5000 });
+      execCommand("git add -A", { timeout: 30000 });
+      execCommand('git commit -m "init: Docker container bootstrap"', { timeout: 30000 });
+      console.log("[gitBootstrap] Fallback init complete");
+    } catch (err2) {
+      console.error("[gitBootstrap] Fallback init also failed:", err2.message?.slice(0, 200));
+    }
   }
 }
 
@@ -1214,15 +1234,14 @@ function configureGitAuth() {
 async function gitSync() {
   if (!IS_HOSTED) return;
   try {
-    ensureGitRepo();
-    configureGitAuth();
+    await gitBootstrap();
     const remote = execCommand("git remote -v", { timeout: 5000 });
     if (!remote.includes("origin")) {
       console.log("[gitSync] No remote origin configured, skipping sync");
       return;
     }
     console.log("[gitSync] Pulling latest changes...");
-    const result = execCommand("git pull --rebase origin main --allow-unrelated-histories", { timeout: 30000 });
+    const result = execCommand("git fetch origin main && git reset --hard origin/main", { timeout: 30000 });
     console.log("[gitSync]", result.slice(0, 200));
   } catch (err) {
     console.error("[gitSync] Failed:", err.message?.slice(0, 200));
