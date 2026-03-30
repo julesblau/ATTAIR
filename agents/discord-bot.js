@@ -1177,10 +1177,28 @@ async function executeActions(reply, channel) {
   return text;
 }
 
+// ─── Git Auth (configure remote with GH_TOKEN for hosted push/pull) ────────
+function configureGitAuth() {
+  if (!IS_HOSTED || !GH_TOKEN || !GH_REPO) return;
+  try {
+    const currentRemote = execCommand("git remote -v", { timeout: 5000 });
+    const authedUrl = `https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git`;
+    if (currentRemote.includes("origin")) {
+      execCommand(`git remote set-url origin ${authedUrl}`, { timeout: 5000 });
+    } else {
+      execCommand(`git remote add origin ${authedUrl}`, { timeout: 5000 });
+    }
+    console.log("[gitAuth] Remote origin configured with GH_TOKEN");
+  } catch (err) {
+    console.error("[gitAuth] Failed:", err.message?.slice(0, 200));
+  }
+}
+
 // ─── Git Sync (for hosted environments — pull latest before builds) ────────
 async function gitSync() {
   if (!IS_HOSTED) return;
   try {
+    configureGitAuth();
     const remote = execCommand("git remote -v", { timeout: 5000 });
     if (!remote.includes("origin")) {
       console.log("[gitSync] No remote origin configured, skipping sync");

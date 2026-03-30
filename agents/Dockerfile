@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Playwright Chromium (needed for screenshot capture during builds)
+RUN npx playwright install --with-deps chromium
+
 # Configure git for commits inside the container
 RUN git config --global user.email "bot@attaire.app" && \
     git config --global user.name "ATTAIRE Bot" && \
