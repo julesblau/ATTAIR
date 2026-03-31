@@ -1,16 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 52" fill="none">
-  <!-- Light mode: dark background, white text, gold accent dot -->
-  <rect width="250" height="52" rx="4" fill="#1A1816"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 50" fill="none">
+  <!-- Light-theme logo: dark rect + light text, gold AI highlight, exponent dot -->
+  <rect width="210" height="50" rx="4" fill="#1A1816"/>
   <text
-    x="125"
-    y="27"
+    x="98"
+    y="28"
     text-anchor="middle"
     dominant-baseline="central"
     font-family="'Helvetica Neue', 'Inter', Helvetica, Arial, sans-serif"
     font-weight="700"
     font-size="44"
     letter-spacing="-2"
-    fill="#FAFAFA"
-  >ATTAIRE</text>
-  <circle cx="182" cy="7" r="2.5" fill="#C9A96E"/>
+  ><tspan fill="#FAFAFA">ATT</tspan><tspan fill="#C9A96E">AI</tspan><tspan fill="#FAFAFA">RE</tspan></text>
+  <circle cx="188" cy="7" r="7.5" fill="#C9A96E"/>
 </svg>
