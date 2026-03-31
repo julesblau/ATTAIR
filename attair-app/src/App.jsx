@@ -4144,6 +4144,7 @@ export default function App() {
   // ─── Outfit of the Week ────────────────────────────────────
   const [ootwData, setOotwData] = useState(null);           // { headline, editorial, cover_image, scans, ... }
   const [ootwLoading, setOotwLoading] = useState(false);
+  const [ootwError, setOotwError] = useState(false);        // true when fetch failed — shows tap-to-retry
   const [ootwExpanded, setOotwExpanded] = useState(false);   // full detail overlay open
 
   // ─── Style Twins ────────────────────────────────────────────
@@ -4663,13 +4664,18 @@ export default function App() {
   }, [authed, screen, tab, feedTab]);
 
   // ─── Outfit of the Week loader ────────────────────────────
+  const loadOOTW = useCallback(() => {
+    setOotwLoading(true);
+    setOotwError(false);
+    API.getOOTW()
+      .then(d => { if (d.ootw) setOotwData(d.ootw); })
+      .catch(err => { console.error("[OOTW] fetch failed:", err); setOotwError(true); })
+      .finally(() => setOotwLoading(false));
+  }, []);
+
   useEffect(() => {
-    if (authed && screen === "app" && (tab === "home" || (tab === "scan" && phase === "idle" && !img)) && !ootwData && !ootwLoading) {
-      setOotwLoading(true);
-      API.getOOTW()
-        .then(d => { if (d.ootw) setOotwData(d.ootw); })
-        .catch(() => {})
-        .finally(() => setOotwLoading(false));
+    if (authed && screen === "app" && (tab === "home" || (tab === "scan" && phase === "idle" && !img)) && !ootwData && !ootwLoading && !ootwError) {
+      loadOOTW();
     }
   }, [authed, screen, tab]);
 
@@ -6152,6 +6158,37 @@ export default function App() {
                       <span style={{ flex: 1, textAlign: "center", fontSize: 12, fontWeight: 700, padding: "6px 0", borderRadius: 100, background: "rgba(255,255,255,.06)", color: "var(--text-secondary)" }}>Pass</span>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ─── Outfit of the Week: loading skeleton ─── */}
+              {ootwLoading && !ootwData && (
+                <div className="ootw-card ootw-skeleton" style={{ margin: "4px 12px 8px", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(201,169,110,.1)", background: "var(--bg-card)" }}>
+                  <div style={{ width: "100%", height: 180, background: "linear-gradient(135deg, var(--bg-input) 0%, var(--bg-card) 50%, var(--bg-input) 100%)", backgroundSize: "200% 100%", animation: "ootwShimmer 1.5s ease-in-out infinite" }} />
+                  <div style={{ padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ width: "70%", height: 14, borderRadius: 6, background: "var(--bg-input)", animation: "ootwShimmer 1.5s ease-in-out infinite" }} />
+                    <div style={{ width: "90%", height: 10, borderRadius: 4, background: "var(--bg-input)", animation: "ootwShimmer 1.5s ease-in-out infinite", animationDelay: "0.15s" }} />
+                    <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                      {[0,1,2,3,4,5].map(i => (
+                        <div key={i} style={{ width: 48, height: 48, borderRadius: 8, background: "var(--bg-input)", flexShrink: 0, animation: "ootwShimmer 1.5s ease-in-out infinite", animationDelay: `${i * 0.08}s` }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Outfit of the Week: error / tap-to-retry ─── */}
+              {ootwError && !ootwData && !ootwLoading && (
+                <div
+                  className="card-press ootw-card"
+                  onClick={loadOOTW}
+                  style={{ margin: "4px 12px 8px", borderRadius: 16, overflow: "hidden", cursor: "pointer", border: "1px solid rgba(201,169,110,.15)", background: "var(--bg-card)", padding: "20px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center" }}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Couldn't load this week's picks</div>
+                  <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Tap to retry</div>
                 </div>
               )}
 
@@ -9418,6 +9455,7 @@ export default function App() {
           <div className="ootw-overlay animate-fade-in" style={{ position: "fixed", inset: 0, zIndex: 1100, background: "var(--bg-primary)", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
             {/* Close button */}
             <button
+              aria-label="Close"
               onClick={() => setOotwExpanded(false)}
               style={{ position: "fixed", top: 12, right: 12, zIndex: 1101, width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", border: "none", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
             >&#x2715;</button>

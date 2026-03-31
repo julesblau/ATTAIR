@@ -2849,6 +2849,13 @@
 }
 .ootw-card .ootw-badge-star{animation:ootwPulse 3s ease-in-out infinite}
 
+/* Loading skeleton shimmer */
+@keyframes ootwShimmer{
+  0%{background-position:200% 0}
+  100%{background-position:-200% 0}
+}
+.ootw-skeleton *{pointer-events:none}
+
 /* Scroll strip for scan thumbnails */
 .ootw-card::-webkit-scrollbar{display:none}
 
