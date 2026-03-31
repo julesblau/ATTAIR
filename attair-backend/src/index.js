@@ -29,6 +29,7 @@ import dupesRouter from "./routes/dupes.js";
 import hangerTestRouter from "./routes/hangerTest.js";
 import looksRouter from "./routes/looks.js";
 import styleTwinsRouter from "./routes/styleTwins.js";
+import ootwRouter from "./routes/ootw.js";
 import { startNudgeProcessor } from "./services/notifications.js";
 
 // ─── Validate required env vars ─────────────────────────────
@@ -136,6 +137,7 @@ app.use("/api/challenges", challengesRouter);
 app.use("/api/dupes", dupesRouter);
 app.use("/api/looks", looksRouter);
 app.use("/api/style-twins", styleTwinsRouter);
+app.use("/api/ootw", ootwRouter);
 app.use("/api", hangerTestRouter);
 app.use("/api", socialRouter);
 
@@ -319,6 +321,58 @@ app.listen(PORT, "0.0.0.0", () => {
     setInterval(runWeeklyTwinsNotify, WEEKLY_MS);
   }, 60_000);
   console.log("  📅 Style Twins weekly cron scheduled (every 7 days)");
+
+  // ─── Outfit of the Week cron (Monday) ────────────────────
+  // Generates editorial every Monday. Also runs on startup after 90s.
+  const runOOTWGenerate = async () => {
+    try {
+      const url = `http://127.0.0.1:${PORT}/api/ootw/generate`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-cron-key": process.env.CRON_SECRET_KEY || "internal-cron",
+        },
+      });
+      const data = await res.json();
+      console.log(`[Cron] OOTW generate: created=${data.created || false}`);
+    } catch (err) {
+      console.error("[Cron] OOTW generate failed:", err.message);
+    }
+  };
+  // First run after 90s, then every 24h (idempotent — only creates once per week)
+  setTimeout(() => {
+    runOOTWGenerate();
+    setInterval(runOOTWGenerate, 24 * 60 * 60 * 1000);
+  }, 90_000);
+  console.log("  📅 Outfit of the Week cron scheduled (daily check, generates Mondays)");
+
+  // ─── Weekly Style Report cron (Sunday) ───────────────────
+  // Sends personalized push to Pro users. Runs daily, idempotent per user per week.
+  const runWeeklyReports = async () => {
+    // Only fire on Sundays (day 0)
+    if (new Date().getUTCDay() !== 0) return;
+    try {
+      const url = `http://127.0.0.1:${PORT}/api/ootw/weekly-reports`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-cron-key": process.env.CRON_SECRET_KEY || "internal-cron",
+        },
+      });
+      const data = await res.json();
+      console.log(`[Cron] Weekly Style Reports: sent=${data.sent || 0}`);
+    } catch (err) {
+      console.error("[Cron] Weekly Style Reports failed:", err.message);
+    }
+  };
+  // Check daily at ~10:00 UTC (runs only on Sundays)
+  setTimeout(() => {
+    runWeeklyReports();
+    setInterval(runWeeklyReports, 24 * 60 * 60 * 1000);
+  }, 120_000);
+  console.log("  📅 Weekly Style Report cron scheduled (Sundays)");
 });
 
 export default app;
