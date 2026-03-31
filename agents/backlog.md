@@ -15,7 +15,7 @@
 - **Verify:** Test with at least 3 different images (personal photo, Google image, screenshot) on both Fast Search and Deep Search. All must return results.
 
 ### Fix Logo Colors for Dark/Light Mode
-**Status:** QUEUED — Must fix now
+**Status:** DONE (2026-03-31)
 **Effort:** S
 **Spec:**
 - **Problem:** Logo in top-left header has wrong colors for dark/light mode.
@@ -24,7 +24,7 @@
 - **Scope:** Affects the logo on all pages (top-left header). Also ADD the logo to the landing/signup page for new users — it's missing there.
 
 ### Fix Logo Rectangle Spacing
-**Status:** QUEUED — Must fix now
+**Status:** DONE (2026-03-31)
 **Effort:** S
 **Spec:**
 - **Problem:** The rectangle behind the logo text is too wide horizontally and has uneven vertical padding.
