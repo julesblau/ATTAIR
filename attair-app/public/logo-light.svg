@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 80" fill="none">
-  <!-- Light mode: White rectangle background, dark text, gold accent dot -->
-  <rect x="0" y="0" width="420" height="80" rx="10" fill="#FFFFFF" stroke="#E0E0E0" stroke-width="1"/>
+  <!-- Light mode: transparent background, dark text, gold accent dot -->
   <text
     x="210"
     y="56"
@@ -9,7 +8,7 @@
     font-weight="700"
     font-size="58"
     letter-spacing="-2.5"
-    fill="#111111"
+    fill="#1A1816"
   >ATTAIRE</text>
   <circle cx="288" cy="20" r="3.5" fill="#C9A96E"/>
 </svg>
