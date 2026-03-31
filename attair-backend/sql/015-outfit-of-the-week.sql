@@ -29,7 +29,22 @@ CREATE TABLE IF NOT EXISTS weekly_style_reports (
 
 CREATE INDEX IF NOT EXISTS idx_wsr_user_week ON weekly_style_reports (user_id, week_start DESC);
 
--- Add weekly_style_report to notification_prefs default
--- (existing users keep their prefs; new users get this in default JSON)
+-- Add weekly_style_report to notification_prefs default for existing users
+UPDATE profiles
+SET notification_prefs = notification_prefs || '{"weekly_style_report": true}'::jsonb
+WHERE notification_prefs IS NOT NULL
+  AND NOT (notification_prefs ? 'weekly_style_report');
+
+-- Update column default so new users get it automatically
+ALTER TABLE profiles
+ALTER COLUMN notification_prefs SET DEFAULT '{
+  "price_drops": true,
+  "style_dna": true,
+  "social_activity": true,
+  "new_posts": true,
+  "weekly_digest": true,
+  "weekly_style_report": true
+}'::jsonb;
+
 COMMENT ON TABLE outfit_of_the_week IS 'AI-curated weekly editorial picking top trending scans';
 COMMENT ON TABLE weekly_style_reports IS 'Personalized weekly style report sent to Pro users on Sunday';
