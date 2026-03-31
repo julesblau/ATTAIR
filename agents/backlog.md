@@ -41,7 +41,7 @@
 - **Do NOT break anything else about the logo** — the dark/light mode colors and rectangle are already correct.
 
 ### Fix Style DNA Text Contrast (Light Mode Only)
-**Status:** QUEUED — Must fix now
+**Status:** DONE (2026-03-31)
 **Effort:** S
 **Spec:**
 - **Problem:** On Profile → Style DNA in LIGHT MODE, the description text is small black text on a purple background. Unreadable.
