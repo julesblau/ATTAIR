@@ -245,10 +245,9 @@ function runClaude(prompt, { systemPrompt, label = "claude", onLog, abortSignal,
     // Pipe prompt via stdin to avoid shell escaping
     // Use shell: true so Windows can resolve claude.cmd, but args are safe
     // because prompt goes via stdin and system prompt via file
-    // Strip ANTHROPIC_API_KEY so CLI uses Max subscription OAuth, not API credits
+    // Strip API keys so CLI uses Max subscription OAuth, not API credits
     // Do NOT set CLAUDE_CODE_SIMPLE — it disables OAuth/keychain auth
-    const cliEnv = { ...process.env };
-    delete cliEnv.ANTHROPIC_API_KEY;
+    const { ANTHROPIC_API_KEY: _drop, ...cliEnv } = process.env;
 
     const child = spawn("claude", args, {
       cwd: REPO_ROOT,

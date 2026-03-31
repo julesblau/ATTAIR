@@ -120,55 +120,7 @@
   - "Buy All" button with total price estimate
 - **NOT building yet:** AI-suggested additions beyond original scan results
 
-### 5. Logo Tweaks
-**Status:** IN PROGRESS (2026-03-29) — black bg + dark/light mode variants, started before stop
-**Effort:** S
-**Spec:**
-- Black rectangular background behind logo mark
-- Light mode: invert logo colors
-- Add logo to landing/marketing page
-- Quick pass, no new components needed
-
-## HIGH
-
-### Smaller/More Frequent Agent Commits
-**Status:** DONE (2026-03-29)
-**Effort:** S
-**Summary:** Each agent commits after completing each sub-task rather than batching at the end. Prevents losing work on process death.
-
-### Migrate Discord Bot to Hosted Environment
-**Status:** DONE (2026-03-29)
-**Effort:** M
-**Summary:** Move the Discord bot off Jules' laptop to a hosted environment (Railway, VPS, or similar). Currently requires laptop to stay on and awake. Should run 24/7 without depending on personal hardware.
-**Added:** 2026-03-29 via Discord
-
-## MEDIUM
-
-### Social Proof Signals on Feed
-**Status:** DONE (Run 5, 2026-03-28)
-**Effort:** S (1 agent)
-
-### Process Keep-Alive Pings
-**Status:** DONE (2026-03-29)
-**Effort:** S (1 agent)
-**Summary:** Discord bot pings Jules when any Claude Code process is about to shut down or sleep, so he can confirm to keep it running.
-
-## LOW
-
-### Scan-to-Reel Video Export
-**Status:** DONE (2026-03-29)
-**Effort:** M (2 agents)
-**Summary:** 5-second animated video of scan results using Canvas + MediaRecorder API. Pro-only. Optimized for TikTok/Reels.
-
-### Follow-up Nudge System
-**Status:** DONE (2026-03-29)
-**Effort:** S (1 agent)
-**Summary:** Bot re-pings Jules after 10-15 min timeout if he misses a message that needs input.
-
-### Chat Context Persistence
-**Status:** DONE (2026-03-29)
-**Effort:** S
-**Summary:** Pass key context forward via memory system instead of relying on conversation compression.
+## HIGH — Queued
 
 ## Backlog — Rethink Later
 
@@ -189,11 +141,7 @@
 **Status:** DEFERRED (needs data volume)
 **Effort:** S (1 agent)
 
-## Proposed — Creative Run 2026-03-25 (Remaining)
-
-### Style Twins — Find Your Fashion Doppelganger
-**Status:** DONE (2026-03-29) — Discover tab with score comparison bars, shared-save triggers, weekly cron, 20+ commits of polish
-**Effort:** M (1-2 agents)
+## MEDIUM — Ideas (Approved, Not Specced)
 
 ### Outfit of the Week — AI Editorial That Runs on Autopilot
 **PM Verdict:** QUEUE — Low effort, high retention. Uses existing AI content infra.
@@ -217,31 +165,7 @@
 **Effort:** M (2 agents)
 **Summary:** "I want to spend $____ on this outfit" input. Running total with progress bar. Auto-adjusts tier suggestions. "Mix and Match" optimizer. Shareable "Budget Build" links.
 
-## Approved — Creative Run 5 Proposals (2026-03-28)
-
-### Retailer Spotlight
-**Status:** DONE (2026-03-29)
-**Effort:** S
-
-### Dupe Alert
-**Status:** DONE (Run 5, 2026-03-28)
-**Effort:** S
-
-### Trending Feed
-**Status:** DONE (Run 5, 2026-03-28)
-**Effort:** M
-
-### Interactive Share Link
-**Status:** DONE (Run 5, 2026-03-28)
-**Effort:** M
-
-### Style Match Score
-**Status:** Moved to QUEUED section with full spec
-**Effort:** M
-
-### Complete the Look
-**Status:** Moved to QUEUED section with full spec
-**Effort:** M
+## MEDIUM — Backlogged
 
 ### Scan History Replay
 **Status:** Approved — backlogged
@@ -319,6 +243,3 @@
 ### Run 5 (2026-03-28)
 - ATTAIRE rename across codebase
 
-### 2026-03-28 — Jules via Discord
-Retailer Spotlight — replace placeholder interstitial ad with real retailer branding + affiliate CTA (size S, recommended)
-**Status:** Pending review
