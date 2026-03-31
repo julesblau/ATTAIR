@@ -32,7 +32,7 @@
 - **Fix 2:** Make vertical padding even — equal spacing above and below the letters relative to the rectangle edges. Currently uneven (text sits closer to one edge than the other).
 
 ### Logo Polish — Spacing, Dot Removal, AI Highlight
-**Status:** QUEUED — Must fix now
+**Status:** DONE (2026-03-31)
 **Effort:** S
 **Spec:**
 - **Side spacing:** Reduce horizontal padding of the rectangle to ~40% of current. Almost flush to the letters with just a small breathing room.

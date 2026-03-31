@@ -2698,6 +2698,17 @@
 .settings-sheet-item .settings-value{font-size:var(--text-sm,14px);color:var(--text-tertiary)}
 .settings-sheet-item.danger{color:var(--error);justify-content:center;font-weight:var(--weight-semibold,600)}
 
+/* ─── Settings Budget Slider Section ───────────── */
+.settings-budget-section{margin:0 -2px}
+.settings-budget-section .settings-sheet-item{border-bottom:none}
+.settings-budget-section .budget-range-thumb{margin:0;padding:0}
+.settings-budget-section .budget-range-thumb::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:var(--accent);border:2.5px solid var(--bg-primary);cursor:pointer;pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.35);transition:transform var(--transition-fast)}
+.settings-budget-section .budget-range-thumb::-webkit-slider-thumb:active{transform:scale(1.18);box-shadow:0 2px 12px rgba(201,169,110,.4)}
+.settings-budget-section .budget-range-thumb::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--accent);border:2.5px solid var(--bg-primary);cursor:pointer;pointer-events:auto;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.settings-budget-section .budget-range-thumb::-webkit-slider-runnable-track{background:transparent}
+.settings-budget-section .budget-range-thumb::-moz-range-track{background:transparent}
+.settings-budget-section .btn-primary:disabled{cursor:not-allowed}
+
 /* ─── History Redesign ──────────────────────────── */
 .history-v2{padding:16px;display:flex;flex-direction:column;gap:10px}
 .history-v2-card{display:flex;gap:12px;padding:12px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md,12px);box-shadow:var(--shadow-card);cursor:pointer;transition:all var(--transition-fast);-webkit-tap-highlight-color:transparent;align-items:center}

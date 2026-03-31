@@ -2892,6 +2892,9 @@ export default function App() {
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
   const [settingsSheetY, setSettingsSheetY] = useState(0);
   const settingsDragRef = useRef({ startY: 0, currentY: 0, dragging: false });
+  const [settingsBudgetExpanded, setSettingsBudgetExpanded] = useState(false);
+  const [settingsBudgetDirty, setSettingsBudgetDirty] = useState(false);
+  const [settingsBudgetSaving, setSettingsBudgetSaving] = useState(false);
   const [profileScanOverlay, setProfileScanOverlay] = useState(null); // scan object for overlay
   const [historyDetailScan, setHistoryDetailScan] = useState(null); // history item detail overlay
 
@@ -7494,7 +7497,7 @@ export default function App() {
 
               {/* Settings bottom sheet */}
               {profileSettingsOpen && <>
-                <div className="bottom-sheet-overlay" onClick={() => setProfileSettingsOpen(false)} />
+                <div className="bottom-sheet-overlay" onClick={() => { setProfileSettingsOpen(false); setSettingsBudgetExpanded(false); setSettingsBudgetDirty(false); }} />
                 <div className="bottom-sheet" role="dialog" aria-label="Settings" aria-modal="true"
                   style={{ transform: settingsSheetY > 0 ? `translateY(${settingsSheetY}px)` : undefined, transition: settingsDragRef.current.dragging ? 'none' : 'transform 0.3s ease' }}
                   onTouchStart={e => { settingsDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
@@ -7529,10 +7532,90 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Budget / Size info */}
-                  <div className="settings-sheet-item" style={{ cursor: "default" }}>
-                    <span className="settings-label">Budget Range</span>
-                    <span className="settings-value">${budgetMin} - ${budgetMax}{budgetMax >= 1000 ? "+" : ""}</span>
+                  {/* Budget Range — interactive slider */}
+                  <div className="settings-budget-section" style={{ borderBottom: "1px solid var(--border)", paddingBottom: settingsBudgetExpanded ? 16 : 0 }}>
+                    <div className="settings-sheet-item" style={{ cursor: "pointer", borderBottom: settingsBudgetExpanded ? "none" : undefined }} onClick={() => setSettingsBudgetExpanded(v => !v)} role="button" aria-expanded={settingsBudgetExpanded} aria-label="Toggle budget range editor">
+                      <span className="settings-label">Budget Range</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span className="settings-value" style={{ color: settingsBudgetExpanded ? "var(--accent)" : undefined, fontWeight: settingsBudgetExpanded ? 600 : undefined }}>${budgetMin} – {budgetMax >= 500 ? "$500+" : `$${budgetMax}`}</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ color: "var(--text-tertiary)", transition: "transform var(--transition-fast)", transform: settingsBudgetExpanded ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}>
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </div>
+                    </div>
+                    {settingsBudgetExpanded && (
+                      <div style={{ padding: "0 0 4px", animation: "slideDown 250ms ease both" }}>
+                        {/* Tier quick-select chips */}
+                        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                          {[
+                            { label: "$", min: 0, max: 50, desc: "Under $50" },
+                            { label: "$$", min: 50, max: 150, desc: "$50–$150" },
+                            { label: "$$$", min: 150, max: 300, desc: "$150–$300" },
+                            { label: "$$$$", min: 300, max: 500, desc: "$300+" },
+                          ].map(p => {
+                            const active = [...selectedBudgetTiers].some(t => t.label === p.label);
+                            return (
+                              <button key={p.label} aria-label={`Budget tier ${p.label}: ${p.desc}`}
+                                onClick={() => {
+                                  setSelectedBudgetTiers(prev => {
+                                    const next = new Set(prev);
+                                    const existing = [...next].find(t => t.label === p.label);
+                                    if (existing) next.delete(existing); else next.add(p);
+                                    if (next.size > 0) {
+                                      const tiers = [...next];
+                                      setBudgetMin(Math.min(...tiers.map(t => t.min)));
+                                      setBudgetMax(Math.max(...tiers.map(t => t.max)));
+                                    }
+                                    return next;
+                                  });
+                                  setSettingsBudgetDirty(true);
+                                }}
+                                style={{ flex: 1, padding: "8px 4px", minHeight: 44, background: active ? "var(--accent-bg)" : "var(--bg-input)", border: `1px solid ${active ? "var(--accent-border)" : "var(--border)"}`, borderRadius: "var(--radius-sm)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text-tertiary)", transition: "all var(--transition-fast)", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
+                              >
+                                <span>{p.label}</span>
+                                <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>{p.desc}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {/* Dual-thumb range slider */}
+                        <div style={{ position: "relative", height: 28, marginBottom: 12 }}>
+                          <div style={{ position: "absolute", top: 12, left: 0, right: 0, height: 4, background: "var(--bg-input)", borderRadius: 2 }} />
+                          <div style={{ position: "absolute", top: 12, left: `${(budgetMin / 500) * 100}%`, right: `${100 - (budgetMax / 500) * 100}%`, height: 4, background: "var(--accent)", borderRadius: 2, transition: "left var(--transition-fast), right var(--transition-fast)" }} />
+                          <input type="range" min={0} max={500} step={10} value={budgetMin}
+                            onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) { setBudgetMin(v); setSelectedBudgetTiers(new Set()); setSettingsBudgetDirty(true); } }}
+                            aria-label="Minimum budget"
+                            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2 }}
+                            className="budget-range-thumb"
+                          />
+                          <input type="range" min={0} max={500} step={10} value={budgetMax}
+                            onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) { setBudgetMax(v); setSelectedBudgetTiers(new Set()); setSettingsBudgetDirty(true); } }}
+                            aria-label="Maximum budget"
+                            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3 }}
+                            className="budget-range-thumb"
+                          />
+                        </div>
+                        {/* Min/Max labels */}
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
+                          <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>$0</span>
+                          <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>$500+</span>
+                        </div>
+                        {/* Save button */}
+                        <button
+                          className="btn-primary"
+                          disabled={!settingsBudgetDirty || settingsBudgetSaving}
+                          style={{ width: "100%", padding: "10px 0", fontSize: 13, fontWeight: 600, opacity: settingsBudgetDirty ? 1 : 0.5, transition: "opacity var(--transition-fast)" }}
+                          onClick={async () => {
+                            setSettingsBudgetSaving(true);
+                            try {
+                              await API.updateProfile({ budget_min: budgetMin, budget_max: budgetMax });
+                              setSettingsBudgetDirty(false);
+                            } catch {}
+                            setSettingsBudgetSaving(false);
+                          }}
+                        >{settingsBudgetSaving ? "Saving…" : "Save Budget"}</button>
+                      </div>
+                    )}
                   </div>
                   <div className="settings-sheet-item" style={{ cursor: "default" }}>
                     <span className="settings-label">Size Preferences</span>
