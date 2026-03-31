@@ -86,6 +86,15 @@ vi.mock("../lib/supabase.js", () => {
     }
 
     if (table === "scans") {
+      const candidateChain = {
+        not: vi.fn().mockReturnValue({
+          gte: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn(async () => ({ data: mockCandidateScansData, error: null })),
+            }),
+          }),
+        }),
+      };
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -96,17 +105,11 @@ vi.mock("../lib/supabase.js", () => {
                 }),
               }),
             }),
+            // pickPersonalizedLooks: .eq("visibility").neq("user_id").not(...).gte(...).order(...).limit(...)
+            neq: vi.fn().mockReturnValue(candidateChain),
           }),
           in: vi.fn(async () => ({ data: mockScansData, error: null })),
-          neq: vi.fn().mockReturnValue({
-            not: vi.fn().mockReturnValue({
-              gte: vi.fn().mockReturnValue({
-                order: vi.fn().mockReturnValue({
-                  limit: vi.fn(async () => ({ data: mockCandidateScansData, error: null })),
-                }),
-              }),
-            }),
-          }),
+          neq: vi.fn().mockReturnValue(candidateChain),
         }),
       };
     }
@@ -517,7 +520,7 @@ describe("pickPersonalizedLooks", () => {
       { item_data: { category: "outerwear", subcategory: "bomber", style_keywords: ["streetwear"] } },
     ];
 
-    // Only 1 candidate with a match
+    // 3+ candidates but only 1 with a style match
     mockCandidateScansData = [
       {
         id: "scan-match",
@@ -529,6 +532,12 @@ describe("pickPersonalizedLooks", () => {
         id: "scan-nomatch",
         items: [{ category: "accessories", subcategory: "rings", style_keywords: ["glam"] }],
         summary: "No match",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "scan-nomatch2",
+        items: [{ category: "jewelry", subcategory: "necklace", style_keywords: ["boho"] }],
+        summary: "No match either",
         created_at: new Date().toISOString(),
       },
     ];
