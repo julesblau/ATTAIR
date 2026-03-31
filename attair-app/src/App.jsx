@@ -992,6 +992,87 @@ const STRINGS = {
     public_profile: "Public",
     private_profile: "Private",
     followers_only: "Followers Only",
+    loading: "Loading...",
+    saving: "Saving...",
+    cancel: "Cancel",
+    confirm: "Confirm",
+    done: "Done",
+    save_btn: "Save",
+    not_set: "Not set",
+    appearance: "Appearance",
+    dark: "Dark",
+    light: "Light",
+    budget_range: "Budget Range",
+    size_preferences: "Size Preferences",
+    subscription: "Subscription",
+    free: "Free",
+    notifications: "Notifications",
+    enable_push: "Enable Push Notifications",
+    push_enabled: "Push notifications are enabled",
+    followup_reminders: "Follow-up reminders",
+    followup_desc: "Nudge me if I forget to check my results",
+    style_twins_notif: "Style Twins",
+    style_twins_desc: "Weekly \"new style twins discovered\" alerts",
+    refer_friend: "Refer a friend",
+    refer_desc: "Share your code. Both of you get $5 credit.",
+    size_prefs_title: "Size Preferences",
+    size_prefs_sub: "Set your sizes for better product recommendations.",
+    men: "Men",
+    women: "Women",
+    tops: "Tops",
+    bottoms_waist: "Bottoms (Waist)",
+    bottoms_length: "Bottoms (Length)",
+    shoes_label: "Shoes",
+    dresses: "Dresses",
+    save_sizes: "Save Sizes",
+    change_language_confirm: "Change language?",
+    change_language_desc: "Your app language will be updated.",
+    scans_label: "Scans",
+    edit_profile: "Edit Profile",
+    style_dna: "Style DNA",
+    hanger_test: "Hanger Test",
+    tell_style: "Tell people about your style...",
+    no_followers: "No followers yet",
+    no_following: "Not following anyone yet",
+    my_scans: "My Scans",
+    all: "All",
+    my_picks: "My Picks",
+    search_scans: "Search scans...",
+    no_scans_yet: "No scans yet",
+    no_match_search: "No scans match your search",
+    scan_first: "Scan your first outfit to build your style library",
+    try_different: "Try different keywords",
+    scan_outfit: "Scan an Outfit",
+    no_saved: "No saved items yet",
+    heart_items: "Heart items from your scans to save them here",
+    search_people: "Search people...",
+    no_users_found: "No users found",
+    type_to_search: "Type a name to search",
+    view_results: "View Full Results",
+    shop: "Shop",
+    search_google: "Search Google Shopping",
+    no_match: "No exact match found",
+    original: "ORIGINAL",
+    resale: "RESALE",
+    take_photo: "Take a photo or upload an outfit",
+    upload: "Upload",
+    camera: "Camera",
+    for_you: "For You",
+    trending: "Trending",
+    discover: "Discover",
+    load_more: "Load more",
+    continue_google: "Continue with Google",
+    continue_apple: "Continue with Apple",
+    create_account: "Create Account",
+    log_in: "Log In",
+    full_name: "Full name",
+    email: "Email address",
+    password: "Password",
+    phone_optional: "Phone number (optional)",
+    get_started: "Get started",
+    maybe_later: "Maybe later",
+    upgrade_to_pro: "Upgrade to Pro",
+    go_pro: "Go Pro",
     appearance: "Appearance",
     dark: "Dark",
     light: "Light",
@@ -1097,6 +1178,87 @@ const STRINGS = {
     public_profile: "Público",
     private_profile: "Privado",
     followers_only: "Solo seguidores",
+    loading: "Cargando...",
+    saving: "Guardando...",
+    cancel: "Cancelar",
+    confirm: "Confirmar",
+    done: "Listo",
+    save_btn: "Guardar",
+    not_set: "No configurado",
+    appearance: "Apariencia",
+    dark: "Oscuro",
+    light: "Claro",
+    budget_range: "Rango de presupuesto",
+    size_preferences: "Preferencias de talla",
+    subscription: "Suscripción",
+    free: "Gratis",
+    notifications: "Notificaciones",
+    enable_push: "Activar notificaciones push",
+    push_enabled: "Notificaciones push activadas",
+    followup_reminders: "Recordatorios de seguimiento",
+    followup_desc: "Avisarme si olvido revisar mis resultados",
+    style_twins_notif: "Gemelos de estilo",
+    style_twins_desc: "Alertas semanales de nuevos gemelos de estilo",
+    refer_friend: "Invita a un amigo",
+    refer_desc: "Comparte tu código. Ambos obtienen $5 de crédito.",
+    size_prefs_title: "Preferencias de talla",
+    size_prefs_sub: "Configura tus tallas para mejores recomendaciones.",
+    men: "Hombre",
+    women: "Mujer",
+    tops: "Parte superior",
+    bottoms_waist: "Parte inferior (Cintura)",
+    bottoms_length: "Parte inferior (Largo)",
+    shoes_label: "Zapatos",
+    dresses: "Vestidos",
+    save_sizes: "Guardar tallas",
+    change_language_confirm: "¿Cambiar idioma?",
+    change_language_desc: "El idioma de la app se actualizará.",
+    scans_label: "Escaneos",
+    edit_profile: "Editar perfil",
+    style_dna: "ADN de estilo",
+    hanger_test: "Prueba de percha",
+    tell_style: "Cuéntale a la gente sobre tu estilo...",
+    no_followers: "Sin seguidores aún",
+    no_following: "No sigues a nadie aún",
+    my_scans: "Mis escaneos",
+    all: "Todo",
+    my_picks: "Mis favoritos",
+    search_scans: "Buscar escaneos...",
+    no_scans_yet: "Sin escaneos aún",
+    no_match_search: "No hay escaneos que coincidan",
+    scan_first: "Escanea tu primer outfit para crear tu biblioteca de estilo",
+    try_different: "Intenta con diferentes palabras",
+    scan_outfit: "Escanear un outfit",
+    no_saved: "Sin artículos guardados",
+    heart_items: "Dale corazón a los artículos de tus escaneos para guardarlos aquí",
+    search_people: "Buscar personas...",
+    no_users_found: "No se encontraron usuarios",
+    type_to_search: "Escribe un nombre para buscar",
+    view_results: "Ver resultados completos",
+    shop: "Comprar",
+    search_google: "Buscar en Google Shopping",
+    no_match: "No se encontró coincidencia exacta",
+    original: "ORIGINAL",
+    resale: "REVENTA",
+    take_photo: "Toma una foto o sube un outfit",
+    upload: "Subir",
+    camera: "Cámara",
+    for_you: "Para ti",
+    trending: "Tendencias",
+    discover: "Descubrir",
+    load_more: "Cargar más",
+    continue_google: "Continuar con Google",
+    continue_apple: "Continuar con Apple",
+    create_account: "Crear cuenta",
+    log_in: "Iniciar sesión",
+    full_name: "Nombre completo",
+    email: "Correo electrónico",
+    password: "Contraseña",
+    phone_optional: "Teléfono (opcional)",
+    get_started: "Comenzar",
+    maybe_later: "Quizás después",
+    upgrade_to_pro: "Mejorar a Pro",
+    go_pro: "Ir a Pro",
     appearance: "Apariencia",
     dark: "Oscuro",
     light: "Claro",
@@ -1202,6 +1364,87 @@ const STRINGS = {
     public_profile: "Public",
     private_profile: "Privé",
     followers_only: "Abonnés uniquement",
+    loading: "Chargement...",
+    saving: "Sauvegarde...",
+    cancel: "Annuler",
+    confirm: "Confirmer",
+    done: "Terminé",
+    save_btn: "Enregistrer",
+    not_set: "Non défini",
+    appearance: "Apparence",
+    dark: "Sombre",
+    light: "Clair",
+    budget_range: "Gamme de budget",
+    size_preferences: "Préférences de taille",
+    subscription: "Abonnement",
+    free: "Gratuit",
+    notifications: "Notifications",
+    enable_push: "Activer les notifications push",
+    push_enabled: "Notifications push activées",
+    followup_reminders: "Rappels de suivi",
+    followup_desc: "Me rappeler si j'oublie de vérifier mes résultats",
+    style_twins_notif: "Jumeaux de style",
+    style_twins_desc: "Alertes hebdomadaires de nouveaux jumeaux de style",
+    refer_friend: "Parrainez un ami",
+    refer_desc: "Partagez votre code. Vous obtenez chacun 5$ de crédit.",
+    size_prefs_title: "Préférences de taille",
+    size_prefs_sub: "Définissez vos tailles pour de meilleures recommandations.",
+    men: "Homme",
+    women: "Femme",
+    tops: "Hauts",
+    bottoms_waist: "Bas (Taille)",
+    bottoms_length: "Bas (Longueur)",
+    shoes_label: "Chaussures",
+    dresses: "Robes",
+    save_sizes: "Enregistrer les tailles",
+    change_language_confirm: "Changer la langue ?",
+    change_language_desc: "La langue de l'application sera mise à jour.",
+    scans_label: "Scans",
+    edit_profile: "Modifier le profil",
+    style_dna: "ADN de style",
+    hanger_test: "Test du cintre",
+    tell_style: "Parlez de votre style...",
+    no_followers: "Pas encore d'abonnés",
+    no_following: "Vous ne suivez personne encore",
+    my_scans: "Mes scans",
+    all: "Tout",
+    my_picks: "Mes choix",
+    search_scans: "Rechercher des scans...",
+    no_scans_yet: "Aucun scan encore",
+    no_match_search: "Aucun scan ne correspond à votre recherche",
+    scan_first: "Scannez votre première tenue pour créer votre bibliothèque de style",
+    try_different: "Essayez des mots-clés différents",
+    scan_outfit: "Scanner une tenue",
+    no_saved: "Aucun article sauvegardé",
+    heart_items: "Aimez les articles de vos scans pour les sauvegarder ici",
+    search_people: "Rechercher des personnes...",
+    no_users_found: "Aucun utilisateur trouvé",
+    type_to_search: "Tapez un nom pour rechercher",
+    view_results: "Voir tous les résultats",
+    shop: "Acheter",
+    search_google: "Rechercher sur Google Shopping",
+    no_match: "Aucune correspondance exacte",
+    original: "ORIGINAL",
+    resale: "REVENTE",
+    take_photo: "Prenez une photo ou téléchargez une tenue",
+    upload: "Télécharger",
+    camera: "Appareil photo",
+    for_you: "Pour vous",
+    trending: "Tendances",
+    discover: "Découvrir",
+    load_more: "Charger plus",
+    continue_google: "Continuer avec Google",
+    continue_apple: "Continuer avec Apple",
+    create_account: "Créer un compte",
+    log_in: "Se connecter",
+    full_name: "Nom complet",
+    email: "Adresse e-mail",
+    password: "Mot de passe",
+    phone_optional: "Téléphone (optionnel)",
+    get_started: "Commencer",
+    maybe_later: "Peut-être plus tard",
+    upgrade_to_pro: "Passer à Pro",
+    go_pro: "Passer Pro",
     appearance: "Apparence",
     dark: "Sombre",
     light: "Clair",
@@ -1307,6 +1550,87 @@ const STRINGS = {
     public_profile: "Öffentlich",
     private_profile: "Privat",
     followers_only: "Nur Follower",
+    loading: "Laden...",
+    saving: "Speichern...",
+    cancel: "Abbrechen",
+    confirm: "Bestätigen",
+    done: "Fertig",
+    save_btn: "Speichern",
+    not_set: "Nicht eingestellt",
+    appearance: "Erscheinungsbild",
+    dark: "Dunkel",
+    light: "Hell",
+    budget_range: "Budgetbereich",
+    size_preferences: "Größeneinstellungen",
+    subscription: "Abonnement",
+    free: "Kostenlos",
+    notifications: "Benachrichtigungen",
+    enable_push: "Push-Benachrichtigungen aktivieren",
+    push_enabled: "Push-Benachrichtigungen aktiviert",
+    followup_reminders: "Follow-up-Erinnerungen",
+    followup_desc: "Erinnere mich, wenn ich vergesse, meine Ergebnisse zu prüfen",
+    style_twins_notif: "Style-Zwillinge",
+    style_twins_desc: "Wöchentliche Alerts zu neuen Style-Zwillingen",
+    refer_friend: "Freund empfehlen",
+    refer_desc: "Teile deinen Code. Ihr bekommt beide 5$ Guthaben.",
+    size_prefs_title: "Größeneinstellungen",
+    size_prefs_sub: "Lege deine Größen für bessere Empfehlungen fest.",
+    men: "Herren",
+    women: "Damen",
+    tops: "Oberteile",
+    bottoms_waist: "Unterteile (Taille)",
+    bottoms_length: "Unterteile (Länge)",
+    shoes_label: "Schuhe",
+    dresses: "Kleider",
+    save_sizes: "Größen speichern",
+    change_language_confirm: "Sprache ändern?",
+    change_language_desc: "Die App-Sprache wird aktualisiert.",
+    scans_label: "Scans",
+    edit_profile: "Profil bearbeiten",
+    style_dna: "Stil-DNA",
+    hanger_test: "Kleiderbügel-Test",
+    tell_style: "Erzähle anderen von deinem Stil...",
+    no_followers: "Noch keine Follower",
+    no_following: "Du folgst niemandem",
+    my_scans: "Meine Scans",
+    all: "Alle",
+    my_picks: "Meine Auswahl",
+    search_scans: "Scans durchsuchen...",
+    no_scans_yet: "Noch keine Scans",
+    no_match_search: "Keine Scans stimmen überein",
+    scan_first: "Scanne dein erstes Outfit, um deine Stil-Bibliothek aufzubauen",
+    try_different: "Versuche andere Suchbegriffe",
+    scan_outfit: "Outfit scannen",
+    no_saved: "Keine gespeicherten Artikel",
+    heart_items: "Speichere Artikel aus deinen Scans mit dem Herz-Symbol",
+    search_people: "Personen suchen...",
+    no_users_found: "Keine Benutzer gefunden",
+    type_to_search: "Namen eingeben zum Suchen",
+    view_results: "Alle Ergebnisse anzeigen",
+    shop: "Kaufen",
+    search_google: "Bei Google Shopping suchen",
+    no_match: "Kein genaues Ergebnis gefunden",
+    original: "ORIGINAL",
+    resale: "GEBRAUCHT",
+    take_photo: "Mach ein Foto oder lade ein Outfit hoch",
+    upload: "Hochladen",
+    camera: "Kamera",
+    for_you: "Für dich",
+    trending: "Trending",
+    discover: "Entdecken",
+    load_more: "Mehr laden",
+    continue_google: "Weiter mit Google",
+    continue_apple: "Weiter mit Apple",
+    create_account: "Konto erstellen",
+    log_in: "Anmelden",
+    full_name: "Vollständiger Name",
+    email: "E-Mail-Adresse",
+    password: "Passwort",
+    phone_optional: "Telefon (optional)",
+    get_started: "Los geht's",
+    maybe_later: "Vielleicht später",
+    upgrade_to_pro: "Auf Pro upgraden",
+    go_pro: "Pro werden",
     appearance: "Erscheinungsbild",
     dark: "Dunkel",
     light: "Hell",
@@ -1412,6 +1736,87 @@ const STRINGS = {
     public_profile: "公开",
     private_profile: "私密",
     followers_only: "仅粉丝可见",
+    loading: "加载中...",
+    saving: "保存中...",
+    cancel: "取消",
+    confirm: "确认",
+    done: "完成",
+    save_btn: "保存",
+    not_set: "未设置",
+    appearance: "外观",
+    dark: "深色",
+    light: "浅色",
+    budget_range: "预算范围",
+    size_preferences: "尺码偏好",
+    subscription: "订阅",
+    free: "免费",
+    notifications: "通知",
+    enable_push: "启用推送通知",
+    push_enabled: "推送通知已启用",
+    followup_reminders: "后续提醒",
+    followup_desc: "提醒我查看我的结果",
+    style_twins_notif: "时尚双胞胎",
+    style_twins_desc: "每周\"发现新时尚双胞胎\"提醒",
+    refer_friend: "推荐好友",
+    refer_desc: "分享你的代码，双方各获得5美元。",
+    size_prefs_title: "尺码偏好",
+    size_prefs_sub: "设置你的尺码以获得更好的推荐。",
+    men: "男性",
+    women: "女性",
+    tops: "上衣",
+    bottoms_waist: "下装 (腰围)",
+    bottoms_length: "下装 (长度)",
+    shoes_label: "鞋子",
+    dresses: "连衣裙",
+    save_sizes: "保存尺码",
+    change_language_confirm: "更换语言？",
+    change_language_desc: "应用程序语言将被更新。",
+    scans_label: "扫描",
+    edit_profile: "编辑资料",
+    style_dna: "风格DNA",
+    hanger_test: "衣架测试",
+    tell_style: "告诉大家你的穿搭风格...",
+    no_followers: "还没有粉丝",
+    no_following: "还没有关注任何人",
+    my_scans: "我的扫描",
+    all: "全部",
+    my_picks: "我的精选",
+    search_scans: "搜索扫描...",
+    no_scans_yet: "暂无扫描",
+    no_match_search: "没有匹配的扫描",
+    scan_first: "扫描你的第一个穿搭来建立风格库",
+    try_different: "尝试不同的关键词",
+    scan_outfit: "扫描穿搭",
+    no_saved: "暂无保存的商品",
+    heart_items: "从扫描中点赞商品来保存到这里",
+    search_people: "搜索用户...",
+    no_users_found: "未找到用户",
+    type_to_search: "输入名字搜索",
+    view_results: "查看完整结果",
+    shop: "购买",
+    search_google: "在Google Shopping搜索",
+    no_match: "未找到精确匹配",
+    original: "正品",
+    resale: "二手",
+    take_photo: "拍照或上传穿搭",
+    upload: "上传",
+    camera: "相机",
+    for_you: "推荐",
+    trending: "热门",
+    discover: "发现",
+    load_more: "加载更多",
+    continue_google: "使用Google继续",
+    continue_apple: "使用Apple继续",
+    create_account: "创建账号",
+    log_in: "登录",
+    full_name: "全名",
+    email: "邮箱地址",
+    password: "密码",
+    phone_optional: "手机号（可选）",
+    get_started: "开始使用",
+    maybe_later: "以后再说",
+    upgrade_to_pro: "升级到Pro",
+    go_pro: "升级 Pro",
     appearance: "外观",
     dark: "深色",
     light: "浅色",
@@ -1517,6 +1922,87 @@ const STRINGS = {
     public_profile: "公開",
     private_profile: "非公開",
     followers_only: "フォロワーのみ",
+    loading: "読み込み中...",
+    saving: "保存中...",
+    cancel: "キャンセル",
+    confirm: "確認",
+    done: "完了",
+    save_btn: "保存",
+    not_set: "未設定",
+    appearance: "表示",
+    dark: "ダーク",
+    light: "ライト",
+    budget_range: "予算範囲",
+    size_preferences: "サイズ設定",
+    subscription: "サブスクリプション",
+    free: "無料",
+    notifications: "通知",
+    enable_push: "プッシュ通知を有効にする",
+    push_enabled: "プッシュ通知が有効です",
+    followup_reminders: "フォローアップリマインダー",
+    followup_desc: "結果の確認を忘れた場合にリマインド",
+    style_twins_notif: "スタイルツイン",
+    style_twins_desc: "毎週「新しいスタイルツイン発見」アラート",
+    refer_friend: "友達を紹介",
+    refer_desc: "コードを共有。2人とも$5のクレジットをゲット。",
+    size_prefs_title: "サイズ設定",
+    size_prefs_sub: "より良いおすすめのためにサイズを設定してください。",
+    men: "メンズ",
+    women: "レディース",
+    tops: "トップス",
+    bottoms_waist: "ボトムス (ウエスト)",
+    bottoms_length: "ボトムス (丈)",
+    shoes_label: "シューズ",
+    dresses: "ドレス",
+    save_sizes: "サイズを保存",
+    change_language_confirm: "言語を変更しますか？",
+    change_language_desc: "アプリの言語が更新されます。",
+    scans_label: "スキャン",
+    edit_profile: "プロフィール編集",
+    style_dna: "スタイルDNA",
+    hanger_test: "ハンガーテスト",
+    tell_style: "あなたのスタイルを教えてください...",
+    no_followers: "まだフォロワーがいません",
+    no_following: "まだ誰もフォローしていません",
+    my_scans: "マイスキャン",
+    all: "すべて",
+    my_picks: "マイピック",
+    search_scans: "スキャンを検索...",
+    no_scans_yet: "スキャンはまだありません",
+    no_match_search: "検索に一致するスキャンがありません",
+    scan_first: "最初のコーデをスキャンしてスタイルライブラリを構築",
+    try_different: "別のキーワードを試してください",
+    scan_outfit: "コーデをスキャン",
+    no_saved: "保存アイテムなし",
+    heart_items: "スキャンからアイテムにハートをつけて保存",
+    search_people: "ユーザーを検索...",
+    no_users_found: "ユーザーが見つかりません",
+    type_to_search: "名前を入力して検索",
+    view_results: "すべての結果を見る",
+    shop: "購入",
+    search_google: "Google Shoppingで検索",
+    no_match: "完全一致なし",
+    original: "オリジナル",
+    resale: "リセール",
+    take_photo: "写真を撮るか、コーデをアップロード",
+    upload: "アップロード",
+    camera: "カメラ",
+    for_you: "おすすめ",
+    trending: "トレンド",
+    discover: "発見",
+    load_more: "もっと読み込む",
+    continue_google: "Googleで続ける",
+    continue_apple: "Appleで続ける",
+    create_account: "アカウント作成",
+    log_in: "ログイン",
+    full_name: "氏名",
+    email: "メールアドレス",
+    password: "パスワード",
+    phone_optional: "電話番号（任意）",
+    get_started: "はじめる",
+    maybe_later: "後で",
+    upgrade_to_pro: "Proにアップグレード",
+    go_pro: "Proにする",
     appearance: "外観",
     dark: "ダーク",
     light: "ライト",
@@ -1622,6 +2108,87 @@ const STRINGS = {
     public_profile: "공개",
     private_profile: "비공개",
     followers_only: "팔로워만",
+    loading: "로딩 중...",
+    saving: "저장 중...",
+    cancel: "취소",
+    confirm: "확인",
+    done: "완료",
+    save_btn: "저장",
+    not_set: "설정 안 됨",
+    appearance: "외관",
+    dark: "다크",
+    light: "라이트",
+    budget_range: "예산 범위",
+    size_preferences: "사이즈 설정",
+    subscription: "구독",
+    free: "무료",
+    notifications: "알림",
+    enable_push: "푸시 알림 활성화",
+    push_enabled: "푸시 알림이 활성화되었습니다",
+    followup_reminders: "후속 알림",
+    followup_desc: "결과 확인을 잊으면 알려주세요",
+    style_twins_notif: "스타일 트윈",
+    style_twins_desc: "주간 '새로운 스타일 트윈 발견' 알림",
+    refer_friend: "친구 추천",
+    refer_desc: "코드를 공유하세요. 둘 다 $5 크레딧을 받습니다.",
+    size_prefs_title: "사이즈 설정",
+    size_prefs_sub: "더 나은 추천을 위해 사이즈를 설정하세요.",
+    men: "남성",
+    women: "여성",
+    tops: "상의",
+    bottoms_waist: "하의 (허리)",
+    bottoms_length: "하의 (길이)",
+    shoes_label: "신발",
+    dresses: "드레스",
+    save_sizes: "사이즈 저장",
+    change_language_confirm: "언어를 변경하시겠습니까?",
+    change_language_desc: "앱 언어가 업데이트됩니다.",
+    scans_label: "스캔",
+    edit_profile: "프로필 편집",
+    style_dna: "스타일 DNA",
+    hanger_test: "옷걸이 테스트",
+    tell_style: "당신의 스타일을 알려주세요...",
+    no_followers: "아직 팔로워가 없습니다",
+    no_following: "아직 아무도 팔로우하지 않았습니다",
+    my_scans: "내 스캔",
+    all: "전체",
+    my_picks: "내 선택",
+    search_scans: "스캔 검색...",
+    no_scans_yet: "아직 스캔이 없습니다",
+    no_match_search: "검색과 일치하는 스캔이 없습니다",
+    scan_first: "첫 번째 아웃핏을 스캔하여 스타일 라이브러리를 만드세요",
+    try_different: "다른 키워드를 시도해 보세요",
+    scan_outfit: "아웃핏 스캔",
+    no_saved: "저장된 아이템 없음",
+    heart_items: "스캔에서 아이템에 하트를 눌러 여기에 저장하세요",
+    search_people: "사람 검색...",
+    no_users_found: "사용자를 찾을 수 없습니다",
+    type_to_search: "이름을 입력하여 검색",
+    view_results: "전체 결과 보기",
+    shop: "구매",
+    search_google: "Google Shopping에서 검색",
+    no_match: "정확한 일치 항목 없음",
+    original: "정품",
+    resale: "중고",
+    take_photo: "사진을 찍거나 아웃핏을 업로드하세요",
+    upload: "업로드",
+    camera: "카메라",
+    for_you: "추천",
+    trending: "인기",
+    discover: "발견",
+    load_more: "더 보기",
+    continue_google: "Google로 계속",
+    continue_apple: "Apple로 계속",
+    create_account: "계정 만들기",
+    log_in: "로그인",
+    full_name: "전체 이름",
+    email: "이메일 주소",
+    password: "비밀번호",
+    phone_optional: "전화번호 (선택)",
+    get_started: "시작하기",
+    maybe_later: "나중에",
+    upgrade_to_pro: "Pro로 업그레이드",
+    go_pro: "Pro로 업그레이드",
     appearance: "외관",
     dark: "다크",
     light: "라이트",
@@ -1727,6 +2294,87 @@ const STRINGS = {
     public_profile: "Público",
     private_profile: "Privado",
     followers_only: "Apenas seguidores",
+    loading: "Carregando...",
+    saving: "Salvando...",
+    cancel: "Cancelar",
+    confirm: "Confirmar",
+    done: "Pronto",
+    save_btn: "Salvar",
+    not_set: "Não definido",
+    appearance: "Aparência",
+    dark: "Escuro",
+    light: "Claro",
+    budget_range: "Faixa de orçamento",
+    size_preferences: "Preferências de tamanho",
+    subscription: "Assinatura",
+    free: "Grátis",
+    notifications: "Notificações",
+    enable_push: "Ativar notificações push",
+    push_enabled: "Notificações push ativadas",
+    followup_reminders: "Lembretes de acompanhamento",
+    followup_desc: "Me lembrar se eu esquecer de verificar meus resultados",
+    style_twins_notif: "Gêmeos de estilo",
+    style_twins_desc: "Alertas semanais de novos gêmeos de estilo",
+    refer_friend: "Indicar um amigo",
+    refer_desc: "Compartilhe seu código. Ambos ganham $5 de crédito.",
+    size_prefs_title: "Preferências de tamanho",
+    size_prefs_sub: "Defina seus tamanhos para melhores recomendações.",
+    men: "Masculino",
+    women: "Feminino",
+    tops: "Blusas",
+    bottoms_waist: "Calças (Cintura)",
+    bottoms_length: "Calças (Comprimento)",
+    shoes_label: "Calçados",
+    dresses: "Vestidos",
+    save_sizes: "Salvar tamanhos",
+    change_language_confirm: "Mudar idioma?",
+    change_language_desc: "O idioma do app será atualizado.",
+    scans_label: "Scans",
+    edit_profile: "Editar perfil",
+    style_dna: "DNA de estilo",
+    hanger_test: "Teste do cabide",
+    tell_style: "Conte às pessoas sobre seu estilo...",
+    no_followers: "Nenhum seguidor ainda",
+    no_following: "Não segue ninguém ainda",
+    my_scans: "Meus scans",
+    all: "Todos",
+    my_picks: "Minhas escolhas",
+    search_scans: "Pesquisar scans...",
+    no_scans_yet: "Nenhum scan ainda",
+    no_match_search: "Nenhum scan corresponde à sua pesquisa",
+    scan_first: "Escaneie seu primeiro look para criar sua biblioteca de estilo",
+    try_different: "Tente palavras-chave diferentes",
+    scan_outfit: "Escanear um look",
+    no_saved: "Nenhum item salvo",
+    heart_items: "Curta itens dos seus scans para salvá-los aqui",
+    search_people: "Pesquisar pessoas...",
+    no_users_found: "Nenhum usuário encontrado",
+    type_to_search: "Digite um nome para pesquisar",
+    view_results: "Ver todos os resultados",
+    shop: "Comprar",
+    search_google: "Pesquisar no Google Shopping",
+    no_match: "Nenhuma correspondência exata",
+    original: "ORIGINAL",
+    resale: "REVENDA",
+    take_photo: "Tire uma foto ou envie um look",
+    upload: "Enviar",
+    camera: "Câmera",
+    for_you: "Para você",
+    trending: "Em alta",
+    discover: "Descobrir",
+    load_more: "Carregar mais",
+    continue_google: "Continuar com Google",
+    continue_apple: "Continuar com Apple",
+    create_account: "Criar conta",
+    log_in: "Entrar",
+    full_name: "Nome completo",
+    email: "Endereço de e-mail",
+    password: "Senha",
+    phone_optional: "Telefone (opcional)",
+    get_started: "Começar",
+    maybe_later: "Talvez depois",
+    upgrade_to_pro: "Atualizar para Pro",
+    go_pro: "Ir Pro",
     appearance: "Aparência",
     dark: "Escuro",
     light: "Claro",
@@ -3012,7 +3660,7 @@ export default function App() {
   const [authPhone, setAuthPhone] = useState("");
   const [budgetMin, setBudgetMin] = useState(50);
   const [budgetMax, setBudgetMax] = useState(100);
-  const [selectedBudgetTiers, setSelectedBudgetTiers] = useState(new Set());
+  const [settingsBudgetError, setSettingsBudgetError] = useState(null);
   const [sizePrefs, setSizePrefs] = useState({ body_type: [], fit: [], sizes: {} });
 
   // ─── Guest mode ────────────────────────────────────────────
@@ -3364,12 +4012,7 @@ export default function App() {
   const [sizePrefsEdit, setSizePrefsEdit] = useState({ tops: "", bottoms_waist: "", bottoms_length: "", shoes: "", dresses: "" });
   const [sizePrefsSaving, setSizePrefsSaving] = useState(false);
   const sizePrefsOrigRef = useRef(null);
-  // ─── Followers/Following List ──────────────────────────────
-  const [followListOpen, setFollowListOpen] = useState(null);
-  const [followListData, setFollowListData] = useState([]);
-  const [followListLoading, setFollowListLoading] = useState(false);
   // ─── Language Change Confirmation ──────────────────────────
-  const [langChangeConfirm, setLangChangeConfirm] = useState(null);
   const [profileScanOverlay, setProfileScanOverlay] = useState(null); // scan object for overlay
   const [historyDetailScan, setHistoryDetailScan] = useState(null); // history item detail overlay
 
@@ -5271,7 +5914,7 @@ export default function App() {
         {showNotifPanel && (
           <div style={{ position: "fixed", top: 52, right: 8, width: "min(360px, calc(100vw - 16px))", maxHeight: "70vh", background: "var(--card-bg)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,.5)", zIndex: 9999, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Notifications</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("notifications")}</div>
               <button onClick={() => setShowNotifPanel(false)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>x</button>
             </div>
             {("Notification" in window) && Notification.permission === "default" && !pushEnabled && (
@@ -5343,12 +5986,12 @@ export default function App() {
               {/* For You / Following tabs directly under header */}
               {/* For You / Following toggle */}
               <div className="feed-tabs-wrap">
-                <button className={`feed-tab${feedTab === "foryou" ? " active" : ""}`} onClick={() => { setFeedTab("foryou"); setFeedPage(1); }}>For You</button>
+                <button className={`feed-tab${feedTab === "foryou" ? " active" : ""}`} onClick={() => { setFeedTab("foryou"); setFeedPage(1); }}>{t("for_you")}</button>
                 <button className={`feed-tab${feedTab === "trending" ? " active" : ""}`} onClick={() => { setFeedTab("trending"); setFeedPage(1); }}>
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4, verticalAlign: -1 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                   Trending
                 </button>
-                <button className={`feed-tab${feedTab === "following" ? " active" : ""}`} onClick={() => { setFeedTab("following"); setFeedPage(1); }}>Following</button>
+                <button className={`feed-tab${feedTab === "following" ? " active" : ""}`} onClick={() => { setFeedTab("following"); setFeedPage(1); }}>{t("following")}</button>
               </div>
 
               {/* ─── Active Style Challenge card ─── */}
@@ -5601,7 +6244,7 @@ export default function App() {
                       value={userSearchQuery}
                       onChange={e => { setUserSearchQuery(e.target.value); if (!showUserSearch) setShowUserSearch(true); }}
                       onFocus={() => { if (!showUserSearch) setShowUserSearch(true); }}
-                      placeholder="Search people..."
+                      placeholder={t("search_people")}
                       style={{ flex: 1, background: "none", border: "none", outline: "none", padding: "12px 0", fontFamily: "var(--font-sans)", fontSize: 15, color: "var(--text-primary)", minHeight: 44 }}
                     />
                   ) : (
@@ -5629,7 +6272,7 @@ export default function App() {
               {searchSubTab === "people" && (
                 <div style={{ padding: "12px 16px" }}>
                   {userSearchLoading && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Searching...</div>}
-                  {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>No users found</div>}
+                  {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>{t("no_users_found")}</div>}
                   {!userSearchLoading && !userSearchQuery.trim() && (
                     <div>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 12, paddingTop: 8 }}>Suggested for you</div>
@@ -5999,7 +6642,7 @@ export default function App() {
                 <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
               </div>
               {/* Title */}
-              <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "var(--text-primary)", marginBottom: 8 }}>Scan an Outfit</div>
+              <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "var(--text-primary)", marginBottom: 8 }}>{t("scan_outfit")}</div>
               <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.6, maxWidth: 280, marginBottom: 32 }}>
                 Upload a photo of any outfit to find where to buy it
               </div>
@@ -6157,14 +6800,12 @@ export default function App() {
                 <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>Tap items on the image or below</div>
               </div>
 
-              {/* Global budget — multi-select tier chips */}
+              {/* Global budget — preset chips + dual-thumb slider */}
               <div style={{ padding: "12px 20px 4px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Budget</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>
-                    {selectedBudgetTiers.size === 0
-                      ? `$${budgetMin} \u2013 ${budgetMax >= 500 ? "$500+" : `$${budgetMax}`}`
-                      : [...selectedBudgetTiers].sort((a, b) => a.min - b.min).map(t => t.label).join(", ")}
+                    {`$${budgetMin} – ${budgetMax >= 500 ? "$500+" : `$${budgetMax}`}`}
                   </span>
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
@@ -6174,23 +6815,10 @@ export default function App() {
                     { label: "$$$", min: 150, max: 300, desc: "$150–$300" },
                     { label: "$$$$", min: 300, max: 500, desc: "$300+" },
                   ].map(p => {
-                    const active = [...selectedBudgetTiers].some(t => t.label === p.label);
+                    const active = budgetMin === p.min && budgetMax === p.max;
                     return (
                       <button key={p.label} aria-label={`Budget tier ${p.label}: ${p.desc}`}
-                        onClick={() => {
-                          setSelectedBudgetTiers(prev => {
-                            const next = new Set(prev);
-                            const existing = [...next].find(t => t.label === p.label);
-                            if (existing) next.delete(existing); else next.add(p);
-                            // Derive budgetMin/Max from selected tiers
-                            if (next.size > 0) {
-                              const tiers = [...next];
-                              setBudgetMin(Math.min(...tiers.map(t => t.min)));
-                              setBudgetMax(Math.max(...tiers.map(t => t.max)));
-                            }
-                            return next;
-                          });
-                        }}
+                        onClick={() => { setBudgetMin(p.min); setBudgetMax(p.max); }}
                         style={{ flex: 1, padding: "7px 4px", minHeight: 44, background: active ? "var(--accent-bg)" : "var(--bg-input)", border: `1px solid ${active ? "var(--accent-border)" : "var(--border)"}`, borderRadius: "var(--radius-sm)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text-tertiary)", transition: "all var(--transition-fast)", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
                       >
                         <span>{p.label}</span>
@@ -6204,13 +6832,13 @@ export default function App() {
                   <div style={{ position: "absolute", top: 12, left: 0, right: 0, height: 4, background: "var(--bg-input)", borderRadius: 2 }} />
                   <div style={{ position: "absolute", top: 12, left: `${(budgetMin / 500) * 100}%`, right: `${100 - (budgetMax / 500) * 100}%`, height: 4, background: "var(--accent)", borderRadius: 2 }} />
                   <input type="range" min={0} max={500} step={10} value={budgetMin}
-                    onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) { setBudgetMin(v); setSelectedBudgetTiers(new Set()); } }}
+                    onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) setBudgetMin(v); }}
                     aria-label="Minimum budget"
                     style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2 }}
                     className="budget-range-thumb"
                   />
                   <input type="range" min={0} max={500} step={10} value={budgetMax}
-                    onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) { setBudgetMax(v); setSelectedBudgetTiers(new Set()); } }}
+                    onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) setBudgetMax(v); }}
                     aria-label="Maximum budget"
                     style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3 }}
                     className="budget-range-thumb"
@@ -6708,13 +7336,13 @@ export default function App() {
                         setPairingsLoading(false);
                       }}
                       style={{ width: "100%", padding: "12px 0", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-                      Complete the Look
+                      {t("complete_look_btn")}
                     </button>
                   )}
                   {pairingsLoading && (
                     <div style={{ padding: "14px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 12 }}>
                       <div className="ld-dots" style={{ justifyContent: "center", marginBottom: 6 }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
-                      Finding complementary pieces...
+                      {t("finding_pieces")}
                     </div>
                   )}
                   {pairings && pairings.length > 0 && (
@@ -6814,7 +7442,7 @@ export default function App() {
 
                       {/* Budget presets + range */}
                       <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 8 }}>Budget Range</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 8 }}>{t("budget_range")}</div>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
                           {[
                             { l: "$ Under $50", min: 0, max: 50 },
@@ -7340,7 +7968,7 @@ export default function App() {
               <div className="likes-v2 animate-fade-in">
                 {/* Header */}
                 <div style={{ padding: "16px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>My Scans</h2>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{t("my_scans")}</h2>
                   {history.length > 0 && <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{history.length} scan{history.length !== 1 ? "s" : ""}</span>}
                 </div>
 
@@ -7350,12 +7978,12 @@ export default function App() {
                     className={`scan-vis-chip${historyFilter === "all" && !activeWishlist ? " active" : ""}`}
                     onClick={() => { setHistoryFilter("all"); setActiveWishlist(null); }}
                     style={{ flexShrink: 0 }}
-                  >All</button>
+                  >{t("all_filter")}</button>
                   <button
                     className={`scan-vis-chip${historyFilter === "picks" ? " active" : ""}`}
                     onClick={() => { setHistoryFilter(historyFilter === "picks" ? "all" : "picks"); setActiveWishlist(null); }}
                     style={{ flexShrink: 0 }}
-                  >My Picks</button>
+                  >{t("my_picks")}</button>
                   {wishlists.map(wl => (
                     <button
                       key={wl.id}
@@ -7375,7 +8003,7 @@ export default function App() {
                     <div style={{ position: "relative" }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                       <input
-                        placeholder="Search scans..."
+                        placeholder={t("search_scans")}
                         value={scanSearchQuery}
                         onChange={e => setScanSearchQuery(e.target.value)}
                         aria-label="Search your scan history"
@@ -7722,7 +8350,7 @@ export default function App() {
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}>
                       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                     </svg>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>No saved items yet</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{t("no_saved")}</div>
                     <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 260 }}>
                       Heart items from your scans to save them here
                     </div>
@@ -7735,12 +8363,12 @@ export default function App() {
                     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.12, marginBottom: 8 }}>
                       <rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/>
                     </svg>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{history.length === 0 ? "No scans yet" : "No scans match your search"}</div>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{history.length === 0 ? t("no_scans_yet") : t("no_scans_match")}</div>
                     <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 240 }}>
-                      {history.length === 0 ? "Scan your first outfit to build your style library" : "Try different keywords"}
+                      {history.length === 0 ? t("save_items_desc") : ""}
                     </div>
                     {history.length === 0 && (
-                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => fileRef.current?.click()} aria-label="Scan your first outfit">Scan an Outfit</button>
+                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => fileRef.current?.click()} aria-label="Scan your first outfit">{t("scan_an_outfit")}</button>
                     )}
                   </div>
                 ) : (
@@ -7774,15 +8402,33 @@ export default function App() {
                 <div className="profile-v2-stats" role="list" aria-label="Profile statistics">
                   <div className="profile-v2-stat" role="listitem">
                     <div className="profile-stat-val">{profileScansCount}</div>
-                    <div className="profile-stat-lbl">Scans</div>
+                    <div className="profile-stat-lbl">{t("scans_stat")}</div>
                   </div>
-                  <div className="profile-v2-stat" role="listitem">
+                  <div className="profile-v2-stat" role="listitem" style={{ cursor: "pointer" }} onClick={async () => {
+                    if (!authUserId) return;
+                    setFollowListOpen("followers");
+                    setFollowListLoading(true);
+                    try {
+                      const data = await API.getFollowers(authUserId);
+                      setFollowListData(data.followers || data || []);
+                    } catch { setFollowListData([]); }
+                    setFollowListLoading(false);
+                  }}>
                     <div className="profile-stat-val">{profileStats?.followers_count ?? 0}</div>
-                    <div className="profile-stat-lbl">Followers</div>
+                    <div className="profile-stat-lbl">{t("followers")}</div>
                   </div>
-                  <div className="profile-v2-stat" role="listitem">
+                  <div className="profile-v2-stat" role="listitem" style={{ cursor: "pointer" }} onClick={async () => {
+                    if (!authUserId) return;
+                    setFollowListOpen("following");
+                    setFollowListLoading(true);
+                    try {
+                      const data = await API.getFollowing(authUserId);
+                      setFollowListData(data.following || data || []);
+                    } catch { setFollowListData([]); }
+                    setFollowListLoading(false);
+                  }}>
                     <div className="profile-stat-val">{profileStats?.following_count ?? 0}</div>
-                    <div className="profile-stat-lbl">Following</div>
+                    <div className="profile-stat-lbl">{t("following")}</div>
                   </div>
                 </div>
               </div>
@@ -7797,12 +8443,12 @@ export default function App() {
                 </div>
                 {profileBioEditing ? (
                   <div style={{ marginTop: 6, maxWidth: 360 }}>
-                    <textarea className="profile-bio-area" rows={3} maxLength={200} autoFocus value={profileBio} onChange={e => setProfileBio(e.target.value.slice(0, 200))} placeholder="Tell people about your style..." aria-label="Edit your bio" />
+                    <textarea className="profile-bio-area" rows={3} maxLength={200} autoFocus value={profileBio} onChange={e => setProfileBio(e.target.value.slice(0, 200))} placeholder={t("tell_style")} aria-label="Edit your bio" />
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                       <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{profileBio.length}/200</span>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button className="btn-ghost" style={{ padding: "6px 14px", fontSize: 12 }} onClick={() => setProfileBioEditing(false)}>Cancel</button>
-                        <button className="btn-primary" style={{ padding: "6px 14px", fontSize: 12 }} onClick={async () => { setProfileBioSaving(true); try { await API.updateProfile({ bio: profileBio }); } catch {} setProfileBioSaving(false); setProfileBioEditing(false); }}>{profileBioSaving ? "Saving..." : "Save"}</button>
+                        <button className="btn-ghost" style={{ padding: "6px 14px", fontSize: 12 }} onClick={() => setProfileBioEditing(false)}>{t("cancel")}</button>
+                        <button className="btn-primary" style={{ padding: "6px 14px", fontSize: 12 }} onClick={async () => { setProfileBioSaving(true); try { await API.updateProfile({ bio: profileBio }); } catch {} setProfileBioSaving(false); setProfileBioEditing(false); }}>{profileBioSaving ? t("saving") : t("save_bio")}</button>
                       </div>
                     </div>
                   </div>
@@ -7812,7 +8458,7 @@ export default function App() {
                   </div>
                 )}
                 {/* Edit Profile button */}
-                <button className="btn-secondary" style={{ width: "100%", marginTop: 12, padding: "8px 0", fontSize: 14, fontWeight: 600, borderRadius: "var(--radius-sm)" }} onClick={() => setProfileBioEditing(true)}>Edit Profile</button>
+                <button className="btn-secondary" style={{ width: "100%", marginTop: 12, padding: "8px 0", fontSize: 14, fontWeight: 600, borderRadius: "var(--radius-sm)" }} onClick={() => setProfileBioEditing(true)}>{t("edit_profile")}</button>
 
                 {/* Style DNA button */}
                 {styleDna?.ready ? (
@@ -7938,7 +8584,7 @@ export default function App() {
                         if (hs.tiers && Array.isArray(hs.tiers)) setResults(prev => prev ? { ...prev, items: prev.items.map((item, idx) => { const sr = hs.tiers.find(t2 => t2.item_index === idx); return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev);
                         setImg(hs.image_url || hs.image_thumbnail || null);
                         setScanId(hs.id); setSelIdx(0); setPickedItems(new Set((hs.tiers || []).map(t2 => t2.item_index))); setPhase("done"); setTab("scan"); setProfileScanOverlay(null);
-                      }}>View Full Results</button>
+                      }}>{t("view_results")}</button>
                     </div>
                   </div>
                 );
@@ -7954,7 +8600,7 @@ export default function App() {
                   onTouchEnd={() => { const dy = settingsDragRef.current.currentY - settingsDragRef.current.startY; settingsDragRef.current.dragging = false; if (dy > 120) { setSettingsSheetY(window.innerHeight); setTimeout(() => { setProfileSettingsOpen(false); setSettingsSheetY(0); }, 300); } else { setSettingsSheetY(0); } }}>
                   <div className="bottom-sheet-handle" />
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>Settings</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{t("settings")}</div>
                     <button onClick={() => setProfileSettingsOpen(false)} aria-label="Close settings" style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", borderRadius: "50%", color: "var(--text-secondary)" }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
@@ -7962,9 +8608,9 @@ export default function App() {
 
                   {/* Theme toggle */}
                   <div className="settings-sheet-item" onClick={toggleTheme} role="button" aria-label="Toggle theme">
-                    <span className="settings-label">Appearance</span>
+                    <span className="settings-label">{t("appearance")}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span className="settings-value">{theme === "dark" ? "Dark" : "Light"}</span>
+                      <span className="settings-value">{theme === "dark" ? t("dark") : t("light")}</span>
                       <div style={{ width: 44, height: 26, borderRadius: 13, background: theme === "dark" ? "var(--accent)" : "var(--border)", position: "relative", transition: "background 0.2s", cursor: "pointer", flexShrink: 0 }}>
                         <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: theme === "dark" ? 21 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
                       </div>
@@ -7973,164 +8619,72 @@ export default function App() {
 
                   {/* Language */}
                   <div className="settings-sheet-item" style={{ alignItems: "flex-start", flexDirection: "column", gap: 8, cursor: "default" }}>
-                    <span className="settings-label">Language</span>
+                    <span className="settings-label">{t("language")}</span>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {[["en","EN"],["es","ES"],["fr","FR"],["de","DE"],["zh","\u4E2D"],["ja","\u65E5"],["ko","\uD55C"],["pt","PT"]].map(([l, label]) => (
-                        <button key={l} className={`chip${lang === l ? " active" : ""}`} onClick={() => { setLang(l); localStorage.setItem("attair_lang", l); }} style={{ padding: "8px 14px", fontSize: 12, minHeight: 44 }}>{label}</button>
+                        <button key={l} className={`chip${lang === l ? " active" : ""}`} onClick={() => { if (l !== lang) setLangConfirmOpen(l); }} style={{ padding: "8px 14px", fontSize: 12, minHeight: 44 }}>{label}</button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Budget Range — tappable row toggles inline expansion */}
-                  <div className="settings-sheet-item" style={{ cursor: "pointer", borderBottom: settingsBudgetExpanded ? "none" : undefined }} onClick={() => {
-                    if (!settingsBudgetExpanded) {
-                      budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
-                      setSettingsBudgetDirty(false);
-                    }
-                    setSettingsBudgetExpanded(v => !v);
+                  {/* Budget Range — tappable row opens popup */}
+                  <div className="settings-sheet-item" style={{ cursor: "pointer" }} onClick={() => {
+                    budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
+                    setSettingsBudgetDirty(false);
+                    setSettingsBudgetExpanded(true);
                   }} role="button" aria-label="Edit budget range">
-                    <span className="settings-label">Budget Range</span>
+                    <span className="settings-label">{t("budget_range")}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span className="settings-value">${budgetMin} – {budgetMax >= 1000 ? "$1000+" : `$${budgetMax}`}</span>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--text-tertiary)", flexShrink: 0, transform: settingsBudgetExpanded ? "rotate(90deg)" : "none", transition: "transform var(--transition-fast)" }}><polyline points="9 18 15 12 9 6"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--text-tertiary)", flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
                     </div>
                   </div>
 
-                  {/* Budget Range — expanded inline slider */}
-                  {settingsBudgetExpanded && (
-                    <div className="settings-budget-section" style={{ padding: "4px 0 16px", animation: "fadeSlideIn .25s ease" }}>
-                      {/* Dual range slider */}
-                      <div style={{ position: "relative", height: 40, marginBottom: 8 }}>
-                        <div style={{ position: "absolute", top: 18, left: 0, right: 0, height: 4, background: "var(--border)", borderRadius: 2 }} />
-                        <div style={{ position: "absolute", top: 18, left: `${Math.max(0, (budgetMin / 1000) * 100)}%`, right: `${Math.max(0, 100 - (budgetMax / 1000) * 100)}%`, height: 4, background: "var(--accent)", borderRadius: 2, transition: "left var(--transition-fast), right var(--transition-fast)" }} />
-                        <input
-                          type="range" min="0" max="1000" step="10" value={budgetMin}
-                          aria-label="Minimum budget"
-                          onChange={e => {
-                            const val = parseInt(e.target.value);
-                            if (val < budgetMax) { setBudgetMin(val); setSettingsBudgetDirty(true); }
-                          }}
-                          style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2, margin: 0 }}
-                          className="budget-range-thumb"
-                        />
-                        <input
-                          type="range" min="0" max="1000" step="10" value={budgetMax}
-                          aria-label="Maximum budget"
-                          onChange={e => {
-                            const val = parseInt(e.target.value);
-                            if (val > budgetMin) { setBudgetMax(val); setSettingsBudgetDirty(true); }
-                          }}
-                          style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3, margin: 0 }}
-                          className="budget-range-thumb"
-                        />
-                      </div>
+                  {/* (inline budget expansion removed — now uses centered popup modal) */}
 
-                      {/* Display range */}
-                      <div style={{ textAlign: "center", fontSize: 15, fontWeight: 600, color: "var(--accent)", marginBottom: 12 }}>
-                        ${budgetMin} – ${budgetMax}{budgetMax >= 1000 ? "+" : ""}
-                      </div>
-
-                      {/* Preset tier chips */}
-                      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-                        {[
-                          { label: "$", min: 0, max: 50, desc: "Under $50" },
-                          { label: "$$", min: 50, max: 150, desc: "$50–$150" },
-                          { label: "$$$", min: 150, max: 500, desc: "$150–$500" },
-                          { label: "$$$$", min: 500, max: 1000, desc: "$500+" },
-                        ].map(preset => {
-                          const isActive = budgetMin === preset.min && budgetMax === preset.max;
-                          return (
-                            <button
-                              key={preset.label}
-                              aria-label={`Set budget to ${preset.desc}`}
-                              onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); setSettingsBudgetDirty(true); }}
-                              style={{
-                                flex: 1, padding: "10px 6px", minHeight: 44,
-                                background: isActive ? "var(--accent-bg)" : "var(--bg-input)",
-                                border: `1.5px solid ${isActive ? "var(--accent-border)" : "var(--border)"}`,
-                                borderRadius: "var(--radius-sm)", cursor: "pointer",
-                                fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600,
-                                color: isActive ? "var(--accent)" : "var(--text-tertiary)",
-                                transition: "all var(--transition-fast)",
-                              }}
-                            >{preset.label}</button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Scale labels */}
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-tertiary)", marginBottom: 14, padding: "0 2px" }}>
-                        <span>$0</span>
-                        <span>$250</span>
-                        <span>$500</span>
-                        <span>$750</span>
-                        <span>$1000+</span>
-                      </div>
-
-                      {/* Save / Cancel buttons */}
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                          className="btn-ghost"
-                          style={{ flex: 1, fontSize: 13 }}
-                          onClick={() => {
-                            setBudgetMin(budgetModalOrigRef.current.min);
-                            setBudgetMax(budgetModalOrigRef.current.max);
-                            setSettingsBudgetExpanded(false);
-                            setSettingsBudgetDirty(false);
-                          }}
-                        >Cancel</button>
-                        <button
-                          className="btn-primary"
-                          disabled={!settingsBudgetDirty || settingsBudgetSaving}
-                          style={{ flex: 1, fontSize: 13, opacity: !settingsBudgetDirty ? 0.4 : 1 }}
-                          onClick={async () => {
-                            setSettingsBudgetSaving(true);
-                            try {
-                              await API.updateProfile({ budget_min: budgetMin, budget_max: budgetMax });
-                              setSettingsBudgetDirty(false);
-                              setSettingsBudgetExpanded(false);
-                            } catch (err) {
-                              console.error('Budget save failed:', err);
-                              alert('Failed to save budget. Please try again.');
-                            }
-                            setSettingsBudgetSaving(false);
-                          }}
-                        >{settingsBudgetSaving ? "Saving..." : "Save"}</button>
-                      </div>
+                  {/* Size Preferences — tappable row opens popup */}
+                  <div className="settings-sheet-item" style={{ cursor: "pointer" }} onClick={() => {
+                    setSizePrefsPopupGender(sizePrefs.gender || null);
+                    setSizePrefsPopupData({ tops: sizePrefs.sizes?.tops || "", bottoms_waist: sizePrefs.sizes?.bottoms_waist || "", bottoms_length: sizePrefs.sizes?.bottoms_length || "", shoes: sizePrefs.sizes?.shoes || "", dresses: sizePrefs.sizes?.dresses || "" });
+                    setSizePrefsPopupOpen(true);
+                  }} role="button" aria-label="Edit size preferences">
+                    <span className="settings-label">{t("size_preferences")}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span className="settings-value">{(() => {
+                        const sizes = sizePrefs.sizes || {};
+                        const set2 = Object.values(sizes).filter(Boolean);
+                        return set2.length > 0 ? set2.slice(0, 3).join(", ") + (set2.length > 3 ? "..." : "") : t("not_set");
+                      })()}</span>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--text-tertiary)", flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
                     </div>
-                  )}
-
-                  <div className="settings-sheet-item" style={{ cursor: "default" }}>
-                    <span className="settings-label">Size Preferences</span>
-                    <span className="settings-value">{(sizePrefs.body_type || []).length > 0 ? (sizePrefs.body_type || []).join(", ") : "Not set"}</span>
                   </div>
 
                   {/* Subscription */}
                   <div className="settings-sheet-item" style={{ cursor: "default" }}>
-                    <span className="settings-label">Subscription</span>
-                    <span className="settings-value" style={{ color: isPro ? "var(--accent)" : undefined }}>{isPro ? "Pro" : "Free"}</span>
+                    <span className="settings-label">{t("subscription")}</span>
+                    <span className="settings-value" style={{ color: isPro ? "var(--accent)" : undefined }}>{isPro ? "Pro" : t("free")}</span>
                   </div>
                   {isFree && (
                     <button className="btn-primary" style={{ width: "100%", margin: "8px 0 12px", padding: "10px 0", fontSize: 14, fontWeight: 600 }} onClick={() => { setProfileSettingsOpen(false); setUpgradeModal("general"); }}>
-                      Upgrade to Pro
+                      {t("upgrade_to_pro")}
                     </button>
                   )}
 
                   {/* Push Notifications */}
                   <div style={{ padding: "14px 0", borderTop: "1px solid var(--border)" }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 10 }}>Notifications</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 10 }}>{t("notifications")}</div>
                     {("Notification" in window) && Notification.permission !== "granted" ? (
                       <button className="btn-secondary" style={{ width: "100%", padding: "10px 0", fontSize: 13 }} onClick={async () => { const perm = await Notification.requestPermission(); if (perm === "granted") { const ok = await subscribeToPush(); setPushEnabled(ok); } }}>
-                        Enable Push Notifications
+                        {t("enable_push")}
                       </button>
                     ) : (
                       <>
-                        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 4 }}>Push notifications are enabled</div>
+                        <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 4 }}>{t("push_enabled")}</div>
                         {/* Follow-up nudge toggle */}
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8, padding: "8px 0" }}>
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Follow-up reminders</div>
-                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.3 }}>Nudge me if I forget to check my results</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{t("follow_up_reminders")}</div>
+                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.3 }}>{t("nudge_desc")}</div>
                           </div>
                           <button onClick={() => {
                             const current = !(localStorage.getItem("attair_nudge_off") === "1");
@@ -8143,8 +8697,8 @@ export default function App() {
                         {/* Style Twins weekly notification toggle */}
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4, padding: "8px 0" }}>
                           <div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Style Twins</div>
-                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.3 }}>Weekly "new style twins discovered" alerts</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>{t("style_twins_notif")}</div>
+                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", lineHeight: 1.3 }}>{t("style_twins_desc")}</div>
                           </div>
                           <button onClick={() => {
                             const current = !(localStorage.getItem("attair_twins_notif_off") === "1");
@@ -8161,13 +8715,13 @@ export default function App() {
                   {/* Referral */}
                   {referralCode && (
                     <div style={{ padding: "14px 0", borderTop: "1px solid var(--border)" }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>Refer a friend</div>
-                      <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 10, lineHeight: 1.4 }}>Share your code. Both of you get $5 credit.</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>{t("refer_friend")}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 10, lineHeight: 1.4 }}>{t("refer_desc")}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ flex: 1, padding: "8px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-sm)", fontWeight: 800, color: "var(--accent)", letterSpacing: 2, fontSize: 14, fontFamily: "var(--font-sans)" }}>{referralCode}</div>
                         <button className="btn-secondary" style={{ padding: "8px 14px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => {
                           navigator.clipboard.writeText(referralCode).then(() => { setReferralCopied(true); setTimeout(() => setReferralCopied(false), 2000); }).catch(() => {});
-                        }}>{referralCopied ? "Copied" : "Copy"}</button>
+                        }}>{referralCopied ? t("copied") : t("copy")}</button>
                       </div>
                     </div>
                   )}
@@ -8176,6 +8730,284 @@ export default function App() {
                   <div className="settings-sheet-item danger" style={{ marginTop: 8 }} onClick={() => { setProfileSettingsOpen(false); handleLogout(); }} role="button" aria-label="Sign out">{t("log_out")}</div>
                 </div>
               </>}
+
+              {/* ─── Budget Range Popup Modal ──────────────── */}
+              {settingsBudgetExpanded && (
+                <div className="modal-overlay" onClick={() => { setBudgetMin(budgetModalOrigRef.current.min); setBudgetMax(budgetModalOrigRef.current.max); setSettingsBudgetExpanded(false); }} style={{ zIndex: 350 }}>
+                  <div className="modal-box" onClick={e => e.stopPropagation()} style={{ padding: "28px 24px 24px" }}>
+                    <button className="modal-x" onClick={() => { setBudgetMin(budgetModalOrigRef.current.min); setBudgetMax(budgetModalOrigRef.current.max); setSettingsBudgetExpanded(false); }}>&#10005;</button>
+                    <h2 className="modal-title" style={{ fontSize: 22, marginBottom: 4 }}>{t("budget_range")}</h2>
+                    <p className="modal-sub" style={{ marginBottom: 20 }}>Set your default price range for product recommendations.</p>
+                    <div style={{ textAlign: "center", marginBottom: 20 }}>
+                      <span style={{ fontSize: 28, fontWeight: 700, color: "var(--accent)", fontFamily: "var(--font-sans)", letterSpacing: "-0.5px" }}>
+                        ${budgetMin} – {budgetMax >= 1000 ? "$1000+" : `$${budgetMax}`}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+                      {[
+                        { label: "$", min: 0, max: 50, desc: "Under $50" },
+                        { label: "$$", min: 50, max: 150, desc: "$50-$150" },
+                        { label: "$$$", min: 150, max: 500, desc: "$150-$500" },
+                        { label: "$$$$", min: 500, max: 1000, desc: "$500+" },
+                      ].map(p => {
+                        const active = budgetMin === p.min && budgetMax === p.max;
+                        return (
+                          <button key={p.label} aria-label={`Budget tier ${p.label}: ${p.desc}`}
+                            onClick={() => { setBudgetMin(p.min); setBudgetMax(p.max); setSelectedBudgetTiers(new Set()); setSettingsBudgetDirty(true); }}
+                            style={{ flex: 1, padding: "10px 4px", minHeight: 48, background: active ? "var(--accent-bg)" : "var(--bg-input)", border: `1.5px solid ${active ? "var(--accent-border)" : "var(--border)"}`, borderRadius: 12, cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, color: active ? "var(--accent)" : "var(--text-tertiary)", transition: "all var(--transition-fast)", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}
+                          >
+                            <span>{p.label}</span>
+                            <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>{p.desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="settings-budget-section" style={{ margin: "0 0 8px" }}>
+                      <div style={{ position: "relative", height: 36, marginBottom: 8 }}>
+                        <div style={{ position: "absolute", top: 16, left: 0, right: 0, height: 4, background: "var(--bg-input)", borderRadius: 2 }} />
+                        <div style={{ position: "absolute", top: 16, left: `${(budgetMin / 1000) * 100}%`, right: `${100 - (budgetMax / 1000) * 100}%`, height: 4, background: "var(--accent)", borderRadius: 2, transition: "left var(--transition-fast), right var(--transition-fast)" }} />
+                        <input type="range" min={0} max={1000} step={10} value={budgetMin}
+                          onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) { setBudgetMin(v); setSelectedBudgetTiers(new Set()); setSettingsBudgetDirty(true); } }}
+                          aria-label="Minimum budget"
+                          style={{ position: "absolute", top: 4, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2 }}
+                          className="budget-range-thumb"
+                        />
+                        <input type="range" min={0} max={1000} step={10} value={budgetMax}
+                          onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) { setBudgetMax(v); setSelectedBudgetTiers(new Set()); setSettingsBudgetDirty(true); } }}
+                          aria-label="Maximum budget"
+                          style={{ position: "absolute", top: 4, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3 }}
+                          className="budget-range-thumb"
+                        />
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>$0</span>
+                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>$1000+</span>
+                      </div>
+                    </div>
+                    <button
+                      className="btn-primary"
+                      disabled={!settingsBudgetDirty || settingsBudgetSaving}
+                      style={{ width: "100%", padding: "12px 0", fontSize: 14, fontWeight: 600, marginTop: 16, opacity: settingsBudgetDirty ? 1 : 0.5, transition: "opacity var(--transition-fast)" }}
+                      onClick={async () => {
+                        setSettingsBudgetSaving(true);
+                        try {
+                          await API.updateProfile({ budget_min: budgetMin, budget_max: budgetMax });
+                          budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
+                          setSettingsBudgetDirty(false);
+                          setSettingsBudgetExpanded(false);
+                        } catch {}
+                        setSettingsBudgetSaving(false);
+                      }}
+                    >{settingsBudgetSaving ? t("saving") : t("save_budget")}</button>
+                    <button className="modal-later" onClick={() => { setBudgetMin(budgetModalOrigRef.current.min); setBudgetMax(budgetModalOrigRef.current.max); setSettingsBudgetExpanded(false); }}>{t("cancel")}</button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Size Preferences Modal ───────────────── */}
+              {sizePrefsModalOpen && (
+                <div className="modal-overlay" onClick={() => setSizePrefsModalOpen(false)} style={{ zIndex: 350 }}>
+                  <div className="modal-box" onClick={e => e.stopPropagation()} style={{ padding: "28px 24px 24px", maxHeight: "80vh", overflowY: "auto" }}>
+                    <button className="modal-x" onClick={() => setSizePrefsModalOpen(false)}>✕</button>
+                    <h2 className="modal-title" style={{ fontSize: 22, marginBottom: 4 }}>{t("size_prefs_title")}</h2>
+                    <p className="modal-sub" style={{ marginBottom: 16 }}>{t("select_gender")}</p>
+
+                    {/* Gender selector */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                      {["men", "women"].map(g => (
+                        <button key={g} onClick={() => setSizePrefsGender(g)}
+                          style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1.5px solid ${sizePrefsGender === g ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsGender === g ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsGender === g ? "var(--accent)" : "var(--text-secondary)", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)" }}>
+                          {g === "men" ? t("men") : t("women")}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Size categories */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      {/* Tops */}
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("tops")}</label>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {["XS","S","M","L","XL","XXL"].map(s => (
+                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, tops: p.tops === s ? "" : s }))}
+                              style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.tops === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.tops === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.tops === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Bottoms Waist */}
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("bottoms_waist")}</label>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {(sizePrefsGender === "men" ? ["28","29","30","31","32","33","34","36","38","40"] : ["24","25","26","27","28","29","30","31","32","34"]).map(s => (
+                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, bottoms_waist: p.bottoms_waist === s ? "" : s }))}
+                              style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.bottoms_waist === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.bottoms_waist === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.bottoms_waist === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Bottoms Length */}
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("bottoms_length")}</label>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {["28","29","30","31","32","34","36"].map(s => (
+                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, bottoms_length: p.bottoms_length === s ? "" : s }))}
+                              style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.bottoms_length === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.bottoms_length === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.bottoms_length === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Shoes */}
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("shoes")}</label>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {(sizePrefsGender === "men" ? ["6","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14","15"] : ["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","11","12"]).map(s => (
+                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, shoes: p.shoes === s ? "" : s }))}
+                              style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.shoes === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.shoes === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.shoes === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Dresses — women only */}
+                      {sizePrefsGender === "women" && (
+                        <div>
+                          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("dresses")}</label>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {["0","2","4","6","8","10","12","14","16"].map(s => (
+                              <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, dresses: p.dresses === s ? "" : s }))}
+                                style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.dresses === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.dresses === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.dresses === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Save / Cancel */}
+                    <button
+                      className="btn-primary"
+                      disabled={sizePrefsSaving}
+                      style={{ width: "100%", padding: "12px 0", fontSize: 14, fontWeight: 600, marginTop: 20 }}
+                      onClick={async () => {
+                        setSizePrefsSaving(true);
+                        try {
+                          const newSizePrefs = {
+                            ...sizePrefs,
+                            gender: sizePrefsGender,
+                            sizes: {
+                              ...sizePrefs.sizes,
+                              tops: sizePrefsEdit.tops || null,
+                              bottoms_waist: sizePrefsEdit.bottoms_waist || null,
+                              bottoms_length: sizePrefsEdit.bottoms_length || null,
+                              shoes: sizePrefsEdit.shoes || null,
+                              dresses: sizePrefsEdit.dresses || null,
+                            },
+                          };
+                          await API.updateProfile({ size_prefs: newSizePrefs });
+                          setSizePrefs(newSizePrefs);
+                          setSizePrefsModalOpen(false);
+                        } catch {}
+                        setSizePrefsSaving(false);
+                      }}
+                    >{sizePrefsSaving ? t("saving") : t("save_sizes")}</button>
+                    <button className="modal-later" onClick={() => {
+                      if (sizePrefsOrigRef.current) setSizePrefs(sizePrefsOrigRef.current);
+                      setSizePrefsModalOpen(false);
+                    }}>{t("cancel")}</button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Followers / Following List ───────────── */}
+              {followListOpen && (
+                <div className="scan-overlay" role="dialog" aria-modal="true" style={{ zIndex: 340, background: "var(--bg-primary)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 12px" }}>
+                    <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                      {followListOpen === "followers" ? t("followers") : t("following")}
+                    </h2>
+                    <button onClick={() => setFollowListOpen(null)} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", borderRadius: "50%", color: "var(--text-secondary)" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                  <div style={{ padding: "0 20px", overflowY: "auto", flex: 1 }}>
+                    {followListLoading ? (
+                      <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
+                        <div className="ld-dots"><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
+                      </div>
+                    ) : followListData.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-tertiary)", fontSize: 14 }}>
+                        {followListOpen === "followers" ? t("no_followers_yet") : t("no_following_yet")}
+                      </div>
+                    ) : (
+                      followListData.map(user => {
+                        const isFlw = followingSet.has(user.id);
+                        return (
+                          <div key={user.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
+                            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--accent-bg)", border: "1.5px solid var(--accent-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: "var(--accent)", flexShrink: 0 }}>
+                              {(user.display_name || "U")[0].toUpperCase()}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.display_name || "User"}</div>
+                              {user.bio && <div style={{ fontSize: 12, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{user.bio}</div>}
+                            </div>
+                            <button
+                              className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  if (isFlw) {
+                                    await API.unfollowUser(user.id);
+                                    setFollowingSet(prev => { const n = new Set(prev); n.delete(user.id); return n; });
+                                    setProfileStats(ps => ps ? { ...ps, following_count: Math.max(0, (ps.following_count || 0) - 1) } : ps);
+                                  } else {
+                                    await API.followUser(user.id);
+                                    setFollowingSet(prev => new Set(prev).add(user.id));
+                                    setProfileStats(ps => ps ? { ...ps, following_count: (ps.following_count || 0) + 1 } : ps);
+                                  }
+                                } catch {}
+                              }}
+                              style={{ flexShrink: 0, padding: "6px 16px", fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: "pointer", minHeight: 32 }}
+                            >{isFlw ? t("unfollow") : t("follow")}</button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Language Change Confirmation ─────────── */}
+              {langConfirmOpen && (
+                <div className="modal-overlay" onClick={() => setLangConfirmOpen(null)} style={{ zIndex: 360 }}>
+                  <div className="modal-box" onClick={e => e.stopPropagation()} style={{ padding: "28px 24px 24px", textAlign: "center" }}>
+                    <h2 className="modal-title" style={{ fontSize: 20, marginBottom: 8 }}>
+                      {STRINGS[langConfirmOpen]?.confirm_language || "Change language?"}
+                    </h2>
+                    <p className="modal-sub" style={{ marginBottom: 20 }}>
+                      {STRINGS[langConfirmOpen]?.confirm_language_desc || "Change language to"} {({en:"English",es:"Español",fr:"Français",de:"Deutsch",zh:"中文",ja:"日本語",ko:"한국어",pt:"Português"})[langConfirmOpen] || langConfirmOpen}?
+                    </p>
+                    <button className="btn-primary" style={{ width: "100%", padding: "12px 0", fontSize: 14, fontWeight: 600 }}
+                      onClick={() => {
+                        setLang(langConfirmOpen);
+                        localStorage.setItem("attair_lang", langConfirmOpen);
+                        setLangConfirmOpen(null);
+                      }}
+                    >{STRINGS[langConfirmOpen]?.confirm_btn || "Confirm"}</button>
+                    <button className="modal-later" onClick={() => setLangConfirmOpen(null)}>
+                      {STRINGS[langConfirmOpen]?.cancel_btn || "Cancel"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             );
           })()}
@@ -8364,13 +9196,13 @@ export default function App() {
         {showUserSearch && tab !== "search" && (
           <div className="user-search-overlay">
             <div className="user-search-header">
-              <input className="user-search-input" placeholder="Search people..." autoFocus value={userSearchQuery} onChange={e => setUserSearchQuery(e.target.value)} />
-              <button className="user-search-cancel" onClick={() => { setShowUserSearch(false); setUserSearchQuery(""); setUserSearchResults([]); }}>Cancel</button>
+              <input className="user-search-input" placeholder={t("search_people")} autoFocus value={userSearchQuery} onChange={e => setUserSearchQuery(e.target.value)} />
+              <button className="user-search-cancel" onClick={() => { setShowUserSearch(false); setUserSearchQuery(""); setUserSearchResults([]); }}>{t("cancel")}</button>
             </div>
             <div className="user-search-list">
               {userSearchLoading && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Searching...</div>}
-              {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>No users found</div>}
-              {!userSearchLoading && !userSearchQuery.trim() && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Type a name to search</div>}
+              {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>{t("no_users_found")}</div>}
+              {!userSearchLoading && !userSearchQuery.trim() && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>{t("type_to_search")}</div>}
               {userSearchResults.map(usr => {
                 const ini = (usr.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
                 const isFlw = followingSet.has(usr.id);
@@ -8444,7 +9276,7 @@ export default function App() {
           </button>
           <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); }} aria-label="Saved">
             <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            <span className="tab-l">My Scans</span>
+            <span className="tab-l">{t("my_scans")}</span>
             {priceAlertCount > 0 && (
               <span className="tab-badge" />
             )}

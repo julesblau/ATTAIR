@@ -5,55 +5,7 @@
 
 ## CRITICAL — Next Up (Updated 2026-03-30)
 
-### Budget Range Slider in Settings
-**Status:** QUEUED — Must fix now
-**Effort:** S
-**Spec:**
-- **Problem:** Profile → Settings → Default Budget Range does nothing when tapped.
-- **Fix:** Tapping opens a centered popup modal with a range slider (min and max). User drags to set their default budget range. Save on confirm.
-- **Range:** $0 – $1000 (or appropriate max).
-
-### Size Preferences Popup in Settings
-**Status:** QUEUED — Must fix now
-**Effort:** M
-**Spec:**
-- **Problem:** Profile → Settings → Size Preferences does nothing when tapped.
-- **Fix:** Tapping opens a centered popup modal to set sizes per clothing category.
-- **Flow:**
-  1. User picks gender (Men / Women) — determines which size scales to show
-  2. Set size per category: Tops (XS/S/M/L/XL/XXL), Bottoms waist (28-40), Bottoms length (28-36), Shoes (men 6-15 / women 5-12), Dresses (women only, 0-16)
-  3. Each category has the appropriate scale for the selected gender
-  4. Save on confirm.
-
-### Fix Language Setting — Full i18n
-**Status:** QUEUED — Must fix now
-**Effort:** M
-**Spec:**
-- **Problem:** Profile → Settings → Language only changes select text. Many buttons, labels, and UI elements remain in English.
-- **Fix:** All existing languages must translate ALL text — every button, label, modal, placeholder, error message. Nothing should remain in English when a language is selected.
-- **Confirmation:** When user changes language, show a centered confirmation popup in the NEW language before applying the change.
-- **Scope:** Fix all existing languages in the app, don't add new ones.
-
-### Fix Followers/Following
-**Status:** QUEUED — Must fix now
-**Effort:** M
-**Spec:**
-- **Problem:** Tapping followers/following count on Profile does nothing.
-- **Fix:** Tapping opens a list view showing follower or following users.
-  - Each row: avatar, display name, style info
-  - Tappable to view their profile
-  - Follow/unfollow button on each row
-- **Data:** Use existing seeded AI users to populate lists. The feature should work end-to-end with the fake data.
-
-### Fix My Scans Page — Remove Clutter
-**Status:** QUEUED — Must fix now
-**Effort:** S
-**Spec:**
-- **Problem 1:** "Complete the Look" button is at the top of the My Scans page. It doesn't belong here.
-  - **Move** "Complete the Look" to the search results page (both fresh scan results AND when tapping into a past scan to view its results).
-  - **Remove** it from the My Scans page entirely.
-- **Problem 2:** Two redundant filter rows at the top — "All / My Picks" AND "All Scans / Wishlist / Bookmarks". Confusing and duplicative.
-  - **Fix:** Consolidate into ONE clean filter bar. Merge the logic into a single row of filter options.
+*All critical items completed — see Done section below.*
 
 ## QUEUED — Build Next (Specs Approved)
 
@@ -207,6 +159,13 @@
 **Summary:** Review all agent prompts, workflows, and outputs to diagnose quality issues and propose fixes.
 
 ## Implemented — DONE
+
+### Run 7 (2026-03-30)
+- **Budget Range Slider** — Settings → Budget Range opens inline slider with dual thumbs, tier chips, save/cancel (was already built in Run 6)
+- **Size Preferences Popup** — Settings → Size Preferences opens centered modal with gender selector (Men/Women), size chips per category (Tops, Bottoms waist/length, Shoes, Dresses), saves to profile
+- **Full i18n Fix** — Added 81 new translation keys to all 8 languages (EN/ES/FR/DE/ZH/JA/KO/PT), converted hardcoded UI strings to t() calls, added language change confirmation popup in target language
+- **Followers/Following List** — Tapping follower/following count on Profile opens full-screen list with avatar, name, bio, follow/unfollow buttons per row, uses existing backend endpoints
+- **My Scans Cleanup** — Removed Complete the Look toggle + grouped view from My Scans (already on results page), consolidated two filter rows into single bar (All / My Picks / Wishlists)
 
 ### Run 3 (2026-03-28)
 - Affiliate Network Expansion — 10 retailers in tagUrl (Nordstrom, ASOS, Revolve, Zappos, Madewell, Anthropologie, UO, Shopbop, Lululemon, SSENSE)
