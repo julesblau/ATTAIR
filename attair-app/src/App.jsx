@@ -3976,7 +3976,12 @@ export default function App() {
     }
     // Deep link from Weekly Style Report push notification
     if (window.location.pathname === "/weekly-report" && authed) {
-      setOotwExpanded(true);
+      setOotwLoading(true);
+      setOotwError(false);
+      API.getOOTW()
+        .then(d => { if (d.ootw) { setOotwData(d.ootw); setOotwExpanded(true); } })
+        .catch(err => { console.error("[OOTW] deep-link fetch failed:", err); setOotwError(true); })
+        .finally(() => setOotwLoading(false));
       window.history.replaceState({}, "", "/");
     }
     // Deep link from Style Twins weekly notification
