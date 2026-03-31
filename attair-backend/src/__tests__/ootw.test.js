@@ -6,9 +6,10 @@
  *   B. generateOutfitOfTheWeek() — trending scan selection, idempotency, fallback editorial
  *   C. sendWeeklyStyleReports() — Pro-only targeting, personalization, idempotency per user/week
  *   D. GET /api/ootw/current — returns enriched data, increments view count, requires auth
- *   E. POST /api/ootw/generate — rejects without cron key in production, succeeds with key
- *   F. POST /api/ootw/weekly-reports — rejects without cron key in production, succeeds with key
- *   G. GET /api/ootw/:id — returns specific OOTW, validates UUID, 404 for missing
+ *   E. GET /api/ootw/my-report — Pro tier check, enrichment, opened_at tracking, auth required
+ *   F. POST /api/ootw/generate — rejects without cron key in production, succeeds with key
+ *   G. POST /api/ootw/weekly-reports — rejects without cron key in production, succeeds with key
+ *   H. GET /api/ootw/:id — returns specific OOTW, validates UUID, 404 for missing
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -23,6 +24,7 @@ vi.mock("../middleware/auth.js", () => ({
     if (!auth || !auth.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Missing or invalid token" });
     }
+    req.user = { id: "user-authed" };
     req.userId = "user-authed";
     next();
   },
@@ -47,6 +49,7 @@ let mockProUsersData = [];
 let mockWeeklyReportExists = null;
 let mockSavedItemsData = [];
 let mockCandidateScansData = [];
+let mockUserProfile = null;
 
 // Track calls for assertions
 let insertedRows = [];
@@ -132,6 +135,9 @@ vi.mock("../lib/supabase.js", () => {
         select: vi.fn().mockReturnValue({
           in: vi.fn(async () => ({ data: mockProfilesData, error: null })),
           or: vi.fn(async () => ({ data: mockProUsersData, error: null })),
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn(async () => ({ data: mockUserProfile, error: null })),
+          }),
         }),
       };
     }
@@ -148,6 +154,14 @@ vi.mock("../lib/supabase.js", () => {
         insert: vi.fn().mockImplementation((row) => {
           insertedRows.push({ table, ...row });
           return Promise.resolve({ error: null });
+        }),
+        update: vi.fn().mockImplementation((data) => {
+          updatedRows.push({ table, ...data });
+          return {
+            eq: vi.fn().mockReturnValue(
+              Promise.resolve({ error: null })
+            ),
+          };
         }),
       };
     }
@@ -566,6 +580,7 @@ describe("OOTW Routes", () => {
     mockScansData = [];
     mockProfilesData = [];
     mockSaveRowsData = [];
+    mockUserProfile = null;
 
     const app = await makeApp();
     const started = await startServer(app);
@@ -641,6 +656,104 @@ describe("OOTW Routes", () => {
       // Give the non-blocking update a moment
       await new Promise(r => setTimeout(r, 50));
       expect(updatedRows.some(r => r.table === "outfit_of_the_week" && r.view_count === 11)).toBe(true);
+    });
+  });
+
+  // ─── GET /api/ootw/my-report ──────────────────────────────────────────
+
+  describe("GET /api/ootw/my-report", () => {
+    it("requires auth — returns 401 without token", async () => {
+      const { status } = await get(port, "/api/ootw/my-report", false);
+      expect(status).toBe(401);
+    });
+
+    it("returns not_pro reason for free-tier user", async () => {
+      mockUserProfile = { tier: "free", trial_ends_at: null };
+      const { status, body } = await get(port, "/api/ootw/my-report");
+      expect(status).toBe(200);
+      expect(body.report).toBeNull();
+      expect(body.reason).toBe("not_pro");
+    });
+
+    it("returns not_pro for expired trial user", async () => {
+      mockUserProfile = { tier: "trial", trial_ends_at: "2020-01-01T00:00:00Z" };
+      const { status, body } = await get(port, "/api/ootw/my-report");
+      expect(status).toBe(200);
+      expect(body.report).toBeNull();
+      expect(body.reason).toBe("not_pro");
+    });
+
+    it("returns null report when Pro user has no report this week", async () => {
+      mockUserProfile = { tier: "pro", trial_ends_at: null };
+      mockWeeklyReportExists = null;
+      const { status, body } = await get(port, "/api/ootw/my-report");
+      expect(status).toBe(200);
+      expect(body.report).toBeNull();
+      expect(body.reason).toBeUndefined();
+    });
+
+    it("returns enriched report for Pro user with report", async () => {
+      mockUserProfile = { tier: "pro", trial_ends_at: null };
+      mockWeeklyReportExists = {
+        id: "report-1",
+        user_id: "user-authed",
+        week_start: "2026-03-30",
+        sent_at: "2026-03-29T18:00:00Z",
+        scan_ids: ["scan-r1", "scan-r2"],
+        opened_at: null,
+      };
+      mockScansData = [
+        makeScan("scan-r1", { user_id: "user-a" }),
+        makeScan("scan-r2", { user_id: "user-b" }),
+      ];
+      mockProfilesData = [
+        { id: "user-a", display_name: "Alice", avatar_url: null },
+        { id: "user-b", display_name: "Bob", avatar_url: null },
+      ];
+      mockSaveRowsData = [{ scan_id: "scan-r1" }];
+
+      const { status, body } = await get(port, "/api/ootw/my-report");
+      expect(status).toBe(200);
+      expect(body.report).toBeDefined();
+      expect(body.report.id).toBe("report-1");
+      expect(body.report.week_start).toBe("2026-03-30");
+      expect(body.report.scans).toHaveLength(2);
+      expect(body.report.scans[0].save_count).toBe(1);
+      expect(body.report.scans[1].save_count).toBe(0);
+      expect(body.report.scans[0].user.display_name).toBe("Alice");
+    });
+
+    it("marks opened_at on first access", async () => {
+      mockUserProfile = { tier: "pro", trial_ends_at: null };
+      mockWeeklyReportExists = {
+        id: "report-open",
+        user_id: "user-authed",
+        week_start: "2026-03-30",
+        sent_at: "2026-03-29T18:00:00Z",
+        scan_ids: [],
+        opened_at: null,
+      };
+
+      await get(port, "/api/ootw/my-report");
+      await new Promise(r => setTimeout(r, 50));
+      expect(updatedRows.some(r => r.table === "weekly_style_reports" && r.opened_at)).toBe(true);
+    });
+
+    it("returns report for active trial user", async () => {
+      mockUserProfile = { tier: "trial", trial_ends_at: "2030-01-01T00:00:00Z" };
+      mockWeeklyReportExists = {
+        id: "report-trial",
+        user_id: "user-authed",
+        week_start: "2026-03-30",
+        sent_at: "2026-03-29T18:00:00Z",
+        scan_ids: [],
+        opened_at: "2026-03-29T20:00:00Z",
+      };
+
+      const { status, body } = await get(port, "/api/ootw/my-report");
+      expect(status).toBe(200);
+      expect(body.report).toBeDefined();
+      expect(body.report.id).toBe("report-trial");
     });
   });
 
