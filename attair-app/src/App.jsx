@@ -2575,6 +2575,8 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
 
   return (
     <div className={`ob ob-demo ${fade}`}>
+      {/* Logo pinned to top */}
+      <img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img" style={{ display: "block", margin: "0 auto", paddingTop: 16 }} />
       {/* Animated demo viewport */}
       <div className="ob-demo-viewport">
         {/* Mock phone frame */}
@@ -2664,7 +2666,6 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
 
       {/* CTA section */}
       <div className="ob-demo-cta">
-        <><img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img logo-img--dark" style={{ marginBottom: 16 }} /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" style={{ marginBottom: 16 }} /></>
         <h1 className="ob-demo-title">
           See it. Scan it.<br /><span className="ob-demo-title-gold">Shop it.</span>
         </h1>

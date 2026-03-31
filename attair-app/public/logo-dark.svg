@@ -11,12 +11,10 @@
     font-size="44"
     letter-spacing="-2"
   ><tspan fill="#1A1816">ATT</tspan><tspan fill="#C9A96E">AI</tspan><tspan fill="#1A1816">RE</tspan></text>
-  <text
-    x="168"
-    y="14"
-    font-family="'Helvetica Neue', 'Inter', Helvetica, Arial, sans-serif"
-    font-weight="700"
-    font-size="16"
-    fill="#C9A96E"
-  >*</text>
+  <!-- RHCP-style 8-pointed asterisk in gold, sharp points, superscript on E -->
+  <g transform="translate(176, 2) scale(0.10)">
+    <path d="
+      M50,0 L56,38 L85.4,14.6 L62,44 L100,50 L62,56 L85.4,85.4 L56,62 L50,100 L44,62 L14.6,85.4 L38,56 L0,50 L38,44 L14.6,14.6 L44,38 Z
+    " fill="#C9A96E"/>
+  </g>
 </svg>
