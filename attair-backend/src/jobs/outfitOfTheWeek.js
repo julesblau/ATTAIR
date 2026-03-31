@@ -199,23 +199,38 @@ export async function generateOutfitOfTheWeek() {
   // Generate editorial with Claude
   const { headline, editorial } = await generateEditorial(top10);
 
-  // Insert
+  // Upsert — handles race condition where concurrent requests both pass the
+  // idempotency check above; ON CONFLICT (week_start) the row is left unchanged.
   const scanIds = top10.map(s => s.id);
   const coverImage = top10[0].image_url || null;
 
   const { data: ootw, error: insertErr } = await supabase
     .from("outfit_of_the_week")
-    .insert({
-      week_start: weekStart,
-      scan_ids: scanIds,
-      editorial,
-      headline,
-      cover_image: coverImage,
-    })
+    .upsert(
+      {
+        week_start: weekStart,
+        scan_ids: scanIds,
+        editorial,
+        headline,
+        cover_image: coverImage,
+      },
+      { onConflict: "week_start", ignoreDuplicates: true }
+    )
     .select()
     .single();
 
-  if (insertErr) throw new Error(`Failed to insert OOTW: ${insertErr.message}`);
+  if (insertErr) {
+    // If the upsert returned nothing because a duplicate was ignored, fetch the existing row
+    if (insertErr.code === "PGRST116") {
+      const { data: existingRow } = await supabase
+        .from("outfit_of_the_week")
+        .select("*")
+        .eq("week_start", weekStart)
+        .single();
+      if (existingRow) return { created: false, ootw: existingRow };
+    }
+    throw new Error(`Failed to insert OOTW: ${insertErr.message}`);
+  }
 
   // Created successfully
   return { created: true, ootw };
@@ -365,11 +380,18 @@ export async function sendWeeklyStyleReports() {
       }
 
       // Record the report
-      await supabase.from("weekly_style_reports").insert({
+      const { error: reportInsertErr } = await supabase.from("weekly_style_reports").insert({
         user_id: user.id,
         week_start: weekStart,
         scan_ids: lookIds,
       });
+
+      if (reportInsertErr) {
+        console.error(`[WeeklyReport] Failed to insert report for user ${user.id}: ${reportInsertErr.message}`);
+        summary.failed++;
+        summary.errors.push(`${user.id}: report insert — ${reportInsertErr.message}`);
+        continue;
+      }
 
       // Send push notification
       await sendNotification(

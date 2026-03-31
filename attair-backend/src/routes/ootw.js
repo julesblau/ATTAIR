@@ -39,7 +39,7 @@ router.get("/current", requireAuth, async (req, res) => {
     supabase
       .rpc("increment_ootw_view_count", { ootw_id: ootw.id })
       .then(() => {})
-      .catch((err) => console.error("[OOTW] View count update failed:", err.message));
+      .catch((err) => console.warn("[OOTW] View count increment failed (non-critical):", err.message));
 
     // Enrich scan data — fetch the actual scans
     const scanIds = ootw.scan_ids || [];
@@ -230,7 +230,7 @@ router.get("/my-report", requireAuth, async (req, res) => {
         .update({ opened_at: new Date().toISOString() })
         .eq("id", report.id)
         .then(() => {})
-        .catch(err => console.error("[WeeklyReport] opened_at update failed:", err.message));
+        .catch(err => console.warn("[WeeklyReport] opened_at update failed (non-critical):", err.message));
     }
 
     return res.json({

@@ -2576,7 +2576,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
   return (
     <div className={`ob ob-demo ${fade}`}>
       {/* Logo pinned to top */}
-      <img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img" style={{ display: "block", margin: "0 auto", paddingTop: 16 }} />
+      <img src="/logo-light.svg" alt="ATTAIRE" style={{ display: "block", margin: "0 auto", paddingTop: 16, width: "60%", maxWidth: 220, height: "auto" }} />
       {/* Animated demo viewport */}
       <div className="ob-demo-viewport">
         {/* Mock phone frame */}
@@ -4715,7 +4715,7 @@ export default function App() {
     if (authed && screen === "app" && (tab === "home" || (tab === "scan" && phase === "idle" && !img)) && !ootwData && !ootwLoading && !ootwError) {
       loadOOTW();
     }
-  }, [authed, screen, tab]);
+  }, [authed, screen, tab, phase, img]);
 
   // ─── User search (debounced) ──────────────────────────────
   useEffect(() => {
@@ -6255,7 +6255,7 @@ export default function App() {
                     </div>
 
                     {/* View count */}
-                    {ootwData.view_count > 0 && (
+                    {ootwData?.view_count > 0 && (
                       <div style={{ position: "absolute", top: 12, right: 12, fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.7)", display: "flex", alignItems: "center", gap: 4 }}>
                         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         {ootwData.view_count.toLocaleString()}
@@ -9521,8 +9521,8 @@ export default function App() {
             <div style={{ padding: "20px 20px 8px" }}>
               <p style={{ fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>{ootwData?.editorial || "Check out the top trending outfits this week."}</p>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, fontSize: 11, color: "var(--text-tertiary)" }}>
-                <span>Week of {new Date(ootwData.week_start + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-                {ootwData.view_count > 0 && <span>{ootwData.view_count.toLocaleString()} views</span>}
+                <span>Week of {ootwData?.week_start ? new Date(ootwData.week_start + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "This week"}</span>
+                {ootwData?.view_count > 0 && <span>{ootwData.view_count.toLocaleString()} views</span>}
                 <span>{(ootwData.scans || []).length} looks</span>
               </div>
             </div>
