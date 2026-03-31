@@ -19,6 +19,23 @@ import { sendNotification } from "../services/notifications.js";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
+const FALLBACK_EDITORIAL = {
+  headline: "This Week's Top Looks",
+  editorial: "The community brought the heat this week. From street-ready layers to clean minimalist fits, here are the 10 outfits that turned the most heads.",
+};
+
+/** Robust JSON extraction — handles text with stray braces (mirrors claude.js parseJSON). */
+function parseJSON(text) {
+  let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const fo = s.indexOf("{");
+  const fa = s.indexOf("[");
+  const start = fo === -1 ? fa : fa === -1 ? fo : Math.min(fo, fa);
+  const isArr = s[start] === "[";
+  const end = isArr ? s.lastIndexOf("]") : s.lastIndexOf("}");
+  if (start !== -1 && end > start) s = s.substring(start, end + 1);
+  return JSON.parse(s);
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /** Get the Monday of the current ISO week as YYYY-MM-DD. */
@@ -46,10 +63,7 @@ function trendingScore(saveCount, createdAt) {
 async function generateEditorial(scans) {
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error("[OOTW] ANTHROPIC_API_KEY not set — using fallback editorial");
-    return {
-      headline: "This Week's Top Looks",
-      editorial: "The community brought the heat this week. From street-ready layers to clean minimalist fits, here are the 10 outfits that turned the most heads.",
-    };
+    return { ...FALLBACK_EDITORIAL };
   }
 
   const scanSummaries = scans.map((s, i) => {
@@ -96,24 +110,23 @@ Return ONLY valid JSON (no markdown, no backticks):
     const data = await res.json();
     const text = data.content?.map(c => c.text || "").join("") || "";
 
-    // Parse JSON from response
-    let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-    const start = s.indexOf("{");
-    const end = s.lastIndexOf("}");
-    if (start !== -1 && end > start) s = s.substring(start, end + 1);
-    const parsed = JSON.parse(s);
+    // Parse JSON from response — robust extraction handles stray braces in editorial text
+    let parsed;
+    try {
+      parsed = parseJSON(text);
+    } catch (parseErr) {
+      console.error(`[OOTW] Failed to parse Claude JSON response: ${parseErr.message}`);
+      return { ...FALLBACK_EDITORIAL };
+    }
 
     return {
-      headline: (parsed.headline || "This Week's Top Looks").slice(0, 100),
-      editorial: (parsed.editorial || "").slice(0, 500),
+      headline: (parsed.headline || FALLBACK_EDITORIAL.headline).slice(0, 100),
+      editorial: (parsed.editorial || FALLBACK_EDITORIAL.editorial).slice(0, 500),
     };
   } catch (err) {
     clearTimeout(timeout);
     console.error(`[OOTW] Editorial generation failed: ${err.message}`);
-    return {
-      headline: "This Week's Top Looks",
-      editorial: "The community brought the heat this week. From street-ready layers to clean minimalist fits, here are the 10 outfits that turned the most heads.",
-    };
+    return { ...FALLBACK_EDITORIAL };
   }
 }
 
@@ -297,7 +310,7 @@ export async function sendWeeklyStyleReports() {
   const weekStart = getCurrentWeekMonday();
   // Sending weekly reports for weekStart
 
-  const summary = { sent: 0, skipped: 0, errors: [] };
+  const summary = { sent: 0, skipped: 0, failed: 0, errors: [] };
 
   // Get current OOTW for fallback trending IDs
   const { data: ootw } = await supabase
@@ -369,11 +382,18 @@ export async function sendWeeklyStyleReports() {
 
       summary.sent++;
     } catch (err) {
+      summary.failed++;
       console.error(`[WeeklyReport] Error for user ${user.id}: ${err.message}`);
       summary.errors.push(`${user.id}: ${err.message}`);
     }
   }
 
-  // Done — results in summary object
+  // Surface results for operators
+  if (summary.failed > 0) {
+    console.error(`[WeeklyReport] ${summary.failed} notification(s) failed out of ${summary.sent + summary.failed + summary.skipped} Pro users. Errors: ${summary.errors.join("; ")}`);
+  }
+  if (summary.sent > 0 || summary.failed > 0) {
+    console.log(`[WeeklyReport] Done — sent: ${summary.sent}, skipped: ${summary.skipped}, failed: ${summary.failed}`);
+  }
   return summary;
 }
