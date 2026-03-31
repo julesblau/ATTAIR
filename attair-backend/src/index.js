@@ -39,6 +39,7 @@ const REQUIRED_ENV = [
   "SUPABASE_ANON_KEY",
   "ANTHROPIC_API_KEY",
   "SERPAPI_KEY",
+  "CRON_SECRET_KEY",
 ];
 
 // Stripe keys are optional — payments routes will fail gracefully without them
@@ -306,7 +307,7 @@ app.listen(PORT, "0.0.0.0", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-cron-key": process.env.CRON_SECRET_KEY || "internal-cron",
+          "x-cron-key": process.env.CRON_SECRET_KEY,
         },
       });
       const data = await res.json();
@@ -325,13 +326,15 @@ app.listen(PORT, "0.0.0.0", () => {
   // ─── Outfit of the Week cron (Monday) ────────────────────
   // Generates editorial every Monday. Also runs on startup after 90s.
   const runOOTWGenerate = async () => {
+    // Only fire on Mondays (day 1)
+    if (new Date().getUTCDay() !== 1) return;
     try {
       const url = `http://127.0.0.1:${PORT}/api/ootw/generate`;
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-cron-key": process.env.CRON_SECRET_KEY || "internal-cron",
+          "x-cron-key": process.env.CRON_SECRET_KEY,
         },
       });
       const data = await res.json();
@@ -358,7 +361,7 @@ app.listen(PORT, "0.0.0.0", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-cron-key": process.env.CRON_SECRET_KEY || "internal-cron",
+          "x-cron-key": process.env.CRON_SECRET_KEY,
         },
       });
       const data = await res.json();
