@@ -3861,7 +3861,7 @@ export default function App() {
   // ─── Complete the Look ──────────────────────────────────────
   const [looks, setLooks] = useState([]);                          // grouped looks from backend
   const [looksLoading, setLooksLoading] = useState(false);
-  const [looksView, setLooksView] = useState("grouped");           // "grouped" | "flat"
+  const [looksView, setLooksView] = useState("flat");               // "grouped" | "flat"
   const [expandedLook, setExpandedLook] = useState(null);          // scan_id of expanded look
   const [lookDetail, setLookDetail] = useState(null);              // full detail for expanded look
   const [lookDetailLoading, setLookDetailLoading] = useState(false);
@@ -8592,7 +8592,7 @@ export default function App() {
 
               {/* Settings bottom sheet */}
               {profileSettingsOpen && <>
-                <div className="bottom-sheet-overlay" onClick={() => { if (settingsBudgetExpanded && settingsBudgetDirty) { setBudgetMin(budgetModalOrigRef.current.min); setBudgetMax(budgetModalOrigRef.current.max); } setSettingsBudgetExpanded(false); setSettingsBudgetDirty(false); setProfileSettingsOpen(false); }} />
+                <div className="bottom-sheet-overlay" onClick={() => { setProfileSettingsOpen(false); }} />
                 <div className="bottom-sheet" role="dialog" aria-label="Settings" aria-modal="true"
                   style={{ transform: settingsSheetY > 0 ? `translateY(${settingsSheetY}px)` : undefined, transition: settingsDragRef.current.dragging ? 'none' : 'transform 0.3s ease' }}
                   onTouchStart={e => { settingsDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
@@ -8627,26 +8627,146 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Budget Range — tappable row opens popup */}
-                  <div className="settings-sheet-item" style={{ cursor: "pointer" }} onClick={() => {
-                    budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
-                    setSettingsBudgetDirty(false);
-                    setSettingsBudgetExpanded(true);
-                  }} role="button" aria-label="Edit budget range">
-                    <span className="settings-label">{t("budget_range")}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span className="settings-value">${budgetMin} – {budgetMax >= 1000 ? "$1000+" : `$${budgetMax}`}</span>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--text-tertiary)", flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+                  {/* Budget Range — tappable row toggles inline expansion */}
+                  <div className="settings-budget-section">
+                    <div className="settings-sheet-item" style={{ cursor: "pointer" }} onClick={() => {
+                      if (!settingsBudgetExpanded) {
+                        budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
+                        setSettingsBudgetDirty(false);
+                        setSettingsBudgetError(null);
+                      } else if (settingsBudgetDirty) {
+                        setBudgetMin(budgetModalOrigRef.current.min);
+                        setBudgetMax(budgetModalOrigRef.current.max);
+                      }
+                      setSettingsBudgetExpanded(prev => !prev);
+                    }} role="button" aria-label="Edit budget range">
+                      <span className="settings-label">{t("budget_range")}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span className="settings-value">${budgetMin} – {budgetMax >= 1000 ? "$1000+" : `$${budgetMax}`}</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--text-tertiary)", flexShrink: 0, transition: "transform .2s", transform: settingsBudgetExpanded ? "rotate(90deg)" : "rotate(0)" }}><polyline points="9 18 15 12 9 6"/></svg>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* (inline budget expansion removed — now uses centered popup modal) */}
+                    {settingsBudgetExpanded && (
+                      <div style={{ padding: "0 16px 16px", animation: "slideDown .2s ease" }}>
+                        {/* Preset chips */}
+                        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+                          {[
+                            { l: "$ Under $50", min: 0, max: 50 },
+                            { l: "$$ $50–150", min: 50, max: 150 },
+                            { l: "$$$ $150–500", min: 150, max: 500 },
+                            { l: "$$$$ $500+", min: 500, max: 1000 },
+                          ].map(preset => {
+                            const isActive = budgetMin === preset.min && budgetMax === preset.max;
+                            return (
+                              <button key={preset.l}
+                                onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
+                                style={{
+                                  flex: 1, padding: "8px 4px", borderRadius: 20, fontSize: 10, fontWeight: 600, fontFamily: "var(--font-sans)", cursor: "pointer", transition: "all .2s", minHeight: 44,
+                                  background: isActive ? "rgba(201,169,110,.12)" : "var(--bg-input)",
+                                  border: `1px solid ${isActive ? "rgba(201,169,110,.4)" : "var(--border)"}`,
+                                  color: isActive ? "var(--accent)" : "var(--text-tertiary)",
+                                }}>
+                                {preset.l}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Dual-thumb range slider */}
+                        <div style={{ position: "relative", height: 32, marginBottom: 4 }}>
+                          <div style={{ position: "absolute", top: 14, left: 0, right: 0, height: 4, background: "var(--bg-input)", borderRadius: 2 }} />
+                          <div style={{ position: "absolute", top: 14, left: `${(budgetMin / 1000) * 100}%`, right: `${100 - (budgetMax / 1000) * 100}%`, height: 4, background: "var(--accent)", borderRadius: 2 }} />
+                          <input type="range" min={0} max={1000} step={10} value={budgetMin}
+                            onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) { setBudgetMin(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); } }}
+                            aria-label="Minimum budget"
+                            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 32, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2 }}
+                            className="budget-range-thumb"
+                          />
+                          <input type="range" min={0} max={1000} step={10} value={budgetMax}
+                            onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) { setBudgetMax(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); } }}
+                            aria-label="Maximum budget"
+                            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 32, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3 }}
+                            className="budget-range-thumb"
+                          />
+                        </div>
+
+                        {/* Scale labels */}
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-tertiary)", marginBottom: 14, padding: "0 2px" }}>
+                          <span>$0</span><span>$250</span><span>$500</span><span>$750</span><span>$1000+</span>
+                        </div>
+
+                        {/* Min / Max number inputs */}
+                        <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginBottom: 4, fontWeight: 600, letterSpacing: 0.5 }}>MIN</div>
+                            <div className="budget-input-wrap">
+                              <span>$</span>
+                              <input type="number" value={budgetMin} min={0} max={budgetMax - 1}
+                                onChange={e => { const v = Math.max(0, parseInt(e.target.value) || 0); if (v < budgetMax) { setBudgetMin(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); } }}
+                              />
+                            </div>
+                          </div>
+                          <span style={{ color: "var(--text-tertiary)", fontSize: 14, marginTop: 22, fontWeight: 600 }}>–</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginBottom: 4, fontWeight: 600, letterSpacing: 0.5 }}>MAX</div>
+                            <div className="budget-input-wrap">
+                              <span>$</span>
+                              <input type="number" value={budgetMax} min={budgetMin + 1}
+                                onChange={e => { const v = Math.max(budgetMin + 1, parseInt(e.target.value) || 0); setBudgetMax(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Error message */}
+                        {settingsBudgetError && (
+                          <div style={{ fontSize: 12, color: "var(--error)", marginBottom: 10, textAlign: "center", fontWeight: 500 }}>{settingsBudgetError}</div>
+                        )}
+
+                        {/* Save / Cancel buttons */}
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            className="btn-ghost"
+                            style={{ flex: 1, fontSize: 13 }}
+                            onClick={() => {
+                              setBudgetMin(budgetModalOrigRef.current.min);
+                              setBudgetMax(budgetModalOrigRef.current.max);
+                              setSettingsBudgetExpanded(false);
+                              setSettingsBudgetDirty(false);
+                              setSettingsBudgetError(null);
+                            }}
+                          >Cancel</button>
+                          <button
+                            className="btn-primary"
+                            disabled={!settingsBudgetDirty || settingsBudgetSaving}
+                            style={{ flex: 1, fontSize: 13, opacity: !settingsBudgetDirty ? 0.4 : 1 }}
+                            onClick={async () => {
+                              setSettingsBudgetSaving(true);
+                              setSettingsBudgetError(null);
+                              try {
+                                await API.updateProfile({ budget_min: budgetMin, budget_max: budgetMax });
+                                setSettingsBudgetDirty(false);
+                                setSettingsBudgetExpanded(false);
+                                budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
+                              } catch (err) {
+                                console.error("Budget save failed:", err);
+                                setSettingsBudgetError("Failed to save. Please try again.");
+                              }
+                              setSettingsBudgetSaving(false);
+                            }}
+                          >{settingsBudgetSaving ? "Saving..." : "Save"}</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Size Preferences — tappable row opens popup */}
                   <div className="settings-sheet-item" style={{ cursor: "pointer" }} onClick={() => {
-                    setSizePrefsPopupGender(sizePrefs.gender || null);
-                    setSizePrefsPopupData({ tops: sizePrefs.sizes?.tops || "", bottoms_waist: sizePrefs.sizes?.bottoms_waist || "", bottoms_length: sizePrefs.sizes?.bottoms_length || "", shoes: sizePrefs.sizes?.shoes || "", dresses: sizePrefs.sizes?.dresses || "" });
-                    setSizePrefsPopupOpen(true);
+                    sizePrefsOrigRef.current = JSON.parse(JSON.stringify(sizePrefs));
+                    setSizePrefsEdit({ tops: sizePrefs.sizes?.tops || "", bottoms_waist: sizePrefs.sizes?.bottoms_waist || "", bottoms_length: sizePrefs.sizes?.bottoms_length || "", shoes: sizePrefs.sizes?.shoes || "", dresses: sizePrefs.sizes?.dresses || "" });
+                    setSizePrefsGender(sizePrefs.gender || "women");
+                    setSizePrefsModalOpen(true);
                   }} role="button" aria-label="Edit size preferences">
                     <span className="settings-label">{t("size_preferences")}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
