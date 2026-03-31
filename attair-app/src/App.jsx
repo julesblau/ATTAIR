@@ -6264,10 +6264,10 @@ export default function App() {
                     {/* Headline + editorial */}
                     <div style={{ position: "absolute", bottom: 14, left: 14, right: 14 }}>
                       <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", lineHeight: 1.2, marginBottom: 4 }}>
-                        {ootwData.headline}
+                        {ootwData?.headline || "This Week's Look"}
                       </div>
                       <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {ootwData.editorial}
+                        {ootwData?.editorial || "Check out the top trending outfits this week."}
                       </div>
                     </div>
                   </div>
@@ -9512,13 +9512,13 @@ export default function App() {
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 1.5, textTransform: "uppercase" }}>This Week's Look</span>
                 </div>
-                <h1 style={{ fontSize: 24, fontWeight: 800, color: "#fff", lineHeight: 1.15, margin: 0 }}>{ootwData.headline}</h1>
+                <h1 style={{ fontSize: 24, fontWeight: 800, color: "#fff", lineHeight: 1.15, margin: 0 }}>{ootwData?.headline || "This Week's Look"}</h1>
               </div>
             </div>
 
             {/* Editorial */}
             <div style={{ padding: "20px 20px 8px" }}>
-              <p style={{ fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>{ootwData.editorial}</p>
+              <p style={{ fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>{ootwData?.editorial || "Check out the top trending outfits this week."}</p>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, fontSize: 11, color: "var(--text-tertiary)" }}>
                 <span>Week of {new Date(ootwData.week_start + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
                 {ootwData.view_count > 0 && <span>{ootwData.view_count.toLocaleString()} views</span>}
