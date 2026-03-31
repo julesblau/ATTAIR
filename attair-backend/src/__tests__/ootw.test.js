@@ -54,6 +54,7 @@ let mockUserProfile = null;
 // Track calls for assertions
 let insertedRows = [];
 let updatedRows = [];
+let rpcCalls = [];
 
 vi.mock("../lib/supabase.js", () => {
   const mockFrom = vi.fn().mockImplementation((table) => {
@@ -174,7 +175,12 @@ vi.mock("../lib/supabase.js", () => {
     };
   });
 
-  return { default: { from: mockFrom } };
+  const mockRpc = vi.fn().mockImplementation((fnName, params) => {
+    rpcCalls.push({ fnName, ...params });
+    return Promise.resolve({ error: null });
+  });
+
+  return { default: { from: mockFrom, rpc: mockRpc } };
 });
 
 // ─── Server helpers ────────────────────────────────────────────────────────
@@ -281,6 +287,7 @@ describe("generateOutfitOfTheWeek", () => {
     vi.clearAllMocks();
     insertedRows = [];
     updatedRows = [];
+    rpcCalls = [];
     mockOotwData = null;
     mockOotwInsertResult = null;
     mockScansData = [];
@@ -576,6 +583,7 @@ describe("OOTW Routes", () => {
     vi.clearAllMocks();
     insertedRows = [];
     updatedRows = [];
+    rpcCalls = [];
     mockOotwData = null;
     mockScansData = [];
     mockProfilesData = [];
@@ -655,7 +663,7 @@ describe("OOTW Routes", () => {
       await get(port, "/api/ootw/current");
       // Give the non-blocking update a moment
       await new Promise(r => setTimeout(r, 50));
-      expect(updatedRows.some(r => r.table === "outfit_of_the_week" && r.view_count === 11)).toBe(true);
+      expect(rpcCalls.some(r => r.fnName === "increment_ootw_view_count" && r.ootw_id === "ootw-views")).toBe(true);
     });
   });
 

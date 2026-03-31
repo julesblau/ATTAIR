@@ -84,7 +84,7 @@ Return ONLY valid JSON (no markdown, no backticks):
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: process.env.OOTW_CLAUDE_MODEL || "claude-haiku-4-5-20251001",
         max_tokens: 400,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -125,7 +125,7 @@ Return ONLY valid JSON (no markdown, no backticks):
  */
 export async function generateOutfitOfTheWeek() {
   const weekStart = getCurrentWeekMonday();
-  console.log(`[OOTW] Generating for week of ${weekStart}`);
+  // Generation started for weekStart
 
   // Check if already generated
   const { data: existing } = await supabase
@@ -135,7 +135,7 @@ export async function generateOutfitOfTheWeek() {
     .maybeSingle();
 
   if (existing) {
-    console.log(`[OOTW] Already exists for ${weekStart} — skipping`);
+    // Already exists for this week — skip
     return { created: false, ootw: existing };
   }
 
@@ -153,7 +153,7 @@ export async function generateOutfitOfTheWeek() {
   if (poolErr) throw new Error(`Failed to fetch scans: ${poolErr.message}`);
 
   if (!pool || pool.length === 0) {
-    console.log("[OOTW] No public scans in the last 7 days — skipping");
+    // No public scans in the last 7 days — skip
     return { created: false, reason: "no_scans" };
   }
 
@@ -179,7 +179,7 @@ export async function generateOutfitOfTheWeek() {
   const top10 = scored.slice(0, 10);
 
   if (top10.length === 0) {
-    console.log("[OOTW] No scoreable scans — skipping");
+    // No scoreable scans — skip
     return { created: false, reason: "no_scans" };
   }
 
@@ -204,7 +204,7 @@ export async function generateOutfitOfTheWeek() {
 
   if (insertErr) throw new Error(`Failed to insert OOTW: ${insertErr.message}`);
 
-  console.log(`[OOTW] Created for ${weekStart}: "${headline}" with ${scanIds.length} scans`);
+  // Created successfully
   return { created: true, ootw };
 }
 
@@ -295,7 +295,7 @@ export async function pickPersonalizedLooks(userId, topTrendingIds) {
  */
 export async function sendWeeklyStyleReports() {
   const weekStart = getCurrentWeekMonday();
-  console.log(`[WeeklyReport] Sending for week of ${weekStart}`);
+  // Sending weekly reports for weekStart
 
   const summary = { sent: 0, skipped: 0, errors: [] };
 
@@ -322,11 +322,11 @@ export async function sendWeeklyStyleReports() {
   }
 
   if (!proUsers || proUsers.length === 0) {
-    console.log("[WeeklyReport] No active Pro users — skipping");
+    // No active Pro users — skip
     return summary;
   }
 
-  console.log(`[WeeklyReport] Processing ${proUsers.length} Pro user(s)`);
+  // Processing proUsers.length Pro user(s)
 
   for (const user of proUsers) {
     try {
@@ -374,6 +374,6 @@ export async function sendWeeklyStyleReports() {
     }
   }
 
-  console.log(`[WeeklyReport] Done — sent: ${summary.sent}, skipped: ${summary.skipped}, errors: ${summary.errors.length}`);
+  // Done — results in summary object
   return summary;
 }

@@ -35,11 +35,9 @@ router.get("/current", requireAuth, async (req, res) => {
       return res.json({ ootw: null });
     }
 
-    // Increment view count (non-blocking)
+    // Increment view count atomically (non-blocking)
     supabase
-      .from("outfit_of_the_week")
-      .update({ view_count: (ootw.view_count || 0) + 1 })
-      .eq("id", ootw.id)
+      .rpc("increment_ootw_view_count", { ootw_id: ootw.id })
       .then(() => {})
       .catch((err) => console.error("[OOTW] View count update failed:", err.message));
 
