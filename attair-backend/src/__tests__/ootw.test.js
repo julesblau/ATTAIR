@@ -573,6 +573,158 @@ describe("pickPersonalizedLooks", () => {
   });
 });
 
+// ─── Tests: Claude API failure paths (generateEditorial) ──────────────────
+
+describe("generateOutfitOfTheWeek — Claude API failures", () => {
+  let generateOutfitOfTheWeek;
+  let originalFetch;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    insertedRows = [];
+    updatedRows = [];
+    rpcCalls = [];
+    mockOotwData = null;
+    mockOotwInsertResult = null;
+    mockScansData = Array.from({ length: 5 }, (_, i) =>
+      makeScan(`scan-api-${i}`, { created_at: new Date(Date.now() - i * 3600000).toISOString() })
+    );
+    mockSaveRowsData = [];
+
+    // Ensure API key is set so generateEditorial actually calls fetch
+    process.env.ANTHROPIC_API_KEY = "test-key-for-failure-tests";
+
+    originalFetch = global.fetch;
+
+    const mod = await import("../jobs/outfitOfTheWeek.js");
+    generateOutfitOfTheWeek = mod.generateOutfitOfTheWeek;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("uses fallback editorial when Claude API returns non-200 status", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: { message: "Internal server error" } }),
+    });
+
+    const result = await generateOutfitOfTheWeek();
+    expect(result.created).toBe(true);
+    const insert = insertedRows.find(r => r.table === "outfit_of_the_week");
+    expect(insert.headline).toBe("This Week's Top Looks");
+    expect(insert.editorial).toContain("community brought the heat");
+  });
+
+  it("uses fallback editorial when Claude API times out", async () => {
+    global.fetch = vi.fn().mockImplementation(() => {
+      // Simulate AbortError from timeout
+      const err = new Error("The operation was aborted");
+      err.name = "AbortError";
+      return Promise.reject(err);
+    });
+
+    const result = await generateOutfitOfTheWeek();
+    expect(result.created).toBe(true);
+    const insert = insertedRows.find(r => r.table === "outfit_of_the_week");
+    expect(insert.headline).toBe("This Week's Top Looks");
+    expect(insert.editorial).toContain("community brought the heat");
+  });
+
+  it("uses fallback editorial when Claude returns malformed JSON", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [{ type: "text", text: "This is not valid JSON at all {{{ broken" }],
+      }),
+    });
+
+    const result = await generateOutfitOfTheWeek();
+    expect(result.created).toBe(true);
+    const insert = insertedRows.find(r => r.table === "outfit_of_the_week");
+    expect(insert.headline).toBe("This Week's Top Looks");
+    expect(insert.editorial).toContain("community brought the heat");
+  });
+
+  it("uses fallback editorial when Claude returns empty content", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [],
+      }),
+    });
+
+    const result = await generateOutfitOfTheWeek();
+    expect(result.created).toBe(true);
+    const insert = insertedRows.find(r => r.table === "outfit_of_the_week");
+    expect(insert.headline).toBe("This Week's Top Looks");
+  });
+
+  it("uses valid headline/editorial when Claude returns valid JSON", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [{
+          type: "text",
+          text: '{"headline": "Layering Season Just Peaked", "editorial": "The streets are talking and we are listening."}',
+        }],
+      }),
+    });
+
+    const result = await generateOutfitOfTheWeek();
+    expect(result.created).toBe(true);
+    const insert = insertedRows.find(r => r.table === "outfit_of_the_week");
+    expect(insert.headline).toBe("Layering Season Just Peaked");
+    expect(insert.editorial).toBe("The streets are talking and we are listening.");
+  });
+});
+
+// ─── Tests: sendWeeklyStyleReports — notification failures ────────────────
+
+describe("sendWeeklyStyleReports — notification failures", () => {
+  let sendWeeklyStyleReports;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    insertedRows = [];
+    mockOotwData = { scan_ids: ["scan-t1", "scan-t2", "scan-t3"] };
+    mockProUsersData = [
+      { id: "pro-fail-1", display_name: "Fail One" },
+      { id: "pro-fail-2", display_name: "Fail Two" },
+    ];
+    mockWeeklyReportExists = null;
+    mockSavedItemsData = [];
+
+    const mod = await import("../jobs/outfitOfTheWeek.js");
+    sendWeeklyStyleReports = mod.sendWeeklyStyleReports;
+  });
+
+  it("tracks failed notification count when push service throws", async () => {
+    mockSendNotification
+      .mockRejectedValueOnce(new Error("Push service unavailable"))
+      .mockRejectedValueOnce(new Error("Push service unavailable"));
+
+    const result = await sendWeeklyStyleReports();
+    expect(result.failed).toBe(2);
+    expect(result.sent).toBe(0);
+    expect(result.errors).toHaveLength(2);
+    expect(result.errors[0]).toContain("Push service unavailable");
+  });
+
+  it("continues sending to remaining users after one failure", async () => {
+    mockSendNotification
+      .mockRejectedValueOnce(new Error("Push service timeout"))
+      .mockResolvedValueOnce(undefined);
+
+    const result = await sendWeeklyStyleReports();
+    expect(result.sent).toBe(1);
+    expect(result.failed).toBe(1);
+    expect(result.errors).toHaveLength(1);
+  });
+});
+
 // ─── Tests: Routes ─────────────────────────────────────────────────────────
 
 describe("OOTW Routes", () => {
