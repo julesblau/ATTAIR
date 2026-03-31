@@ -390,10 +390,10 @@ describe("sendWeeklyStyleReports", () => {
     expect(result.sent).toBe(2);
     expect(result.skipped).toBe(0);
     expect(mockSendNotification).toHaveBeenCalledTimes(2);
-    // Verify notification type is "digest"
+    // Verify notification type is "weekly_style_report"
     expect(mockSendNotification).toHaveBeenCalledWith(
       "pro-user-1",
-      "digest",
+      "weekly_style_report",
       "Your Weekly Style Report",
       expect.any(String),
       expect.objectContaining({ type: "weekly_style_report" })

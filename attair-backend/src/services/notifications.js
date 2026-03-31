@@ -75,6 +75,7 @@ export async function sendNotification(userId, type, title, body, data = {}) {
     style_twins: "style_twins",
     new_post: "new_posts",
     digest: "weekly_digest",
+    weekly_style_report: "weekly_style_report",
     hanger_test: "hanger_test",
     follow_up: "follow_up_nudges",
   };

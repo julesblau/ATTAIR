@@ -41,7 +41,7 @@ router.get("/current", requireAuth, async (req, res) => {
       .update({ view_count: (ootw.view_count || 0) + 1 })
       .eq("id", ootw.id)
       .then(() => {})
-      .catch(() => {});
+      .catch((err) => console.error("[OOTW] View count update failed:", err.message));
 
     // Enrich scan data — fetch the actual scans
     const scanIds = ootw.scan_ids || [];
@@ -147,7 +147,7 @@ router.post("/generate", async (req, res) => {
     return res.json(result);
   } catch (err) {
     console.error("[OOTW] Generation error:", err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "Failed to generate Outfit of the Week. Please try again later." });
   }
 });
 
@@ -164,7 +164,7 @@ router.post("/weekly-reports", async (req, res) => {
     return res.json(summary);
   } catch (err) {
     console.error("[WeeklyReport] Error:", err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "Failed to send weekly style reports. Please try again later." });
   }
 });
 

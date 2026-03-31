@@ -361,7 +361,7 @@ export async function sendWeeklyStyleReports() {
       // Send push notification
       await sendNotification(
         user.id,
-        "digest",
+        "weekly_style_report",
         "Your Weekly Style Report",
         "3 looks picked just for you this week. Tap to see your personalized picks.",
         { url: "/weekly-report", type: "weekly_style_report", scan_ids: lookIds }
