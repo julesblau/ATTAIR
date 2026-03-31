@@ -7498,7 +7498,7 @@ export default function App() {
 
               {/* Settings bottom sheet */}
               {profileSettingsOpen && <>
-                <div className="bottom-sheet-overlay" onClick={() => { setProfileSettingsOpen(false); }} />
+                <div className="bottom-sheet-overlay" onClick={() => { if (settingsBudgetExpanded && settingsBudgetDirty) { setBudgetMin(budgetModalOrigRef.current.min); setBudgetMax(budgetModalOrigRef.current.max); } setSettingsBudgetExpanded(false); setSettingsBudgetDirty(false); setProfileSettingsOpen(false); }} />
                 <div className="bottom-sheet" role="dialog" aria-label="Settings" aria-modal="true"
                   style={{ transform: settingsSheetY > 0 ? `translateY(${settingsSheetY}px)` : undefined, transition: settingsDragRef.current.dragging ? 'none' : 'transform 0.3s ease' }}
                   onTouchStart={e => { settingsDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
@@ -7533,14 +7533,118 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Budget Range — tappable row opens modal */}
-                  <div className="settings-sheet-item" style={{ cursor: "pointer" }} onClick={() => { budgetModalOrigRef.current = { min: budgetMin, max: budgetMax }; setSettingsBudgetExpanded(true); setSettingsBudgetDirty(false); setSelectedBudgetTiers(new Set()); }} role="button" aria-label="Edit budget range">
+                  {/* Budget Range — tappable row toggles inline expansion */}
+                  <div className="settings-sheet-item" style={{ cursor: "pointer", borderBottom: settingsBudgetExpanded ? "none" : undefined }} onClick={() => {
+                    if (!settingsBudgetExpanded) {
+                      budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
+                      setSettingsBudgetDirty(false);
+                    }
+                    setSettingsBudgetExpanded(v => !v);
+                  }} role="button" aria-label="Edit budget range">
                     <span className="settings-label">Budget Range</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span className="settings-value">${budgetMin} – {budgetMax >= 1000 ? "$1000+" : `$${budgetMax}`}</span>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--text-tertiary)", flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--text-tertiary)", flexShrink: 0, transform: settingsBudgetExpanded ? "rotate(90deg)" : "none", transition: "transform var(--transition-fast)" }}><polyline points="9 18 15 12 9 6"/></svg>
                     </div>
                   </div>
+
+                  {/* Budget Range — expanded inline slider */}
+                  {settingsBudgetExpanded && (
+                    <div className="settings-budget-section" style={{ padding: "4px 0 16px", animation: "fadeSlideIn .25s ease" }}>
+                      {/* Dual range slider */}
+                      <div style={{ position: "relative", height: 40, marginBottom: 8 }}>
+                        <div style={{ position: "absolute", top: 18, left: 0, right: 0, height: 4, background: "var(--border)", borderRadius: 2 }} />
+                        <div style={{ position: "absolute", top: 18, left: `${Math.max(0, (budgetMin / 1000) * 100)}%`, right: `${Math.max(0, 100 - (budgetMax / 1000) * 100)}%`, height: 4, background: "var(--accent)", borderRadius: 2, transition: "left var(--transition-fast), right var(--transition-fast)" }} />
+                        <input
+                          type="range" min="0" max="1000" step="10" value={budgetMin}
+                          aria-label="Minimum budget"
+                          onChange={e => {
+                            const val = parseInt(e.target.value);
+                            if (val < budgetMax) { setBudgetMin(val); setSettingsBudgetDirty(true); }
+                          }}
+                          style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2, margin: 0 }}
+                          className="budget-range-thumb"
+                        />
+                        <input
+                          type="range" min="0" max="1000" step="10" value={budgetMax}
+                          aria-label="Maximum budget"
+                          onChange={e => {
+                            const val = parseInt(e.target.value);
+                            if (val > budgetMin) { setBudgetMax(val); setSettingsBudgetDirty(true); }
+                          }}
+                          style={{ position: "absolute", top: 8, left: 0, width: "100%", height: 24, WebkitAppearance: "none", appearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3, margin: 0 }}
+                          className="budget-range-thumb"
+                        />
+                      </div>
+
+                      {/* Display range */}
+                      <div style={{ textAlign: "center", fontSize: 15, fontWeight: 600, color: "var(--accent)", marginBottom: 12 }}>
+                        ${budgetMin} – ${budgetMax}{budgetMax >= 1000 ? "+" : ""}
+                      </div>
+
+                      {/* Preset tier chips */}
+                      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+                        {[
+                          { label: "$", min: 0, max: 50, desc: "Under $50" },
+                          { label: "$$", min: 50, max: 150, desc: "$50–$150" },
+                          { label: "$$$", min: 150, max: 500, desc: "$150–$500" },
+                          { label: "$$$$", min: 500, max: 1000, desc: "$500+" },
+                        ].map(preset => {
+                          const isActive = budgetMin === preset.min && budgetMax === preset.max;
+                          return (
+                            <button
+                              key={preset.label}
+                              aria-label={`Set budget to ${preset.desc}`}
+                              onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); setSettingsBudgetDirty(true); }}
+                              style={{
+                                flex: 1, padding: "10px 6px", minHeight: 44,
+                                background: isActive ? "var(--accent-bg)" : "var(--bg-input)",
+                                border: `1.5px solid ${isActive ? "var(--accent-border)" : "var(--border)"}`,
+                                borderRadius: "var(--radius-sm)", cursor: "pointer",
+                                fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600,
+                                color: isActive ? "var(--accent)" : "var(--text-tertiary)",
+                                transition: "all var(--transition-fast)",
+                              }}
+                            >{preset.label}</button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Tier legend */}
+                      <div style={{ fontSize: 10, color: "var(--text-tertiary)", textAlign: "center", marginBottom: 14, lineHeight: 1.5 }}>
+                        Budget: under ${budgetMin} · Mid: ${budgetMin}–${budgetMax} · Premium: ${budgetMax}+
+                      </div>
+
+                      {/* Save / Cancel buttons */}
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          className="btn-ghost"
+                          style={{ flex: 1, fontSize: 13 }}
+                          onClick={() => {
+                            setBudgetMin(budgetModalOrigRef.current.min);
+                            setBudgetMax(budgetModalOrigRef.current.max);
+                            setSettingsBudgetExpanded(false);
+                            setSettingsBudgetDirty(false);
+                          }}
+                        >Cancel</button>
+                        <button
+                          className="btn-primary"
+                          disabled={!settingsBudgetDirty || settingsBudgetSaving}
+                          style={{ flex: 1, fontSize: 13, opacity: !settingsBudgetDirty ? 0.4 : 1 }}
+                          onClick={async () => {
+                            setSettingsBudgetSaving(true);
+                            try {
+                              await API.updateProfile({ budget_min: budgetMin, budget_max: budgetMax });
+                              setSettingsBudgetDirty(false);
+                              setSettingsBudgetExpanded(false);
+                            } catch {}
+                            setSettingsBudgetSaving(false);
+                          }}
+                        >{settingsBudgetSaving ? "Saving..." : "Save"}</button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="settings-sheet-item" style={{ cursor: "default" }}>
                     <span className="settings-label">Size Preferences</span>
                     <span className="settings-value">{(sizePrefs.body_type || []).length > 0 ? (sizePrefs.body_type || []).join(", ") : "Not set"}</span>
