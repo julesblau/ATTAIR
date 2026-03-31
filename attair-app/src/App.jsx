@@ -400,6 +400,10 @@ const API = {
     const res = await authFetch(`${API_BASE}/api/feed?page=${page}&limit=20&tab=${feedTab}`);
     return res.json();
   },
+  async getOOTW() {
+    const res = await authFetch(`${API_BASE}/api/ootw/current`);
+    return res.json();
+  },
   async searchUsers(q) {
     const res = await authFetch(`${API_BASE}/api/users/search?q=${encodeURIComponent(q)}`);
     return res.json();
@@ -3970,6 +3974,11 @@ export default function App() {
       setNudgeBanner({ context: params.get("context") || "scan_results" });
       window.history.replaceState({}, "", window.location.pathname);
     }
+    // Deep link from Weekly Style Report push notification
+    if (window.location.pathname === "/weekly-report" && authed) {
+      setOotwExpanded(true);
+      window.history.replaceState({}, "", "/");
+    }
     // Deep link from Style Twins weekly notification
     if (params.get("tab") === "twins" && authed) {
       setTab("search");
@@ -4131,6 +4140,11 @@ export default function App() {
   }); // "people" | "products" | "twins"
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [productSearchResults, setProductSearchResults] = useState([]);
+
+  // ─── Outfit of the Week ────────────────────────────────────
+  const [ootwData, setOotwData] = useState(null);           // { headline, editorial, cover_image, scans, ... }
+  const [ootwLoading, setOotwLoading] = useState(false);
+  const [ootwExpanded, setOotwExpanded] = useState(false);   // full detail overlay open
 
   // ─── Style Twins ────────────────────────────────────────────
   const [styleTwins, setStyleTwins] = useState([]);
@@ -4647,6 +4661,17 @@ export default function App() {
       }
     }
   }, [authed, screen, tab, feedTab]);
+
+  // ─── Outfit of the Week loader ────────────────────────────
+  useEffect(() => {
+    if (authed && screen === "app" && (tab === "home" || (tab === "scan" && phase === "idle" && !img)) && !ootwData && !ootwLoading) {
+      setOotwLoading(true);
+      API.getOOTW()
+        .then(d => { if (d.ootw) setOotwData(d.ootw); })
+        .catch(() => {})
+        .finally(() => setOotwLoading(false));
+    }
+  }, [authed, screen, tab]);
 
   // ─── User search (debounced) ──────────────────────────────
   useEffect(() => {
@@ -6125,6 +6150,75 @@ export default function App() {
                     <div style={{ padding: "10px 14px", background: "var(--bg-card)", display: "flex", gap: 8 }}>
                       <span style={{ flex: 1, textAlign: "center", fontSize: 12, fontWeight: 700, padding: "6px 0", borderRadius: 100, background: "rgba(201,169,110,.1)", color: "var(--accent)" }}>Would Wear</span>
                       <span style={{ flex: 1, textAlign: "center", fontSize: 12, fontWeight: 700, padding: "6px 0", borderRadius: 100, background: "rgba(255,255,255,.06)", color: "var(--text-secondary)" }}>Pass</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ─── Outfit of the Week pinned card ─── */}
+              {ootwData && (
+                <div
+                  className="card-press ootw-card animate-slide-up"
+                  onClick={() => setOotwExpanded(true)}
+                  style={{ margin: "4px 12px 8px", borderRadius: 16, overflow: "hidden", position: "relative", cursor: "pointer", border: "1px solid rgba(201,169,110,.2)", background: "var(--bg-card)" }}
+                >
+                  {/* Cover image with gradient */}
+                  <div style={{ position: "relative", width: "100%", height: 180, overflow: "hidden" }}>
+                    {ootwData.cover_image ? (
+                      <img src={ootwData.cover_image} alt="This Week's Look" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.55)" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
+                    )}
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%)" }} />
+
+                    {/* Top badge */}
+                    <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "center", gap: 7 }}>
+                      <div style={{ width: 26, height: 26, borderRadius: 7, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", letterSpacing: 1.5, textTransform: "uppercase" }}>This Week's Look</span>
+                    </div>
+
+                    {/* View count */}
+                    {ootwData.view_count > 0 && (
+                      <div style={{ position: "absolute", top: 12, right: 12, fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.7)", display: "flex", alignItems: "center", gap: 4 }}>
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        {ootwData.view_count.toLocaleString()}
+                      </div>
+                    )}
+
+                    {/* Headline + editorial */}
+                    <div style={{ position: "absolute", bottom: 14, left: 14, right: 14 }}>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", lineHeight: 1.2, marginBottom: 4 }}>
+                        {ootwData.headline}
+                      </div>
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                        {ootwData.editorial}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Scan thumbnails strip */}
+                  {ootwData.scans && ootwData.scans.length > 0 && (
+                    <div style={{ padding: "10px 12px", display: "flex", gap: 6, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                      {ootwData.scans.slice(0, 6).map((s, i) => (
+                        <div key={s.id || i} style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}>
+                          {s.image_url ? (
+                            <img src={s.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ width: "100%", height: "100%", background: "var(--bg-input)" }} />
+                          )}
+                        </div>
+                      ))}
+                      {ootwData.scans.length > 6 && (
+                        <div style={{ width: 48, height: 48, borderRadius: 8, flexShrink: 0, background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>
+                          +{ootwData.scans.length - 6}
+                        </div>
+                      )}
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 2 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>See all</span>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 2 }}><polyline points="9 18 15 12 9 6"/></svg>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -9315,6 +9409,96 @@ export default function App() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Outfit of the Week Detail Overlay ────────── */}
+        {ootwExpanded && ootwData && (
+          <div className="ootw-overlay animate-fade-in" style={{ position: "fixed", inset: 0, zIndex: 1100, background: "var(--bg-primary)", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+            {/* Close button */}
+            <button
+              onClick={() => setOotwExpanded(false)}
+              style={{ position: "fixed", top: 12, right: 12, zIndex: 1101, width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", border: "none", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >&#x2715;</button>
+
+            {/* Hero cover */}
+            <div style={{ position: "relative", width: "100%", height: 280, overflow: "hidden" }}>
+              {ootwData.cover_image ? (
+                <img src={ootwData.cover_image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.5)" }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
+              )}
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.85) 100%)" }} />
+              <div style={{ position: "absolute", bottom: 24, left: 20, right: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 1.5, textTransform: "uppercase" }}>This Week's Look</span>
+                </div>
+                <h1 style={{ fontSize: 24, fontWeight: 800, color: "#fff", lineHeight: 1.15, margin: 0 }}>{ootwData.headline}</h1>
+              </div>
+            </div>
+
+            {/* Editorial */}
+            <div style={{ padding: "20px 20px 8px" }}>
+              <p style={{ fontSize: 15, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>{ootwData.editorial}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, fontSize: 11, color: "var(--text-tertiary)" }}>
+                <span>Week of {new Date(ootwData.week_start + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                {ootwData.view_count > 0 && <span>{ootwData.view_count.toLocaleString()} views</span>}
+                <span>{(ootwData.scans || []).length} looks</span>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: "var(--border)", margin: "12px 20px" }} />
+
+            {/* Scan grid */}
+            <div style={{ padding: "0 12px 120px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", padding: "8px 8px 12px", letterSpacing: 0.3 }}>Top {(ootwData.scans || []).length} Looks</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {(ootwData.scans || []).map((scan, idx) => {
+                  const u = scan.user || {};
+                  const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                  return (
+                    <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setOotwExpanded(false); setFeedDetailScan(scan); }}>
+                      <div style={{ position: "relative" }}>
+                        {scan.image_url
+                          ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" />
+                          : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
+                            </div>
+                        }
+                        {/* Rank badge */}
+                        <div style={{ position: "absolute", top: 8, left: 8, padding: "2px 8px", borderRadius: 100, background: "rgba(201,169,110,0.9)", fontSize: 11, fontWeight: 800, color: "#0C0C0E" }}>#{idx + 1}</div>
+                        <div className="feed-card-pills">
+                          {scan.save_count > 0 && (
+                            <div className="feed-card-pill">
+                              <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                              {scan.save_count}
+                            </div>
+                          )}
+                          {scan.item_count > 0 && (
+                            <div className="feed-card-pill feed-card-items-pill">
+                              {scan.item_count} {scan.item_count === 1 ? "item" : "items"}
+                            </div>
+                          )}
+                        </div>
+                        <div className="feed-card-overlay">
+                          <div className="feed-card-user">
+                            <div className="feed-card-avatar">{ini}</div>
+                            <div className="feed-card-info">
+                              <div className="feed-card-name">{u.display_name || "Anonymous"}</div>
+                              {scan.summary && <div className="feed-card-summary">{scan.summary}</div>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
