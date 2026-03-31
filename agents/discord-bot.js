@@ -79,7 +79,8 @@ const client = new Client({
 });
 
 // ─── State ───────────────────────────────────────────────────────────────────
-let activeProcess = null;           // current child process (for STOP)
+let buildProcess = null;            // current BUILD child process (for STOP)
+let activeProcess = null;           // current child process (chat or build)
 let activeTaskLabel = null;         // what's currently running (for status)
 let conversationHistory = [];       // Chat conversation context (text-based)
 let buildLoopRunning = false;       // is the build→judge→fix loop active?
@@ -244,18 +245,27 @@ function runClaude(prompt, { systemPrompt, label = "claude", onLog, abortSignal,
     // Pipe prompt via stdin to avoid shell escaping
     // Use shell: true so Windows can resolve claude.cmd, but args are safe
     // because prompt goes via stdin and system prompt via file
+    // Strip ANTHROPIC_API_KEY so CLI uses Max subscription OAuth, not API credits
+    // Do NOT set CLAUDE_CODE_SIMPLE — it disables OAuth/keychain auth
+    const cliEnv = { ...process.env };
+    delete cliEnv.ANTHROPIC_API_KEY;
+
     const child = spawn("claude", args, {
       cwd: REPO_ROOT,
       stdio: ["pipe", "pipe", "pipe"],
       shell: true,
-      env: { ...process.env, CLAUDE_CODE_SIMPLE: "1" },
+      env: cliEnv,
     });
 
     // Send prompt via stdin then close
     child.stdin.write(prompt);
     child.stdin.end();
 
-    // Track as active process for STOP
+    // Track as active process — build processes tracked separately so STOP works
+    const isBuild = label.startsWith("build:") || label === "judge" || label === "creative";
+    if (isBuild) {
+      buildProcess = child;
+    }
     activeProcess = child;
     activeTaskLabel = label;
 
@@ -286,6 +296,7 @@ function runClaude(prompt, { systemPrompt, label = "claude", onLog, abortSignal,
     }
 
     child.on("close", (code) => {
+      if (isBuild) buildProcess = null;
       activeProcess = null;
       activeTaskLabel = null;
 
@@ -870,9 +881,11 @@ async function executeActions(reply, channel) {
   if (text.includes("[ACTION:STOP]")) {
     text = text.replace(/\[ACTION:STOP\]/g, "").trim();
     stopRequested = true;
-    if (activeProcess) {
-      if (typeof activeProcess.kill === "function") {
-        activeProcess.kill("SIGTERM");
+    // Kill the build process specifically (not the chat process)
+    const target = buildProcess || activeProcess;
+    if (target) {
+      if (typeof target.kill === "function") {
+        target.kill("SIGTERM");
       }
       text = text || "Sent stop signal.";
     } else if (!buildLoopRunning) {

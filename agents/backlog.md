@@ -3,51 +3,7 @@
 > Feature backlog for ATTAIRE. Discord bot pulls from here by priority.
 > Remove items after they're built.
 
-## CRITICAL — Must Fix Now (Jules priority update 2026-03-30)
-
-### Fix Broken Scan/Search — No Results Returned
-**Status:** DONE (2026-03-31)
-**Effort:** M
-**Spec:**
-- **Problem:** Both Fast Search and Deep Search return "no products found" after loading. Happens with personal photos AND Google images. The core feature of the app is completely broken.
-- **Investigate:** Trace the full flow end-to-end: frontend image upload → backend endpoint → SerpAPI queries → Claude vision analysis → results rendering. Find where results are being lost or requests are failing.
-- **Fix:** Whatever is broken in the pipeline — API keys, request format, parsing, error handling. Must return real product results for any fashion image.
-- **Verify:** Test with at least 3 different images (personal photo, Google image, screenshot) on both Fast Search and Deep Search. All must return results.
-
-### Fix Logo Colors for Dark/Light Mode
-**Status:** DONE (2026-03-31)
-**Effort:** S
-**Spec:**
-- **Problem:** Logo in top-left header has wrong colors for dark/light mode.
-- **Dark mode:** Logo background should be WHITE, letters should be BLACK.
-- **Light mode:** Logo background should be BLACK, letters should be WHITE.
-- **Scope:** Affects the logo on all pages (top-left header). Also ADD the logo to the landing/signup page for new users — it's missing there.
-
-### Fix Logo Rectangle Spacing
-**Status:** DONE (2026-03-31)
-**Effort:** S
-**Spec:**
-- **Problem:** The rectangle behind the logo text is too wide horizontally and has uneven vertical padding.
-- **Fix 1:** Tighten the rectangle horizontally — less space between the edges of the rectangle and the letters. Keep a small gap, not a wide one.
-- **Fix 2:** Make vertical padding even — equal spacing above and below the letters relative to the rectangle edges. Currently uneven (text sits closer to one edge than the other).
-
-### Logo Polish — Spacing, Dot Removal, AI Highlight
-**Status:** DONE (2026-03-31)
-**Effort:** S
-**Spec:**
-- **Side spacing:** Reduce horizontal padding of the rectangle to ~40% of current. Almost flush to the letters with just a small breathing room.
-- **Orange dot:** Do NOT remove. Move it to the top-right of the E, positioned like an exponent. Triple its current size. This dot is part of the brand identity — treat it as the secondary logo mark.
-- **Highlight "AI":** The letters "AI" in ATTAIRE should be subtly colored in gold (#C9A96E). Rest of the letters stay the normal color (white in dark mode, black in light mode). Should be subtle — not loud, but once you notice it you can't unsee it.
-- **Do NOT break anything else about the logo** — the dark/light mode colors and rectangle are already correct.
-
-### Fix Style DNA Text Contrast (Light Mode Only)
-**Status:** DONE (2026-03-31)
-**Effort:** S
-**Spec:**
-- **Problem:** On Profile → Style DNA in LIGHT MODE, the description text is small black text on a purple background. Unreadable.
-- **Dark mode looks perfect — do NOT change dark mode styling.**
-- **Fix:** Light mode description text needs to match what dark mode does — white/light text for proper contrast against the purple background.
-- **Scope:** Only the description text in light mode — layout and content are fine.
+## CRITICAL — Next Up (Updated 2026-03-30)
 
 ### Budget Range Slider in Settings
 **Status:** QUEUED — Must fix now
@@ -99,29 +55,7 @@
 - **Problem 2:** Two redundant filter rows at the top — "All / My Picks" AND "All Scans / Wishlist / Bookmarks". Confusing and duplicative.
   - **Fix:** Consolidate into ONE clean filter bar. Merge the logic into a single row of filter options.
 
-## CRITICAL — Build This Run (Jules priority update 2026-03-28)
-
-### ATTAIRE Rename + Branding
-**Status:** DONE (Run 5, 2026-03-28) — All user-facing strings updated to ATTAIRE
-**Effort:** S
-
-### Discord Bot UX Improvements
-**Status:** DONE (Run 5, 2026-03-28) — terser responses, individual agent dispatch
-**Effort:** M (2 agents)
-
-### Discord Bot Formatting Cleanup
-**Status:** DONE (Run 5, 2026-03-28) — mobile formatting fixed
-**Effort:** S (1 agent)
-
-### SQL Access via Claude CLI
-**Status:** DONE (Run 5, 2026-03-28) — agents/db-query.js, needs service role key
-**Effort:** S (1 agent)
-
-### Overnight / Autonomous Mode
-**Status:** DONE (Run 5, 2026-03-28) — autonomous mode implemented
-**Effort:** S (1 agent)
-
-## QUEUED — Build This Run (Specs Approved 2026-03-29)
+## QUEUED — Build Next (Specs Approved)
 
 ### 1. Budget Dupe Finder
 **Status:** QUEUED — Spec approved by Jules
@@ -148,11 +82,7 @@
   - "Similar Look" in UI copy (avoid "dupe" legally), shareable card can say "dupe"
 - **NOT building yet:** Dupe Feed on trending tab, push notifs for new dupes, user-submitted dupes
 
-### 2. Hanger Test — Daily Outfit Verdict Habit
-**Status:** DONE (2026-03-29) — Full-screen verdict cards with streaks, Would Wear / Pass voting
-**Effort:** M (2 agents)
-
-### 3. Style Match Score
+### 2. Style Match Score
 **Status:** QUEUED — Spec drafted by agent
 **Effort:** M
 **Spec:**
