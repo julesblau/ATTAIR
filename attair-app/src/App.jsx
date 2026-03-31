@@ -6859,10 +6859,10 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {[
-                    { label: "$", min: 0, max: 50, desc: "Under $50" },
-                    { label: "$$", min: 50, max: 150, desc: "$50–$150" },
-                    { label: "$$$", min: 150, max: 300, desc: "$150–$300" },
-                    { label: "$$$$", min: 300, max: 500, desc: "$300+" },
+                    { label: "$", min: 0, max: 50, desc: t("budget_tier_under50") },
+                    { label: "$$", min: 50, max: 150, desc: t("budget_tier_mid") },
+                    { label: "$$$", min: 150, max: 300, desc: t("budget_tier_high") },
+                    { label: "$$$$", min: 300, max: 500, desc: t("budget_tier_premium") },
                   ].map(p => {
                     const active = budgetMin === p.min && budgetMax === p.max;
                     return (
