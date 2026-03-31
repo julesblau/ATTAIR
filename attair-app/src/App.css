@@ -2834,6 +2834,51 @@
 .feed-card-heart:active{transform:scale(0.9)}
 .feed-card-heart svg{width:16px;height:16px}
 
+/* ─── Outfit of the Week (OOTW) ─── */
+.ootw-card{
+  transition:transform .2s ease,box-shadow .2s ease;
+  box-shadow:0 2px 16px rgba(201,169,110,.08),0 1px 4px rgba(0,0,0,.1);
+}
+.ootw-card:active{transform:scale(0.98)}
+.ootw-card:hover{box-shadow:0 4px 24px rgba(201,169,110,.15),0 2px 8px rgba(0,0,0,.12)}
+
+/* Shimmer effect on the OOTW badge star icon */
+@keyframes ootwPulse{
+  0%,100%{opacity:1}
+  50%{opacity:.7}
+}
+.ootw-card .ootw-badge-star{animation:ootwPulse 3s ease-in-out infinite}
+
+/* Scroll strip for scan thumbnails */
+.ootw-card::-webkit-scrollbar{display:none}
+
+/* Detail overlay */
+.ootw-overlay{
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+.ootw-overlay .feed-card{
+  transition:transform .15s ease,box-shadow .15s ease;
+}
+.ootw-overlay .feed-card:active{transform:scale(0.97)}
+
+/* Rank badges in OOTW grid — gold gradient for top 3 */
+.ootw-overlay .feed-card:nth-child(1) .ootw-rank,
+.ootw-overlay .feed-card:nth-child(2) .ootw-rank,
+.ootw-overlay .feed-card:nth-child(3) .ootw-rank{
+  background:linear-gradient(135deg,#C9A96E,#E8D5A8);
+  color:#0C0C0E;
+}
+
+/* Light theme adjustments */
+[data-theme='light'] .ootw-card{
+  box-shadow:0 2px 16px rgba(0,0,0,.06),0 1px 4px rgba(0,0,0,.04);
+  border-color:rgba(201,169,110,.25) !important;
+}
+[data-theme='light'] .ootw-card:hover{
+  box-shadow:0 4px 24px rgba(0,0,0,.1),0 2px 8px rgba(0,0,0,.06);
+}
+
 /* ─── Feed Suggested Users (Following empty state) ─── */
 .feed-suggested-users{display:flex;flex-direction:column;gap:0}
 .feed-suggested-row{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--border);animation:feedSuggestedFadeIn .35s ease both}
