@@ -435,6 +435,114 @@ describe("sendWeeklyStyleReports", () => {
   });
 });
 
+// ─── Tests: pickPersonalizedLooks ─────────────────────────────────────────
+
+describe("pickPersonalizedLooks", () => {
+  let pickPersonalizedLooks;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockSavedItemsData = [];
+    mockCandidateScansData = [];
+
+    const mod = await import("../jobs/outfitOfTheWeek.js");
+    pickPersonalizedLooks = mod.pickPersonalizedLooks;
+  });
+
+  it("falls back to top trending when user has no saved items", async () => {
+    mockSavedItemsData = []; // No saved items — no personalization signal
+
+    const result = await pickPersonalizedLooks("user-no-saves", ["t1", "t2", "t3", "t4"]);
+    expect(result).toEqual(["t1", "t2", "t3"]);
+  });
+
+  it("scores candidates by category/subcategory/style_keyword matching", async () => {
+    // User has saved streetwear outerwear items
+    mockSavedItemsData = [
+      { item_data: { category: "outerwear", subcategory: "bomber", style_keywords: ["streetwear", "urban"] } },
+      { item_data: { category: "bottoms", subcategory: "joggers", style_keywords: ["athleisure"] } },
+    ];
+
+    // Candidate scans with varying match levels
+    mockCandidateScansData = [
+      {
+        id: "scan-best",
+        items: [
+          { category: "outerwear", subcategory: "bomber", style_keywords: ["streetwear"] }, // cat:2 + subcat:3 + kw:2 = 7
+          { category: "bottoms", subcategory: "joggers", style_keywords: ["athleisure"] },  // cat:2 + subcat:3 + kw:2 = 7
+        ],
+        summary: "Perfect match scan",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "scan-mid",
+        items: [
+          { category: "outerwear", subcategory: "parka", style_keywords: ["minimal"] }, // cat:2 only
+        ],
+        summary: "Partial match scan",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "scan-low",
+        items: [
+          { category: "accessories", subcategory: "hats", style_keywords: ["preppy"] }, // 0 match
+        ],
+        summary: "No match scan",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "scan-good",
+        items: [
+          { category: "outerwear", subcategory: "bomber", style_keywords: ["urban"] }, // cat:2 + subcat:3 + kw:2 = 7
+        ],
+        summary: "Good match scan",
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    const result = await pickPersonalizedLooks("user-styled", ["t1", "t2", "t3"]);
+
+    // Should pick top 3 by score: scan-best (14), scan-good (7), scan-mid (2)
+    expect(result).toHaveLength(3);
+    expect(result[0]).toBe("scan-best");
+    // scan-good and scan-mid should be in there (both have score > 0)
+    expect(result).toContain("scan-good");
+    expect(result).toContain("scan-mid");
+    // scan-low has 0 match score, should NOT be included
+    expect(result).not.toContain("scan-low");
+  });
+
+  it("fills remaining slots from trending when fewer than 3 matches", async () => {
+    mockSavedItemsData = [
+      { item_data: { category: "outerwear", subcategory: "bomber", style_keywords: ["streetwear"] } },
+    ];
+
+    // Only 1 candidate with a match
+    mockCandidateScansData = [
+      {
+        id: "scan-match",
+        items: [{ category: "outerwear", subcategory: "bomber", style_keywords: ["streetwear"] }],
+        summary: "Match",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "scan-nomatch",
+        items: [{ category: "accessories", subcategory: "rings", style_keywords: ["glam"] }],
+        summary: "No match",
+        created_at: new Date().toISOString(),
+      },
+    ];
+
+    const result = await pickPersonalizedLooks("user-partial", ["t1", "t2", "t3"]);
+
+    expect(result).toHaveLength(3);
+    expect(result[0]).toBe("scan-match"); // personalized pick
+    // Remaining 2 filled from trending
+    expect(result).toContain("t1");
+    expect(result).toContain("t2");
+  });
+});
+
 // ─── Tests: Routes ─────────────────────────────────────────────────────────
 
 describe("OOTW Routes", () => {

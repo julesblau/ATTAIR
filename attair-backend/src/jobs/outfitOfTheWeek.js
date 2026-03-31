@@ -214,7 +214,7 @@ export async function generateOutfitOfTheWeek() {
  * Pick 3 personalized looks for a Pro user based on their style history.
  * Falls back to top trending if insufficient data.
  */
-async function pickPersonalizedLooks(userId, topTrendingIds) {
+export async function pickPersonalizedLooks(userId, topTrendingIds) {
   // Get user's recent saved item categories/styles for matching
   const { data: savedItems } = await supabase
     .from("saved_items")
