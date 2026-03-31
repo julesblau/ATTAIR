@@ -3980,13 +3980,22 @@ export default function App() {
     }
     // Deep link from Weekly Style Report push notification
     if (window.location.pathname === "/weekly-report" && authed) {
+      setWeeklyReportOpen(true);
+      setWeeklyReportLoading(true);
+      setWeeklyReportError(false);
+      setWeeklyReportNotPro(false);
       API.getMyWeeklyReport()
         .then(d => {
-          if (d.report && d.report.scans && d.report.scans.length > 0) {
+          if (d.reason === "not_pro") {
+            // Free user tapped a stale push link — show upgrade nudge
+            setWeeklyReportNotPro(true);
+            setWeeklyReportLoading(false);
+          } else if (d.report && d.report.scans && d.report.scans.length > 0) {
             setWeeklyReport(d.report);
-            setWeeklyReportOpen(true);
+            setWeeklyReportLoading(false);
           } else {
-            // Fallback: show generic OOTW
+            // No report this week — fallback to generic OOTW
+            setWeeklyReportOpen(false);
             setOotwLoading(true);
             API.getOOTW()
               .then(od => { if (od.ootw) { setOotwData(od.ootw); setOotwExpanded(true); } })
@@ -3995,11 +4004,8 @@ export default function App() {
           }
         })
         .catch(() => {
-          setOotwLoading(true);
-          API.getOOTW()
-            .then(od => { if (od.ootw) { setOotwData(od.ootw); setOotwExpanded(true); } })
-            .catch(err => { console.error("[OOTW] deep-link fetch failed:", err); setOotwError(true); })
-            .finally(() => setOotwLoading(false));
+          setWeeklyReportLoading(false);
+          setWeeklyReportError(true);
         });
       window.history.replaceState({}, "", "/");
     }
@@ -4174,6 +4180,9 @@ export default function App() {
   // ─── Weekly Style Report (Pro users) ────────────────────────
   const [weeklyReport, setWeeklyReport] = useState(null);     // { scans, week_start, ... }
   const [weeklyReportOpen, setWeeklyReportOpen] = useState(false);
+  const [weeklyReportLoading, setWeeklyReportLoading] = useState(false);
+  const [weeklyReportError, setWeeklyReportError] = useState(false);
+  const [weeklyReportNotPro, setWeeklyReportNotPro] = useState(false); // free user tapped push link
 
   // ─── Style Twins ────────────────────────────────────────────
   const [styleTwins, setStyleTwins] = useState([]);
@@ -9570,14 +9579,82 @@ export default function App() {
         )}
 
         {/* ─── Weekly Style Report Overlay (Pro users) ── */}
-        {weeklyReportOpen && weeklyReport && (
+        {weeklyReportOpen && (
           <div className="ootw-overlay animate-fade-in" style={{ position: "fixed", inset: 0, zIndex: 1100, background: "var(--bg-primary)", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
             <button
               aria-label="Close"
-              onClick={() => setWeeklyReportOpen(false)}
+              onClick={() => { setWeeklyReportOpen(false); setWeeklyReportError(false); setWeeklyReportNotPro(false); }}
               style={{ position: "fixed", top: 12, right: 12, zIndex: 1101, width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", border: "none", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
             >&#x2715;</button>
 
+            {/* Loading state */}
+            {weeklyReportLoading && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 16, padding: 32 }}>
+                <div style={{ width: "100%", maxWidth: 340 }}>
+                  <div className="skeleton" style={{ width: "100%", height: 200, borderRadius: 16, marginBottom: 16 }} />
+                  <div className="skeleton" style={{ width: "60%", height: 14, borderRadius: 8, marginBottom: 10 }} />
+                  <div className="skeleton" style={{ width: "85%", height: 22, borderRadius: 8, marginBottom: 12 }} />
+                  <div className="skeleton" style={{ width: "100%", height: 160, borderRadius: 16, marginBottom: 12 }} />
+                  <div className="skeleton" style={{ width: "100%", height: 160, borderRadius: 16, marginBottom: 12 }} />
+                  <div className="skeleton" style={{ width: "100%", height: 160, borderRadius: 16 }} />
+                </div>
+              </div>
+            )}
+
+            {/* Error state */}
+            {weeklyReportError && !weeklyReportLoading && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 16, padding: 32, textAlign: "center" }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: "rgba(255,59,48,0.12)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)" }}>Couldn't load your report</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 260 }}>Something went wrong fetching your Weekly Style Report. Check your connection and try again.</div>
+                <button
+                  onClick={() => {
+                    setWeeklyReportError(false);
+                    setWeeklyReportLoading(true);
+                    API.getMyWeeklyReport()
+                      .then(d => {
+                        if (d.report && d.report.scans && d.report.scans.length > 0) {
+                          setWeeklyReport(d.report);
+                        } else {
+                          setWeeklyReportOpen(false);
+                          setOotwLoading(true);
+                          API.getOOTW()
+                            .then(od => { if (od.ootw) { setOotwData(od.ootw); setOotwExpanded(true); } })
+                            .catch(() => setOotwError(true))
+                            .finally(() => setOotwLoading(false));
+                        }
+                      })
+                      .catch(() => setWeeklyReportError(true))
+                      .finally(() => setWeeklyReportLoading(false));
+                  }}
+                  style={{ marginTop: 8, padding: "10px 28px", borderRadius: 100, background: "var(--accent)", color: "#0C0C0E", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}
+                >Retry</button>
+              </div>
+            )}
+
+            {/* Not Pro — upgrade nudge */}
+            {weeklyReportNotPro && !weeklyReportLoading && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 16, padding: 32, textAlign: "center" }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, rgba(201,169,110,0.15), rgba(232,213,168,0.15))", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)" }}>Weekly Style Reports are for Pro</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 280 }}>Upgrade to Pro to get 3 personalized looks delivered every Sunday, curated from trending scans that match your style.</div>
+                <button
+                  onClick={() => { setWeeklyReportOpen(false); setWeeklyReportNotPro(false); setTab("profile"); }}
+                  style={{ marginTop: 8, padding: "10px 28px", borderRadius: 100, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", color: "#0C0C0E", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}
+                >Upgrade to Pro</button>
+                <button
+                  onClick={() => { setWeeklyReportOpen(false); setWeeklyReportNotPro(false); }}
+                  style={{ padding: "8px 20px", background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 13, cursor: "pointer" }}
+                >Maybe later</button>
+              </div>
+            )}
+
+            {/* Report content — only shown when data loaded */}
+            {weeklyReport && !weeklyReportLoading && !weeklyReportError && !weeklyReportNotPro && (<>
             {/* Hero */}
             <div style={{ position: "relative", width: "100%", height: 220, overflow: "hidden" }}>
               {weeklyReport.scans[0]?.image_url ? (
@@ -9647,6 +9724,7 @@ export default function App() {
                 );
               })}
             </div>
+          </>)}
           </div>
         )}
 
