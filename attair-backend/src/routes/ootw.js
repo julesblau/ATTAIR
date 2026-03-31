@@ -55,16 +55,33 @@ router.get("/current", requireAuth, async (req, res) => {
         // Get profiles and save counts
         const userIds = [...new Set(scanData.map(s => s.user_id))];
 
-        const [{ data: profiles }, { data: saveRows }] = await Promise.all([
-          supabase.from("profiles").select("id, display_name, avatar_url").in("id", userIds),
-          supabase.from("saved_items").select("scan_id").in("scan_id", scanIds),
-        ]);
+        let profiles = [];
+        let saveRows = [];
+
+        if (userIds.length > 0) {
+          const [profileResult, saveResult] = await Promise.all([
+            supabase.from("profiles").select("id, display_name, avatar_url").in("id", userIds),
+            supabase.from("saved_items").select("scan_id").in("scan_id", scanIds),
+          ]);
+
+          if (profileResult.error) {
+            console.error("[OOTW] Profile fetch error:", profileResult.error.message);
+          } else {
+            profiles = profileResult.data || [];
+          }
+
+          if (saveResult.error) {
+            console.error("[OOTW] Save count fetch error:", saveResult.error.message);
+          } else {
+            saveRows = saveResult.data || [];
+          }
+        }
 
         const profileMap = {};
-        (profiles || []).forEach(p => { profileMap[p.id] = p; });
+        profiles.forEach(p => { profileMap[p.id] = p; });
 
         const saveCountMap = {};
-        (saveRows || []).forEach(row => {
+        saveRows.forEach(row => {
           if (row.scan_id) saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
         });
 
@@ -156,16 +173,33 @@ router.get("/my-report", requireAuth, async (req, res) => {
       if (scanData) {
         const userIds = [...new Set(scanData.map(s => s.user_id))];
 
-        const [{ data: profiles }, { data: saveRows }] = await Promise.all([
-          supabase.from("profiles").select("id, display_name, avatar_url").in("id", userIds),
-          supabase.from("saved_items").select("scan_id").in("scan_id", scanIds),
-        ]);
+        let profiles = [];
+        let saveRows = [];
+
+        if (userIds.length > 0) {
+          const [profileResult, saveResult] = await Promise.all([
+            supabase.from("profiles").select("id, display_name, avatar_url").in("id", userIds),
+            supabase.from("saved_items").select("scan_id").in("scan_id", scanIds),
+          ]);
+
+          if (profileResult.error) {
+            console.error("[WeeklyReport] Profile fetch error:", profileResult.error.message);
+          } else {
+            profiles = profileResult.data || [];
+          }
+
+          if (saveResult.error) {
+            console.error("[WeeklyReport] Save count fetch error:", saveResult.error.message);
+          } else {
+            saveRows = saveResult.data || [];
+          }
+        }
 
         const profileMap = {};
-        (profiles || []).forEach(p => { profileMap[p.id] = p; });
+        profiles.forEach(p => { profileMap[p.id] = p; });
 
         const saveCountMap = {};
-        (saveRows || []).forEach(row => {
+        saveRows.forEach(row => {
           if (row.scan_id) saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
         });
 

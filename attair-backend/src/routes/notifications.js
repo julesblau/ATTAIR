@@ -157,7 +157,7 @@ router.patch("/preferences", requireAuth, async (req, res) => {
   }
 
   // Only allow known preference keys
-  const ALLOWED_KEYS = ["price_drops", "style_dna", "social_activity", "new_posts", "weekly_digest", "hanger_test", "follow_up_nudges", "style_twins"];
+  const ALLOWED_KEYS = ["price_drops", "style_dna", "social_activity", "new_posts", "weekly_digest", "hanger_test", "follow_up_nudges", "style_twins", "weekly_style_report"];
   const sanitized = {};
   for (const key of ALLOWED_KEYS) {
     if (key in preferences) {
