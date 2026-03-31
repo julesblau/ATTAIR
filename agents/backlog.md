@@ -3,6 +3,93 @@
 > Feature backlog for ATTAIRE. Discord bot pulls from here by priority.
 > Remove items after they're built.
 
+## CRITICAL — Must Fix Now (Jules priority update 2026-03-30)
+
+### Fix Broken Scan/Search — No Results Returned
+**Status:** QUEUED — Must fix now
+**Effort:** M
+**Spec:**
+- **Problem:** Both Fast Search and Deep Search return "no products found" after loading. Happens with personal photos AND Google images. The core feature of the app is completely broken.
+- **Investigate:** Trace the full flow end-to-end: frontend image upload → backend endpoint → SerpAPI queries → Claude vision analysis → results rendering. Find where results are being lost or requests are failing.
+- **Fix:** Whatever is broken in the pipeline — API keys, request format, parsing, error handling. Must return real product results for any fashion image.
+- **Verify:** Test with at least 3 different images (personal photo, Google image, screenshot) on both Fast Search and Deep Search. All must return results.
+
+### Fix Logo Colors for Dark/Light Mode
+**Status:** QUEUED — Must fix now
+**Effort:** S
+**Spec:**
+- **Problem:** Logo in top-left header has wrong colors for dark/light mode.
+- **Dark mode:** Logo background should be WHITE, letters should be BLACK.
+- **Light mode:** Logo background should be BLACK, letters should be WHITE.
+- **Scope:** Affects the logo on all pages (top-left header). Also ADD the logo to the landing/signup page for new users — it's missing there.
+
+### Fix Logo Rectangle Spacing
+**Status:** QUEUED — Must fix now
+**Effort:** S
+**Spec:**
+- **Problem:** The rectangle behind the logo text is too wide horizontally and has uneven vertical padding.
+- **Fix 1:** Tighten the rectangle horizontally — less space between the edges of the rectangle and the letters. Keep a small gap, not a wide one.
+- **Fix 2:** Make vertical padding even — equal spacing above and below the letters relative to the rectangle edges. Currently uneven (text sits closer to one edge than the other).
+
+### Fix Style DNA Text Contrast (Light Mode Only)
+**Status:** QUEUED — Must fix now
+**Effort:** S
+**Spec:**
+- **Problem:** On Profile → Style DNA in LIGHT MODE, the description text is small black text on a purple background. Unreadable.
+- **Dark mode looks perfect — do NOT change dark mode styling.**
+- **Fix:** Light mode description text needs to match what dark mode does — white/light text for proper contrast against the purple background.
+- **Scope:** Only the description text in light mode — layout and content are fine.
+
+### Budget Range Slider in Settings
+**Status:** QUEUED — Must fix now
+**Effort:** S
+**Spec:**
+- **Problem:** Profile → Settings → Default Budget Range does nothing when tapped.
+- **Fix:** Tapping opens a centered popup modal with a range slider (min and max). User drags to set their default budget range. Save on confirm.
+- **Range:** $0 – $1000 (or appropriate max).
+
+### Size Preferences Popup in Settings
+**Status:** QUEUED — Must fix now
+**Effort:** M
+**Spec:**
+- **Problem:** Profile → Settings → Size Preferences does nothing when tapped.
+- **Fix:** Tapping opens a centered popup modal to set sizes per clothing category.
+- **Flow:**
+  1. User picks gender (Men / Women) — determines which size scales to show
+  2. Set size per category: Tops (XS/S/M/L/XL/XXL), Bottoms waist (28-40), Bottoms length (28-36), Shoes (men 6-15 / women 5-12), Dresses (women only, 0-16)
+  3. Each category has the appropriate scale for the selected gender
+  4. Save on confirm.
+
+### Fix Language Setting — Full i18n
+**Status:** QUEUED — Must fix now
+**Effort:** M
+**Spec:**
+- **Problem:** Profile → Settings → Language only changes select text. Many buttons, labels, and UI elements remain in English.
+- **Fix:** All existing languages must translate ALL text — every button, label, modal, placeholder, error message. Nothing should remain in English when a language is selected.
+- **Confirmation:** When user changes language, show a centered confirmation popup in the NEW language before applying the change.
+- **Scope:** Fix all existing languages in the app, don't add new ones.
+
+### Fix Followers/Following
+**Status:** QUEUED — Must fix now
+**Effort:** M
+**Spec:**
+- **Problem:** Tapping followers/following count on Profile does nothing.
+- **Fix:** Tapping opens a list view showing follower or following users.
+  - Each row: avatar, display name, style info
+  - Tappable to view their profile
+  - Follow/unfollow button on each row
+- **Data:** Use existing seeded AI users to populate lists. The feature should work end-to-end with the fake data.
+
+### Fix My Scans Page — Remove Clutter
+**Status:** QUEUED — Must fix now
+**Effort:** S
+**Spec:**
+- **Problem 1:** "Complete the Look" button is at the top of the My Scans page. It doesn't belong here.
+  - **Move** "Complete the Look" to the search results page (both fresh scan results AND when tapping into a past scan to view its results).
+  - **Remove** it from the My Scans page entirely.
+- **Problem 2:** Two redundant filter rows at the top — "All / My Picks" AND "All Scans / Wishlist / Bookmarks". Confusing and duplicative.
+  - **Fix:** Consolidate into ONE clean filter bar. Merge the logic into a single row of filter options.
+
 ## CRITICAL — Build This Run (Jules priority update 2026-03-28)
 
 ### ATTAIRE Rename + Branding

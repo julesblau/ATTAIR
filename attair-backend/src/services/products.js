@@ -1832,6 +1832,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
   // FAST MODE: run Lens and text search in PARALLEL to stay under 5s.
   // EXTENDED MODE: run Lens first, then text with early-exit optimization.
   const itemPools = items.map(() => ({ lens: [], text: [], textQueryCount: 0 }));
+  let lensResults = []; // hoisted so telemetry (line ~2354) can access it
 
   if (searchMode === "fast") {
     // ── FAST MODE: Lens + all text queries fire simultaneously ──
@@ -1843,7 +1844,8 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       itemPools[i].textQueryCount = Math.min(2, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0));
     });
 
-    const [lensResults] = await Promise.all([lensPromise, ...textPromises]);
+    const [lensRaw] = await Promise.all([lensPromise, ...textPromises]);
+    lensResults = lensRaw;
 
     // Match Lens results to items
     for (const result of lensResults) {
@@ -1856,7 +1858,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     }
   } else {
     // ── EXTENDED MODE: Lens first, then text with early-exit ──
-    const lensResults = await googleLensSearch(imageUrl);
+    lensResults = await googleLensSearch(imageUrl);
 
     for (const result of lensResults) {
       const matchIdx = matchLensResultToItem(result, items);

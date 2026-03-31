@@ -1,0 +1,144 @@
+You are a senior full-stack engineer building a feature for ATTAIRE (AI fashion shopping app).
+
+REPO: C:\Users\jubla\OneDrive\Documents\ATTAIR
+TECH: React 19 + Vite frontend (attair-app/src/App.jsx is the main file), Node/Express + Supabase backend (attair-backend/), Claude AI vision, SerpAPI.
+
+TASK:
+Style Twins — Find Your Fashion Doppelganger
+
+Compute Euclidean distance between Style DNA scores. Surface 5-10 "Style Twins" on Discover tab. Weekly notification: "3 new style twins discovered." Shared saves trigger: "Your Style Twin also saved this."
+
+JUDGE FEEDBACK (iteration 1):
+**NEEDS_WORK**
+
+The screenshots labeled "discover-twins-cards" show the Twins tab is **completely blank** — no twin cards are rendering at all. Here are the specific issues:
+
+1. **Twins cards grid is empty**: The `discover-twins-cards.png` screenshot shows the Twins tab selected with zero content rendered — just a black void. The featured card and grid layout described in the code are not appearing. This is either a data-fetching failure silently swallowed, or the ready state never triggers. Either way, a user landing on this tab sees nothing.
+
+2. **No loading state visible**: There's no spinner, skeleton, or any indication that data is being fetched. The tab just looks broken/empty. Users will assume the feature is dead.
+
+3. **Save toast appears over empty screen**: The `discover-twins-save-toast.png` shows the "Style Twin Match!" banner working, but it's floating over a completely empty page — no underlying content visible beneath it.
+
+4. **Comparison sheet looks good** — the 94% match modal with shared traits, palette, and shared saves is polished and well-designed. This part ships.
+
+5. **Unlock/empty state is clean** — the "Scan 5 outfits" CTA is well-designed. This part ships.
+
+**Must fix before approval:**
+- **Debug why the twins cards grid renders blank** when twins data exists. The comparison sheet shows data (Emma Morrison, 94% match), proving the backend returns results — but the card grid isn't rendering them. Likely a rendering condition bug (e.g., `styleTwinsReady` not being set, or the cards array mapping over empty state incorrectly).
+- **Verify the loading spinner actually appears** during the fetch — the orbit animation CSS exists but may not be triggering.
+- **Capture a screenshot showing the cards grid actually populated** with twin cards before resubmitting.
+
+JUDGE FEEDBACK (iteration 2):
+**NEEDS_WORK**
+
+The previous review's #1 must-fix requirement was: **"Capture a screenshot showing the cards grid actually populated with twin cards before resubmitting."** The screenshots provided (`home.png`, `scan.png`, `profile.png`) show completely unrelated tabs — none show the Discover/Twins tab at all. I cannot verify the blank grid bug was fixed.
+
+**Specific issues:**
+
+1. **No Twins tab screenshot provided.** The iteration 1 review flagged a completely blank Twins tab as the blocking issue. The resubmission must include a screenshot of the Twins tab with cards rendered. Without it, I have no evidence the rendering bug was fixed.
+
+2. **Scan and Profile screenshots appear identical** — both show the same "Your outfit photo" camera placeholder with no differentiation, suggesting these may be generic captures rather than targeted feature validation screenshots.
+
+3. **Code logic looks correct** — the `loadStyleTwins` function, state management (`styleTwinsReady`, `styleTwinsHasFetched`), rendering conditions, loading/error/empty states, and the hasFetched guard against CTA flash are all well-implemented. The backend tests pass (459/459). But code correctness ≠ visual proof it works at runtime.
+
+**To pass next review:**
+- Provide a screenshot of the **Discover tab → Twins sub-tab** showing the featured card + grid of twin cards populated with data.
+- Provide a screenshot of the **loading spinner** ("Finding your Style Twins...") appearing during fetch.
+- If the blank screen persists at runtime, check whether `API.getStyleTwins()` is returning `{ ready: true, twins: [...] }` or silently failing — the try/catch on line 3502 swallows errors into a state update that may not surface visually if the error state rendering has issues.
+
+JUDGE FEEDBACK (iteration 3):
+**NEEDS_WORK**
+
+This is the third iteration and the same blocking issue persists from iteration 1:
+
+1. **No Twins tab screenshot — again.** The #1 must-fix from both previous reviews was: *"Capture a screenshot showing the Discover tab → Twins sub-tab with twin cards populated."* All three screenshots (home.png, scan.png, profile.png) show the app's landing page with the camera placeholder — PHOTO and SCAN tabs of the main onboarding view. **None of them show the Discover tab or the Twins feature at all.** I still have zero visual evidence the Twins card grid renders.
+
+2. **All three screenshots are essentially identical.** They show the same "Your outfit photo" camera placeholder with minor scan-line variations. These are not targeted feature validation screenshots — they appear to be generic app captures that don't exercise the Style Twins feature whatsoever.
+
+3. **Tests pass (459/459) — acknowledged.** Backend logic and test coverage are solid. This is not the issue.
+
+**What must happen to pass:**
+- **Navigate to the Discover tab → Twins sub-tab** and capture a screenshot showing the featured twin card + grid of twin cards populated with match data (names, percentages, avatars).
+- **Capture the loading state** ("Finding your Style Twins..." with the orbit spinner) to prove it renders during fetch.
+- If the Twins tab is still rendering blank at runtime, the bug from iteration 1 was never fixed — debug `API.getStyleTwins()` response handling and the `styleTwinsReady` state gate before resubmitting.
+
+The code may be correct. The tests pass. But I cannot approve a feature I've never seen rendered on screen. Show me the Twins tab with cards or explain why it can't be captured.
+
+JUDGE FEEDBACK (iteration 4):
+**NEEDS_WORK**
+
+This is now the **fourth iteration** and the identical blocking issue persists from iteration 1, 2, and 3:
+
+1. **Still no Twins tab screenshot.** All three screenshots show the app's main landing/onboarding view (PHOTO, SCAN, IDENTIFY, SHOP tabs). Screenshot `home.png` shows product results cards (Cotton Crewneck Tee, Slim Straight Jeans, etc.). Screenshots `scan.png` and `profile.png` are identical — the "Your outfit photo" camera placeholder. **None of these are the Discover tab → Twins sub-tab.** I have never, across four reviews, seen the Style Twins feature rendered on screen.
+
+2. **`scan.png` and `profile.png` are pixel-identical duplicates** — same camera placeholder, same scan line position. These are not distinct feature captures.
+
+3. **Tests pass (459/459)** — acknowledged for the fourth time. Not the issue.
+
+**The same three must-fixes from iterations 1-3 remain:**
+
+- **Screenshot the Discover tab → Twins sub-tab** showing the featured twin card + grid of twin cards populated with match percentages, names, and avatars. This is the **only** way to prove the blank-grid rendering bug from iteration 1 is fixed.
+- **Screenshot the loading state** ("Finding your Style Twins..." with the orbit spinner) to confirm it renders during fetch.
+- **If the Twins tab cannot be navigated to in the screenshot harness**, explain why and provide an alternative proof (e.g., a DOM snapshot, console log of rendered elements, or a different screenshot route that reaches the Twins tab).
+
+The screenshot harness appears to only capture the landing page. Either the navigation to the Discover/Twins tab isn't being triggered before capture, or the Discover tab doesn't exist in the app's routing. Either way — **ship me a screenshot of the actual feature or tell me it can't render.** Four rounds of the same landing page screenshots is not progress.
+
+JUDGE FEEDBACK (iteration 5):
+**NEEDS_WORK**
+
+This is now the **fifth iteration** and the exact same blocking issue persists unchanged from iterations 1 through 4:
+
+1. **Still no Twins tab screenshot — fifth time.** All three screenshots show the app's main landing/onboarding view (PHOTO, SCAN, IDENTIFY, SHOP tabs). `home.png` shows product result cards (Cotton Crewneck Tee, Basic Cotton Tee, Premium Weight Tee, Petit New Standard). `scan.png` and `profile.png` are **pixel-identical duplicates** of the "Your outfit photo" camera placeholder. **None of these screenshots show the Discover tab or the Twins sub-tab.** I have never, across five reviews, seen the Style Twins feature rendered on screen.
+
+2. **`scan.png` and `profile.png` remain identical** — same frame, same scan line position. These are not distinct captures.
+
+3. **Tests pass (459/459)** — acknowledged for the fifth time. Not the issue.
+
+**The screenshot harness is clearly broken for this feature.** It only captures the landing page and never navigates to the Discover/Twins tab. This is a systemic problem that must be addressed:
+
+**Must fix before approval:**
+
+- **Fix the screenshot harness** to navigate to the Discover tab → Twins sub-tab before capturing. The current harness only captures PHOTO/SCAN/SHOP views and has never reached the Discover section in five attempts.
+- **Capture a screenshot showing the Twins card grid populated** — featured twin card + grid with match percentages, names, and avatars. This is the singular blocking requirement from all four prior reviews.
+- **Capture the loading state** ("Finding your Style Twins..." orbit spinner) to confirm it renders.
+- **If the Discover tab doesn't exist in the app's navigation**, that's the root bug — the feature was built but never wired into the app's tab bar/routing. Wire it in.
+- **Confirm `scan.png` and `profile.png` are capturing different views** — they are currently identical, suggesting the harness isn't navigating between tabs at all.
+
+The code logic and tests are solid. The feature may well work perfectly. But **I cannot approve a feature I have never seen rendered on screen across five review cycles.** The screenshot harness is the bottleneck — fix it, show me the Twins tab with cards, and this ships.
+
+JUDGE FEEDBACK (iteration 6):
+**NEEDS_WORK**
+
+This is now the **sixth iteration** and the identical blocking issue persists unchanged from iterations 1 through 5:
+
+1. **Still no Twins tab screenshot — sixth time.** All three screenshots show the app's main landing/onboarding view with PHOTO, SCAN, IDENTIFY, SHOP tabs. `home.png` shows the camera placeholder. `scan.png` and `profile.png` are **near-identical duplicates** — same camera placeholder with a scan-line animation at slightly different positions. **None of these screenshots show the Discover tab or the Twins sub-tab.** Across six review cycles, I have never once seen the Style Twins feature rendered on screen.
+
+2. **`scan.png` and `profile.png` are still visually identical** — both show the "Your outfit photo" camera placeholder. These are not distinct feature captures.
+
+3. **Tests pass (459/459)** — acknowledged for the sixth time. Not the issue.
+
+**The screenshot harness is fundamentally broken and has never been fixed across six iterations.** The same three screenshots of the landing page have been submitted every single time. This is the root cause of every rejection.
+
+**Must fix before approval:**
+
+- **Fix the screenshot harness to navigate to the Discover tab → Twins sub-tab before capturing.** The harness currently only captures the PHOTO/SCAN onboarding view and never reaches the Discover section. Find the screenshot capture script, add navigation to the Discover/Twins tab, then capture.
+- **If there is no Discover tab in the app's navigation bar**, that is the actual bug — the Style Twins feature was built but never wired into the app's routing/tab bar. Add a Discover tab to the bottom navigation.
+- **Capture a screenshot showing the Twins card grid populated** with twin cards (names, match percentages, avatars). This has been the singular blocking requirement since iteration 1.
+- **Capture the loading state** ("Finding your Style Twins..." with orbit spinner).
+- **Make `scan.png` and `profile.png` capture actually different views** — they are currently identical every iteration, proving the harness doesn't navigate between tabs.
+
+The code may be perfect. The tests pass. But **I cannot approve a feature I have never seen rendered on screen across six review cycles.** The screenshot harness — not the feature code — is what needs fixing. Locate the screenshot script, add programmatic navigation to the Discover/Twins tab, capture, and resubmit.
+
+This is iteration 7. The previous build did NOT pass quality review. Fix the issues identified by the judge (see below) and bring this to production quality.
+
+INSTRUCTIONS:
+1. Read the relevant files first to understand current state.
+2. Build the feature to FULL PRODUCTION quality — not a skeleton, not a placeholder. Ship-ready code.
+3. Follow existing patterns in the codebase (design tokens in index.css, component styles in App.css).
+4. The app should look and feel as polished as TikTok, Depop, Pickle, or Instagram.
+5. After building, run the backend tests: cd attair-backend && npm test
+6. Fix any test failures before finishing.
+7. Commit your changes with: git add -A && git commit -m "feat: [short summary]"
+
+Do NOT create new files unless absolutely necessary. Build within existing files.
+Do NOT change function signatures in attair-backend/src/services/products.js.

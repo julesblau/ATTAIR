@@ -11,24 +11,76 @@ const ts = String(Date.now());
 const VITE_URL = "http://localhost:5173";
 const APP_DIR = join(__dirname, "..", "..", "attair-app");
 
-// Mock twin data — React renders it natively through normal code path (no HTML injection)
-const MOCK_TWINS_DATA = {
-  ready: true,
-  my_archetype: "Modern Classic",
-  my_style_score: { classic_vs_trendy: 3, minimal_vs_maximal: 2, casual_vs_formal: 7, budget_vs_luxury: 6 },
-  total_matches: 6,
-  twins: [
-    { id: "twin-1", display_name: "Emma Morrison", avatar_url: null, match_pct: 94, archetype: "Modern Classic", bio: "Clean lines, neutral palettes, timeless pieces", shared_axes: ["Minimal", "Classic"], traits: ["Chic", "Polished"], dominant_colors: ["navy", "cream", "brown"], shared_saves_count: 3, shared_saves: ["Wool Overcoat", "Cashmere Sweater", "Silk Blouse"], style_score: { classic_vs_trendy: 3, minimal_vs_maximal: 2, casual_vs_formal: 7, budget_vs_luxury: 7 }, is_following: false },
-    { id: "twin-2", display_name: "James Kim", avatar_url: null, match_pct: 87, archetype: "Refined Edge", bio: "Sharp tailoring meets modern ease", shared_axes: ["Minimal", "Formal"], traits: ["Sharp", "Modern"], dominant_colors: ["charcoal", "silver", "white"], shared_saves_count: 0, shared_saves: [], style_score: { classic_vs_trendy: 4, minimal_vs_maximal: 2, casual_vs_formal: 8, budget_vs_luxury: 7 }, is_following: false },
-    { id: "twin-3", display_name: "Sofia Patel", avatar_url: null, match_pct: 76, archetype: "Elegant Minimal", bio: "Less is more, quality over quantity", shared_axes: ["Classic"], traits: ["Elegant"], dominant_colors: ["gold", "cream"], shared_saves_count: 1, shared_saves: ["Silk Blouse"], style_score: { classic_vs_trendy: 3, minimal_vs_maximal: 3, casual_vs_formal: 6, budget_vs_luxury: 8 }, is_following: false },
-    { id: "twin-4", display_name: "Alex Rivera", avatar_url: null, match_pct: 72, archetype: "Street Luxe", bio: "Streetwear with a luxury twist", shared_axes: ["Trendy"], traits: ["Bold"], dominant_colors: ["black", "white", "red"], shared_saves_count: 0, shared_saves: [], style_score: { classic_vs_trendy: 7, minimal_vs_maximal: 4, casual_vs_formal: 5, budget_vs_luxury: 7 }, is_following: false },
-    { id: "twin-5", display_name: "Maya Williams", avatar_url: null, match_pct: 63, archetype: "Boho Chic", bio: "Free-spirited and earthy vibes", shared_axes: ["Balanced"], traits: ["Relaxed"], dominant_colors: ["olive", "rust", "cream"], shared_saves_count: 0, shared_saves: [], style_score: { classic_vs_trendy: 5, minimal_vs_maximal: 5, casual_vs_formal: 4, budget_vs_luxury: 5 }, is_following: false }
+// ─── Mock scan data with product results ───────────────────
+// This simulates a completed scan with real-looking product tiers
+const MOCK_SCAN_IMAGE = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop";
+
+const MOCK_SCAN = {
+  id: "scan-demo-001",
+  scan_name: "Street Style Look",
+  detected_gender: "male",
+  summary: "Clean casual streetwear with layered neutrals — modern minimalist with a relaxed edge.",
+  image_url: MOCK_SCAN_IMAGE,
+  image_thumbnail: MOCK_SCAN_IMAGE,
+  created_at: new Date().toISOString(),
+  items: [
+    { name: "Oversized Crew Neck Sweater", brand: "COS", color: "Cream", category: "Tops", material: "Wool blend" },
+    { name: "Straight Leg Trousers", brand: "Uniqlo", color: "Charcoal", category: "Bottoms", material: "Cotton twill" },
+    { name: "Leather Low-Top Sneakers", brand: "Common Projects", color: "White", category: "Shoes", material: "Leather" },
+  ],
+  tiers: [
+    {
+      item_index: 0,
+      tiers: {
+        budget: [
+          { product_name: "Oversized Crew Sweater", brand: "H&M", price: "$34.99", url: "https://hm.com/sweater", image_url: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=300&h=300&fit=crop", is_product_page: true, style_match: 82 },
+          { product_name: "Relaxed Wool Blend Sweater", brand: "Uniqlo", price: "$49.90", url: "https://uniqlo.com/sweater", image_url: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=300&h=300&fit=crop", is_product_page: true, style_match: 78 },
+        ],
+        mid: [
+          { product_name: "Oversized Merino Crew", brand: "COS", price: "$89.00", url: "https://cos.com/sweater", image_url: "https://images.unsplash.com/photo-1614975059251-992f11792571?w=300&h=300&fit=crop", is_product_page: true, is_identified_brand: true, style_match: 94 },
+          { product_name: "Wool Crewneck", brand: "Arket", price: "$79.00", url: "https://arket.com/sweater", image_url: "https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=300&h=300&fit=crop", is_product_page: true, style_match: 88 },
+          { product_name: "Premium Crew Sweater", brand: "& Other Stories", price: "$99.00", url: "https://stories.com/sweater", image_url: "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=300&h=300&fit=crop", is_product_page: true, style_match: 71 },
+        ],
+        premium: [
+          { product_name: "Cashmere Oversized Crew", brand: "Auralee", price: "$420.00", url: "https://auralee.jp/sweater", image_url: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=300&h=300&fit=crop", is_product_page: true, style_match: 96 },
+        ],
+        resale: [
+          { product_name: "COS Wool Sweater (Like New)", brand: "Depop", price: "$38.00", url: "https://depop.com/sweater", image_url: "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=300&h=300&fit=crop", is_product_page: true, style_match: 85 },
+        ],
+      }
+    },
+    {
+      item_index: 1,
+      tiers: {
+        budget: [
+          { product_name: "Straight Fit Chinos", brand: "Uniqlo", price: "$39.90", url: "https://uniqlo.com/chinos", image_url: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=300&h=300&fit=crop", is_product_page: true, is_identified_brand: true, style_match: 91 },
+          { product_name: "Relaxed Chino Trousers", brand: "Zara", price: "$45.90", url: "https://zara.com/chinos", image_url: "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=300&h=300&fit=crop", is_product_page: true, style_match: 76 },
+        ],
+        mid: [
+          { product_name: "Tapered Wool Trousers", brand: "COS", price: "$115.00", url: "https://cos.com/trousers", image_url: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=300&h=300&fit=crop", is_product_page: true, style_match: 89 },
+        ],
+        premium: [
+          { product_name: "Pleated Wide Trousers", brand: "Lemaire", price: "$580.00", url: "https://lemaire.fr/trousers", image_url: "https://images.unsplash.com/photo-1506629082955-511b1aa562c8?w=300&h=300&fit=crop", is_product_page: true, style_match: 93 },
+        ],
+      }
+    },
+    {
+      item_index: 2,
+      tiers: {
+        budget: [
+          { product_name: "White Leather Sneakers", brand: "Axel Arigato", price: "$65.00", url: "https://axelarigato.com/sneaker", image_url: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=300&h=300&fit=crop", is_product_page: true, style_match: 84 },
+        ],
+        mid: [
+          { product_name: "Retro Low Sneaker", brand: "Veja", price: "$150.00", url: "https://veja.com/sneaker", image_url: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=300&h=300&fit=crop", is_product_page: true, style_match: 87 },
+          { product_name: "Court Classic", brand: "Koio", price: "$248.00", url: "https://koio.co/sneaker", image_url: "https://images.unsplash.com/photo-1600269452121-4f2416e55c28?w=300&h=300&fit=crop", is_product_page: true, style_match: 90 },
+        ],
+        premium: [
+          { product_name: "Original Achilles Low", brand: "Common Projects", price: "$425.00", url: "https://commonprojects.com", image_url: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=300&h=300&fit=crop", is_product_page: true, is_identified_brand: true, style_match: 97 },
+        ],
+      }
+    },
   ]
 };
-
-const COMPARE_SHEET_HTML = `<div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px)"></div><div class="bottom-sheet style-twin-compare-sheet" style="position:absolute;bottom:0;left:0;right:0;background:var(--bg-card,#1A1A1A);border-radius:24px 24px 0 0;padding:24px 24px 32px;max-height:85vh;overflow-y:auto;border-top:1px solid rgba(255,255,255,0.08)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px"><div style="font-size:18px;font-weight:800;color:var(--text-primary,#fff);font-family:var(--font-display)">Style Comparison</div></div><div style="display:flex;justify-content:center;margin-bottom:24px"><div class="style-twin-compare-ring"><span class="style-twin-compare-pct">94%</span><span style="font-size:10px;color:var(--text-secondary,rgba(255,255,255,0.6));font-weight:500">match</span></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;text-align:center;margin-bottom:24px"><div><div class="style-twin-avatar-sm" style="margin:0 auto 8px;width:48px;height:48px"><span style="font-size:16px">ME</span></div><div style="font-size:13px;font-weight:600;color:var(--text-primary,#fff)">You</div><div style="font-size:11px;color:var(--accent,#C9A96E);font-weight:500;margin-top:2px">Modern Classic</div></div><div><div class="style-twin-avatar-sm" style="margin:0 auto 8px;width:48px;height:48px"><span style="font-size:16px">EM</span></div><div style="font-size:13px;font-weight:600;color:var(--text-primary,#fff)">Emma Morrison</div><div style="font-size:11px;color:var(--accent,#C9A96E);font-weight:500;margin-top:2px">Modern Classic</div></div></div><div style="margin-bottom:20px"><div style="font-size:11px;font-weight:700;color:var(--text-tertiary,rgba(255,255,255,0.35));text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">Shared Style Traits</div><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center"><span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Minimal</span><span class="style-twin-axis-chip" style="font-size:13px;padding:6px 16px">Classic</span></div></div><button class="user-search-follow-btn follow" style="width:100%;min-height:48px;font-size:15px;border-radius:12px;font-weight:700;margin-top:8px">Follow Your Style Twin</button></div>`;
-
-const SAVE_TOAST_HTML = `<div style="width:36px;height:36px;border-radius:50%;background:rgba(201,169,110,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#C9A96E" stroke-width="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg></div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text-primary,#fff);margin-bottom:2px">Style Twin Match!</div><div style="font-size:11px;color:var(--text-secondary,rgba(255,255,255,0.6));line-height:1.4">Your Style Twin Emma Morrison also saved this!</div></div><button style="background:var(--accent,#C9A96E);color:#000;border:none;border-radius:100px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">View Twins</button>`;
 
 // ── Pre-flight: ensure Vite dev server is running ──
 function checkServer(url, timeoutMs = 3000) {
@@ -114,11 +166,11 @@ async function startViteAndWait(maxWaitMs = 30000) {
     await page.route("**/api/**", async (route) => {
       const url = route.request().url();
       if (url.includes("/api/user/status")) {
-        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ plan: "free", scans_today: 0, daily_limit: 3 }) });
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ plan: "free", scans_today: 1, daily_limit: 3 }) });
       } else if (url.includes("/api/user/profile")) {
-        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ display_name: "Demo User", email: "demo@attaire.com" }) });
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ display_name: "Demo User", email: "demo@attaire.com", budget_min: 50, budget_max: 200 }) });
       } else if (url.includes("/api/style-twins")) {
-        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_TWINS_DATA) });
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ready: false, twins: [] }) });
       } else if (url.includes("/api/style-dna")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ axes: { classic_vs_trendy: 3, minimal_vs_maximal: 2, casual_vs_formal: 7, budget_vs_luxury: 6 }, archetype: "Modern Classic", palette: ["navy", "cream", "brown"] }) });
       } else if (url.includes("/api/feed")) {
@@ -127,8 +179,9 @@ async function startViteAndWait(maxWaitMs = 30000) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [] }) });
       } else if (url.includes("/api/wishlists")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ wishlists: [] }) });
-      } else if (url.includes("/api/history")) {
-        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ scans: [] }) });
+      } else if (url.includes("/api/user/history")) {
+        // Return a scan with full product results — this is the key mock
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ scans: [MOCK_SCAN] }) });
       } else if (url.includes("/api/streak")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ streak: 5 }) });
       } else if (url.includes("/api/notifications")) {
@@ -143,18 +196,18 @@ async function startViteAndWait(maxWaitMs = 30000) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ following_ids: [] }) });
       } else if (url.includes("/api/auth/refresh")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ access_token: "mock-access", refresh_token: "mock-refresh" }) });
+      } else if (url.includes("/api/affiliate")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ url: "#" }) });
       } else {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
       }
     });
 
-    // ═══ SINGLE LOAD: Navigate directly to /?tab=twins ═══
-    // localStorage is already set via addInitScript, so React sees the token on first render.
-    // Use "load" instead of "networkidle" — Vite's HMR WebSocket prevents networkidle from resolving.
-    console.error("[Screenshot] Navigating to /?tab=twins with token pre-set...");
-    await page.goto(VITE_URL + "/?tab=twins", { waitUntil: "load", timeout: 20000 });
+    // ═══ Navigate to Likes tab (which loads scan history) ═══
+    console.error("[Screenshot] Navigating to /?tab=likes with token pre-set...");
+    await page.goto(VITE_URL + "/?tab=likes", { waitUntil: "load", timeout: 20000 });
 
-    // Wait for React to hydrate and render — look for the tab bar which confirms app screen
+    // Wait for React to hydrate — look for the tab bar
     console.error("[Screenshot] Waiting for tab bar (.tb)...");
     try {
       await page.waitForSelector(".tb", { timeout: 10000 });
@@ -191,114 +244,108 @@ async function startViteAndWait(maxWaitMs = 30000) {
       }
     }
 
-    // Give React time to settle after mount and process ?tab=twins deep link
+    // Wait for React to settle and history to load
+    await page.waitForTimeout(2000);
+
+    // Click the Likes tab in bottom bar to trigger history load
+    console.error("[Screenshot] Clicking Likes tab...");
+    await page.evaluate(() => {
+      const btns = document.querySelectorAll(".tb button");
+      for (const b of btns) {
+        const label = b.getAttribute("aria-label") || b.textContent;
+        if (label.includes("Likes") || label.includes("Saved") || label.includes("saved")) { b.click(); return; }
+      }
+    });
+    await page.waitForTimeout(2000);
+
+    // Look for scan history cards and click "View results" on the first one
+    console.error("[Screenshot] Looking for scan history card...");
+    const foundScanCard = await page.evaluate(() => {
+      // Look for the scan card with "View results" or the scan name
+      const buttons = Array.from(document.querySelectorAll("button"));
+      for (const b of buttons) {
+        const label = b.getAttribute("aria-label") || b.textContent.trim();
+        if (label.includes("View scan results") || label.includes("View results")) {
+          b.click();
+          return "clicked_view_results";
+        }
+      }
+      // Also try clicking on scan card itself
+      const scanCards = document.querySelectorAll("[class*='scan-card'], [class*='history']");
+      if (scanCards.length > 0) {
+        scanCards[0].click();
+        return "clicked_scan_card";
+      }
+      // Debug: report what's visible
+      return document.body.innerText.slice(0, 500);
+    });
+    console.error("[Screenshot] Scan card result:", foundScanCard);
+
+    // Wait for the scan results view to render
     await page.waitForTimeout(1500);
 
-    // Verify we're on the Twins tab — deep link should have set it
-    const tabState = await page.evaluate(() => {
-      const feedTabs = document.querySelectorAll(".feed-tab");
-      let activeTab = "none";
-      for (const t of feedTabs) {
-        if (t.classList.contains("active")) activeTab = t.textContent.trim();
-      }
-      return {
-        hasFeedTabs: feedTabs.length > 0,
-        activeTab,
-        hasTwinsContent: !!document.querySelector(".style-twin-featured") || !!document.querySelector(".style-twins-loading") || !!document.querySelector(".style-twins-empty"),
-      };
-    });
-    console.error("[Screenshot] Tab state:", JSON.stringify(tabState));
-
-    // If Twins tab is not active, click it manually
-    if (!tabState.activeTab.includes("Twins")) {
-      console.error("[Screenshot] Twins tab not active, clicking Discover then Twins...");
-
-      // Click the Discover tab button in bottom bar
-      await page.evaluate(() => {
-        const btns = document.querySelectorAll(".tb button");
-        for (const b of btns) {
-          const label = b.getAttribute("aria-label") || b.textContent;
-          if (label.includes("Discover")) { b.click(); return; }
-        }
-      });
-      await page.waitForTimeout(500);
-
-      // Click the Twins sub-tab
-      await page.evaluate(() => {
-        const btns = document.querySelectorAll(".feed-tab, button");
-        for (const b of btns) {
-          if (b.textContent.trim().includes("Twins")) { b.click(); return; }
-        }
-      });
-      await page.waitForTimeout(500);
-    }
-
-    // Wait for the API call to complete and twins content to render
-    console.error("[Screenshot] Waiting for twins content to render...");
-    try {
-      await page.waitForSelector(".style-twin-featured", { timeout: 10000 });
-      console.error("[Screenshot] Featured twin card rendered successfully!");
-    } catch {
-      // Check if loading or error is showing
-      const state = await page.evaluate(() => ({
-        hasLoading: !!document.querySelector(".style-twins-loading"),
-        hasEmpty: !!document.querySelector(".style-twins-empty"),
-        hasFeatured: !!document.querySelector(".style-twin-featured"),
-        hasGrid: !!document.querySelector(".style-twins-grid"),
-        hasError: document.body.innerText.includes("Something Went Wrong") || document.body.innerText.includes("Tap to retry"),
-        visibleText: document.body.innerText.slice(0, 500),
-      }));
-      console.error("[Screenshot] Content state:", JSON.stringify(state, null, 2));
-
-      // If still loading, wait more
-      if (state.hasLoading) {
-        console.error("[Screenshot] Still loading, waiting 5 more seconds...");
-        try {
-          await page.waitForSelector(".style-twin-featured", { timeout: 5000 });
-          console.error("[Screenshot] Featured card appeared after extended wait");
-        } catch {
-          console.error("[Screenshot] Twins still loading/not rendering after extended wait");
-        }
-      }
-    }
-
-    // Extra stabilization for CSS animations
-    await page.waitForTimeout(800);
+    // Check if we're on the scan results view
+    const scanState = await page.evaluate(() => ({
+      hasRes: !!document.querySelector(".res"),
+      hasVBanner: !!document.querySelector(".v-banner"),
+      bodyText: document.body.innerText.slice(0, 800),
+      phase: document.querySelector(".v-step-l")?.textContent || "none",
+    }));
+    console.error("[Screenshot] Scan results state:", JSON.stringify(scanState, null, 2));
 
     // ═══ SCREENSHOTS ═══
 
-    // SCREENSHOT 1 ("home"): Twins cards grid — the core feature UI
-    console.error("[Screenshot] Taking screenshot 1: Twins cards grid...");
-    try { await snap("home"); } catch(e) { console.error("FAIL home: " + e.message); }
-
-    // SCREENSHOT 2 ("scan"): Comparison sheet overlay
-    console.error("[Screenshot] Taking screenshot 2: Comparison sheet...");
-    await page.evaluate((html) => {
-      const overlay = document.createElement("div");
-      overlay.setAttribute("data-screenshot-twin-compare", "1");
-      overlay.style.cssText = "position:fixed;inset:0;z-index:10001";
-      overlay.innerHTML = html;
-      document.body.appendChild(overlay);
-    }, COMPARE_SHEET_HTML);
-    await page.waitForTimeout(500);
+    // SCREENSHOT 1 ("scan"): Scan results overview — shows "Products Found" + item list
+    console.error("[Screenshot] Taking screenshot 1: Scan results overview...");
+    await page.waitForTimeout(800);
     try { await snap("scan"); } catch(e) { console.error("FAIL scan: " + e.message); }
 
-    // Remove comparison overlay
+    // SCREENSHOT 2 ("home"): Scroll to product cards — the actual products from search
+    console.error("[Screenshot] Taking screenshot 2: Product cards from scan...");
+    // Scroll the main content (not .res — the whole page) to show product cards
     await page.evaluate(() => {
-      const el = document.querySelector("[data-screenshot-twin-compare]");
-      if (el) el.remove();
+      // The res div may be the scrollable container, or the window
+      const res = document.querySelector(".res");
+      if (res) {
+        // Scroll within the results container to show products
+        res.scrollTop = res.scrollHeight;
+        // Try window scroll too
+      }
+      window.scrollTo(0, 9999);
+      // Also scroll the main app container if it exists
+      const main = document.querySelector(".app-scroll") || document.querySelector("main") || document.querySelector("[class*='content']");
+      if (main) main.scrollTop = main.scrollHeight;
     });
+    await page.waitForTimeout(600);
+    // Now scroll to a good position showing product cards
+    await page.evaluate(() => {
+      const budgetLabels = document.querySelectorAll("span");
+      for (const el of budgetLabels) {
+        if (el.textContent.trim() === "BUDGET" || el.textContent.trim() === "MATCH") {
+          el.scrollIntoView({ block: "start", behavior: "instant" });
+          // Nudge up a bit to show the item name too
+          window.scrollBy(0, -40);
+          return;
+        }
+      }
+    });
+    await page.waitForTimeout(600);
+    try { await snap("home"); } catch(e) { console.error("FAIL home: " + e.message); }
 
-    // SCREENSHOT 3 ("profile"): Twins grid with shared save toast banner
-    console.error("[Screenshot] Taking screenshot 3: Save toast overlay...");
-    await page.evaluate((html) => {
-      const toast = document.createElement("div");
-      toast.setAttribute("data-screenshot-twin-toast", "1");
-      toast.style.cssText = "position:fixed;top:56px;left:12px;right:12px;background:linear-gradient(135deg,rgba(201,169,110,0.14),rgba(201,169,110,0.04));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(201,169,110,0.3);border-radius:16px;padding:14px 16px;z-index:9998;display:flex;gap:12px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)";
-      toast.innerHTML = html;
-      document.body.appendChild(toast);
-    }, SAVE_TOAST_HTML);
-    await page.waitForTimeout(500);
+    // SCREENSHOT 3 ("profile"): Expanded second item with its product cards
+    console.error("[Screenshot] Taking screenshot 3: Second item products...");
+    // Expand second item (Straight Leg Trousers) and scroll to it
+    await page.evaluate(() => {
+      const itemBtns = Array.from(document.querySelectorAll("button"));
+      for (const b of itemBtns) {
+        if (b.textContent.includes("Straight Leg Trousers")) {
+          b.click();
+          setTimeout(() => b.scrollIntoView({ block: "start", behavior: "instant" }), 200);
+          return;
+        }
+      }
+    });
+    await page.waitForTimeout(1000);
     try { await snap("profile"); } catch(e) { console.error("FAIL profile: " + e.message); }
 
   } catch(e) {

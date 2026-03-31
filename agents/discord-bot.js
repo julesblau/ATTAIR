@@ -111,7 +111,7 @@ DEPLOYMENT:
 - Frontend code is in attair-app/, backend in attair-backend/
 
 HOW YOU WORK:
-You're Jules' Claude CLI through Discord. Your DEFAULT mode is conversational — interview him for
+You are Claude Opus 4.6 running via Claude CLI on Jules' laptop. No API costs — covered by his Max subscription. Your DEFAULT mode is conversational — interview him for
 feature ideas, answer questions, manage the backlog, give opinions. You're a coworker, not an
 autonomous build machine. Only dispatch builds when Jules explicitly asks you to build something.
 
@@ -212,13 +212,20 @@ function execCommand(cmd, { cwd = REPO_ROOT, timeout = 60000 } = {}) {
  * Run Claude CLI with a prompt. Returns the text output.
  * Uses -p (print mode) with --dangerously-skip-permissions for automated use.
  * The CLI handles its own tools (Read, Write, Edit, Bash, Glob, Grep).
+ * Writes prompts to temp files to avoid shell escaping issues.
  */
 function runClaude(prompt, { systemPrompt, label = "claude", onLog, abortSignal, continueSession = false, sessionId = null, maxBudget = null } = {}) {
   return new Promise((resolve, reject) => {
+    const tmpDir = join(__dirname, ".tmp");
+    if (!existsSync(tmpDir)) mkdirSync(tmpDir, { recursive: true });
+
     const args = ["-p", "--output-format", "text", "--dangerously-skip-permissions"];
 
     if (systemPrompt) {
-      args.push("--system-prompt", systemPrompt);
+      // Write system prompt to file to avoid shell escaping issues
+      const sysFile = join(tmpDir, `system-${Date.now()}.txt`);
+      writeFileSync(sysFile, systemPrompt);
+      args.push("--system-prompt-file", sysFile);
     }
 
     if (continueSession && sessionId) {
@@ -229,19 +236,24 @@ function runClaude(prompt, { systemPrompt, label = "claude", onLog, abortSignal,
       args.push("--max-budget-usd", String(maxBudget));
     }
 
-    // Use sonnet for cost efficiency (covered by subscription)
-    args.push("--model", "sonnet");
-
-    args.push(prompt);
+    // Use Opus 4.6 (covered by Max subscription)
+    args.push("--model", "opus");
 
     if (onLog) onLog(`[${label}] Starting Claude CLI...`);
 
+    // Pipe prompt via stdin to avoid shell escaping
+    // Use shell: true so Windows can resolve claude.cmd, but args are safe
+    // because prompt goes via stdin and system prompt via file
     const child = spawn("claude", args, {
       cwd: REPO_ROOT,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
       shell: true,
       env: { ...process.env, CLAUDE_CODE_SIMPLE: "1" },
     });
+
+    // Send prompt via stdin then close
+    child.stdin.write(prompt);
+    child.stdin.end();
 
     // Track as active process for STOP
     activeProcess = child;
@@ -302,11 +314,11 @@ async function chatWithClaude(userMessage) {
 
   // Build context from recent conversation history
   const historyContext = conversationHistory.slice(0, -1).map(m =>
-    `${m.role === "user" ? "Jules" : "You"}: ${m.content}`
+    `${m.role === "user" ? "JULES" : "ATTAIRE"}: ${m.content}`
   ).join("\n\n");
 
   const fullPrompt = historyContext
-    ? `Recent conversation:\n${historyContext}\n\nJules' latest message:\n${userMessage}`
+    ? `CONVERSATION HISTORY (for context only):\n${historyContext}\n\nNEW MESSAGE FROM JULES:\n${userMessage}`
     : userMessage;
 
   try {
