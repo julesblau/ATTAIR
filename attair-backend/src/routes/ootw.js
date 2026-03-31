@@ -108,6 +108,113 @@ router.get("/current", requireAuth, async (req, res) => {
   }
 });
 
+// ─── GET /api/ootw/my-report ───────────────────────────────────────────────
+// Returns the current user's personalized Weekly Style Report (3 looks).
+// Pro/trial users only. Returns null if no report exists for this week.
+router.get("/my-report", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const weekStart = getCurrentWeekMonday();
+
+    // Check user tier
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("tier, trial_ends_at")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const isPro = profile && (
+      profile.tier === "pro" ||
+      (profile.tier === "trial" && profile.trial_ends_at && new Date(profile.trial_ends_at) > new Date())
+    );
+
+    if (!isPro) {
+      return res.json({ report: null, reason: "not_pro" });
+    }
+
+    // Fetch user's report for this week
+    const { data: report, error } = await supabase
+      .from("weekly_style_reports")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("week_start", weekStart)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!report) {
+      return res.json({ report: null });
+    }
+
+    // Enrich scan data
+    const scanIds = report.scan_ids || [];
+    let scans = [];
+
+    if (scanIds.length > 0) {
+      const { data: scanData } = await supabase
+        .from("scans")
+        .select("id, user_id, image_url, summary, items, created_at")
+        .in("id", scanIds);
+
+      if (scanData) {
+        const userIds = [...new Set(scanData.map(s => s.user_id))];
+
+        const [{ data: profiles }, { data: saveRows }] = await Promise.all([
+          supabase.from("profiles").select("id, display_name, avatar_url").in("id", userIds),
+          supabase.from("saved_items").select("scan_id").in("scan_id", scanIds),
+        ]);
+
+        const profileMap = {};
+        (profiles || []).forEach(p => { profileMap[p.id] = p; });
+
+        const saveCountMap = {};
+        (saveRows || []).forEach(row => {
+          if (row.scan_id) saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
+        });
+
+        // Maintain original order
+        const scanMap = {};
+        scanData.forEach(s => { scanMap[s.id] = s; });
+
+        scans = scanIds
+          .map(id => scanMap[id])
+          .filter(Boolean)
+          .map(s => ({
+            id: s.id,
+            image_url: s.image_url,
+            summary: s.summary,
+            item_count: Array.isArray(s.items) ? s.items.length : 0,
+            items: s.items,
+            created_at: s.created_at,
+            save_count: saveCountMap[s.id] || 0,
+            user: profileMap[s.user_id] || { display_name: "Anonymous" },
+          }));
+      }
+    }
+
+    // Mark as opened if not already
+    if (!report.opened_at) {
+      supabase
+        .from("weekly_style_reports")
+        .update({ opened_at: new Date().toISOString() })
+        .eq("id", report.id)
+        .then(() => {})
+        .catch(err => console.error("[WeeklyReport] opened_at update failed:", err.message));
+    }
+
+    return res.json({
+      report: {
+        id: report.id,
+        week_start: report.week_start,
+        sent_at: report.sent_at,
+        scans,
+      },
+    });
+  } catch (err) {
+    console.error("[WeeklyReport] my-report error:", err.message);
+    return res.status(500).json({ error: "Failed to fetch your weekly report" });
+  }
+});
+
 // ─── GET /api/ootw/:id ──────────────────────────────────────────────────────
 router.get("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
