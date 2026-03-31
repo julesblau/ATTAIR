@@ -332,20 +332,43 @@ async function startViteAndWait(maxWaitMs = 30000) {
     await page.waitForTimeout(600);
     try { await snap("home"); } catch(e) { console.error("FAIL home: " + e.message); }
 
-    // SCREENSHOT 3 ("profile"): Expanded second item with its product cards
-    console.error("[Screenshot] Taking screenshot 3: Second item products...");
-    // Expand second item (Straight Leg Trousers) and scroll to it
+    // SCREENSHOT 3 ("profile"): Settings bottom sheet with budget slider expanded
+    console.error("[Screenshot] Taking screenshot 3: Settings with budget slider...");
+    // Navigate to Profile tab
     await page.evaluate(() => {
-      const itemBtns = Array.from(document.querySelectorAll("button"));
-      for (const b of itemBtns) {
-        if (b.textContent.includes("Straight Leg Trousers")) {
-          b.click();
-          setTimeout(() => b.scrollIntoView({ block: "start", behavior: "instant" }), 200);
-          return;
-        }
+      const btns = document.querySelectorAll(".tb button");
+      for (const b of btns) {
+        const label = b.getAttribute("aria-label") || b.textContent;
+        if (label.includes("Profile") || label.includes("profile")) { b.click(); return; }
       }
     });
     await page.waitForTimeout(1000);
+    // Click the gear icon to open Settings
+    const gearBtn = await page.$('button[aria-label="Open settings"]');
+    if (gearBtn) {
+      await gearBtn.click();
+      await page.waitForTimeout(800);
+      // Click the Budget Range row to expand the slider
+      const budgetRow = await page.$('div[aria-label="Edit budget range"]');
+      if (budgetRow) {
+        await budgetRow.click();
+        await page.waitForTimeout(600);
+      } else {
+        console.error("[Screenshot] Budget range row not found, trying text match...");
+        await page.evaluate(() => {
+          const items = document.querySelectorAll(".settings-sheet-item");
+          for (const item of items) {
+            if (item.textContent.includes("Budget Range") || item.textContent.includes("budget")) {
+              item.click();
+              return;
+            }
+          }
+        });
+        await page.waitForTimeout(600);
+      }
+    } else {
+      console.error("[Screenshot] Gear button not found");
+    }
     try { await snap("profile"); } catch(e) { console.error("FAIL profile: " + e.message); }
 
   } catch(e) {
