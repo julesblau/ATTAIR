@@ -404,6 +404,10 @@ const API = {
     const res = await authFetch(`${API_BASE}/api/ootw/current`);
     return res.json();
   },
+  async getMyWeeklyReport() {
+    const res = await authFetch(`${API_BASE}/api/ootw/my-report`);
+    return res.json();
+  },
   async searchUsers(q) {
     const res = await authFetch(`${API_BASE}/api/users/search?q=${encodeURIComponent(q)}`);
     return res.json();
@@ -3976,12 +3980,27 @@ export default function App() {
     }
     // Deep link from Weekly Style Report push notification
     if (window.location.pathname === "/weekly-report" && authed) {
-      setOotwLoading(true);
-      setOotwError(false);
-      API.getOOTW()
-        .then(d => { if (d.ootw) { setOotwData(d.ootw); setOotwExpanded(true); } })
-        .catch(err => { console.error("[OOTW] deep-link fetch failed:", err); setOotwError(true); })
-        .finally(() => setOotwLoading(false));
+      API.getMyWeeklyReport()
+        .then(d => {
+          if (d.report && d.report.scans && d.report.scans.length > 0) {
+            setWeeklyReport(d.report);
+            setWeeklyReportOpen(true);
+          } else {
+            // Fallback: show generic OOTW
+            setOotwLoading(true);
+            API.getOOTW()
+              .then(od => { if (od.ootw) { setOotwData(od.ootw); setOotwExpanded(true); } })
+              .catch(err => { console.error("[OOTW] deep-link fetch failed:", err); setOotwError(true); })
+              .finally(() => setOotwLoading(false));
+          }
+        })
+        .catch(() => {
+          setOotwLoading(true);
+          API.getOOTW()
+            .then(od => { if (od.ootw) { setOotwData(od.ootw); setOotwExpanded(true); } })
+            .catch(err => { console.error("[OOTW] deep-link fetch failed:", err); setOotwError(true); })
+            .finally(() => setOotwLoading(false));
+        });
       window.history.replaceState({}, "", "/");
     }
     // Deep link from Style Twins weekly notification
@@ -4151,6 +4170,10 @@ export default function App() {
   const [ootwLoading, setOotwLoading] = useState(false);
   const [ootwError, setOotwError] = useState(false);        // true when fetch failed — shows tap-to-retry
   const [ootwExpanded, setOotwExpanded] = useState(false);   // full detail overlay open
+
+  // ─── Weekly Style Report (Pro users) ────────────────────────
+  const [weeklyReport, setWeeklyReport] = useState(null);     // { scans, week_start, ... }
+  const [weeklyReportOpen, setWeeklyReportOpen] = useState(false);
 
   // ─── Style Twins ────────────────────────────────────────────
   const [styleTwins, setStyleTwins] = useState([]);
@@ -9542,6 +9565,87 @@ export default function App() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Weekly Style Report Overlay (Pro users) ── */}
+        {weeklyReportOpen && weeklyReport && (
+          <div className="ootw-overlay animate-fade-in" style={{ position: "fixed", inset: 0, zIndex: 1100, background: "var(--bg-primary)", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+            <button
+              aria-label="Close"
+              onClick={() => setWeeklyReportOpen(false)}
+              style={{ position: "fixed", top: 12, right: 12, zIndex: 1101, width: 36, height: 36, borderRadius: "50%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(10px)", border: "none", color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >&#x2715;</button>
+
+            {/* Hero */}
+            <div style={{ position: "relative", width: "100%", height: 220, overflow: "hidden" }}>
+              {weeklyReport.scans[0]?.image_url ? (
+                <img src={weeklyReport.scans[0].image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.4) saturate(1.2)" }} />
+              ) : (
+                <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
+              )}
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.85) 100%)" }} />
+              <div style={{ position: "absolute", bottom: 24, left: 20, right: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 1.5, textTransform: "uppercase" }}>Your Weekly Style Report</span>
+                </div>
+                <h1 style={{ fontSize: 22, fontWeight: 800, color: "#fff", lineHeight: 1.15, margin: 0 }}>3 Looks Picked Just for You</h1>
+                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", margin: "8px 0 0", lineHeight: 1.4 }}>Curated from trending scans that match your saved styles and preferences.</p>
+              </div>
+            </div>
+
+            {/* Week label */}
+            <div style={{ padding: "16px 20px 4px", display: "flex", alignItems: "center", gap: 12, fontSize: 11, color: "var(--text-tertiary)" }}>
+              <span>Week of {new Date(weeklyReport.week_start + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+              <span>{weeklyReport.scans.length} personalized {weeklyReport.scans.length === 1 ? "look" : "looks"}</span>
+            </div>
+
+            <div style={{ height: 1, background: "var(--border)", margin: "12px 20px" }} />
+
+            {/* Looks grid — full-width cards for 3 items */}
+            <div style={{ padding: "0 16px 120px" }}>
+              {weeklyReport.scans.map((scan, idx) => {
+                const u = scan.user || {};
+                const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                return (
+                  <div
+                    key={scan.id || idx}
+                    className="card-press animate-slide-up"
+                    onClick={() => { setWeeklyReportOpen(false); setFeedDetailScan(scan); }}
+                    style={{ marginBottom: 12, borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)", background: "var(--bg-card)", cursor: "pointer", animationDelay: `${idx * 0.1}s` }}
+                  >
+                    <div style={{ position: "relative" }}>
+                      {scan.image_url ? (
+                        <img src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} />
+                      ) : (
+                        <div style={{ width: "100%", aspectRatio: "4/3", background: "var(--bg-input)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
+                        </div>
+                      )}
+                      {/* Pick number badge */}
+                      <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 12px", borderRadius: 100, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", fontSize: 12, fontWeight: 800, color: "#0C0C0E" }}>Pick #{idx + 1}</div>
+                      {scan.save_count > 0 && (
+                        <div style={{ position: "absolute", top: 12, right: 12, padding: "4px 10px", borderRadius: 100, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", fontSize: 11, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
+                          <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          {scan.save_count}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: "12px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, var(--accent), #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#0C0C0E" }}>{ini}</div>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{u.display_name || "Anonymous"}</span>
+                      </div>
+                      {scan.summary && <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{scan.summary}</div>}
+                      {scan.item_count > 0 && <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 6 }}>{scan.item_count} item{scan.item_count !== 1 ? "s" : ""} identified</div>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
