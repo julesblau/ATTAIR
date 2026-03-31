@@ -120,7 +120,7 @@
 ## MEDIUM — Backlogged
 
 ### Scan History Replay
-**Status:** Approved — backlogged
+**Status:** DONE (2026-03-31)
 **Effort:** L
 **Summary:** Weekly "price dropped since you scanned this" notifications. Needs SerpAPI budget increase.
 
