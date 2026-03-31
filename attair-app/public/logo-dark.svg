@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 185 50" fill="none">
-  <!-- Dark-theme logo: light rect + dark text, gold AI highlight, exponent dot on E -->
-  <rect width="185" height="50" rx="4" fill="#FAFAFA"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 56" fill="none">
+  <!-- Dark-theme logo: light rect + dark text, gold AI highlight, gold asterisk exponent on E -->
+  <rect width="200" height="56" rx="4" fill="#FAFAFA"/>
   <text
-    x="86"
-    y="28"
+    x="100"
+    y="30"
     text-anchor="middle"
     dominant-baseline="central"
     font-family="'Helvetica Neue', 'Inter', Helvetica, Arial, sans-serif"
@@ -11,5 +11,12 @@
     font-size="44"
     letter-spacing="-2"
   ><tspan fill="#1A1816">ATT</tspan><tspan fill="#C9A96E">AI</tspan><tspan fill="#1A1816">RE</tspan></text>
-  <circle cx="168" cy="5" r="13" fill="#C9A96E"/>
+  <text
+    x="168"
+    y="14"
+    font-family="'Helvetica Neue', 'Inter', Helvetica, Arial, sans-serif"
+    font-weight="700"
+    font-size="16"
+    fill="#C9A96E"
+  >*</text>
 </svg>

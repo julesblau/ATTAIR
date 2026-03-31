@@ -384,6 +384,22 @@ const API = {
   async unfollowUser(userId) {
     return authFetch(`${API_BASE}/api/social/follow/${userId}`, { method: "DELETE" }).then(r => r.json());
   },
+  async getFollowers(userId) {
+    const res = await authFetch(`${API_BASE}/api/social/followers/${userId}`);
+    return res.json();
+  },
+  async getFollowing(userId) {
+    const res = await authFetch(`${API_BASE}/api/social/following/${userId}`);
+    return res.json();
+  },
+
+  async getFollowers(userId) {
+    return authFetch(`${API_BASE}/api/social/followers/${userId}`).then(r => r.json());
+  },
+
+  async getFollowing(userId) {
+    return authFetch(`${API_BASE}/api/social/following/${userId}`).then(r => r.json());
+  },
 
   async updateScanVisibility(scanId, visibility) {
     return authFetch(`${API_BASE}/api/social/scans/${scanId}/visibility`, { method: "PATCH", body: JSON.stringify({ visibility }) }).then(r => r.json());
@@ -976,6 +992,60 @@ const STRINGS = {
     public_profile: "Public",
     private_profile: "Private",
     followers_only: "Followers Only",
+    appearance: "Appearance",
+    dark: "Dark",
+    light: "Light",
+    budget_range: "Budget Range",
+    size_preferences: "Size Preferences",
+    not_set: "Not set",
+    subscription: "Subscription",
+    free: "Free",
+    upgrade_to_pro: "Upgrade to Pro",
+    notifications: "Notifications",
+    enable_push: "Enable Push Notifications",
+    push_enabled: "Push notifications are enabled",
+    follow_up_reminders: "Follow-up reminders",
+    nudge_desc: "Nudge me if I forget to check my results",
+    style_twins_notif: "Style Twins",
+    style_twins_desc: "Weekly \"new style twins discovered\" alerts",
+    refer_friend: "Refer a friend",
+    refer_desc: "Share your code. Both of you get $5 credit.",
+    my_scans: "My Scans",
+    scan_an_outfit: "Scan an Outfit",
+    no_scans_yet: "No scans yet",
+    no_scans_match: "No scans match your search",
+    all_filter: "All",
+    my_picks: "My Picks",
+    all_scans: "All Scans",
+    search_scans: "Search scans...",
+    outfits: "Outfits",
+    all_items: "All Items",
+    no_outfits_saved: "No outfits saved yet",
+    save_items_desc: "Save items from your scans to build complete outfits",
+    edit_profile: "Edit Profile",
+    save_bio: "Save",
+    cancel: "Cancel",
+    scans_stat: "Scans",
+    complete_look_btn: "Complete the Look",
+    finding_pieces: "Finding complementary pieces...",
+    save_budget: "Save Budget",
+    saving: "Saving...",
+    confirm_language: "Change language?",
+    confirm_language_desc: "Change language to",
+    confirm_btn: "Confirm",
+    cancel_btn: "Cancel",
+    men: "Men",
+    women: "Women",
+    tops: "Tops",
+    bottoms_waist: "Bottoms Waist",
+    bottoms_length: "Bottoms Length",
+    shoes: "Shoes",
+    dresses: "Dresses",
+    size_prefs_title: "Size Preferences",
+    select_gender: "Select your gender",
+    save_sizes: "Save Sizes",
+    no_followers_yet: "No followers yet",
+    no_following_yet: "Not following anyone yet",
   },
   es: {
     home: "Inicio",
@@ -1027,6 +1097,60 @@ const STRINGS = {
     public_profile: "Público",
     private_profile: "Privado",
     followers_only: "Solo seguidores",
+    appearance: "Apariencia",
+    dark: "Oscuro",
+    light: "Claro",
+    budget_range: "Rango de presupuesto",
+    size_preferences: "Preferencias de talla",
+    not_set: "No configurado",
+    subscription: "Suscripción",
+    free: "Gratis",
+    upgrade_to_pro: "Mejorar a Pro",
+    notifications: "Notificaciones",
+    enable_push: "Activar notificaciones push",
+    push_enabled: "Las notificaciones push están activadas",
+    follow_up_reminders: "Recordatorios de seguimiento",
+    nudge_desc: "Recuérdame si olvido revisar mis resultados",
+    style_twins_notif: "Style Twins",
+    style_twins_desc: "Alertas semanales de \"nuevos gemelos de estilo\"",
+    refer_friend: "Invita a un amigo",
+    refer_desc: "Comparte tu código. Ambos obtienen $5 de crédito.",
+    my_scans: "Mis escaneos",
+    scan_an_outfit: "Escanear un outfit",
+    no_scans_yet: "Sin escaneos aún",
+    no_scans_match: "Ningún escaneo coincide con tu búsqueda",
+    all_filter: "Todos",
+    my_picks: "Mis favoritos",
+    all_scans: "Todos los escaneos",
+    search_scans: "Buscar escaneos...",
+    outfits: "Outfits",
+    all_items: "Todos los artículos",
+    no_outfits_saved: "Sin outfits guardados aún",
+    save_items_desc: "Guarda artículos de tus escaneos para crear outfits completos",
+    edit_profile: "Editar perfil",
+    save_bio: "Guardar",
+    cancel: "Cancelar",
+    scans_stat: "Escaneos",
+    complete_look_btn: "Completa el Look",
+    finding_pieces: "Buscando piezas complementarias...",
+    save_budget: "Guardar presupuesto",
+    saving: "Guardando...",
+    confirm_language: "¿Cambiar idioma?",
+    confirm_language_desc: "Cambiar idioma a",
+    confirm_btn: "Confirmar",
+    cancel_btn: "Cancelar",
+    men: "Hombres",
+    women: "Mujeres",
+    tops: "Tops",
+    bottoms_waist: "Cintura",
+    bottoms_length: "Largo",
+    shoes: "Zapatos",
+    dresses: "Vestidos",
+    size_prefs_title: "Preferencias de talla",
+    select_gender: "Selecciona tu género",
+    save_sizes: "Guardar tallas",
+    no_followers_yet: "Sin seguidores aún",
+    no_following_yet: "No sigues a nadie aún",
   },
   fr: {
     home: "Accueil",
@@ -1078,6 +1202,60 @@ const STRINGS = {
     public_profile: "Public",
     private_profile: "Privé",
     followers_only: "Abonnés uniquement",
+    appearance: "Apparence",
+    dark: "Sombre",
+    light: "Clair",
+    budget_range: "Fourchette de budget",
+    size_preferences: "Préférences de taille",
+    not_set: "Non défini",
+    subscription: "Abonnement",
+    free: "Gratuit",
+    upgrade_to_pro: "Passer à Pro",
+    notifications: "Notifications",
+    enable_push: "Activer les notifications push",
+    push_enabled: "Les notifications push sont activées",
+    follow_up_reminders: "Rappels de suivi",
+    nudge_desc: "Me rappeler si j'oublie de vérifier mes résultats",
+    style_twins_notif: "Style Twins",
+    style_twins_desc: "Alertes hebdomadaires \"nouveaux jumeaux de style\"",
+    refer_friend: "Inviter un ami",
+    refer_desc: "Partagez votre code. Vous recevez tous les deux 5$ de crédit.",
+    my_scans: "Mes scans",
+    scan_an_outfit: "Scanner une tenue",
+    no_scans_yet: "Aucun scan encore",
+    no_scans_match: "Aucun scan ne correspond à votre recherche",
+    all_filter: "Tous",
+    my_picks: "Mes choix",
+    all_scans: "Tous les scans",
+    search_scans: "Rechercher des scans...",
+    outfits: "Tenues",
+    all_items: "Tous les articles",
+    no_outfits_saved: "Aucune tenue sauvegardée",
+    save_items_desc: "Sauvegardez des articles de vos scans pour créer des tenues complètes",
+    edit_profile: "Modifier le profil",
+    save_bio: "Sauvegarder",
+    cancel: "Annuler",
+    scans_stat: "Scans",
+    complete_look_btn: "Compléter le Look",
+    finding_pieces: "Recherche de pièces complémentaires...",
+    save_budget: "Sauvegarder le budget",
+    saving: "Sauvegarde...",
+    confirm_language: "Changer de langue ?",
+    confirm_language_desc: "Changer la langue en",
+    confirm_btn: "Confirmer",
+    cancel_btn: "Annuler",
+    men: "Hommes",
+    women: "Femmes",
+    tops: "Hauts",
+    bottoms_waist: "Taille pantalon",
+    bottoms_length: "Longueur pantalon",
+    shoes: "Chaussures",
+    dresses: "Robes",
+    size_prefs_title: "Préférences de taille",
+    select_gender: "Sélectionnez votre genre",
+    save_sizes: "Sauvegarder les tailles",
+    no_followers_yet: "Aucun abonné encore",
+    no_following_yet: "Vous ne suivez personne encore",
   },
   de: {
     home: "Start",
@@ -1129,6 +1307,60 @@ const STRINGS = {
     public_profile: "Öffentlich",
     private_profile: "Privat",
     followers_only: "Nur Follower",
+    appearance: "Erscheinungsbild",
+    dark: "Dunkel",
+    light: "Hell",
+    budget_range: "Budgetbereich",
+    size_preferences: "Größenpräferenzen",
+    not_set: "Nicht festgelegt",
+    subscription: "Abonnement",
+    free: "Kostenlos",
+    upgrade_to_pro: "Auf Pro upgraden",
+    notifications: "Benachrichtigungen",
+    enable_push: "Push-Benachrichtigungen aktivieren",
+    push_enabled: "Push-Benachrichtigungen sind aktiviert",
+    follow_up_reminders: "Erinnerungen",
+    nudge_desc: "Erinnere mich, wenn ich vergesse, meine Ergebnisse zu prüfen",
+    style_twins_notif: "Style Twins",
+    style_twins_desc: "Wöchentliche Benachrichtigungen über neue Style-Zwillinge",
+    refer_friend: "Freund einladen",
+    refer_desc: "Teile deinen Code. Ihr erhaltet beide 5$ Guthaben.",
+    my_scans: "Meine Scans",
+    scan_an_outfit: "Outfit scannen",
+    no_scans_yet: "Noch keine Scans",
+    no_scans_match: "Keine Scans entsprechen deiner Suche",
+    all_filter: "Alle",
+    my_picks: "Meine Auswahl",
+    all_scans: "Alle Scans",
+    search_scans: "Scans durchsuchen...",
+    outfits: "Outfits",
+    all_items: "Alle Artikel",
+    no_outfits_saved: "Noch keine Outfits gespeichert",
+    save_items_desc: "Speichere Artikel aus deinen Scans, um komplette Outfits zu erstellen",
+    edit_profile: "Profil bearbeiten",
+    save_bio: "Speichern",
+    cancel: "Abbrechen",
+    scans_stat: "Scans",
+    complete_look_btn: "Look vervollständigen",
+    finding_pieces: "Suche nach passenden Teilen...",
+    save_budget: "Budget speichern",
+    saving: "Wird gespeichert...",
+    confirm_language: "Sprache ändern?",
+    confirm_language_desc: "Sprache ändern zu",
+    confirm_btn: "Bestätigen",
+    cancel_btn: "Abbrechen",
+    men: "Herren",
+    women: "Damen",
+    tops: "Oberteile",
+    bottoms_waist: "Bundweite",
+    bottoms_length: "Beinlänge",
+    shoes: "Schuhe",
+    dresses: "Kleider",
+    size_prefs_title: "Größenpräferenzen",
+    select_gender: "Geschlecht wählen",
+    save_sizes: "Größen speichern",
+    no_followers_yet: "Noch keine Follower",
+    no_following_yet: "Du folgst noch niemandem",
   },
   zh: {
     home: "首页",
@@ -1180,6 +1412,60 @@ const STRINGS = {
     public_profile: "公开",
     private_profile: "私密",
     followers_only: "仅粉丝可见",
+    appearance: "外观",
+    dark: "深色",
+    light: "浅色",
+    budget_range: "预算范围",
+    size_preferences: "尺码偏好",
+    not_set: "未设置",
+    subscription: "订阅",
+    free: "免费",
+    upgrade_to_pro: "升级到 Pro",
+    notifications: "通知",
+    enable_push: "启用推送通知",
+    push_enabled: "推送通知已启用",
+    follow_up_reminders: "后续提醒",
+    nudge_desc: "如果我忘记查看结果，请提醒我",
+    style_twins_notif: "风格双胞胎",
+    style_twins_desc: "每周\"发现新风格双胞胎\"提醒",
+    refer_friend: "邀请好友",
+    refer_desc: "分享你的代码，你们都将获得5美元的奖励。",
+    my_scans: "我的扫描",
+    scan_an_outfit: "扫描穿搭",
+    no_scans_yet: "暂无扫描",
+    no_scans_match: "没有匹配的扫描",
+    all_filter: "全部",
+    my_picks: "我的精选",
+    all_scans: "所有扫描",
+    search_scans: "搜索扫描...",
+    outfits: "穿搭",
+    all_items: "所有单品",
+    no_outfits_saved: "暂无保存的穿搭",
+    save_items_desc: "保存扫描中的单品来搭配完整穿搭",
+    edit_profile: "编辑资料",
+    save_bio: "保存",
+    cancel: "取消",
+    scans_stat: "扫描",
+    complete_look_btn: "完善穿搭",
+    finding_pieces: "正在寻找搭配单品...",
+    save_budget: "保存预算",
+    saving: "保存中...",
+    confirm_language: "更改语言？",
+    confirm_language_desc: "将语言更改为",
+    confirm_btn: "确认",
+    cancel_btn: "取消",
+    men: "男士",
+    women: "女士",
+    tops: "上装",
+    bottoms_waist: "腰围",
+    bottoms_length: "裤长",
+    shoes: "鞋子",
+    dresses: "连衣裙",
+    size_prefs_title: "尺码偏好",
+    select_gender: "选择性别",
+    save_sizes: "保存尺码",
+    no_followers_yet: "暂无粉丝",
+    no_following_yet: "暂未关注任何人",
   },
   ja: {
     home: "ホーム",
@@ -1231,6 +1517,60 @@ const STRINGS = {
     public_profile: "公開",
     private_profile: "非公開",
     followers_only: "フォロワーのみ",
+    appearance: "外観",
+    dark: "ダーク",
+    light: "ライト",
+    budget_range: "予算範囲",
+    size_preferences: "サイズ設定",
+    not_set: "未設定",
+    subscription: "サブスクリプション",
+    free: "無料",
+    upgrade_to_pro: "Proにアップグレード",
+    notifications: "通知",
+    enable_push: "プッシュ通知を有効にする",
+    push_enabled: "プッシュ通知は有効です",
+    follow_up_reminders: "フォローアップリマインダー",
+    nudge_desc: "結果の確認を忘れた場合にリマインド",
+    style_twins_notif: "スタイルツイン",
+    style_twins_desc: "毎週の「新しいスタイルツイン発見」アラート",
+    refer_friend: "友達を招待",
+    refer_desc: "コードをシェアして、お互い$5のクレジットを獲得。",
+    my_scans: "マイスキャン",
+    scan_an_outfit: "コーデをスキャン",
+    no_scans_yet: "スキャンはまだありません",
+    no_scans_match: "検索に一致するスキャンがありません",
+    all_filter: "すべて",
+    my_picks: "マイピック",
+    all_scans: "すべてのスキャン",
+    search_scans: "スキャンを検索...",
+    outfits: "コーデ",
+    all_items: "すべてのアイテム",
+    no_outfits_saved: "保存されたコーデはありません",
+    save_items_desc: "スキャンからアイテムを保存してコーデを完成させましょう",
+    edit_profile: "プロフィール編集",
+    save_bio: "保存",
+    cancel: "キャンセル",
+    scans_stat: "スキャン",
+    complete_look_btn: "コーデを完成させる",
+    finding_pieces: "コーディネートアイテムを検索中...",
+    save_budget: "予算を保存",
+    saving: "保存中...",
+    confirm_language: "言語を変更しますか？",
+    confirm_language_desc: "言語を変更:",
+    confirm_btn: "確認",
+    cancel_btn: "キャンセル",
+    men: "メンズ",
+    women: "レディース",
+    tops: "トップス",
+    bottoms_waist: "ウエスト",
+    bottoms_length: "股下",
+    shoes: "シューズ",
+    dresses: "ドレス",
+    size_prefs_title: "サイズ設定",
+    select_gender: "性別を選択",
+    save_sizes: "サイズを保存",
+    no_followers_yet: "フォロワーはまだいません",
+    no_following_yet: "まだ誰もフォローしていません",
   },
   ko: {
     home: "홈",
@@ -1282,6 +1622,60 @@ const STRINGS = {
     public_profile: "공개",
     private_profile: "비공개",
     followers_only: "팔로워만",
+    appearance: "외관",
+    dark: "다크",
+    light: "라이트",
+    budget_range: "예산 범위",
+    size_preferences: "사이즈 설정",
+    not_set: "미설정",
+    subscription: "구독",
+    free: "무료",
+    upgrade_to_pro: "Pro로 업그레이드",
+    notifications: "알림",
+    enable_push: "푸시 알림 활성화",
+    push_enabled: "푸시 알림이 활성화됨",
+    follow_up_reminders: "후속 알림",
+    nudge_desc: "결과 확인을 잊으면 알려주세요",
+    style_twins_notif: "스타일 트윈",
+    style_twins_desc: "매주 \"새로운 스타일 트윈 발견\" 알림",
+    refer_friend: "친구 초대",
+    refer_desc: "코드를 공유하면 둘 다 $5 크레딧을 받습니다.",
+    my_scans: "내 스캔",
+    scan_an_outfit: "스타일 스캔",
+    no_scans_yet: "스캔 없음",
+    no_scans_match: "검색과 일치하는 스캔이 없습니다",
+    all_filter: "전체",
+    my_picks: "내 선택",
+    all_scans: "모든 스캔",
+    search_scans: "스캔 검색...",
+    outfits: "코디",
+    all_items: "모든 아이템",
+    no_outfits_saved: "저장된 코디 없음",
+    save_items_desc: "스캔에서 아이템을 저장하여 완성된 코디를 만드세요",
+    edit_profile: "프로필 편집",
+    save_bio: "저장",
+    cancel: "취소",
+    scans_stat: "스캔",
+    complete_look_btn: "룩 완성하기",
+    finding_pieces: "코디 아이템 검색 중...",
+    save_budget: "예산 저장",
+    saving: "저장 중...",
+    confirm_language: "언어를 변경하시겠습니까?",
+    confirm_language_desc: "다음으로 언어 변경:",
+    confirm_btn: "확인",
+    cancel_btn: "취소",
+    men: "남성",
+    women: "여성",
+    tops: "상의",
+    bottoms_waist: "허리",
+    bottoms_length: "길이",
+    shoes: "신발",
+    dresses: "드레스",
+    size_prefs_title: "사이즈 설정",
+    select_gender: "성별 선택",
+    save_sizes: "사이즈 저장",
+    no_followers_yet: "아직 팔로워가 없습니다",
+    no_following_yet: "아직 아무도 팔로우하지 않았습니다",
   },
   pt: {
     home: "Inicio",
@@ -1333,6 +1727,60 @@ const STRINGS = {
     public_profile: "Público",
     private_profile: "Privado",
     followers_only: "Apenas seguidores",
+    appearance: "Aparência",
+    dark: "Escuro",
+    light: "Claro",
+    budget_range: "Faixa de orçamento",
+    size_preferences: "Preferências de tamanho",
+    not_set: "Não definido",
+    subscription: "Assinatura",
+    free: "Grátis",
+    upgrade_to_pro: "Assinar Pro",
+    notifications: "Notificações",
+    enable_push: "Ativar notificações push",
+    push_enabled: "Notificações push estão ativadas",
+    follow_up_reminders: "Lembretes de acompanhamento",
+    nudge_desc: "Me lembre se eu esquecer de verificar meus resultados",
+    style_twins_notif: "Style Twins",
+    style_twins_desc: "Alertas semanais de \"novos gêmeos de estilo\"",
+    refer_friend: "Indicar um amigo",
+    refer_desc: "Compartilhe seu código. Vocês dois ganham $5 de crédito.",
+    my_scans: "Meus scans",
+    scan_an_outfit: "Escanear um outfit",
+    no_scans_yet: "Nenhum scan ainda",
+    no_scans_match: "Nenhum scan corresponde à sua busca",
+    all_filter: "Todos",
+    my_picks: "Meus favoritos",
+    all_scans: "Todos os scans",
+    search_scans: "Buscar scans...",
+    outfits: "Looks",
+    all_items: "Todos os itens",
+    no_outfits_saved: "Nenhum look salvo ainda",
+    save_items_desc: "Salve itens dos seus scans para montar looks completos",
+    edit_profile: "Editar perfil",
+    save_bio: "Salvar",
+    cancel: "Cancelar",
+    scans_stat: "Scans",
+    complete_look_btn: "Completar o Look",
+    finding_pieces: "Buscando peças complementares...",
+    save_budget: "Salvar orçamento",
+    saving: "Salvando...",
+    confirm_language: "Mudar idioma?",
+    confirm_language_desc: "Mudar idioma para",
+    confirm_btn: "Confirmar",
+    cancel_btn: "Cancelar",
+    men: "Masculino",
+    women: "Feminino",
+    tops: "Blusas",
+    bottoms_waist: "Cintura",
+    bottoms_length: "Comprimento",
+    shoes: "Sapatos",
+    dresses: "Vestidos",
+    size_prefs_title: "Preferências de tamanho",
+    select_gender: "Selecione o gênero",
+    save_sizes: "Salvar tamanhos",
+    no_followers_yet: "Nenhum seguidor ainda",
+    no_following_yet: "Não está seguindo ninguém ainda",
   },
 };
 
@@ -2748,6 +3196,20 @@ export default function App() {
   const [flippedScans, setFlippedScans] = useState(new Set()); // which scan cards are flipped
   const [scanSearchQuery, setScanSearchQuery] = useState(""); // search within scan history
 
+  // ─── Size Preferences Popup ──────────────────────────────────
+  const [sizePrefsPopupOpen, setSizePrefsPopupOpen] = useState(false);
+  const [sizePrefsPopupGender, setSizePrefsPopupGender] = useState(null); // "men" | "women"
+  const [sizePrefsPopupData, setSizePrefsPopupData] = useState({ tops: "", bottoms_waist: "", bottoms_length: "", shoes: "", dresses: "" });
+
+  // ─── Followers/Following List ──────────────────────────────────
+  const [authUserId, setAuthUserId] = useState(null);
+  const [followListOpen, setFollowListOpen] = useState(null); // null | "followers" | "following"
+  const [followListData, setFollowListData] = useState([]);
+  const [followListLoading, setFollowListLoading] = useState(false);
+
+  // ─── Language confirmation popup ──────────────────────────────
+  const [langConfirmOpen, setLangConfirmOpen] = useState(null); // null | language code
+
   // ─── Complete the Look ──────────────────────────────────────
   const [looks, setLooks] = useState([]);                          // grouped looks from backend
   const [looksLoading, setLooksLoading] = useState(false);
@@ -2896,6 +3358,18 @@ export default function App() {
   const [settingsBudgetDirty, setSettingsBudgetDirty] = useState(false);
   const [settingsBudgetSaving, setSettingsBudgetSaving] = useState(false);
   const budgetModalOrigRef = useRef({ min: 50, max: 100 });
+  // ─── Size Preferences Modal ────────────────────────────────
+  const [sizePrefsModalOpen, setSizePrefsModalOpen] = useState(false);
+  const [sizePrefsGender, setSizePrefsGender] = useState("women");
+  const [sizePrefsEdit, setSizePrefsEdit] = useState({ tops: "", bottoms_waist: "", bottoms_length: "", shoes: "", dresses: "" });
+  const [sizePrefsSaving, setSizePrefsSaving] = useState(false);
+  const sizePrefsOrigRef = useRef(null);
+  // ─── Followers/Following List ──────────────────────────────
+  const [followListOpen, setFollowListOpen] = useState(null);
+  const [followListData, setFollowListData] = useState([]);
+  const [followListLoading, setFollowListLoading] = useState(false);
+  // ─── Language Change Confirmation ──────────────────────────
+  const [langChangeConfirm, setLangChangeConfirm] = useState(null);
   const [profileScanOverlay, setProfileScanOverlay] = useState(null); // scan object for overlay
   const [historyDetailScan, setHistoryDetailScan] = useState(null); // history item detail overlay
 
@@ -3332,11 +3806,13 @@ export default function App() {
       if (token) {
         const jwt = decodeJwt(token);
         if (jwt?.email) setAuthEmail(jwt.email);
+        if (jwt?.sub) setAuthUserId(jwt.sub);
       }
       refreshStatus();
       authFetch(`${API_BASE}/api/user/profile`)
         .then(r => r.json())
         .then(profile => {
+          if (profile.id) setAuthUserId(profile.id);
           if (profile.display_name) setAuthName(profile.display_name);
           if (profile.gender_pref) setPrefs(p => ({ ...p, gender: profile.gender_pref }));
           if (profile.budget_min != null) setBudgetMin(profile.budget_min);
@@ -3629,6 +4105,7 @@ export default function App() {
         Auth.setTokens(access, refresh);
         const jwt = decodeJwt(access);
         if (jwt?.email) setAuthEmail(jwt.email);
+        if (jwt?.sub) setAuthUserId(jwt.sub);
         setAuthed(true);
         setScreen("app");
         window.history.replaceState(null, "", window.location.pathname);
@@ -6867,7 +7344,7 @@ export default function App() {
                   {history.length > 0 && <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{history.length} scan{history.length !== 1 ? "s" : ""}</span>}
                 </div>
 
-                {/* Filter row: My Picks + Wishlists */}
+                {/* Filter row: consolidated single bar */}
                 <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "8px 16px 0", scrollbarWidth: "none" }}>
                   <button
                     className={`scan-vis-chip${historyFilter === "all" && !activeWishlist ? " active" : ""}`}
@@ -6879,27 +7356,18 @@ export default function App() {
                     onClick={() => { setHistoryFilter(historyFilter === "picks" ? "all" : "picks"); setActiveWishlist(null); }}
                     style={{ flexShrink: 0 }}
                   >My Picks</button>
-                </div>
-                {wishlists.length > 0 && (
-                  <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "4px 16px 0", scrollbarWidth: "none" }}>
+                  {wishlists.map(wl => (
                     <button
-                      className={`scan-vis-chip${!activeWishlist && historyFilter === "all" ? " active" : ""}`}
-                      onClick={() => { setActiveWishlist(null); setHistoryFilter("all"); }}
+                      key={wl.id}
+                      className={`scan-vis-chip${activeWishlist?.id === wl.id ? " active" : ""}`}
+                      onClick={() => { setActiveWishlist(activeWishlist?.id === wl.id ? null : wl); if (activeWishlist?.id !== wl.id) setHistoryFilter("all"); }}
                       style={{ flexShrink: 0 }}
-                    >All Scans</button>
-                    {wishlists.map(wl => (
-                      <button
-                        key={wl.id}
-                        className={`scan-vis-chip${activeWishlist?.id === wl.id ? " active" : ""}`}
-                        onClick={() => setActiveWishlist(activeWishlist?.id === wl.id ? null : wl)}
-                        style={{ flexShrink: 0 }}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                        {wl.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                      {wl.name}
+                    </button>
+                  ))}
+                </div>
 
                 {/* Search bar */}
                 {history.length > 0 && (
@@ -6917,30 +7385,10 @@ export default function App() {
                   </div>
                 )}
 
-                {/* ── View toggle: Grouped (Complete the Look) vs Flat ── */}
-                {(looks.length > 0 || saved.length > 0) && (
-                  <div style={{ padding: "8px 16px 0", display: "flex", alignItems: "center", gap: 8 }}>
-                    <button
-                      className={`scan-vis-chip${looksView === "grouped" ? " active" : ""}`}
-                      onClick={() => setLooksView("grouped")}
-                      style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                      Outfits
-                    </button>
-                    <button
-                      className={`scan-vis-chip${looksView === "flat" ? " active" : ""}`}
-                      onClick={() => setLooksView("flat")}
-                      style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
-                      All Items
-                    </button>
-                  </div>
-                )}
+                {/* Saved items grid (no Complete the Look here — moved to results page) */}
 
-                {/* ── Complete the Look: grouped view ── */}
-                {looksView === "grouped" && (() => {
+                {/* Complete the Look removed — lives on results page now */}
+                {false && (() => {
                   // Use backend looks data, fallback to client-side grouping
                   const looksData = looks.length > 0 ? looks : (() => {
                     const outfitMap = new Map();
@@ -7229,8 +7677,8 @@ export default function App() {
                   );
                 })()}
 
-                {/* ── Flat list view: all saved items ── */}
-                {looksView === "flat" && saved.length > 0 && (
+                {/* ── Saved items grid ── */}
+                {saved.length > 0 && (
                   <div style={{ padding: "12px 16px 0" }}>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
                       {saved.map(si => {
@@ -7269,7 +7717,7 @@ export default function App() {
                   </div>
                 )}
 
-                {looksView === "flat" && saved.length === 0 && (
+                {saved.length === 0 && (
                   <div style={{ padding: "40px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}>
                       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -7610,9 +8058,13 @@ export default function App() {
                         })}
                       </div>
 
-                      {/* Tier legend */}
-                      <div style={{ fontSize: 10, color: "var(--text-tertiary)", textAlign: "center", marginBottom: 14, lineHeight: 1.5 }}>
-                        Budget: under ${budgetMin} · Mid: ${budgetMin}–${budgetMax} · Premium: ${budgetMax}+
+                      {/* Scale labels */}
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-tertiary)", marginBottom: 14, padding: "0 2px" }}>
+                        <span>$0</span>
+                        <span>$250</span>
+                        <span>$500</span>
+                        <span>$750</span>
+                        <span>$1000+</span>
                       </div>
 
                       {/* Save / Cancel buttons */}
@@ -7637,7 +8089,10 @@ export default function App() {
                               await API.updateProfile({ budget_min: budgetMin, budget_max: budgetMax });
                               setSettingsBudgetDirty(false);
                               setSettingsBudgetExpanded(false);
-                            } catch {}
+                            } catch (err) {
+                              console.error('Budget save failed:', err);
+                              alert('Failed to save budget. Please try again.');
+                            }
                             setSettingsBudgetSaving(false);
                           }}
                         >{settingsBudgetSaving ? "Saving..." : "Save"}</button>
@@ -7721,101 +8176,7 @@ export default function App() {
                   <div className="settings-sheet-item danger" style={{ marginTop: 8 }} onClick={() => { setProfileSettingsOpen(false); handleLogout(); }} role="button" aria-label="Sign out">{t("log_out")}</div>
                 </div>
               </>}
-
-              {/* ─── Budget Range Modal ───────────────────── */}
-              {settingsBudgetExpanded && (
-                <div className="modal-overlay" onClick={() => { setBudgetMin(budgetModalOrigRef.current.min); setBudgetMax(budgetModalOrigRef.current.max); setSettingsBudgetExpanded(false); }} style={{ zIndex: 350 }}>
-                  <div className="modal-box" onClick={e => e.stopPropagation()} style={{ padding: "28px 24px 24px" }}>
-                    <button className="modal-x" onClick={() => { setBudgetMin(budgetModalOrigRef.current.min); setBudgetMax(budgetModalOrigRef.current.max); setSettingsBudgetExpanded(false); }}>✕</button>
-                    <h2 className="modal-title" style={{ fontSize: 22, marginBottom: 4 }}>Budget Range</h2>
-                    <p className="modal-sub" style={{ marginBottom: 20 }}>Set your default price range for product recommendations.</p>
-
-                    {/* Current range display */}
-                    <div style={{ textAlign: "center", marginBottom: 20 }}>
-                      <span style={{ fontSize: 28, fontWeight: 700, color: "var(--accent)", fontFamily: "var(--font-sans)", letterSpacing: "-0.5px" }}>
-                        ${budgetMin} – {budgetMax >= 1000 ? "$1000+" : `$${budgetMax}`}
-                      </span>
-                    </div>
-
-                    {/* Tier quick-select chips */}
-                    <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-                      {[
-                        { label: "$", min: 0, max: 50, desc: "Under $50" },
-                        { label: "$$", min: 50, max: 150, desc: "$50–$150" },
-                        { label: "$$$", min: 150, max: 500, desc: "$150–$500" },
-                        { label: "$$$$", min: 500, max: 1000, desc: "$500+" },
-                      ].map(p => {
-                        const active = [...selectedBudgetTiers].some(t => t.label === p.label);
-                        return (
-                          <button key={p.label} aria-label={`Budget tier ${p.label}: ${p.desc}`}
-                            onClick={() => {
-                              setSelectedBudgetTiers(prev => {
-                                const next = new Set(prev);
-                                const existing = [...next].find(t => t.label === p.label);
-                                if (existing) next.delete(existing); else next.add(p);
-                                if (next.size > 0) {
-                                  const tiers = [...next];
-                                  setBudgetMin(Math.min(...tiers.map(t => t.min)));
-                                  setBudgetMax(Math.max(...tiers.map(t => t.max)));
-                                }
-                                return next;
-                              });
-                              setSettingsBudgetDirty(true);
-                            }}
-                            style={{ flex: 1, padding: "10px 4px", minHeight: 48, background: active ? "var(--accent-bg)" : "var(--bg-input)", border: `1.5px solid ${active ? "var(--accent-border)" : "var(--border)"}`, borderRadius: 12, cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, color: active ? "var(--accent)" : "var(--text-tertiary)", transition: "all var(--transition-fast)", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}
-                          >
-                            <span>{p.label}</span>
-                            <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>{p.desc}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Dual-thumb range slider */}
-                    <div className="settings-budget-section" style={{ margin: "0 0 8px" }}>
-                      <div style={{ position: "relative", height: 36, marginBottom: 8 }}>
-                        <div style={{ position: "absolute", top: 16, left: 0, right: 0, height: 4, background: "var(--bg-input)", borderRadius: 2 }} />
-                        <div style={{ position: "absolute", top: 16, left: `${(budgetMin / 1000) * 100}%`, right: `${100 - (budgetMax / 1000) * 100}%`, height: 4, background: "var(--accent)", borderRadius: 2, transition: "left var(--transition-fast), right var(--transition-fast)" }} />
-                        <input type="range" min={0} max={1000} step={10} value={budgetMin}
-                          onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) { setBudgetMin(v); setSelectedBudgetTiers(new Set()); setSettingsBudgetDirty(true); } }}
-                          aria-label="Minimum budget"
-                          style={{ position: "absolute", top: 4, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2 }}
-                          className="budget-range-thumb"
-                        />
-                        <input type="range" min={0} max={1000} step={10} value={budgetMax}
-                          onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) { setBudgetMax(v); setSelectedBudgetTiers(new Set()); setSettingsBudgetDirty(true); } }}
-                          aria-label="Maximum budget"
-                          style={{ position: "absolute", top: 4, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3 }}
-                          className="budget-range-thumb"
-                        />
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>$0</span>
-                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>$1000+</span>
-                      </div>
-                    </div>
-
-                    {/* Save / Cancel buttons */}
-                    <button
-                      className="btn-primary"
-                      disabled={!settingsBudgetDirty || settingsBudgetSaving}
-                      style={{ width: "100%", padding: "12px 0", fontSize: 14, fontWeight: 600, marginTop: 16, opacity: settingsBudgetDirty ? 1 : 0.5, transition: "opacity var(--transition-fast)" }}
-                      onClick={async () => {
-                        setSettingsBudgetSaving(true);
-                        try {
-                          await API.updateProfile({ budget_min: budgetMin, budget_max: budgetMax });
-                          budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
-                          setSettingsBudgetDirty(false);
-                          setSettingsBudgetExpanded(false);
-                        } catch {}
-                        setSettingsBudgetSaving(false);
-                      }}
-                    >{settingsBudgetSaving ? "Saving…" : "Save Budget"}</button>
-                    <button className="modal-later" onClick={() => { setBudgetMin(budgetModalOrigRef.current.min); setBudgetMax(budgetModalOrigRef.current.max); setSettingsBudgetExpanded(false); }}>Cancel</button>
-                  </div>
-                </div>
-              )}
-            </div>
+            </div>
             );
           })()}
 
