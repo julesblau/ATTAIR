@@ -6203,11 +6203,11 @@ export default function App() {
                 <div className="ootw-card ootw-skeleton" style={{ margin: "4px 12px 8px", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(201,169,110,.1)", background: "var(--bg-card)" }}>
                   <div style={{ width: "100%", height: 180, background: "linear-gradient(135deg, var(--bg-input) 0%, var(--bg-card) 50%, var(--bg-input) 100%)", backgroundSize: "200% 100%", animation: "ootwShimmer 1.5s ease-in-out infinite" }} />
                   <div style={{ padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ width: "70%", height: 14, borderRadius: 6, background: "var(--bg-input)", animation: "ootwShimmer 1.5s ease-in-out infinite" }} />
-                    <div style={{ width: "90%", height: 10, borderRadius: 4, background: "var(--bg-input)", animation: "ootwShimmer 1.5s ease-in-out infinite", animationDelay: "0.15s" }} />
+                    <div style={{ width: "70%", height: 14, borderRadius: 6, background: "linear-gradient(135deg, var(--bg-input) 0%, var(--bg-card) 50%, var(--bg-input) 100%)", backgroundSize: "200% 100%", animation: "ootwShimmer 1.5s ease-in-out infinite" }} />
+                    <div style={{ width: "90%", height: 10, borderRadius: 4, background: "linear-gradient(135deg, var(--bg-input) 0%, var(--bg-card) 50%, var(--bg-input) 100%)", backgroundSize: "200% 100%", animation: "ootwShimmer 1.5s ease-in-out infinite", animationDelay: "0.15s" }} />
                     <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                       {[0,1,2,3,4,5].map(i => (
-                        <div key={i} style={{ width: 48, height: 48, borderRadius: 8, background: "var(--bg-input)", flexShrink: 0, animation: "ootwShimmer 1.5s ease-in-out infinite", animationDelay: `${i * 0.08}s` }} />
+                        <div key={i} style={{ width: 48, height: 48, borderRadius: 8, background: "linear-gradient(135deg, var(--bg-input) 0%, var(--bg-card) 50%, var(--bg-input) 100%)", backgroundSize: "200% 100%", flexShrink: 0, animation: "ootwShimmer 1.5s ease-in-out infinite", animationDelay: `${i * 0.08}s` }} />
                       ))}
                     </div>
                   </div>
@@ -9545,8 +9545,8 @@ export default function App() {
                               <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                             </div>
                         }
-                        {/* Rank badge */}
-                        <div style={{ position: "absolute", top: 8, left: 8, padding: "2px 8px", borderRadius: 100, background: "rgba(201,169,110,0.9)", fontSize: 11, fontWeight: 800, color: "#0C0C0E" }}>#{idx + 1}</div>
+                        {/* Rank badge — gold gradient for top 3, muted for 4-10 */}
+                        <div style={{ position: "absolute", top: 8, left: 8, padding: "2px 8px", borderRadius: 100, background: idx < 3 ? "linear-gradient(135deg, #C9A96E, #E8D5A8)" : "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 800, color: idx < 3 ? "#0C0C0E" : "rgba(255,255,255,0.7)", backdropFilter: idx >= 3 ? "blur(8px)" : "none" }}>#{idx + 1}</div>
                         <div className="feed-card-pills">
                           {scan.save_count > 0 && (
                             <div className="feed-card-pill">
