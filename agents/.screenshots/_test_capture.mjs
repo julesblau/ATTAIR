@@ -82,6 +82,27 @@ const MOCK_SCAN = {
   ]
 };
 
+// ─── Mock OOTW data ─────────────────────────────────────
+const MOCK_OOTW = {
+  ootw: {
+    id: "ootw-demo-001",
+    week_start: (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay() + 1); return d.toISOString().slice(0, 10); })(),
+    headline: "Quiet Luxury Meets Street Edge",
+    editorial: "This week the community proved minimalism doesn't have to whisper. Muted palettes met bold silhouettes — think oversized tailoring, buttery leathers, and sneakers that cost more than rent.",
+    cover_image: "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=800&h=600&fit=crop",
+    view_count: 2847,
+    generated_at: new Date().toISOString(),
+    scans: [
+      { id: "s1", image_url: "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=500&fit=crop", summary: "Clean oversized blazer with wide trousers", save_count: 42, item_count: 3, user: { display_name: "Mia Chen", avatar_url: null } },
+      { id: "s2", image_url: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=500&fit=crop", summary: "Monochrome layered streetwear", save_count: 38, item_count: 4, user: { display_name: "Jordan Kale", avatar_url: null } },
+      { id: "s3", image_url: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=500&fit=crop", summary: "Elevated athleisure — technical fabrics", save_count: 35, item_count: 3, user: { display_name: "Priya Rao", avatar_url: null } },
+      { id: "s4", image_url: "https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=400&h=500&fit=crop", summary: "Earthy tones with statement accessories", save_count: 29, item_count: 5, user: { display_name: "Leo Nox", avatar_url: null } },
+      { id: "s5", image_url: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=400&h=500&fit=crop", summary: "Relaxed tailoring meets vintage denim", save_count: 24, item_count: 3, user: { display_name: "Suki Park", avatar_url: null } },
+      { id: "s6", image_url: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=400&h=500&fit=crop", summary: "Bold colour-block minimalism", save_count: 21, item_count: 4, user: { display_name: "Alex Reeves", avatar_url: null } },
+    ],
+  }
+};
+
 // ── Pre-flight: ensure Vite dev server is running ──
 function checkServer(url, timeoutMs = 3000) {
   return new Promise((resolve) => {
@@ -196,6 +217,8 @@ async function startViteAndWait(maxWaitMs = 30000) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ following_ids: [] }) });
       } else if (url.includes("/api/auth/refresh")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ access_token: "mock-access", refresh_token: "mock-refresh" }) });
+      } else if (url.includes("/api/ootw/current")) {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_OOTW) });
       } else if (url.includes("/api/affiliate")) {
         await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ url: "#" }) });
       } else {
@@ -203,9 +226,9 @@ async function startViteAndWait(maxWaitMs = 30000) {
       }
     });
 
-    // ═══ Navigate to Likes tab (which loads scan history) ═══
-    console.error("[Screenshot] Navigating to /?tab=likes with token pre-set...");
-    await page.goto(VITE_URL + "/?tab=likes", { waitUntil: "load", timeout: 20000 });
+    // ═══ Navigate to Home/Feed tab ═══
+    console.error("[Screenshot] Navigating to home tab...");
+    await page.goto(VITE_URL + "/?tab=home", { waitUntil: "load", timeout: 20000 });
 
     // Wait for React to hydrate — look for the tab bar
     console.error("[Screenshot] Waiting for tab bar (.tb)...");
@@ -244,93 +267,45 @@ async function startViteAndWait(maxWaitMs = 30000) {
       }
     }
 
-    // Wait for React to settle and history to load
-    await page.waitForTimeout(2000);
+    // Wait for OOTW data to load and render
+    await page.waitForTimeout(2500);
 
-    // Click the Likes tab in bottom bar to trigger history load
-    console.error("[Screenshot] Clicking Likes tab...");
-    await page.evaluate(() => {
-      const btns = document.querySelectorAll(".tb button");
-      for (const b of btns) {
-        const label = b.getAttribute("aria-label") || b.textContent;
-        if (label.includes("Likes") || label.includes("Saved") || label.includes("saved")) { b.click(); return; }
-      }
-    });
-    await page.waitForTimeout(2000);
-
-    // Look for scan history cards and click "View results" on the first one
-    console.error("[Screenshot] Looking for scan history card...");
-    const foundScanCard = await page.evaluate(() => {
-      // Look for the scan card with "View results" or the scan name
-      const buttons = Array.from(document.querySelectorAll("button"));
-      for (const b of buttons) {
-        const label = b.getAttribute("aria-label") || b.textContent.trim();
-        if (label.includes("View scan results") || label.includes("View results")) {
-          b.click();
-          return "clicked_view_results";
-        }
-      }
-      // Also try clicking on scan card itself
-      const scanCards = document.querySelectorAll("[class*='scan-card'], [class*='history']");
-      if (scanCards.length > 0) {
-        scanCards[0].click();
-        return "clicked_scan_card";
-      }
-      // Debug: report what's visible
-      return document.body.innerText.slice(0, 500);
-    });
-    console.error("[Screenshot] Scan card result:", foundScanCard);
-
-    // Wait for the scan results view to render
-    await page.waitForTimeout(1500);
-
-    // Check if we're on the scan results view
-    const scanState = await page.evaluate(() => ({
-      hasRes: !!document.querySelector(".res"),
-      hasVBanner: !!document.querySelector(".v-banner"),
-      bodyText: document.body.innerText.slice(0, 800),
-      phase: document.querySelector(".v-step-l")?.textContent || "none",
-    }));
-    console.error("[Screenshot] Scan results state:", JSON.stringify(scanState, null, 2));
+    // Verify OOTW card is present
+    const ootwPresent = await page.evaluate(() => !!document.querySelector(".ootw-card"));
+    console.error("[Screenshot] OOTW card present:", ootwPresent);
 
     // ═══ SCREENSHOTS ═══
 
-    // SCREENSHOT 1 ("scan"): Scan results overview — shows "Products Found" + item list
-    console.error("[Screenshot] Taking screenshot 1: Scan results overview...");
-    await page.waitForTimeout(800);
-    try { await snap("scan"); } catch(e) { console.error("FAIL scan: " + e.message); }
-
-    // SCREENSHOT 2 ("home"): Scroll to product cards — the actual products from search
-    console.error("[Screenshot] Taking screenshot 2: Product cards from scan...");
-    // Scroll the main content (not .res — the whole page) to show product cards
+    // SCREENSHOT 1 ("home"): Feed tab with OOTW card visible at top
+    console.error("[Screenshot] Taking screenshot 1: Feed tab with OOTW card...");
+    // Scroll the OOTW card into view if needed
     await page.evaluate(() => {
-      // The res div may be the scrollable container, or the window
-      const res = document.querySelector(".res");
-      if (res) {
-        // Scroll within the results container to show products
-        res.scrollTop = res.scrollHeight;
-        // Try window scroll too
-      }
-      window.scrollTo(0, 9999);
-      // Also scroll the main app container if it exists
-      const main = document.querySelector(".app-scroll") || document.querySelector("main") || document.querySelector("[class*='content']");
-      if (main) main.scrollTop = main.scrollHeight;
-    });
-    await page.waitForTimeout(600);
-    // Now scroll to a good position showing product cards
-    await page.evaluate(() => {
-      const budgetLabels = document.querySelectorAll("span");
-      for (const el of budgetLabels) {
-        if (el.textContent.trim() === "BUDGET" || el.textContent.trim() === "MATCH") {
-          el.scrollIntoView({ block: "start", behavior: "instant" });
-          // Nudge up a bit to show the item name too
-          window.scrollBy(0, -40);
-          return;
-        }
-      }
+      const card = document.querySelector(".ootw-card");
+      if (card) card.scrollIntoView({ block: "start", behavior: "instant" });
     });
     await page.waitForTimeout(600);
     try { await snap("home"); } catch(e) { console.error("FAIL home: " + e.message); }
+
+    // SCREENSHOT 2 ("scan"): OOTW overlay — tap the card to expand
+    console.error("[Screenshot] Taking screenshot 2: OOTW overlay...");
+    await page.evaluate(() => {
+      const card = document.querySelector(".ootw-card");
+      if (card) card.click();
+    });
+    await page.waitForTimeout(800);
+    const overlayPresent = await page.evaluate(() => !!document.querySelector(".ootw-overlay"));
+    console.error("[Screenshot] OOTW overlay present:", overlayPresent);
+    try { await snap("scan"); } catch(e) { console.error("FAIL scan: " + e.message); }
+
+    // Close the overlay before navigating to profile
+    await page.evaluate(() => {
+      const overlay = document.querySelector(".ootw-overlay");
+      if (overlay) {
+        const closeBtn = overlay.querySelector("button");
+        if (closeBtn) closeBtn.click();
+      }
+    });
+    await page.waitForTimeout(500);
 
     // SCREENSHOT 3 ("profile"): Settings bottom sheet with budget slider expanded
     console.error("[Screenshot] Taking screenshot 3: Settings with budget slider...");
