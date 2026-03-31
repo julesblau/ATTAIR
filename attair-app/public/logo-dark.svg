@@ -1,14 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 80" fill="none">
-  <!-- Dark mode: transparent background, white text, gold accent dot -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 52" fill="none">
+  <!-- Dark mode: white background, dark text, gold accent dot -->
+  <rect width="250" height="52" rx="4" fill="#FAFAFA"/>
   <text
-    x="210"
-    y="56"
+    x="125"
+    y="27"
     text-anchor="middle"
+    dominant-baseline="central"
     font-family="'Helvetica Neue', 'Inter', Helvetica, Arial, sans-serif"
     font-weight="700"
-    font-size="58"
-    letter-spacing="-2.5"
-    fill="#FAFAFA"
+    font-size="44"
+    letter-spacing="-2"
+    fill="#1A1816"
   >ATTAIRE</text>
-  <circle cx="288" cy="20" r="3.5" fill="#C9A96E"/>
+  <circle cx="182" cy="7" r="2.5" fill="#C9A96E"/>
 </svg>

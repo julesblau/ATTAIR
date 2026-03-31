@@ -2203,7 +2203,7 @@
 /* ─── Header ─── */
 .hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg-secondary) 92%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
 .logo{font-family:'Instrument Serif';font-size:22px;color:var(--text-primary);font-style:italic;letter-spacing:0.04em}.logo span{color:var(--accent)}
-.logo-img{height:30px;width:auto;display:block;border-radius:0;padding:0}
+.logo-img{height:28px;width:auto;display:block;border-radius:2px;padding:0}
 .logo-img--light{display:none}
 .app[data-theme='light'] .logo-img--dark{display:none}
 .app[data-theme='light'] .logo-img--light{display:block}
