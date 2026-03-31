@@ -31,6 +31,15 @@
 - **Fix 1:** Tighten the rectangle horizontally — less space between the edges of the rectangle and the letters. Keep a small gap, not a wide one.
 - **Fix 2:** Make vertical padding even — equal spacing above and below the letters relative to the rectangle edges. Currently uneven (text sits closer to one edge than the other).
 
+### Logo Polish — Spacing, Dot Removal, AI Highlight
+**Status:** QUEUED — Must fix now
+**Effort:** S
+**Spec:**
+- **Side spacing:** Reduce horizontal padding of the rectangle to ~40% of current. Almost flush to the letters with just a small breathing room.
+- **Orange dot:** Do NOT remove. Move it to the top-right of the E, positioned like an exponent. Triple its current size. This dot is part of the brand identity — treat it as the secondary logo mark.
+- **Highlight "AI":** The letters "AI" in ATTAIRE should be subtly colored in gold (#C9A96E). Rest of the letters stay the normal color (white in dark mode, black in light mode). Should be subtle — not loud, but once you notice it you can't unsee it.
+- **Do NOT break anything else about the logo** — the dark/light mode colors and rectangle are already correct.
+
 ### Fix Style DNA Text Contrast (Light Mode Only)
 **Status:** QUEUED — Must fix now
 **Effort:** S
