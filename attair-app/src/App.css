@@ -3706,6 +3706,17 @@
   .sdna-swatch { width: 36px; height: 36px; }
 }
 
+/* ── Light-mode contrast fix ──
+   The overlay is always #000, so force dark-mode text colors
+   so nothing disappears against the black background.          */
+[data-theme='light'] .sdna-overlay {
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255,255,255,0.6);
+  --text-tertiary: rgba(255,255,255,0.4);
+  --text-inverse: #000000;
+  --border: rgba(255,255,255,0.08);
+}
+
 /* ═══════════════════════════════════════════════════════════════
    HANGER TEST — Daily Outfit Verdict
    ═══════════════════════════════════════════════════════════════ */
