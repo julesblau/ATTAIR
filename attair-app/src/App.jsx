@@ -6239,7 +6239,7 @@ export default function App() {
                   {/* Cover image with gradient */}
                   <div style={{ position: "relative", width: "100%", height: 180, overflow: "hidden" }}>
                     {ootwData.cover_image ? (
-                      <img src={ootwData.cover_image} alt="This Week's Look" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.55)" }} />
+                      <img src={ootwData.cover_image} alt="This Week's Look" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.55)" }} onError={e => { e.target.style.display = "none"; }} />
                     ) : (
                       <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
                     )}
@@ -6278,7 +6278,7 @@ export default function App() {
                       {ootwData.scans.slice(0, 6).map((s, i) => (
                         <div key={s.id || i} style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}>
                           {s.image_url ? (
-                            <img src={s.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                            <img src={s.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                           ) : (
                             <div style={{ width: "100%", height: "100%", background: "var(--bg-input)" }} />
                           )}
@@ -6369,7 +6369,7 @@ export default function App() {
                       <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => setFeedDetailScan(scan)}>
                         <div style={{ position: "relative" }}>
                           {scan.image_url
-                            ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" />
+                            ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
                             : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                               </div>
@@ -9500,7 +9500,7 @@ export default function App() {
             {/* Hero cover */}
             <div style={{ position: "relative", width: "100%", height: 280, overflow: "hidden" }}>
               {ootwData.cover_image ? (
-                <img src={ootwData.cover_image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.5)" }} />
+                <img src={ootwData.cover_image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.5)" }} onError={e => { e.target.style.display = "none"; }} />
               ) : (
                 <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
               )}
@@ -9540,7 +9540,7 @@ export default function App() {
                     <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setOotwExpanded(false); setFeedDetailScan(scan); }}>
                       <div style={{ position: "relative" }}>
                         {scan.image_url
-                          ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" />
+                          ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
                           : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                             </div>
