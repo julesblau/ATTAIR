@@ -46,5 +46,15 @@ ALTER COLUMN notification_prefs SET DEFAULT '{
   "weekly_style_report": true
 }'::jsonb;
 
+-- ─── RPC: Atomic view-count increment ───────────────────────────────
+CREATE OR REPLACE FUNCTION public.increment_ootw_view_count(ootw_id UUID)
+RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  UPDATE outfit_of_the_week
+  SET view_count = COALESCE(view_count, 0) + 1
+  WHERE id = ootw_id;
+END;
+$$;
+
 COMMENT ON TABLE outfit_of_the_week IS 'AI-curated weekly editorial picking top trending scans';
 COMMENT ON TABLE weekly_style_reports IS 'Personalized weekly style report sent to Pro users on Sunday';
