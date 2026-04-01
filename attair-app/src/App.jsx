@@ -2516,36 +2516,20 @@ const OB_DEMO_RESULTS = [
 // ═══════════════════════════════════════════════════════════════
 // INSPIRATION DATA — Gender-adaptive celebrity/influencer grid
 // ═══════════════════════════════════════════════════════════════
-const INSPIRATIONS = {
-  female: [
-    { name: "Alix Earle", tag: "TikTok", emoji: "📱" },
-    { name: "Hailey Bieber", tag: "Model", emoji: "✨" },
-    { name: "Zendaya", tag: "Actress", emoji: "🎬" },
-    { name: "Sabrina Carpenter", tag: "Artist", emoji: "🎵" },
-    { name: "Sydney Sweeney", tag: "Actress", emoji: "🎬" },
-    { name: "Dua Lipa", tag: "Artist", emoji: "🎵" },
-    { name: "Bella Hadid", tag: "Model", emoji: "✨" },
-    { name: "Rihanna", tag: "Fashion", emoji: "👗" },
-    { name: "Matilda Djerf", tag: "TikTok", emoji: "📱" },
-    { name: "Emma Chamberlain", tag: "YouTube", emoji: "🎥" },
-    { name: "Kendall Jenner", tag: "Model", emoji: "✨" },
-    { name: "Billie Eilish", tag: "Artist", emoji: "🎵" },
-  ],
-  male: [
-    { name: "Travis Scott", tag: "Artist", emoji: "🎵" },
-    { name: "A$AP Rocky", tag: "Artist", emoji: "🎵" },
-    { name: "LeBron James", tag: "Athlete", emoji: "🏀" },
-    { name: "Bad Bunny", tag: "Artist", emoji: "🎵" },
-    { name: "Timothée Chalamet", tag: "Actor", emoji: "🎬" },
-    { name: "Tyler, the Creator", tag: "Artist", emoji: "🎵" },
-    { name: "Jalen Brunson", tag: "Athlete", emoji: "🏀" },
-    { name: "Harry Styles", tag: "Artist", emoji: "🎵" },
-    { name: "Jacob Elordi", tag: "Actor", emoji: "🎬" },
-    { name: "Jaylen Brown", tag: "Athlete", emoji: "🏀" },
-    { name: "Pedro Pascal", tag: "Actor", emoji: "🎬" },
-    { name: "Pharrell", tag: "Fashion", emoji: "👗" },
-  ],
-};
+const STYLE_AESTHETICS = [
+  { name: "Minimalist", desc: "Clean lines, neutrals, less is more" },
+  { name: "Streetwear", desc: "Urban edge, sneakers, graphic pieces" },
+  { name: "Old Money", desc: "Classic, preppy, timeless polish" },
+  { name: "Quiet Luxury", desc: "Understated, quality over logos" },
+  { name: "Y2K", desc: "Early 2000s revival, bold & playful" },
+  { name: "Coastal", desc: "Breezy, natural, effortless" },
+  { name: "Avant-Garde", desc: "Experimental, editorial, boundary-pushing" },
+  { name: "Athleisure", desc: "Sport meets street, performance comfort" },
+  { name: "Vintage", desc: "Retro finds, thrift treasures" },
+  { name: "Dark Academia", desc: "Scholarly, moody, layered" },
+  { name: "Gorpcore", desc: "Outdoor tech meets everyday wear" },
+  { name: "Cottagecore", desc: "Romantic, pastoral, soft textures" },
+];
 
 // ═══════════════════════════════════════════════════════════════
 // ONBOARDING DEMO — TikTok-speed animated welcome
@@ -2644,6 +2628,20 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
         </div>
       </div>
 
+      {/* CTA section */}
+      <div className="ob-demo-cta">
+        <h1 className="ob-demo-title">
+          Your AI-powered<br /><span className="ob-demo-title-gold">style assistant.</span>
+        </h1>
+        <p className="ob-demo-sub">
+          Scan any outfit. Find every piece. Shop at any budget — solo or with friends.
+        </p>
+        <button className="cta" onClick={onGetStarted}>Get Started</button>
+        <button className="ob-demo-login" onClick={onLogin}>
+          Already have an account? Log in
+        </button>
+      </div>
+
       {/* Social proof bar */}
       {stats && (
         <div className="ob-social-proof">
@@ -2666,20 +2664,6 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
           <div className="ob-social-trust">Trusted by style hunters everywhere</div>
         </div>
       )}
-
-      {/* CTA section */}
-      <div className="ob-demo-cta">
-        <h1 className="ob-demo-title">
-          Your AI-powered<br /><span className="ob-demo-title-gold">style assistant.</span>
-        </h1>
-        <p className="ob-demo-sub">
-          Scan any outfit. Find every piece. Shop at any budget — solo or with friends.
-        </p>
-        <button className="cta" onClick={onGetStarted}>Get Started</button>
-        <button className="ob-demo-login" onClick={onLogin}>
-          Already have an account? Log in
-        </button>
-      </div>
     </div>
   );
 }
@@ -2688,10 +2672,8 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
 // INSPIRATION PICKER — "Who inspires your style?"
 // ═══════════════════════════════════════════════════════════════
 function InspirationPicker({ fade, onContinue, onSkip }) {
-  const [gender, setGender] = useState("female");
+  const [shopFor, setShopFor] = useState(null); // "women" | "men" | "both"
   const [selected, setSelected] = useState([]);
-
-  const people = INSPIRATIONS[gender] || INSPIRATIONS.female;
 
   const toggle = (name) => {
     setSelected(prev =>
@@ -2700,45 +2682,43 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
   };
 
   const handleContinue = () => {
-    // Store in localStorage for persistence — saved to backend on signup
     localStorage.setItem("attair_inspirations", JSON.stringify(selected));
-    localStorage.setItem("attair_ob_gender", gender);
-    onContinue(selected, gender);
+    if (shopFor) localStorage.setItem("attair_ob_gender", shopFor === "women" ? "female" : shopFor === "men" ? "male" : "both");
+    onContinue(selected, shopFor === "women" ? "female" : shopFor === "men" ? "male" : null);
   };
 
   return (
     <div className={`ob ob-inspo ${fade}`}>
       <div className="ob-inspo-header">
-        <h1 className="ob-inspo-title">Who inspires<br />your style?</h1>
-        <p className="ob-inspo-sub">Pick 3 or more. This helps us personalize your experience.</p>
+        <h1 className="ob-inspo-title">What's your<br />style vibe?</h1>
+        <p className="ob-inspo-sub">Pick 3 or more aesthetics. We'll tailor your experience.</p>
       </div>
 
-      {/* Gender toggle */}
+      {/* Shopping preference */}
       <div className="ob-inspo-gender">
-        {[{ key: "female", label: "Her Style" }, { key: "male", label: "His Style" }].map(({ key, label }) => (
+        {[{ key: "women", label: "Women's" }, { key: "men", label: "Men's" }, { key: "both", label: "Both" }].map(({ key, label }) => (
           <button
             key={key}
-            className={`ob-inspo-gender-btn ${gender === key ? "active" : ""}`}
-            onClick={() => { setGender(key); setSelected([]); }}
+            className={`ob-inspo-gender-btn ${shopFor === key ? "active" : ""}`}
+            onClick={() => setShopFor(key)}
           >
             {label}
           </button>
         ))}
       </div>
 
-      {/* People grid */}
+      {/* Aesthetics grid */}
       <div className="ob-inspo-grid">
-        {people.map((person) => {
-          const on = selected.includes(person.name);
+        {STYLE_AESTHETICS.map((aesthetic) => {
+          const on = selected.includes(aesthetic.name);
           return (
             <button
-              key={person.name}
+              key={aesthetic.name}
               className={`ob-inspo-card ${on ? "selected" : ""}`}
-              onClick={() => toggle(person.name)}
+              onClick={() => toggle(aesthetic.name)}
             >
-              <div className="ob-inspo-card-emoji">{person.emoji}</div>
-              <div className="ob-inspo-card-name">{person.name}</div>
-              <div className="ob-inspo-card-tag">{person.tag}</div>
+              <div className="ob-inspo-card-name">{aesthetic.name}</div>
+              <div className="ob-inspo-card-tag">{aesthetic.desc}</div>
               {on && <div className="ob-inspo-card-check">✓</div>}
             </button>
           );
