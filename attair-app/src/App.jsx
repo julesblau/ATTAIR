@@ -4170,12 +4170,14 @@ export default function App() {
   const [feedLoading, setFeedLoading] = useState(false);
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedDetailScan, setFeedDetailScan] = useState(null); // scan object for overlay
+  const [feedDetailIdx, setFeedDetailIdx] = useState(-1); // index in feedScans for swipe navigation
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [userSearchLoading, setUserSearchLoading] = useState(false);
   const [followingSet, setFollowingSet] = useState(new Set()); // user ids we follow
   const userSearchTimerRef = useRef(null);
+  const feedSentinelRef = useRef(null);
   const [searchSubTab, setSearchSubTab] = useState(() => {
     if (Auth.getToken()) {
       const p = new URLSearchParams(window.location.search);
@@ -4583,6 +4585,13 @@ export default function App() {
           if (profile.followers_count != null || profile.following_count != null) {
             setProfileStats({ followers_count: profile.followers_count || 0, following_count: profile.following_count || 0 });
           }
+          // Populate followingSet so follow buttons show correct state
+          if (profile.id) {
+            API.getFollowing(profile.id).then(fd => {
+              const ids = (fd.following || []).map(f => f.following_id || f.id).filter(Boolean);
+              if (ids.length) setFollowingSet(new Set(ids));
+            }).catch(() => {});
+          }
         })
         .catch(() => {});
       API.getHistory().then(d => {
@@ -4714,6 +4723,18 @@ export default function App() {
       }
     }
   }, [authed, screen, tab, feedTab]);
+
+  // Infinite scroll — pre-fetch when sentinel enters viewport
+  useEffect(() => {
+    if (!feedSentinelRef.current) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && feedHasMore && !feedLoading) {
+        loadFeed(feedPage + 1, true);
+      }
+    }, { rootMargin: "600px" }); // pre-fetch 600px before visible
+    obs.observe(feedSentinelRef.current);
+    return () => obs.disconnect();
+  }, [feedHasMore, feedLoading, feedPage, loadFeed]);
 
   // ─── Outfit of the Week loader ────────────────────────────
   const loadOOTW = useCallback(() => {
@@ -6396,58 +6417,74 @@ export default function App() {
                     const isSaved = saved.some(s => s.scan_id === scan.id);
                     const isTrending = (scan.save_count || 0) >= 3;
                     const trendingRank = feedTab === "trending" ? idx + 1 + ((feedPage - 1) * 20) : null;
+                    const showAd = tier !== "pro" && idx > 0 && idx % 5 === 0;
                     return (
-                      <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => setFeedDetailScan(scan)}>
-                        <div style={{ position: "relative" }}>
-                          {scan.image_url
-                            ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
-                            : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
+                      <React.Fragment key={scan.id || idx}>
+                        {showAd && (
+                          <div className="feed-card feed-ad-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }}>
+                            <div style={{ position: "relative", background: "linear-gradient(135deg, rgba(201,169,110,.06), rgba(201,169,110,.02))", border: "1px solid rgba(201,169,110,.12)", borderRadius: 16, padding: "20px 16px", textAlign: "center", minHeight: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase" }}>Sponsored</div>
+                              <div style={{ width: 48, height: 48, borderRadius: 12, background: "linear-gradient(135deg, var(--accent), #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                               </div>
-                          }
-                          {/* Trending rank badge (top-left) */}
-                          {trendingRank && trendingRank <= 10 && (
-                            <div className="feed-card-rank">#{trendingRank}</div>
-                          )}
-                          <div className="feed-card-pills">
-                            {isTrending && (
-                              <div className="feed-card-pill feed-card-trending">
-                                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                                Trending
-                              </div>
-                            )}
-                            {scan.save_count > 0 && (
-                              <div className="feed-card-pill">
-                                <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                                {scan.save_count}
-                              </div>
-                            )}
-                            {scan.item_count > 0 && (
-                              <div className="feed-card-pill feed-card-items-pill">
-                                {scan.item_count} {scan.item_count === 1 ? "item" : "items"}
-                              </div>
-                            )}
-                          </div>
-                          <div className="feed-card-overlay">
-                            <div className="feed-card-user">
-                              <div className="feed-card-avatar">{ini}</div>
-                              <div className="feed-card-info">
-                                <div className="feed-card-name">{u.display_name || "Anonymous"}</div>
-                                {scan.summary && <div className="feed-card-summary">{scan.summary}</div>}
-                              </div>
+                              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Upgrade to Pro</div>
+                              <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 220 }}>Remove ads and unlock Style DNA, unlimited scans, and more</div>
+                              <button className="cta" onClick={() => setScreen("paywall")} style={{ padding: "10px 28px", fontSize: 12, borderRadius: 100, marginTop: 4 }}>Go Pro</button>
                             </div>
-                            <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
-                              <svg viewBox="0 0 24 24" width="22" height="22" fill={isSaved ? "var(--accent)" : "none"} stroke={isSaved ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                            </button>
+                          </div>
+                        )}
+                        <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setFeedDetailScan(scan); setFeedDetailIdx(idx); }}>
+                          <div style={{ position: "relative" }}>
+                            {scan.image_url
+                              ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                              : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
+                                </div>
+                            }
+                            {trendingRank && trendingRank <= 10 && (
+                              <div className="feed-card-rank">#{trendingRank}</div>
+                            )}
+                            <div className="feed-card-pills">
+                              {isTrending && (
+                                <div className="feed-card-pill feed-card-trending">
+                                  <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                                  Trending
+                                </div>
+                              )}
+                              {scan.save_count > 0 && (
+                                <div className="feed-card-pill">
+                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                  {scan.save_count}
+                                </div>
+                              )}
+                              {scan.item_count > 0 && (
+                                <div className="feed-card-pill feed-card-items-pill">
+                                  {scan.item_count} {scan.item_count === 1 ? "item" : "items"}
+                                </div>
+                              )}
+                            </div>
+                            <div className="feed-card-overlay">
+                              <div className="feed-card-user">
+                                <div className="feed-card-avatar">{ini}</div>
+                                <div className="feed-card-info">
+                                  <div className="feed-card-name">{u.display_name || "Anonymous"}</div>
+                                  {scan.summary && <div className="feed-card-summary">{scan.summary}</div>}
+                                </div>
+                              </div>
+                              <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill={isSaved ? "var(--accent)" : "none"} stroke={isSaved ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      </React.Fragment>
                     );
                   })}
-                  {feedHasMore && (
-                    <button onClick={() => loadFeed(feedPage + 1, true)} disabled={feedLoading} className="btn-secondary" style={{ padding: "14px 0", borderRadius: 14, width: "100%", opacity: feedLoading ? 0.5 : 1 }}>
-                      {feedLoading ? "Loading..." : "Load more"}
-                    </button>
+                  {feedHasMore && <div ref={feedSentinelRef} style={{ height: 1 }} />}
+                  {feedLoading && feedScans.length > 0 && (
+                    <div style={{ display: "flex", justifyContent: "center", padding: "20px 0" }}>
+                      <div className="spinner" style={{ width: 24, height: 24 }} />
+                    </div>
                   )}
                 </div>
               )}
@@ -9568,29 +9605,112 @@ export default function App() {
           </div>
         )}
 
-        {/* ─── Feed Detail Overlay ─────────────────────── */}
-        {feedDetailScan && (
-          <div className="feed-detail-overlay">
-            <button className="feed-detail-close" onClick={() => setFeedDetailScan(null)}>&#x2715;</button>
-            {feedDetailScan.image_url && <img className="feed-detail-img" src={feedDetailScan.image_url} alt="" />}
-            <div className="feed-detail-body">
-              <div className="feed-detail-user">
-                <div className="feed-card-avatar" style={{ width: 40, height: 40, fontSize: 15 }}>{((feedDetailScan.user?.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</div>
-                <div>
-                  <div className="feed-detail-name">{feedDetailScan.user?.display_name || "Anonymous"}</div>
-                  {feedDetailScan.created_at && <div className="feed-detail-date">{new Date(feedDetailScan.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</div>}
+        {/* ─── Feed Detail Overlay (TikTok-style) ─────────────────────── */}
+        {feedDetailScan && (() => {
+          const scan = feedDetailScan;
+          const u = scan.user || {};
+          const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+          const items = scan.items || [];
+          const scanIsSaved = saved.some(s => s.scan_id === scan.id);
+          const isFollowing = followingSet.has(u.id);
+
+          const goNext = () => {
+            if (feedDetailIdx < feedScans.length - 1) {
+              const next = feedScans[feedDetailIdx + 1];
+              setFeedDetailScan(next);
+              setFeedDetailIdx(feedDetailIdx + 1);
+              if (feedDetailIdx + 3 >= feedScans.length && feedHasMore && !feedLoading) {
+                loadFeed(feedPage + 1, true);
+              }
+            }
+          };
+          const goPrev = () => {
+            if (feedDetailIdx > 0) {
+              const prev = feedScans[feedDetailIdx - 1];
+              setFeedDetailScan(prev);
+              setFeedDetailIdx(feedDetailIdx - 1);
+            }
+          };
+
+          return (
+            <div className="feed-detail-overlay" onTouchStart={e => { e.currentTarget._touchY = e.touches[0].clientY; }} onTouchEnd={e => { const dy = e.currentTarget._touchY - e.changedTouches[0].clientY; if (Math.abs(dy) > 60) { dy > 0 ? goNext() : goPrev(); } }}>
+              <button className="feed-detail-close" onClick={() => { setFeedDetailScan(null); setFeedDetailIdx(-1); }}>&#x2715;</button>
+
+              <div className="feed-detail-scroll">
+                {scan.image_url && <img className="feed-detail-img" src={scan.image_url} alt="" />}
+
+                <div className="feed-detail-body">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <div className="feed-detail-user">
+                      <div className="feed-card-avatar" style={{ width: 40, height: 40, fontSize: 15 }}>{ini}</div>
+                      <div>
+                        <div className="feed-detail-name">{u.display_name || "Anonymous"}</div>
+                        {scan.created_at && <div className="feed-detail-date">{new Date(scan.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>}
+                      </div>
+                    </div>
+                    {u.id && u.id !== authUserId && (
+                      <button className={`feed-detail-follow-btn${isFollowing ? " following" : ""}`} onClick={() => handleFollowFromSearch(u.id)}>
+                        {isFollowing ? "Following" : "Follow"}
+                      </button>
+                    )}
+                  </div>
+
+                  {scan.summary && <div className="feed-detail-summary">{scan.summary}</div>}
+
+                  <div className="feed-detail-stats">
+                    {scan.item_count > 0 && <span>{scan.item_count} item{scan.item_count !== 1 ? "s" : ""}</span>}
+                    {(scan.save_count || 0) > 0 && <span>&#10084; {scan.save_count}</span>}
+                    {(scan.save_count || 0) >= 3 && <span className="feed-detail-trending">Trending</span>}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 10, padding: "12px 0" }}>
+                    <button className="feed-detail-action-btn" onClick={() => { const itemData = { name: scan.summary || "Scanned outfit", brand: u.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill={scanIsSaved ? "var(--accent)" : "none"} stroke={scanIsSaved ? "var(--accent)" : "currentColor"} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      {scanIsSaved ? "Saved" : "Save"}
+                    </button>
+                    <button className="feed-detail-action-btn" onClick={() => { if (navigator.share) navigator.share({ title: scan.summary || "Check out this outfit on ATTAIRE", url: `${window.location.origin}/scan/${scan.id}` }).catch(() => {}); else { navigator.clipboard.writeText(`${window.location.origin}/scan/${scan.id}`); } }}>
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                      Share
+                    </button>
+                  </div>
+
+                  {items.length > 0 && (
+                    <div className="feed-detail-items">
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                        Shop this look
+                      </div>
+                      {items.map((item, i) => (
+                        <div key={i} className="feed-detail-item-card">
+                          <div className="feed-detail-item-info">
+                            <div className="feed-detail-item-name">{item.name || item.category || "Item"}</div>
+                            <div className="feed-detail-item-meta">
+                              {item.brand && item.brand !== "Unidentified" && <span className="feed-detail-item-brand">{item.brand}</span>}
+                              {item.price_range && <span>{item.price_range}</span>}
+                            </div>
+                          </div>
+                          <button className="feed-detail-shop-btn" onClick={() => {
+                            const q = item.search_query || item.alt_search || `${item.brand || ""} ${item.name || item.category || ""}`.trim();
+                            window.open(`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(q)}`, "_blank");
+                          }}>
+                            Shop
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {feedScans.length > 1 && (
+                    <div style={{ textAlign: "center", padding: "16px 0 8px", fontSize: 11, color: "var(--text-tertiary)", opacity: 0.6 }}>
+                      Swipe up for next &middot; {feedDetailIdx + 1} of {feedScans.length}
+                    </div>
+                  )}
                 </div>
               </div>
-              {feedDetailScan.summary && <div className="feed-detail-summary">{feedDetailScan.summary}</div>}
-              <div className="feed-detail-stats">
-                {feedDetailScan.item_count > 0 && <span>{feedDetailScan.item_count} item{feedDetailScan.item_count !== 1 ? "s" : ""} identified</span>}
-                {(feedDetailScan.save_count || 0) > 0 && <span>{feedDetailScan.save_count} {feedDetailScan.save_count === 1 ? "person" : "people"} saved this</span>}
-                {(feedDetailScan.save_count || 0) >= 3 && <span className="feed-detail-trending">Trending</span>}
-              </div>
-              {feedDetailScan.user?.bio && <div style={{ fontSize: 13, color: "var(--text-tertiary)", padding: "12px 0", borderTop: "1px solid var(--border)" }}>{feedDetailScan.user.bio}</div>}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ─── PWA Install Banner ── */}
         {showInstallBanner && (

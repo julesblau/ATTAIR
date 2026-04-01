@@ -2932,17 +2932,35 @@
 .user-search-follow-btn{min-height:36px;padding:0 16px;border-radius:9999px;font-family:var(--font-sans),sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;flex-shrink:0}
 .user-search-follow-btn.follow{background:var(--accent);color:#000;border:none}
 .user-search-follow-btn.following{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}
-.feed-detail-overlay{position:fixed;inset:0;z-index:250;background:var(--bg-secondary);overflow-y:auto;animation:slideIn .25s ease}
-.feed-detail-close{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:16px;z-index:260;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);border:none;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.feed-detail-img{width:60%;max-width:260px;max-height:40vh;object-fit:cover;display:block;margin:60px auto 0;border-radius:var(--radius-md,12px)}
-.feed-detail-body{padding:24px 16px}
-.feed-detail-user{display:flex;align-items:center;gap:8px;margin-bottom:16px}
-.feed-detail-name{font-size:16px;font-weight:600;color:var(--text-primary)}
-.feed-detail-date{font-size:12px;color:var(--text-tertiary)}
-.feed-detail-summary{font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:12px}
-.feed-detail-stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;font-size:12px;color:var(--text-tertiary)}
+/* ─── Feed Detail TikTok-style ─────────────────────── */
+.feed-detail-overlay{position:fixed;inset:0;z-index:1100;background:var(--bg-app);overflow-y:auto;-webkit-overflow-scrolling:touch;animation:fadeIn .15s ease}
+.feed-detail-scroll{min-height:100vh;padding-bottom:env(safe-area-inset-bottom,0)}
+.feed-detail-close{position:fixed;top:12px;right:12px;z-index:1101;width:36px;height:36px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px)}
+.feed-detail-img{width:100%;max-height:65vh;object-fit:cover;display:block}
+.feed-detail-body{padding:16px 16px 40px}
+.feed-detail-user{display:flex;align-items:center;gap:12px}
+.feed-detail-name{font-size:15px;font-weight:700;color:var(--text-primary)}
+.feed-detail-date{font-size:11px;color:var(--text-tertiary)}
+.feed-detail-summary{font-size:14px;color:var(--text-secondary);line-height:1.5;margin-bottom:8px}
+.feed-detail-stats{display:flex;gap:12px;font-size:12px;color:var(--text-tertiary);padding:8px 0;border-bottom:1px solid var(--border)}
 .feed-detail-stats span{display:inline-flex;align-items:center;gap:4px}
-.feed-detail-trending{color:var(--accent);font-weight:600}
+.feed-detail-trending{color:#C9A96E;font-weight:700}
+.feed-detail-follow-btn{padding:8px 20px;border-radius:100px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.feed-detail-follow-btn.following{background:var(--accent);color:var(--text-inverse);border-color:var(--accent)}
+.feed-detail-action-btn{display:flex;align-items:center;gap:6px;padding:10px 18px;border-radius:100px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.feed-detail-action-btn:active{transform:scale(.96)}
+/* Feed Detail Items */
+.feed-detail-items{padding:16px 0 0;border-top:1px solid var(--border)}
+.feed-detail-item-card{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
+.feed-detail-item-card:last-child{border-bottom:none}
+.feed-detail-item-info{flex:1;min-width:0}
+.feed-detail-item-name{font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed-detail-item-meta{display:flex;gap:8px;font-size:12px;color:var(--text-tertiary);margin-top:2px}
+.feed-detail-item-brand{color:var(--accent);font-weight:600}
+.feed-detail-shop-btn{display:flex;align-items:center;gap:4px;padding:8px 16px;border-radius:100px;border:none;background:var(--accent);color:#000;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;transition:all .2s}
+.feed-detail-shop-btn:active{transform:scale(.96)}
+/* Feed ad card */
+.feed-ad-card{margin:0 0 2px}
 .app[data-theme='light'] .feed-card-overlay{background:linear-gradient(transparent,rgba(0,0,0,.55))}
 .app[data-theme='light'] .feed-skeleton-img{background:linear-gradient(110deg,#f0f0f0 30%,#e0e0e0 50%,#f0f0f0 70%);background-size:200% 100%;animation:skeletonShimmer 1.5s ease-in-out infinite}
 /* #11 Light mode: thicker/darker tab underline for visibility */
