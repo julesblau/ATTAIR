@@ -5,6 +5,50 @@ import { sendNotification } from "../services/notifications.js";
 
 const router = Router();
 
+// ─── Feed scoring helpers ────────────────────────────────────
+function recencyScore(createdAt) {
+  const ageHours = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
+  if (ageHours < 6) return 70;
+  if (ageHours < 24) return 60;
+  if (ageHours < 72) return 40;
+  if (ageHours < 168) return 20;
+  return 5;
+}
+
+function tasteFeedScore(scanItems, hangerTaste) {
+  if (!hangerTaste?.style_breakdown?.length || !scanItems?.length) return 0;
+  const tasteMap = {};
+  (hangerTaste.style_breakdown || []).forEach(s => { tasteMap[s.style] = s.pct; });
+
+  // Extract style keywords from scan items
+  const scanTags = scanItems.flatMap(item => {
+    const tags = [];
+    if (item.category) tags.push(item.category.toLowerCase());
+    if (item.subcategory) tags.push(item.subcategory.toLowerCase());
+    if (item.fit) tags.push(item.fit.toLowerCase());
+    return tags;
+  });
+
+  // Simple keyword matching against taste buckets
+  const TASTE_KEYWORDS = {
+    streetwear: ["streetwear", "urban", "oversized", "hoodie", "sneaker", "graphic"],
+    minimalist: ["minimal", "clean", "simple", "neutral"],
+    classic: ["classic", "preppy", "tailored", "blazer", "oxford"],
+    bold: ["bold", "statement", "bright", "pattern", "colorful"],
+    athleisure: ["athletic", "sporty", "gym", "activewear"],
+    vintage: ["vintage", "retro", "thrift"],
+  };
+
+  let score = 0;
+  for (const [style, keywords] of Object.entries(TASTE_KEYWORDS)) {
+    const matches = scanTags.filter(t => keywords.some(k => t.includes(k))).length;
+    if (matches > 0 && tasteMap[style]) {
+      score += (tasteMap[style] / 100) * matches * 10;
+    }
+  }
+  return Math.min(score, 30); // cap at 30 bonus points
+}
+
 // Scans support 'followers' visibility; saved_items and collections only public/private
 const VALID_SCAN_VISIBILITY = ["public", "private", "followers"];
 const VALID_ITEM_VISIBILITY = ["public", "private"];
@@ -493,7 +537,7 @@ router.get("/feed", requireAuth, async (req, res) => {
     } else if (tab === "following") {
       return res.json({ scans: [], page, has_more: false });
     } else {
-      // For You — all public scans except own, chronological
+      // For You — all public scans except own, scored by recency + taste
       query = supabase
         .from("scans")
         .select("id, user_id, image_url, summary, items, created_at, visibility")
@@ -523,6 +567,17 @@ router.get("/feed", requireAuth, async (req, res) => {
         if (row.scan_id) saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
       });
 
+      // Fetch user's taste cache for personalization (For You tab only)
+      let hangerTaste = null;
+      if (tab !== "following") {
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("hanger_taste_cache")
+          .eq("id", req.userId)
+          .maybeSingle();
+        hangerTaste = userProfile?.hanger_taste_cache;
+      }
+
       const enriched = scans.map(s => ({
         id: s.id,
         image_url: s.image_url,
@@ -531,8 +586,18 @@ router.get("/feed", requireAuth, async (req, res) => {
         item_count: Array.isArray(s.items) ? s.items.length : 0,
         created_at: s.created_at,
         save_count: saveCountMap[s.id] || 0,
-        user: profileMap[s.user_id] || { display_name: "Anonymous" }
+        user: profileMap[s.user_id] || { display_name: "Anonymous" },
+        _score: tab !== "following"
+          ? recencyScore(s.created_at) + tasteFeedScore(s.items, hangerTaste)
+          : 0,
       }));
+
+      // Sort by personalized score for For You tab (taste + recency)
+      if (tab !== "following") {
+        enriched.sort((a, b) => b._score - a._score);
+      }
+      // Remove internal score from response
+      enriched.forEach(s => delete s._score);
 
       return res.json({ scans: enriched, page, has_more: scans.length === limit });
     }
