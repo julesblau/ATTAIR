@@ -5430,7 +5430,7 @@ export default function App() {
       {screen === "auth" && (
         <div className={`auth ${fade}`}>
           <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <div className="ob-icon" style={{ fontSize: 28 }}>✦</div>
+            <svg width="32" height="32" viewBox="0 0 100 100" style={{ display: "block", margin: "0 auto 8px" }}><path d="M34.5,2.4 L65.5,2.4 L65,24 L83.5,12.8 L98.9,39.6 L80,50 L98.9,60.4 L83.5,87.2 L65,76 L65.5,97.6 L34.5,97.6 L35,76 L16.5,87.2 L1.1,60.4 L20,50 L1.1,39.6 L16.5,12.8 L35,24 Z" fill="#C9A96E"/></svg>
             <h1 className="ob-title" style={{ fontSize: 26 }}>{authScreen === "signup" ? "Create your account" : "Welcome back"}</h1>
             <p className="ob-sub" style={{ marginBottom: 0 }}>{authScreen === "signup" ? "Sign up to start scanning outfits" : "Log in to continue"}</p>
           </div>
