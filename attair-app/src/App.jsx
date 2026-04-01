@@ -5400,7 +5400,7 @@ export default function App() {
       {/* ─── PAYWALL ─────────────────────────────────────── */}
       {screen === "paywall" && (
         <div className={`pw ${fade}`}>
-          <button className="pw-skip" onClick={() => trans(() => setScreen("auth"))}>Skip — start free</button>
+          <button className="pw-skip" onClick={() => trans(() => setScreen(authed ? "app" : "auth"))}>{authed ? "Maybe later" : "Skip — start free"}</button>
           <div className="pw-badge">✦ LIMITED OFFER</div>
           <h1 className="pw-t">Unlock unlimited<br />outfit scans</h1>
           <p className="pw-st">Unlimited scans, zero ads, and priority results. Three price options for every item.</p>
