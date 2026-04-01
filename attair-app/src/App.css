@@ -2202,12 +2202,14 @@
 
 .as{flex:1;display:flex;flex-direction:column;padding-bottom:80px}
 /* ─── Header ─── */
-.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg-secondary) 92%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;position:sticky;top:0;z-index:50;background:rgba(250,250,250,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.08)}
+.hdr svg{stroke:var(--hdr-icon,#1A1816)}
 .logo{font-family:'Instrument Serif';font-size:22px;color:var(--text-primary);font-style:italic;letter-spacing:0.04em}.logo span{color:var(--accent)}
 .logo-img{height:28px;width:auto;display:block;border-radius:2px;padding:0}
-.logo-img--light{display:none}
-.app[data-theme='light'] .logo-img--dark{display:none}
-.app[data-theme='light'] .logo-img--light{display:block}
+.logo-img--dark{display:none}
+.logo-img--light{display:block}
+.app[data-theme='light'] .logo-img--dark{display:block}
+.app[data-theme='light'] .logo-img--light{display:none}
 .pro{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--accent);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
 .free-badge{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-tertiary);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
 .scan-counter{font-size:11px;color:var(--text-tertiary);text-align:center;margin-top:-8px;margin-bottom:8px}
@@ -2362,7 +2364,9 @@
    var(--*) tokens that auto-switch via [data-theme='light'] in index.css.
    Kept as a fallback for inline styles in JSX that still use hardcoded rgba values. */
 .app[data-theme='light']{background:#F6F4F0;color:#1A1816}
-.app[data-theme='light'] .hdr{background:rgba(246,244,240,.92);border-bottom-color:rgba(0,0,0,.06)}
+.app[data-theme='light'] .hdr{background:rgba(20,18,16,.95);border-bottom-color:rgba(255,255,255,.08);--hdr-icon:#FAFAFA}
+.app[data-theme='light'] .hdr .pro{color:var(--accent);background:rgba(201,169,110,.15)}
+.app[data-theme='light'] .hdr .free-badge{color:rgba(255,255,255,.5);background:rgba(255,255,255,.08)}
 .app[data-theme='light'] .logo{color:#1A1816}
 .app[data-theme='light'] .free-badge{background:rgba(0,0,0,.04);color:rgba(0,0,0,.3)}
 .app[data-theme='light'] .tb{background:rgba(255,255,255,.97);border-top-color:rgba(0,0,0,.08)}
@@ -2686,7 +2690,7 @@
 .scan-overlay{position:fixed;inset:0;z-index:var(--z-modal,200);background:var(--bg-primary);animation:slideUpSheet var(--transition-normal);overflow-y:auto;-webkit-overflow-scrolling:touch}
 .scan-overlay-close{position:fixed;top:16px;right:16px;z-index:calc(var(--z-modal,200) + 1);width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.12);border-radius:50%;cursor:pointer;transition:all var(--transition-fast)}
 .scan-overlay-close svg{width:16px;height:16px;stroke:#fff;fill:none;stroke-width:2.5;stroke-linecap:round}
-.scan-overlay-img{width:100%;max-height:50vh;object-fit:cover;display:block}
+.scan-overlay-img{width:60%;max-width:260px;max-height:40vh;object-fit:cover;display:block;margin:60px auto 0;border-radius:var(--radius-md,12px)}
 .scan-overlay-body{padding:20px}
 .scan-overlay-summary{font-size:var(--text-sm,14px);color:var(--text-secondary);line-height:1.5;margin-bottom:12px}
 .scan-overlay-meta{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
@@ -2923,7 +2927,7 @@
 .user-search-follow-btn.following{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}
 .feed-detail-overlay{position:fixed;inset:0;z-index:250;background:var(--bg-secondary);overflow-y:auto;animation:slideIn .25s ease}
 .feed-detail-close{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:16px;z-index:260;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);border:none;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.feed-detail-img{width:100%;max-height:60vh;object-fit:cover;display:block}
+.feed-detail-img{width:60%;max-width:260px;max-height:40vh;object-fit:cover;display:block;margin:60px auto 0;border-radius:var(--radius-md,12px)}
 .feed-detail-body{padding:24px 16px}
 .feed-detail-user{display:flex;align-items:center;gap:8px;margin-bottom:16px}
 .feed-detail-name{font-size:16px;font-weight:600;color:var(--text-primary)}
