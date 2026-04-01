@@ -2577,6 +2577,9 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
     <div className={`ob ob-demo ${fade}`}>
       {/* Logo pinned to top */}
       <img src="/logo-light.svg" alt="ATTAIRE" style={{ display: "block", margin: "0 auto", paddingTop: 16, width: "60%", maxWidth: 220, height: "auto" }} />
+      <h2 style={{ textAlign: "center", margin: "12px 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: 1.5, color: "#FAFAFA" }}>
+        See it. Scan it. <span style={{ color: "#C9A96E" }}>Shop it.</span>
+      </h2>
       {/* Animated demo viewport */}
       <div className="ob-demo-viewport">
         {/* Mock phone frame */}
@@ -2667,10 +2670,10 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
       {/* CTA section */}
       <div className="ob-demo-cta">
         <h1 className="ob-demo-title">
-          See it. Scan it.<br /><span className="ob-demo-title-gold">Shop it.</span>
+          Your AI-powered<br /><span className="ob-demo-title-gold">style assistant.</span>
         </h1>
         <p className="ob-demo-sub">
-          Point your camera at any outfit. AI finds where to buy every piece — at every price point.
+          Scan any outfit. Find every piece. Shop at any budget — solo or with friends.
         </p>
         <button className="cta" onClick={onGetStarted}>Get Started</button>
         <button className="ob-demo-login" onClick={onLogin}>
