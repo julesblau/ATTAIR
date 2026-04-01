@@ -17,6 +17,28 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
 const router = Router();
 
+// ── Helper: archetype classification ─────────────────────────────
+const ARCHETYPE_KEYWORDS = {
+  streetwear: ["streetwear", "urban", "street", "oversized", "sneaker", "hoodie", "graphic"],
+  minimalist: ["minimal", "clean", "simple", "monochrome", "neutral", "understated"],
+  classic: ["classic", "preppy", "traditional", "tailored", "polo", "blazer", "oxford"],
+  bold: ["bold", "maximal", "statement", "bright", "pattern", "colorful", "eclectic"],
+  athleisure: ["athletic", "athleisure", "sporty", "gym", "activewear", "running"],
+  vintage: ["vintage", "retro", "thrift", "90s", "80s", "70s", "secondhand"],
+  formal: ["formal", "suit", "dress", "evening", "business", "professional"],
+  coastal: ["coastal", "beach", "summer", "linen", "resort", "relaxed"],
+};
+
+function classifyArchetype(styleTags) {
+  if (!styleTags?.length) return "eclectic";
+  const scores = {};
+  for (const [arch, keywords] of Object.entries(ARCHETYPE_KEYWORDS)) {
+    scores[arch] = styleTags.filter(t => keywords.some(k => t.toLowerCase().includes(k))).length;
+  }
+  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+  return best[1] > 0 ? best[0] : "eclectic";
+}
+
 // ── Helper: parse Claude JSON ──────────────────────────────────
 function parseJSON(text) {
   let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
@@ -156,18 +178,17 @@ router.post("/cron/hanger-test", async (req, res) => {
   const today = new Date().toISOString().split("T")[0];
 
   try {
-    // Check if today's outfit already exists
+    // Check if today's outfits already exist
     const { data: existing } = await supabase
       .from("hanger_outfits")
       .select("id")
-      .eq("active_date", today)
-      .single();
+      .eq("active_date", today);
 
-    if (existing) {
-      return res.json({ message: "Today's outfit already set", outfit_id: existing.id });
+    if (existing && existing.length >= 5) {
+      return res.json({ message: "Today's outfits already set", outfit_ids: existing.map(o => o.id) });
     }
 
-    // Try to find a good scan from the last 7 days with an image
+    // Try to find good scans from the last 7 days with an image
     const { data: trendingScans } = await supabase
       .from("scans")
       .select("id, image_url, summary, items, created_at")
@@ -175,65 +196,94 @@ router.post("/cron/hanger-test", async (req, res) => {
       .not("image_url", "is", null)
       .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(50);
 
-    let outfit;
+    let candidateScans = trendingScans || [];
 
-    if (trendingScans && trendingScans.length > 0) {
-      // Pick a random scan from trending (avoid always picking the newest)
-      const scan = trendingScans[Math.floor(Math.random() * Math.min(trendingScans.length, 10))];
+    // Fallback: if not enough recent scans, pull older ones
+    if (candidateScans.length < 5) {
+      const { data: olderScans } = await supabase
+        .from("scans")
+        .select("id, image_url, summary, items")
+        .eq("visibility", "public")
+        .not("image_url", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      // Merge, dedup by id
+      const existingIds = new Set(candidateScans.map(s => s.id));
+      for (const s of olderScans || []) {
+        if (!existingIds.has(s.id)) candidateScans.push(s);
+      }
+    }
 
-      // Generate description
+    if (candidateScans.length === 0) {
+      return res.status(404).json({ error: "No scans available to create outfits" });
+    }
+
+    // Generate descriptions + classify archetypes for candidates
+    // Process up to 15 candidates to get enough diversity
+    const processLimit = Math.min(candidateScans.length, 15);
+    const processed = [];
+    for (let i = 0; i < processLimit; i++) {
+      const scan = candidateScans[i];
       const aiResult = await generateOutfitDescription(scan.image_url, scan.items);
+      const archetype = classifyArchetype(aiResult.style_tags || []);
+      processed.push({ scan, aiResult, archetype });
+    }
 
+    // Greedy diverse selection: pick from different archetype buckets
+    const selected = [];
+    const usedArchetypes = new Set();
+    const usedScanIds = new Set((existing || []).map(e => e.id));
+
+    // First pass: one from each unique archetype
+    for (const p of processed) {
+      if (selected.length >= 5) break;
+      if (usedScanIds.has(p.scan.id)) continue;
+      if (!usedArchetypes.has(p.archetype)) {
+        usedArchetypes.add(p.archetype);
+        selected.push(p);
+      }
+    }
+
+    // Second pass: fill remaining slots
+    for (const p of processed) {
+      if (selected.length >= 5) break;
+      if (usedScanIds.has(p.scan.id)) continue;
+      if (!selected.includes(p)) {
+        selected.push(p);
+      }
+    }
+
+    // Insert all selected outfits with batch positions
+    const startPosition = (existing || []).length + 1;
+    const insertedOutfits = [];
+    for (let i = 0; i < selected.length; i++) {
+      const { scan, aiResult, archetype } = selected[i];
       const { data: newOutfit, error: insertError } = await supabase
         .from("hanger_outfits")
         .insert({
           image_url: scan.image_url,
           description: aiResult.description || scan.summary || "Today's trending outfit",
           style_tags: aiResult.style_tags || [],
+          style_archetype: archetype,
           source_scan_id: scan.id,
           source_type: "scan",
           active_date: today,
+          batch_position: startPosition + i,
         })
         .select()
         .single();
 
-      if (insertError) throw insertError;
-      outfit = newOutfit;
-    } else {
-      // Fallback: create a curated outfit placeholder
-      // In production this would call SerpAPI for trending fashion
-      const { data: olderScan } = await supabase
-        .from("scans")
-        .select("id, image_url, summary, items")
-        .eq("visibility", "public")
-        .not("image_url", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (!olderScan) {
-        return res.status(404).json({ error: "No scans available to create outfit" });
+      if (insertError) {
+        console.error(`[HangerTest] Insert outfit ${i + 1} error:`, insertError.message);
+        continue;
       }
+      insertedOutfits.push(newOutfit);
+    }
 
-      const aiResult = await generateOutfitDescription(olderScan.image_url, olderScan.items);
-
-      const { data: newOutfit, error: insertError } = await supabase
-        .from("hanger_outfits")
-        .insert({
-          image_url: olderScan.image_url,
-          description: aiResult.description || olderScan.summary || "Today's outfit pick",
-          style_tags: aiResult.style_tags || [],
-          source_scan_id: olderScan.id,
-          source_type: "curated",
-          active_date: today,
-        })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-      outfit = newOutfit;
+    if (insertedOutfits.length === 0) {
+      return res.status(500).json({ error: "Failed to insert any outfits" });
     }
 
     // Send push notifications to all users with push subscriptions
@@ -256,7 +306,7 @@ router.post("/cron/hanger-test", async (req, res) => {
               uid,
               "hanger_test",
               "Today's Hanger Test is ready",
-              "A new outfit is waiting for your verdict. Would you wear it?",
+              "5 new outfits are waiting for your verdict",
               { url: "/?hanger=1" }
             )
           )
@@ -266,7 +316,8 @@ router.post("/cron/hanger-test", async (req, res) => {
 
     res.json({
       success: true,
-      outfit_id: outfit.id,
+      outfit_ids: insertedOutfits.map(o => o.id),
+      outfits_created: insertedOutfits.length,
       notifications_sent: subscribers?.length || 0,
     });
   } catch (err) {
@@ -282,67 +333,94 @@ router.get("/hanger-test/today", optionalAuth, async (req, res) => {
   const today = new Date().toISOString().split("T")[0];
 
   try {
-    // Get today's outfit
-    const { data: outfit } = await supabase
+    // Fetch all outfits for today
+    const { data: outfits } = await supabase
       .from("hanger_outfits")
       .select("*")
       .eq("active_date", today)
-      .single();
+      .order("batch_position", { ascending: true });
 
-    if (!outfit) {
-      return res.json({ outfit: null, message: "No outfit today" });
+    if (!outfits || outfits.length === 0) {
+      return res.json({ outfits: [], message: "No outfits today" });
     }
 
-    // Get community stats
-    const totalVotes = outfit.wear_count + outfit.pass_count;
-    const wearPct = totalVotes > 0 ? Math.round((outfit.wear_count / totalVotes) * 100) : 50;
+    // Get stats for all outfits
+    const statsMap = {};
+    for (const o of outfits) {
+      const total = o.wear_count + o.pass_count;
+      statsMap[o.id] = {
+        wear_pct: total > 0 ? Math.round((o.wear_count / total) * 100) : 50,
+        pass_pct: total > 0 ? Math.round((o.pass_count / total) * 100) : 50,
+        total_votes: total,
+      };
+    }
 
     const result = {
-      outfit: {
-        id: outfit.id,
-        image_url: outfit.image_url,
-        description: outfit.description,
-        style_tags: outfit.style_tags,
-        active_date: outfit.active_date,
-      },
-      stats: {
-        wear_count: outfit.wear_count,
-        pass_count: outfit.pass_count,
-        total_votes: totalVotes,
-        wear_pct: wearPct,
-        pass_pct: 100 - wearPct,
-      },
-      user_vote: null,
+      outfits,
+      user_votes: {},
+      stats: statsMap,
+      cadence: null,
       streak: null,
+      taste_profile: null,
     };
 
-    // If authenticated, check if user already voted
+    // If authenticated, fetch user-specific data
     if (req.userId) {
-      const { data: vote } = await supabase
+      // Fetch all user votes for today's outfits
+      const outfitIds = outfits.map(o => o.id);
+      const { data: votes } = await supabase
         .from("hanger_votes")
-        .select("verdict, created_at")
+        .select("outfit_id, verdict")
         .eq("user_id", req.userId)
-        .eq("outfit_id", outfit.id)
-        .single();
+        .in("outfit_id", outfitIds);
 
-      if (vote) {
-        result.user_vote = vote.verdict;
-      }
+      const userVotes = {};
+      (votes || []).forEach(v => { userVotes[v.outfit_id] = v.verdict; });
+      result.user_votes = userVotes;
 
-      // Get streak info
+      // Get cadence info from streak
       const { data: streak } = await supabase
         .from("hanger_streaks")
         .select("*")
         .eq("user_id", req.userId)
-        .single();
+        .maybeSingle();
+
+      const votesToday = (streak?.cadence_date === today) ? (streak?.cadence_votes_today || 0) : 0;
+
+      // Compute next midnight UTC
+      const now = new Date();
+      const nextReset = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0));
+
+      result.cadence = {
+        votes_today: votesToday,
+        total: outfits.length,
+        completed: votesToday >= outfits.length,
+        next_reset: nextReset.toISOString(),
+      };
 
       if (streak) {
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+        const isActive = streak.last_vote_date === today || streak.last_vote_date === yesterday;
         result.streak = {
-          current_streak: streak.current_streak,
+          current_streak: isActive ? streak.current_streak : 0,
           longest_streak: streak.longest_streak,
           total_votes: streak.total_votes,
           taste_badge: streak.taste_badge,
-          has_insight: !!streak.style_insight,
+        };
+      }
+
+      // Get taste profile
+      const { data: taste } = await supabase
+        .from("hanger_taste_profiles")
+        .select("*")
+        .eq("user_id", req.userId)
+        .maybeSingle();
+
+      if (taste) {
+        result.taste_profile = {
+          style_breakdown: taste.style_breakdown,
+          archetype: taste.archetype,
+          wear_rate: taste.wear_rate,
         };
       }
     }
@@ -350,7 +428,7 @@ router.get("/hanger-test/today", optionalAuth, async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("[HangerTest] Today error:", err.message);
-    res.status(500).json({ error: "Failed to load today's outfit" });
+    res.status(500).json({ error: "Failed to load today's outfits" });
   }
 });
 
@@ -365,11 +443,20 @@ router.post("/hanger-test/vote", requireAuth, async (req, res) => {
   }
 
   try {
-    // Use RPC for atomic vote + streak update
+    // Get voter's archetype from style DNA cache
+    const { data: voterProfile } = await supabase
+      .from("profiles")
+      .select("style_dna_cache")
+      .eq("id", req.userId)
+      .maybeSingle();
+    const voterArchetype = voterProfile?.style_dna_cache?.archetype?.toLowerCase()?.split(" ").pop() || null;
+
+    // Use RPC for atomic vote + streak update (with archetype)
     const { data, error } = await supabase.rpc("record_hanger_vote", {
       p_user_id: req.userId,
       p_outfit_id: outfit_id,
       p_verdict: verdict,
+      p_voter_archetype: voterArchetype,
     });
 
     if (error) {
@@ -380,14 +467,37 @@ router.post("/hanger-test/vote", requireAuth, async (req, res) => {
       throw error;
     }
 
+    // Get tranche stats if voter has archetype
+    let trancheStats = null;
+    if (voterArchetype) {
+      const { data: ts } = await supabase.rpc("get_hanger_tranche_stats", {
+        p_outfit_id: outfit_id,
+        p_archetype: voterArchetype,
+      });
+      trancheStats = ts;
+    }
+
+    // Check if cadence completed (5th vote)
+    const cadenceComplete = data.cadence_votes_today >= 5;
+    let tasteProfile = null;
+    if (cadenceComplete) {
+      tasteProfile = await recomputeTasteProfile(req.userId);
+    }
+
+    const total = data.wear_count + data.pass_count;
+
     const result = {
       success: true,
       stats: {
-        wear_count: data.wear_count,
-        pass_count: data.pass_count,
-        total_votes: data.wear_count + data.pass_count,
-        wear_pct: Math.round((data.wear_count / (data.wear_count + data.pass_count)) * 100),
-        pass_pct: Math.round((data.pass_count / (data.wear_count + data.pass_count)) * 100),
+        wear_pct: total > 0 ? Math.round((data.wear_count / total) * 100) : 50,
+        pass_pct: total > 0 ? Math.round((data.pass_count / total) * 100) : 50,
+        total_votes: total,
+      },
+      tranche_stats: trancheStats,
+      cadence: {
+        votes_today: data.cadence_votes_today,
+        total: 5,
+        completed: cadenceComplete,
       },
       streak: {
         current_streak: data.current_streak,
@@ -396,6 +506,8 @@ router.post("/hanger-test/vote", requireAuth, async (req, res) => {
       },
       earned_insight: data.earned_insight,
       earned_badge: data.earned_badge,
+      taste_profile_updated: cadenceComplete,
+      taste_profile: tasteProfile,
       style_insight: null,
     };
 
@@ -420,7 +532,6 @@ router.post("/hanger-test/vote", requireAuth, async (req, res) => {
       if (isFirstInsight || isPro) {
         const insight = await generateStyleInsight(req.userId);
         if (insight) {
-          // Save insight to streak record
           await supabase
             .from("hanger_streaks")
             .update({
@@ -480,6 +591,154 @@ router.get("/hanger-test/streak", requireAuth, async (req, res) => {
   } catch (err) {
     console.error("[HangerTest] Streak error:", err.message);
     res.status(500).json({ error: "Failed to load streak" });
+  }
+});
+
+// ── Helper: recompute taste profile from vote history ─────────
+async function recomputeTasteProfile(userId) {
+  // Fetch last 50 votes with outfit data
+  const { data: votes } = await supabase
+    .from("hanger_votes")
+    .select("verdict, outfit_id, hanger_outfits(style_tags, style_archetype, description)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (!votes?.length) return null;
+
+  const wearOutfits = votes.filter(v => v.verdict === "wear");
+  const passOutfits = votes.filter(v => v.verdict === "pass");
+  const wearRate = Math.round((wearOutfits.length / votes.length) * 100 * 100) / 100;
+
+  // Count style archetype frequencies in wear votes
+  const archCounts = {};
+  wearOutfits.forEach(v => {
+    const arch = v.hanger_outfits?.style_archetype || "eclectic";
+    archCounts[arch] = (archCounts[arch] || 0) + 1;
+  });
+  const totalWear = wearOutfits.length || 1;
+  const styleBreakdown = Object.entries(archCounts)
+    .map(([style, count]) => ({ style, pct: Math.round((count / totalWear) * 100) }))
+    .sort((a, b) => b.pct - a.pct);
+
+  // Determine archetype from top style
+  const topStyle = styleBreakdown[0]?.style || "eclectic";
+  const archetypeMap = {
+    streetwear: "The Street Style Maven",
+    minimalist: "The Urban Minimalist",
+    classic: "The Timeless Classic",
+    bold: "The Statement Maker",
+    athleisure: "The Active Stylist",
+    vintage: "The Vintage Curator",
+    formal: "The Refined Professional",
+    coastal: "The Coastal Cool",
+    eclectic: "The Free Spirit",
+  };
+  const archetype = archetypeMap[topStyle] || "The Free Spirit";
+
+  // Collect vibes from wear vs pass tags
+  const wearTags = wearOutfits.flatMap(v => v.hanger_outfits?.style_tags || []);
+  const passTags = passOutfits.flatMap(v => v.hanger_outfits?.style_tags || []);
+  const wearTagCounts = {};
+  wearTags.forEach(t => { wearTagCounts[t] = (wearTagCounts[t] || 0) + 1; });
+  const passTagCounts = {};
+  passTags.forEach(t => { passTagCounts[t] = (passTagCounts[t] || 0) + 1; });
+
+  const favoriteVibes = Object.entries(wearTagCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([tag]) => tag);
+  const avoidVibes = Object.entries(passTagCounts)
+    .filter(([tag]) => !wearTagCounts[tag] || wearTagCounts[tag] < passTagCounts[tag])
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([tag]) => tag);
+
+  const profile = {
+    style_breakdown: styleBreakdown,
+    archetype,
+    favorite_vibes: favoriteVibes,
+    avoid_vibes: avoidVibes,
+    wear_rate: wearRate,
+    total_votes: votes.length,
+  };
+
+  // Upsert taste profile
+  await supabase.from("hanger_taste_profiles").upsert({
+    user_id: userId,
+    ...profile,
+    last_computed: new Date().toISOString(),
+  }, { onConflict: "user_id" });
+
+  // Update profiles cache for feed/search
+  await supabase.from("profiles").update({
+    hanger_taste_cache: { style_breakdown: styleBreakdown, favorite_vibes: favoriteVibes, avoid_vibes: avoidVibes, wear_rate: wearRate },
+  }).eq("id", userId);
+
+  return profile;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GET /api/hanger-test/taste-profile — User's taste profile
+// ═══════════════════════════════════════════════════════════════
+router.get("/hanger-test/taste-profile", requireAuth, async (req, res) => {
+  try {
+    const { data: taste } = await supabase
+      .from("hanger_taste_profiles")
+      .select("*")
+      .eq("user_id", req.userId)
+      .maybeSingle();
+
+    if (!taste) return res.json({ ready: false });
+
+    // Check user tier for gating
+    const { data: userStatus } = await supabase
+      .from("profiles")
+      .select("tier")
+      .eq("id", req.userId)
+      .maybeSingle();
+    const isPro = userStatus?.tier === "pro" || userStatus?.tier === "trial";
+
+    return res.json({
+      ready: true,
+      archetype: taste.archetype,
+      style_breakdown: isPro ? taste.style_breakdown : (taste.style_breakdown || []).slice(0, 3),
+      wear_rate: taste.wear_rate,
+      total_votes: taste.total_votes,
+      favorite_vibes: isPro ? taste.favorite_vibes : null,
+      avoid_vibes: isPro ? taste.avoid_vibes : null,
+      is_pro_gated: !isPro,
+    });
+  } catch (err) {
+    console.error("[HangerTest] Taste profile error:", err.message);
+    return res.status(500).json({ error: "Failed to load taste profile" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// GET /api/hanger-test/tranche/:outfitId — Tranche stats
+// ═══════════════════════════════════════════════════════════════
+router.get("/hanger-test/tranche/:outfitId", requireAuth, async (req, res) => {
+  try {
+    const { outfitId } = req.params;
+
+    // Get user's archetype
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("style_dna_cache")
+      .eq("id", req.userId)
+      .maybeSingle();
+    const userArchetype = profile?.style_dna_cache?.archetype?.toLowerCase()?.split(" ").pop() || null;
+
+    const { data: stats } = await supabase.rpc("get_hanger_tranche_stats", {
+      p_outfit_id: outfitId,
+      p_archetype: userArchetype || "none",
+    });
+
+    return res.json({ ...stats, user_tranche: userArchetype });
+  } catch (err) {
+    console.error("[HangerTest] Tranche stats error:", err.message);
+    return res.status(500).json({ error: "Failed to load tranche stats" });
   }
 });
 
