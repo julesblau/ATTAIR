@@ -955,38 +955,38 @@ describe("OOTW Routes", () => {
   describe("POST /api/ootw/generate", () => {
     it("rejects without cron key in production", async () => {
       const origEnv = process.env.NODE_ENV;
-      const origKey = process.env.CRON_SECRET_KEY;
+      const origKey = process.env.CRON_SECRET;
       process.env.NODE_ENV = "production";
-      process.env.CRON_SECRET_KEY = "real-secret";
+      process.env.CRON_SECRET = "real-secret";
 
       const { status, body } = await post(port, "/api/ootw/generate");
       expect(status).toBe(403);
       expect(body.error).toBe("Unauthorized");
 
       process.env.NODE_ENV = origEnv;
-      if (origKey) process.env.CRON_SECRET_KEY = origKey;
-      else delete process.env.CRON_SECRET_KEY;
+      if (origKey) process.env.CRON_SECRET = origKey;
+      else delete process.env.CRON_SECRET;
     });
 
     it("rejects with wrong cron key in production", async () => {
       const origEnv = process.env.NODE_ENV;
-      const origKey = process.env.CRON_SECRET_KEY;
+      const origKey = process.env.CRON_SECRET;
       process.env.NODE_ENV = "production";
-      process.env.CRON_SECRET_KEY = "correct-key";
+      process.env.CRON_SECRET = "correct-key";
 
       const { status } = await post(port, "/api/ootw/generate", {}, { "x-cron-key": "wrong-key" });
       expect(status).toBe(403);
 
       process.env.NODE_ENV = origEnv;
-      if (origKey) process.env.CRON_SECRET_KEY = origKey;
-      else delete process.env.CRON_SECRET_KEY;
+      if (origKey) process.env.CRON_SECRET = origKey;
+      else delete process.env.CRON_SECRET;
     });
 
     it("succeeds with correct cron key in production", async () => {
       const origEnv = process.env.NODE_ENV;
-      const origKey = process.env.CRON_SECRET_KEY;
+      const origKey = process.env.CRON_SECRET;
       process.env.NODE_ENV = "production";
-      process.env.CRON_SECRET_KEY = "my-secret";
+      process.env.CRON_SECRET = "my-secret";
 
       // Set up existing OOTW so generate returns quickly (idempotent)
       mockOotwData = { id: "ootw-cron", week_start: "2026-03-30", headline: "Cron", editorial: "Works." };
@@ -996,8 +996,8 @@ describe("OOTW Routes", () => {
       expect(body.created).toBe(false);
 
       process.env.NODE_ENV = origEnv;
-      if (origKey) process.env.CRON_SECRET_KEY = origKey;
-      else delete process.env.CRON_SECRET_KEY;
+      if (origKey) process.env.CRON_SECRET = origKey;
+      else delete process.env.CRON_SECRET;
     });
 
     it("succeeds without cron key in non-production", async () => {
@@ -1018,24 +1018,24 @@ describe("OOTW Routes", () => {
   describe("POST /api/ootw/weekly-reports", () => {
     it("rejects without cron key in production", async () => {
       const origEnv = process.env.NODE_ENV;
-      const origKey = process.env.CRON_SECRET_KEY;
+      const origKey = process.env.CRON_SECRET;
       process.env.NODE_ENV = "production";
-      process.env.CRON_SECRET_KEY = "real-secret";
+      process.env.CRON_SECRET = "real-secret";
 
       const { status, body } = await post(port, "/api/ootw/weekly-reports");
       expect(status).toBe(403);
       expect(body.error).toBe("Unauthorized");
 
       process.env.NODE_ENV = origEnv;
-      if (origKey) process.env.CRON_SECRET_KEY = origKey;
-      else delete process.env.CRON_SECRET_KEY;
+      if (origKey) process.env.CRON_SECRET = origKey;
+      else delete process.env.CRON_SECRET;
     });
 
     it("succeeds with correct cron key in production", async () => {
       const origEnv = process.env.NODE_ENV;
-      const origKey = process.env.CRON_SECRET_KEY;
+      const origKey = process.env.CRON_SECRET;
       process.env.NODE_ENV = "production";
-      process.env.CRON_SECRET_KEY = "report-secret";
+      process.env.CRON_SECRET = "report-secret";
 
       mockOotwData = { scan_ids: [] };
       mockProUsersData = [];
@@ -1045,8 +1045,8 @@ describe("OOTW Routes", () => {
       expect(body.sent).toBe(0);
 
       process.env.NODE_ENV = origEnv;
-      if (origKey) process.env.CRON_SECRET_KEY = origKey;
-      else delete process.env.CRON_SECRET_KEY;
+      if (origKey) process.env.CRON_SECRET = origKey;
+      else delete process.env.CRON_SECRET;
     });
 
     it("succeeds without cron key in non-production", async () => {

@@ -390,10 +390,10 @@ describe("POST /api/style-twins/weekly-notify", () => {
 
   it("rejects unauthenticated calls in production mode", async () => {
     const originalEnv = process.env.NODE_ENV;
-    const originalCronKey = process.env.CRON_SECRET_KEY;
+    const originalCronKey = process.env.CRON_SECRET;
     try {
       process.env.NODE_ENV = "production";
-      process.env.CRON_SECRET_KEY = "real-secret-key";
+      process.env.CRON_SECRET = "real-secret-key";
 
       // No cron key header → should be rejected
       const { status: noKey } = await request(port, "POST", "/api/style-twins/weekly-notify", null, false);
@@ -415,9 +415,9 @@ describe("POST /api/style-twins/weekly-notify", () => {
     } finally {
       process.env.NODE_ENV = originalEnv;
       if (originalCronKey !== undefined) {
-        process.env.CRON_SECRET_KEY = originalCronKey;
+        process.env.CRON_SECRET = originalCronKey;
       } else {
-        delete process.env.CRON_SECRET_KEY;
+        delete process.env.CRON_SECRET;
       }
     }
   });

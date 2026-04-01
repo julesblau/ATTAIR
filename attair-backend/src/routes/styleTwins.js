@@ -289,7 +289,7 @@ router.get("/shared-save-check", requireAuth, async (req, res) => {
 router.post("/weekly-notify", async (req, res) => {
   // Simple API key auth for cron jobs
   const cronKey = req.headers["x-cron-key"];
-  if (cronKey !== process.env.CRON_SECRET_KEY && process.env.NODE_ENV === "production") {
+  if (cronKey !== process.env.CRON_SECRET && process.env.NODE_ENV === "production") {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

@@ -277,7 +277,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 // Trigger OOTW generation — protected by cron key in production.
 router.post("/generate", async (req, res) => {
   const cronKey = req.headers["x-cron-key"];
-  if (cronKey !== process.env.CRON_SECRET_KEY && process.env.NODE_ENV === "production") {
+  if (cronKey !== process.env.CRON_SECRET && process.env.NODE_ENV === "production") {
     return res.status(403).json({ error: "Unauthorized" });
   }
 
@@ -294,7 +294,7 @@ router.post("/generate", async (req, res) => {
 // Trigger Sunday weekly style reports — protected by cron key in production.
 router.post("/weekly-reports", async (req, res) => {
   const cronKey = req.headers["x-cron-key"];
-  if (cronKey !== process.env.CRON_SECRET_KEY && process.env.NODE_ENV === "production") {
+  if (cronKey !== process.env.CRON_SECRET && process.env.NODE_ENV === "production") {
     return res.status(403).json({ error: "Unauthorized" });
   }
 

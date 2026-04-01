@@ -39,7 +39,7 @@ const REQUIRED_ENV = [
   "SUPABASE_ANON_KEY",
   "ANTHROPIC_API_KEY",
   "SERPAPI_KEY",
-  "CRON_SECRET_KEY",
+  "CRON_SECRET",
 ];
 
 // Stripe keys are optional — payments routes will fail gracefully without them
@@ -307,7 +307,7 @@ app.listen(PORT, "0.0.0.0", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-cron-key": process.env.CRON_SECRET_KEY,
+          "x-cron-key": process.env.CRON_SECRET,
         },
       });
       const data = await res.json();
@@ -334,7 +334,7 @@ app.listen(PORT, "0.0.0.0", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-cron-key": process.env.CRON_SECRET_KEY,
+          "x-cron-key": process.env.CRON_SECRET,
         },
       });
       const data = await res.json();
@@ -361,7 +361,7 @@ app.listen(PORT, "0.0.0.0", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-cron-key": process.env.CRON_SECRET_KEY,
+          "x-cron-key": process.env.CRON_SECRET,
         },
       });
       const data = await res.json();
