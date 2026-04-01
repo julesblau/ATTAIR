@@ -5372,7 +5372,7 @@ export default function App() {
     {/* Styles moved to App.css — imported at top of file */}
     {/* REMOVED: ~690 lines of inline <style> */}
 
-    <div className="app" data-theme={["onboarding","inspo","paywall"].includes(screen) ? "dark" : theme}>
+    <div className="app" data-theme={["onboarding","inspo","paywall","auth"].includes(screen) ? "dark" : theme}>
       {/* ─── ONBOARDING (TikTok-speed visual demo) ──────── */}
       {screen === "onboarding" && (
         <OnboardingDemo
