@@ -2571,7 +2571,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
           {/* Phase 0-1: Outfit photo with gradient */}
           <div className="ob-demo-photo" style={{ opacity: 1 }}>
             <img
-              src="https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=600&fit=crop&crop=center"
+              src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=600&fit=crop&crop=top"
               alt="Outfit: white tee, jeans, sneakers"
               style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, borderRadius: "inherit" }}
             />
@@ -9083,23 +9083,13 @@ export default function App() {
 
               {/* ─── Size Preferences Modal ───────────────── */}
               {sizePrefsModalOpen && (
-                <div className="modal-overlay" onClick={() => setSizePrefsModalOpen(false)} style={{ zIndex: 350 }}>
+                <div className="modal-overlay" onClick={() => setSizePrefsModalOpen(false)}>
                   <div className="modal-box" onClick={e => e.stopPropagation()} style={{ padding: "28px 24px 24px", maxHeight: "80vh", overflowY: "auto" }}>
                     <button className="modal-x" onClick={() => setSizePrefsModalOpen(false)}>✕</button>
                     <h2 className="modal-title" style={{ fontSize: 22, marginBottom: 4 }}>{t("size_prefs_title")}</h2>
-                    <p className="modal-sub" style={{ marginBottom: 16 }}>{t("select_gender")}</p>
+                    <p className="modal-sub" style={{ marginBottom: 16 }}>{t("size_prefs_sub")}</p>
 
-                    {/* Gender selector */}
-                    <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-                      {["men", "women"].map(g => (
-                        <button key={g} onClick={() => setSizePrefsGender(g)}
-                          style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: `1.5px solid ${sizePrefsGender === g ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsGender === g ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsGender === g ? "var(--accent)" : "var(--text-secondary)", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: "var(--font-sans)", transition: "all var(--transition-fast)" }}>
-                          {g === "men" ? t("men") : t("women")}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Size categories */}
+                    {/* Size categories — universal, no gender split */}
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                       {/* Tops */}
                       <div>
@@ -9118,7 +9108,7 @@ export default function App() {
                       <div>
                         <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("bottoms_waist")}</label>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {(sizePrefsGender === "men" ? ["28","29","30","31","32","33","34","36","38","40"] : ["24","25","26","27","28","29","30","31","32","34"]).map(s => (
+                          {["24","25","26","27","28","29","30","31","32","33","34","36","38","40"].map(s => (
                             <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, bottoms_waist: p.bottoms_waist === s ? "" : s }))}
                               style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.bottoms_waist === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.bottoms_waist === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.bottoms_waist === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
                               {s}
@@ -9144,7 +9134,7 @@ export default function App() {
                       <div>
                         <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("shoes")}</label>
                         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {(sizePrefsGender === "men" ? ["6","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14","15"] : ["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","11","12"]).map(s => (
+                          {["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14","15"].map(s => (
                             <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, shoes: p.shoes === s ? "" : s }))}
                               style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.shoes === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.shoes === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.shoes === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
                               {s}
@@ -9153,20 +9143,18 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Dresses — women only */}
-                      {sizePrefsGender === "women" && (
-                        <div>
-                          <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("dresses")}</label>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {["0","2","4","6","8","10","12","14","16"].map(s => (
-                              <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, dresses: p.dresses === s ? "" : s }))}
-                                style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.dresses === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.dresses === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.dresses === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
-                                {s}
-                              </button>
-                            ))}
-                          </div>
+                      {/* Dresses — optional for anyone */}
+                      <div>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("dresses")}</label>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {["0","2","4","6","8","10","12","14","16"].map(s => (
+                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, dresses: p.dresses === s ? "" : s }))}
+                              style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.dresses === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.dresses === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.dresses === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
+                              {s}
+                            </button>
+                          ))}
                         </div>
-                      )}
+                      </div>
                     </div>
 
                     {/* Save / Cancel */}
@@ -9179,7 +9167,6 @@ export default function App() {
                         try {
                           const newSizePrefs = {
                             ...sizePrefs,
-                            gender: sizePrefsGender,
                             sizes: {
                               ...sizePrefs.sizes,
                               tops: sizePrefsEdit.tops || null,
