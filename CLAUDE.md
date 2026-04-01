@@ -72,10 +72,21 @@ Three scheduled tasks run inside the Express server process via `setTimeout`/`se
 - Outfit of the Week generate (Mondays)
 - Weekly Style Reports (Sundays)
 
-All use `x-cron-key` header for auth, matching `CRON_SECRET_KEY` env var.
+All use `x-cron-key` header for auth, matching `CRON_SECRET` env var.
 
 ### Database
-PostgreSQL via Supabase. Migrations are numbered SQL files in `attair-backend/sql/` (001 through 015). Run them with `npm run db:setup` from the backend directory.
+PostgreSQL via Supabase. Migrations are numbered SQL files in `attair-backend/sql/` (001 through 016).
+
+**Running migrations via Supabase CLI** (preferred):
+```bash
+cd attair-backend
+npx supabase link --project-ref cmlgqztjkrfipzknwnfm  # one-time setup
+npx supabase db query --linked -f sql/016-hanger-test-v2.sql  # run specific migration
+```
+
+### CLI Tools Available
+- **Supabase CLI**: `npx supabase` — run migrations, query DB, manage project. Project is linked to ref `cmlgqztjkrfipzknwnfm`.
+- **Railway CLI**: `npx railway` — manage services, view logs, check env vars, redeploy. Backend service is "ATTAIR" (ID `439990b3-e4b3-4b1f-bdbb-ec94885bf784`).
 
 ### Required Environment Variables (backend)
 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `ANTHROPIC_API_KEY`, `SERPAPI_KEY`, `CRON_SECRET_KEY`. Stripe keys are optional.
