@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, Fragment } from "react";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import "./App.css";
@@ -6419,7 +6419,7 @@ export default function App() {
                     const trendingRank = feedTab === "trending" ? idx + 1 + ((feedPage - 1) * 20) : null;
                     const showAd = userStatus?.tier !== "pro" && userStatus?.tier !== "trial" && idx > 0 && idx % 5 === 0;
                     return (
-                      <React.Fragment key={scan.id || idx}>
+                      <Fragment key={scan.id || idx}>
                         {showAd && (
                           <div className="feed-card feed-ad-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }}>
                             <div style={{ position: "relative", background: "linear-gradient(135deg, rgba(201,169,110,.06), rgba(201,169,110,.02))", border: "1px solid rgba(201,169,110,.12)", borderRadius: 16, padding: "20px 16px", textAlign: "center", minHeight: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
@@ -6477,7 +6477,7 @@ export default function App() {
                             </div>
                           </div>
                         </div>
-                      </React.Fragment>
+                      </Fragment>
                     );
                   })}
                   {feedHasMore && <div ref={feedSentinelRef} style={{ height: 1 }} />}
