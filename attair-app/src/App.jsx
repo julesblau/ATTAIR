@@ -1041,6 +1041,7 @@ const STRINGS = {
     no_followers: "No followers yet",
     no_following: "Not following anyone yet",
     my_scans: "My Scans",
+    wardrobe: "Wardrobe",
     all: "All",
     my_picks: "My Picks",
     search_scans: "Search scans...",
@@ -1098,6 +1099,7 @@ const STRINGS = {
     refer_friend: "Refer a friend",
     refer_desc: "Share your code. Both of you get $5 credit.",
     my_scans: "My Scans",
+    wardrobe: "Wardrobe",
     scan_an_outfit: "Scan an Outfit",
     no_scans_yet: "No scans yet",
     no_scans_match: "No scans match your search",
@@ -1234,6 +1236,7 @@ const STRINGS = {
     no_followers: "Sin seguidores aún",
     no_following: "No sigues a nadie aún",
     my_scans: "Mis escaneos",
+    wardrobe: "Armario",
     all: "Todo",
     my_picks: "Mis favoritos",
     search_scans: "Buscar escaneos...",
@@ -1291,6 +1294,7 @@ const STRINGS = {
     refer_friend: "Invita a un amigo",
     refer_desc: "Comparte tu código. Ambos obtienen $5 de crédito.",
     my_scans: "Mis escaneos",
+    wardrobe: "Armario",
     scan_an_outfit: "Escanear un outfit",
     no_scans_yet: "Sin escaneos aún",
     no_scans_match: "Ningún escaneo coincide con tu búsqueda",
@@ -1427,6 +1431,7 @@ const STRINGS = {
     no_followers: "Pas encore d'abonnés",
     no_following: "Vous ne suivez personne encore",
     my_scans: "Mes scans",
+    wardrobe: "Garde-robe",
     all: "Tout",
     my_picks: "Mes choix",
     search_scans: "Rechercher des scans...",
@@ -1484,6 +1489,7 @@ const STRINGS = {
     refer_friend: "Inviter un ami",
     refer_desc: "Partagez votre code. Vous recevez tous les deux 5$ de crédit.",
     my_scans: "Mes scans",
+    wardrobe: "Garde-robe",
     scan_an_outfit: "Scanner une tenue",
     no_scans_yet: "Aucun scan encore",
     no_scans_match: "Aucun scan ne correspond à votre recherche",
@@ -1620,6 +1626,7 @@ const STRINGS = {
     no_followers: "Noch keine Follower",
     no_following: "Du folgst niemandem",
     my_scans: "Meine Scans",
+    wardrobe: "Garderobe",
     all: "Alle",
     my_picks: "Meine Auswahl",
     search_scans: "Scans durchsuchen...",
@@ -1677,6 +1684,7 @@ const STRINGS = {
     refer_friend: "Freund einladen",
     refer_desc: "Teile deinen Code. Ihr erhaltet beide 5$ Guthaben.",
     my_scans: "Meine Scans",
+    wardrobe: "Garderobe",
     scan_an_outfit: "Outfit scannen",
     no_scans_yet: "Noch keine Scans",
     no_scans_match: "Keine Scans entsprechen deiner Suche",
@@ -1813,6 +1821,7 @@ const STRINGS = {
     no_followers: "还没有粉丝",
     no_following: "还没有关注任何人",
     my_scans: "我的扫描",
+    wardrobe: "衣橱",
     all: "全部",
     my_picks: "我的精选",
     search_scans: "搜索扫描...",
@@ -1870,6 +1879,7 @@ const STRINGS = {
     refer_friend: "邀请好友",
     refer_desc: "分享你的代码，你们都将获得5美元的奖励。",
     my_scans: "我的扫描",
+    wardrobe: "衣橱",
     scan_an_outfit: "扫描穿搭",
     no_scans_yet: "暂无扫描",
     no_scans_match: "没有匹配的扫描",
@@ -2006,6 +2016,7 @@ const STRINGS = {
     no_followers: "まだフォロワーがいません",
     no_following: "まだ誰もフォローしていません",
     my_scans: "マイスキャン",
+    wardrobe: "ワードローブ",
     all: "すべて",
     my_picks: "マイピック",
     search_scans: "スキャンを検索...",
@@ -2063,6 +2074,7 @@ const STRINGS = {
     refer_friend: "友達を招待",
     refer_desc: "コードをシェアして、お互い$5のクレジットを獲得。",
     my_scans: "マイスキャン",
+    wardrobe: "ワードローブ",
     scan_an_outfit: "コーデをスキャン",
     no_scans_yet: "スキャンはまだありません",
     no_scans_match: "検索に一致するスキャンがありません",
@@ -2199,6 +2211,7 @@ const STRINGS = {
     no_followers: "아직 팔로워가 없습니다",
     no_following: "아직 아무도 팔로우하지 않았습니다",
     my_scans: "내 스캔",
+    wardrobe: "옷장",
     all: "전체",
     my_picks: "내 선택",
     search_scans: "스캔 검색...",
@@ -2256,6 +2269,7 @@ const STRINGS = {
     refer_friend: "친구 초대",
     refer_desc: "코드를 공유하면 둘 다 $5 크레딧을 받습니다.",
     my_scans: "내 스캔",
+    wardrobe: "옷장",
     scan_an_outfit: "스타일 스캔",
     no_scans_yet: "스캔 없음",
     no_scans_match: "검색과 일치하는 스캔이 없습니다",
@@ -2392,6 +2406,7 @@ const STRINGS = {
     no_followers: "Nenhum seguidor ainda",
     no_following: "Não segue ninguém ainda",
     my_scans: "Meus scans",
+    wardrobe: "Guarda-roupa",
     all: "Todos",
     my_picks: "Minhas escolhas",
     search_scans: "Pesquisar scans...",
@@ -2449,6 +2464,7 @@ const STRINGS = {
     refer_friend: "Indicar um amigo",
     refer_desc: "Compartilhe seu código. Vocês dois ganham $5 de crédito.",
     my_scans: "Meus scans",
+    wardrobe: "Guarda-roupa",
     scan_an_outfit: "Escanear um outfit",
     no_scans_yet: "Nenhum scan ainda",
     no_scans_match: "Nenhum scan corresponde à sua busca",
@@ -2571,7 +2587,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
           {/* Phase 0-1: Outfit photo with gradient */}
           <div className="ob-demo-photo" style={{ opacity: 1 }}>
             <img
-              src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=600&fit=crop&crop=top"
+              src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=700&fit=crop&crop=center"
               alt="Outfit: white tee, jeans, sneakers"
               style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, borderRadius: "inherit" }}
             />
@@ -5326,6 +5342,22 @@ export default function App() {
   };
   const isSaved = (item) => saved.some(i => (i.item_data || i).name === item.name);
 
+  // ─── Toggle scan visibility (public/private) ──────────────
+  const toggleVisibility = async (e, scan) => {
+    e.stopPropagation();
+    const newVis = scan.visibility === "public" ? "private" : "public";
+    // Optimistic update
+    setHistory(prev => prev.map(s => s.id === scan.id ? { ...s, visibility: newVis } : s));
+    setProfileScanOverlay(prev => prev?.id === scan.id ? { ...prev, visibility: newVis } : prev);
+    try {
+      await API.updateScanVisibility(scan.id, newVis);
+    } catch {
+      // Revert on failure
+      setHistory(prev => prev.map(s => s.id === scan.id ? { ...s, visibility: scan.visibility } : s));
+      setProfileScanOverlay(prev => prev?.id === scan.id ? { ...prev, visibility: scan.visibility } : prev);
+    }
+  };
+
   // ─── One-tap heart save from product cards ─────────────────
   const quickSaveItem = async (item, scanIdOverride) => {
     if (isGuest) { setSignupPrompt("save"); return; }
@@ -7714,6 +7746,19 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Visibility toggle */}
+                  {scanId && (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 20px" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>
+                        {(history.find(h => h.id === scanId)?.visibility || "public") === "public" ? "Public" : "Private"}
+                      </span>
+                      <div onClick={() => { const scan = history.find(h => h.id === scanId); if (scan) toggleVisibility({ stopPropagation: () => {} }, scan); }}
+                        style={{ width: 44, height: 26, borderRadius: 13, background: (history.find(h => h.id === scanId)?.visibility || "public") === "public" ? "var(--accent)" : "var(--border)", position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
+                        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: (history.find(h => h.id === scanId)?.visibility || "public") === "public" ? 21 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+                      </div>
+                    </div>
+                  )}
+
                   {/* Share button — opens share sheet */}
                       {scanId && (<>
                         <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
@@ -7983,223 +8028,19 @@ export default function App() {
           {/* History tab removed — scan history is integrated in Profile grid.
              Dead code (~430 lines) was removed in the Run 6 quality sweep. */}
 
-          {/* ─── Saved tab (Scan History Library with Card Flip) ─────────── */}
+          {/* ─── Wardrobe tab (Saved Items) ─────────── */}
           {tab === "likes" && (() => {
-            // Filter scans by verdict filter, then wishlist, then search query
-            let filteredScans = history;
-            if (historyFilter === "picks") {
-              filteredScans = filteredScans.filter(scan => scan.verdict === "would_wear" || scanVerdicts[scan.id] === "would_wear");
-            }
-            if (activeWishlist) {
-              const wishlistScanIds = new Set(saved.filter(s => s.wishlist_id === activeWishlist.id).map(s => s.scan_id).filter(Boolean));
-              filteredScans = filteredScans.filter(scan => wishlistScanIds.has(scan.id));
-            }
-            if (scanSearchQuery.trim()) {
-              const q = scanSearchQuery.toLowerCase();
-              filteredScans = filteredScans.filter(scan => {
-                const nameMatch = (scan.scan_name || "").toLowerCase().includes(q);
-                const summaryMatch = (scan.summary || "").toLowerCase().includes(q);
-                const itemMatch = (scan.items || []).some(it =>
-                  (it.name || "").toLowerCase().includes(q) ||
-                  (it.category || "").toLowerCase().includes(q) ||
-                  (it.brand || "").toLowerCase().includes(q)
-                );
-                return nameMatch || summaryMatch || itemMatch;
-              });
-            }
-
-            // Split into 2 columns for masonry
-            const col1 = [], col2 = [];
-            filteredScans.forEach((s, i) => (i % 2 === 0 ? col1 : col2).push(s));
-
-            const toggleFlip = (scanId) => {
-              setFlippedScans(prev => {
-                const next = new Set(prev);
-                if (next.has(scanId)) next.delete(scanId);
-                else next.add(scanId);
-                return next;
-              });
-            };
-
-            const toggleVisibility = async (e, scan) => {
-              e.stopPropagation();
-              const newVis = scan.visibility === "public" ? "private" : "public";
-              // Optimistic update
-              setHistory(prev => prev.map(s => s.id === scan.id ? { ...s, visibility: newVis } : s));
-              try {
-                await API.updateScanVisibility(scan.id, newVis);
-              } catch {
-                // Revert on failure
-                setHistory(prev => prev.map(s => s.id === scan.id ? { ...s, visibility: scan.visibility } : s));
-              }
-            };
-
-            const viewScanResults = (e, scan) => {
-              e.stopPropagation();
-              const hsItems = scan.items || [];
-              setResults({ gender: scan.detected_gender || "male", summary: scan.summary || "", items: hsItems.map(it => ({ ...it, status: scan.tiers ? "verified" : "identified", tiers: null })) });
-              if (scan.tiers && Array.isArray(scan.tiers)) {
-                setResults(prev => prev ? { ...prev, items: prev.items.map((item, idx) => { const sr = scan.tiers.find(t2 => t2.item_index === idx); return sr?.tiers ? { ...item, status: "verified", tiers: sr.tiers } : item; }) } : prev);
-              }
-              setImg(scan.image_url || scan.image_thumbnail || null);
-              setScanId(scan.id); setSelIdx(0); setPickedItems(new Set((scan.tiers || []).map(t2 => t2.item_index))); setPhase("done"); setTab("scan");
-            };
-
-            const shareScan = async (e, scan) => {
-              e.stopPropagation();
-              // Auto-set scan to public when sharing
-              API.updateScanVisibility(scan.id, "public").catch(() => {});
-              setHistory(prev => prev.map(s => s.id === scan.id ? { ...s, visibility: "public" } : s));
-              setSharePublicToast(true);
-              setTimeout(() => setSharePublicToast(false), 2500);
-              const shareUrl = `${API_BASE}/share/${scan.id}`;
-              if (navigator.share) {
-                try { await navigator.share({ title: scan.scan_name || "ATTAIR Scan", url: shareUrl }); } catch {}
-              } else {
-                try { await navigator.clipboard.writeText(shareUrl); } catch {}
-              }
-            };
-
-            // Build a set of scan IDs that have price drop alerts
-            const scanIdsWithDrops = new Set();
-            const scanDropMap = new Map(); // scanId -> best alert
-            priceAlerts.forEach(alert => {
-              const matchingSaved = saved.find(s => s.id === alert.saved_item_id);
-              if (matchingSaved?.scan_id) {
-                scanIdsWithDrops.add(matchingSaved.scan_id);
-                const existing = scanDropMap.get(matchingSaved.scan_id);
-                if (!existing || alert.drop_percentage > existing.drop_percentage) {
-                  scanDropMap.set(matchingSaved.scan_id, alert);
-                }
-              }
-            });
-
-            const renderScanCard = (scan) => {
-              const isFlipped = flippedScans.has(scan.id);
-              const scanImg = scan.image_url || scan.image_thumbnail;
-              const scanItems = scan.items || [];
-              const scanName = scan.scan_name || scan.summary || "Outfit Scan";
-              const isPublic = scan.visibility === "public";
-              const hasDrop = scanIdsWithDrops.has(scan.id);
-              const bestDrop = scanDropMap.get(scan.id);
-
-              return (
-                <div key={scan.id} className="scan-card-flip" onClick={() => toggleFlip(scan.id)} aria-label={`Scan card: ${scanName}. Tap to ${isFlipped ? "see image" : "see details"}`}>
-                  <div className={`scan-card-inner${isFlipped ? " flipped" : ""}`}>
-                    {/* Front face */}
-                    <div className="scan-card-front">
-                      {scanImg ? (
-                        <img className="scan-card-img" src={scanImg} alt={scanName} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
-                      ) : (
-                        <div className="scan-card-img-placeholder">
-                          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
-                        </div>
-                      )}
-                      {/* Price drop badge */}
-                      {hasDrop && bestDrop && (
-                        <div style={{ position: "absolute", top: 8, left: 8, zIndex: 2, display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 100, background: "rgba(76,175,80,.9)", backdropFilter: "blur(8px)", animation: "dupeAlertIn 0.3s ease-out" }}>
-                          <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#fff" strokeWidth="2.5"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", letterSpacing: .3 }}>-{Math.round(bestDrop.drop_percentage)}%</span>
-                        </div>
-                      )}
-                      {/* Overlay at bottom */}
-                      <div className="scan-card-overlay">
-                        <div className="scan-card-title">{scanName}</div>
-                        <div className="scan-card-meta">
-                          {scanItems.length > 0 && <span className="scan-card-badge">{scanItems.length} item{scanItems.length !== 1 ? "s" : ""}</span>}
-                          <span className="scan-card-date">{relativeDate(scan.created_at)}</span>
-                        </div>
-                      </div>
-                      {/* Visibility indicator */}
-                      {isPublic && (
-                        <div className="scan-card-vis-badge" aria-label="Public scan">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><path d="M2 12s4-8 10-8 10 8 10 8-4 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Back face */}
-                    <div className="scan-card-back">
-                      <div className="scan-card-back-header">Scan Details</div>
-                      {scan.summary && <div className="scan-card-back-summary">{scan.summary}</div>}
-                      {/* Price drop alert on back face */}
-                      {hasDrop && bestDrop && (
-                        <a href={bestDrop.product_url} target="_blank" rel="noopener noreferrer" onClick={e => { e.stopPropagation(); API.priceAlertSeen(bestDrop.id).catch(() => {}); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", margin: "6px 0", background: "rgba(76,175,80,.08)", border: "1px solid rgba(76,175,80,.2)", borderRadius: 10, textDecoration: "none", color: "inherit" }}>
-                          <div style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(76,175,80,.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#4CAF50" strokeWidth="2.5"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: "#4CAF50" }}>Price dropped {Math.round(bestDrop.drop_percentage)}%</div>
-                            <div style={{ fontSize: 9, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>${bestDrop.original_price} → ${bestDrop.current_price}</div>
-                          </div>
-                          <span style={{ fontSize: 9, fontWeight: 700, color: "#4CAF50" }}>Shop</span>
-                        </a>
-                      )}
-
-                      {/* Identified items list */}
-                      {scanItems.length > 0 && (
-                        <div className="scan-card-back-items">
-                          {scanItems.slice(0, 4).map((it, idx) => (
-                            <div key={idx} className="scan-card-back-item">
-                              <span className="scan-card-back-item-icon" style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.03em" }}>{{ shoes: "SHOE", accessory: "ACC", bag: "BAG", outerwear: "OUTER", top: "TOP", bottom: "BTM", dress: "DRESS" }[it.category] || "ITEM"}</span>
-                              <span className="scan-card-back-item-name">{it.name || it.category || "Item"}</span>
-                            </div>
-                          ))}
-                          {scanItems.length > 4 && <div className="scan-card-back-more">+{scanItems.length - 4} more</div>}
-                        </div>
-                      )}
-
-                      {/* Public/Private toggle */}
-                      <div className="scan-card-back-toggle" onClick={(e) => toggleVisibility(e, scan)} role="switch" aria-checked={isPublic} aria-label={`Scan is ${isPublic ? "public" : "private"}. Tap to toggle.`}>
-                        <span className="scan-card-back-toggle-label">{isPublic ? "Public" : "Private"}</span>
-                        <div className={`scan-card-back-pill${isPublic ? " active" : ""}`}>
-                          <div className="scan-card-back-pill-knob" />
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="scan-card-back-actions">
-                        <button className="btn-primary scan-card-back-btn" onClick={(e) => viewScanResults(e, scan)} aria-label="View scan results">
-                          View Results
-                        </button>
-                        <button className="btn-ghost scan-card-back-btn" onClick={(e) => {
-                          e.stopPropagation();
-                          setWishlistPickerScan(scan);
-                        }} aria-label="Add to collection">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                          Collection
-                        </button>
-                        <button className="btn-ghost scan-card-back-btn" onClick={(e) => shareScan(e, scan)} aria-label="Share this scan">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                          Share
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            };
 
             return (
               <div className="likes-v2 animate-fade-in">
                 {/* Header */}
                 <div style={{ padding: "16px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{t("my_scans")}</h2>
-                  {history.length > 0 && <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{history.length} scan{history.length !== 1 ? "s" : ""}</span>}
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{t("wardrobe")}</h2>
+                  <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{saved.length} items</span>
                 </div>
 
-                {/* Filter row: consolidated single bar */}
+                {/* Filter row: wishlist chips */}
                 <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "8px 16px 0", scrollbarWidth: "none" }}>
-                  <button
-                    className={`scan-vis-chip${historyFilter === "all" && !activeWishlist ? " active" : ""}`}
-                    onClick={() => { setHistoryFilter("all"); setActiveWishlist(null); }}
-                    style={{ flexShrink: 0 }}
-                  >{t("all_filter")}</button>
-                  <button
-                    className={`scan-vis-chip${historyFilter === "picks" ? " active" : ""}`}
-                    onClick={() => { setHistoryFilter(historyFilter === "picks" ? "all" : "picks"); setActiveWishlist(null); }}
-                    style={{ flexShrink: 0 }}
-                  >{t("my_picks")}</button>
                   {wishlists.map(wl => (
                     <button
                       key={wl.id}
@@ -8213,19 +8054,19 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Search bar */}
-                {history.length > 0 && (
+                {/* Price drops banner */}
+                {priceAlertCount > 0 && (
                   <div style={{ padding: "8px 16px 0" }}>
-                    <div style={{ position: "relative" }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-                      <input
-                        placeholder={t("search_scans")}
-                        value={scanSearchQuery}
-                        onChange={e => setScanSearchQuery(e.target.value)}
-                        aria-label="Search your scan history"
-                        style={{ width: "100%", padding: "10px 12px 10px 36px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: "var(--radius-full)", color: "var(--text-primary)", fontSize: 14, fontFamily: "var(--font-sans)", outline: "none", minHeight: 44, boxSizing: "border-box" }}
-                      />
-                    </div>
+                    <button onClick={() => setShowPriceAlerts(true)} style={{
+                      width: "100%", padding: "10px 16px", marginBottom: 12, borderRadius: "var(--radius-sm)",
+                      background: "linear-gradient(135deg, rgba(76,175,80,.08), rgba(76,175,80,.02))",
+                      border: "1px solid rgba(76,175,80,.2)", color: "#4CAF50",
+                      fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                      fontFamily: "var(--font-sans)"
+                    }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                      {priceAlertCount} price drop{priceAlertCount !== 1 ? "s" : ""} on saved items
+                    </button>
                   </div>
                 )}
 
@@ -8573,26 +8414,6 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Content */}
-                {filteredScans.length === 0 ? (
-                  <div style={{ padding: "80px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.12, marginBottom: 8 }}>
-                      <rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/>
-                    </svg>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{history.length === 0 ? t("no_scans_yet") : t("no_scans_match")}</div>
-                    <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 240 }}>
-                      {history.length === 0 ? t("save_items_desc") : ""}
-                    </div>
-                    {history.length === 0 && (
-                      <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => fileRef.current?.click()} aria-label="Scan your first outfit">{t("scan_an_outfit")}</button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="likes-v2-masonry">
-                    <div className="likes-v2-col">{col1.map(renderScanCard)}</div>
-                    <div className="likes-v2-col">{col2.map(renderScanCard)}</div>
-                  </div>
-                )}
               </div>
             );
           })()}
@@ -8764,6 +8585,15 @@ export default function App() {
                         <div key={hx.id} className="profile-v2-grid-cell" onClick={() => setProfileScanOverlay(hx)} aria-label={`Scan: ${hxItems.length} items`}>
                           {hxImg ? <img src={hxImg} alt="" loading="lazy" onError={e => { e.target.style.display = "none"; }} /> : <div className="profile-v2-grid-placeholder">{hx.detected_gender === "female" ? "\uD83D\uDC57" : "\uD83D\uDC54"}</div>}
                           {hxItems.length > 0 && <span className="grid-items-badge">{hxItems.length}</span>}
+                          {hx.visibility !== "public" && (
+                            <div className="profile-grid-private-badge">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                              </svg>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -8783,6 +8613,17 @@ export default function App() {
                         <span className="scan-overlay-tag">{hsItems.length} item{hsItems.length !== 1 ? "s" : ""}</span>
                         <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{new Date(hs.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
                         {hs.detected_gender && <span className="scan-overlay-tag">{hs.detected_gender}</span>}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border)" }}
+                        onClick={(e) => { e.stopPropagation(); toggleVisibility(e, hs); }}
+                        role="switch" aria-checked={hs.visibility === "public"}
+                      >
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>
+                          {hs.visibility === "public" ? "Public" : "Private"}
+                        </span>
+                        <div style={{ width: 44, height: 26, borderRadius: 13, background: hs.visibility === "public" ? "var(--accent)" : "var(--border)", position: "relative", transition: "background 0.2s", cursor: "pointer" }}>
+                          <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#fff", position: "absolute", top: 3, left: hs.visibility === "public" ? 21 : 3, transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+                        </div>
                       </div>
                       {hs.summary && <div className="scan-overlay-summary">{hs.summary}</div>}
                       {hsItems.length > 0 && <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -9779,9 +9620,9 @@ export default function App() {
             </div>
             <span className="tab-l">Scan</span>
           </button>
-          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); }} aria-label="Saved">
+          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); }} aria-label="Wardrobe">
             <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            <span className="tab-l">{t("my_scans")}</span>
+            <span className="tab-l">{t("wardrobe")}</span>
             {priceAlertCount > 0 && (
               <span className="tab-badge" />
             )}
