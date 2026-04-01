@@ -6417,7 +6417,7 @@ export default function App() {
                     const isSaved = saved.some(s => s.scan_id === scan.id);
                     const isTrending = (scan.save_count || 0) >= 3;
                     const trendingRank = feedTab === "trending" ? idx + 1 + ((feedPage - 1) * 20) : null;
-                    const showAd = tier !== "pro" && idx > 0 && idx % 5 === 0;
+                    const showAd = userStatus?.tier !== "pro" && userStatus?.tier !== "trial" && idx > 0 && idx % 5 === 0;
                     return (
                       <React.Fragment key={scan.id || idx}>
                         {showAd && (
