@@ -2560,7 +2560,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
   return (
     <div className={`ob ob-demo ${fade}`}>
       {/* Logo pinned to top */}
-      <img src="/logo-light.svg" alt="ATTAIRE" style={{ display: "block", margin: "0 auto", paddingTop: 16, width: "60%", maxWidth: 220, height: "auto" }} />
+      <img src="/logo-dark.svg" alt="ATTAIRE" style={{ display: "block", margin: "0 auto", paddingTop: 16, width: "60%", maxWidth: 220, height: "auto" }} />
       <h2 style={{ textAlign: "center", margin: "12px 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: 1.5, color: "#FAFAFA" }}>
         See it. Scan it. <span style={{ color: "#C9A96E" }}>Shop it.</span>
       </h2>
