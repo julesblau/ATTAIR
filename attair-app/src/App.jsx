@@ -2570,10 +2570,11 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
         <div className="ob-demo-phone" style={{ opacity: demoPhase === 4 ? 0 : 1, transition: "opacity 0.5s ease" }}>
           {/* Phase 0-1: Outfit photo with gradient */}
           <div className="ob-demo-photo" style={{ opacity: 1 }}>
-            <div className="ob-demo-outfit-placeholder">
-              <div className="ob-demo-outfit-icon">📸</div>
-              <div className="ob-demo-outfit-label">Your outfit photo</div>
-            </div>
+            <img
+              src="https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=600&fit=crop&crop=center"
+              alt="Outfit: white tee, jeans, sneakers"
+              style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, borderRadius: "inherit" }}
+            />
 
             {/* Phase 1: Scanning laser line */}
             <div key={cycleKey} className={`ob-demo-scan-line ${demoPhase >= 1 && demoPhase < 4 ? "active" : ""}`} />
