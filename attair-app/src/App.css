@@ -4572,3 +4572,69 @@
 .style-twin-card {
   will-change: opacity, transform;
 }
+
+/* ─── Horizontal item tabs ─────────────────────────────────── */
+.item-tabs-wrap {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  padding: 0 20px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.item-tabs-wrap::-webkit-scrollbar { display: none; }
+
+.item-tab {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.item-tab:hover { color: var(--text-secondary); }
+.item-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.item-tab-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Refine interstitial overlay ──────────────────────────── */
+.refine-interstitial {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(12, 12, 14, 0.95);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Light theme adjustments */
+.app[data-theme='light'] .item-tab { color: rgba(0,0,0,.4); }
+.app[data-theme='light'] .item-tab.active { color: var(--accent); }
+.app[data-theme='light'] .refine-interstitial { background: rgba(255,255,255,.95); }

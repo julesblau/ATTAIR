@@ -353,6 +353,15 @@ const API = {
     return await res.json();
   },
 
+  async refineSearch(items, activeItemIndex, refinement, gender, scanId, searchMode) {
+    const res = await authFetch(`${API_BASE}/api/find-products/refine`, {
+      method: "POST",
+      body: JSON.stringify({ items, active_item_index: activeItemIndex, refinement, gender, scan_id: scanId, search_mode: searchMode }),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Refine failed"); }
+    return await res.json();
+  },
+
   async createCheckoutSession(plan) {
     const res = await authFetch(`${API_BASE}/api/payments/create-checkout-session`, {
       method: "POST",
@@ -4185,6 +4194,16 @@ export default function App() {
   // ─── Expanded items in results ────────────────────────────
   const [expandedItems, setExpandedItems] = useState(new Set()); // which item indices are expanded
 
+  // ─── Horizontal item tabs + smart refine ──────────────────
+  const [activeItemIdx, setActiveItemIdx] = useState(0);           // which item tab is selected
+  const [refineText, setRefineText] = useState("");                // smart refine input value
+  const [refineLoading, setRefineLoading] = useState(false);       // smart refine in progress
+  const [refineCountMap, setRefineCountMap] = useState({});        // { [scanId]: number } — refine count per scan
+  const [savedLooks, setSavedLooks] = useState([]);                // saved results snapshots
+  const [savedLooksOpen, setSavedLooksOpen] = useState(false);     // dropdown toggle
+  const [refineToast, setRefineToast] = useState(null);            // brief toast message
+  const [refineInterstitial, setRefineInterstitial] = useState(false); // show refine ad overlay
+
   // ─── Social profile ───────────────────────────────────────
   const [profileBio, setProfileBio] = useState("");
   const [profileBioEditing, setProfileBioEditing] = useState(false);
@@ -5311,7 +5330,7 @@ export default function App() {
     }
   };
 
-  const reset = () => { if (nudgeScheduledRef.current) { API.cancelNudge(nudgeScheduledRef.current); nudgeScheduledRef.current = null; } setNudgeBanner(null); setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setItemMemories({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); setShowAdvanced(false); setExpandedItems(new Set()); setShowAllPickItems(false); };
+  const reset = () => { if (nudgeScheduledRef.current) { API.cancelNudge(nudgeScheduledRef.current); nudgeScheduledRef.current = null; } setNudgeBanner(null); setImg(null); setResults(null); setSelIdx(null); setPickedItems(new Set()); setError(null); setPhase("idle"); setScanId(null); setItemOverrides({}); setItemSettingsIdx(null); setItemViewModes({}); setItemChats({}); setItemMemories({}); setRefineInputs({}); setRefineLoadings({}); setPairings(null); setPairingsLoading(false); setSeenOnData({}); setNearbyData({}); setOccasion(null); setSearchNotes(""); setIdentPreview(null); setCircleSearchActive(false); setPriorityRegionBase64(null); setCircleConfirmed(false); setIsResearch(false); setShowAdvanced(false); setExpandedItems(new Set()); setShowAllPickItems(false); setActiveItemIdx(0); setRefineText(""); setRefineLoading(false); setSavedLooks([]); setSavedLooksOpen(false); setRefineToast(null); setRefineInterstitial(false); };
 
   // ─── AI item refinement ────────────────────────────────────
   const handleRefine = async (itemIdx) => {
@@ -5356,6 +5375,79 @@ export default function App() {
       setItemChats(c => ({ ...c, [itemIdx]: [...(c[itemIdx] || []), { role: "user", content: msg }, { role: "assistant", content: "Sorry, I couldn't process that. Try rephrasing." }] }));
     }
     setRefineLoadings(l => ({ ...l, [itemIdx]: false }));
+  };
+
+  // ─── Smart refine (horizontal tabs version) ───────────────
+  const handleSmartRefine = async () => {
+    const text = refineText.trim();
+    if (!text || refineLoading || !results?.items?.length) return;
+    const currentScanId = scanId || "x";
+    const currentRefineCount = refineCountMap[currentScanId] || 0;
+
+    // Free tier: limit 1 refine per scan
+    if (isFree && currentRefineCount >= 1) {
+      setUpgradeModal("refine_limit");
+      return;
+    }
+
+    setRefineLoading(true);
+    setRefineText("");
+
+    // Show interstitial ad for free users before refine
+    if (isFree && showAds) {
+      setRefineInterstitial(true);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      setRefineInterstitial(false);
+    }
+
+    try {
+      const res = await API.refineSearch(
+        results.items, activeItemIdx, text, results.gender, currentScanId, searchMode
+      );
+      // Update affected items' tiers
+      if (res.updated_items) {
+        setResults(prev => {
+          if (!prev) return prev;
+          const items = prev.items.map((it, idx) => {
+            const update = res.updated_items.find(u => u.item_index === idx);
+            if (update && update.tiers) return { ...it, tiers: update.tiers, status: "verified" };
+            return it;
+          });
+          return { ...prev, items };
+        });
+      }
+      // Show toast with modification explanation
+      if (res.modifications?.length) {
+        const msg = res.modifications.map(m => m.explanation).filter(Boolean).join("; ");
+        setRefineToast(msg || "Results refined");
+        setTimeout(() => setRefineToast(null), 4000);
+      }
+      setRefineCountMap(m => ({ ...m, [currentScanId]: currentRefineCount + 1 }));
+      track("smart_refine", { active_item: activeItemIdx, refinement: text }, currentScanId, "scan");
+    } catch (err) {
+      if (err.message?.includes("429") || err.message?.includes("limit") || err.message?.includes("upgrade")) {
+        setUpgradeModal("refine_limit");
+      } else {
+        setRefineToast("Refine failed. Try again.");
+        setTimeout(() => setRefineToast(null), 3000);
+      }
+    }
+    setRefineLoading(false);
+  };
+
+  // ─── Save Look snapshot ───────────────────────────────────
+  const handleSaveLook = () => {
+    if (!results) return;
+    const snapshot = {
+      id: Date.now(),
+      items: JSON.parse(JSON.stringify(results.items)),
+      gender: results.gender,
+      timestamp: new Date().toISOString(),
+      thumbnail: img,
+    };
+    setSavedLooks(prev => [...prev, snapshot]);
+    setRefineToast("Look saved!");
+    setTimeout(() => setRefineToast(null), 2500);
   };
 
   // ─── Refresh looks data (debounced) ────────────────────────
@@ -7775,35 +7867,41 @@ export default function App() {
               )}
 
               {/* ═══════════════════════════════════════════════════════════
-                  REFINE SEARCH — AI chat input
+                  REFINE SEARCH — Smart refine input (item-specific)
                   ═══════════════════════════════════════════════════════════ */}
               {phase === "done" && (
                 <div style={{ padding: "0 20px" }}>
-                  {/* AI refine chat input — always visible */}
+                  {/* Smart refine input — targets active item tab */}
                   <div style={{ marginBottom: 12 }}>
-                    <div className="refine-input-row">
-                      <input
-                        value={searchNotes}
-                        onChange={e => setSearchNotes(e.target.value.slice(0, 200))}
-                        onKeyDown={e => { if (e.key === "Enter" && searchNotes.trim()) { e.target.blur(); runProductSearch(); } }}
-                        placeholder="Refine your results with AI..."
-                        className="refine-input"
-                        style={{ flex: 1, minHeight: 44 }}
-                      />
-                      <button
-                        className="refine-send"
-                        disabled={!searchNotes.trim()}
-                        onClick={() => { if (searchNotes.trim()) runProductSearch(); }}
-                        aria-label="Run refined search"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                      </button>
-                    </div>
-                    {searchNotes && (
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "var(--radius-full)", marginTop: 6, fontSize: 11, color: "var(--accent)" }}>
-                        Active: {searchNotes}
-                        <button aria-label="Clear refine" onClick={() => { setSearchNotes(""); setTimeout(() => runProductSearch(), 100); }}
-                          style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, padding: 0, lineHeight: 1 }}>&times;</button>
+                    {/* Free tier refine limit */}
+                    {isFree && (refineCountMap[scanId || "x"] || 0) >= 1 ? (
+                      <div style={{ padding: "12px 16px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.15)", borderRadius: 12, textAlign: "center" }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>Refine limit reached</div>
+                        <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 8 }}>Upgrade to Pro for unlimited refinements</div>
+                        <button onClick={() => setUpgradeModal("refine_limit")} style={{ padding: "8px 20px", background: "var(--accent)", border: "none", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "var(--text-inverse)", cursor: "pointer", fontFamily: "var(--font-sans)" }}>Upgrade to Pro</button>
+                      </div>
+                    ) : (
+                      <div className="refine-input-row">
+                        <input
+                          value={refineText}
+                          onChange={e => setRefineText(e.target.value.slice(0, 200))}
+                          onKeyDown={e => { if (e.key === "Enter" && refineText.trim()) { e.target.blur(); handleSmartRefine(); } }}
+                          placeholder={`Refine [${(() => { const picked = results.items.map((it, idx) => ({ it, idx })).filter(({ idx }) => pickedItems.has(idx)); const active = picked[Math.min(activeItemIdx, picked.length - 1)]; return active?.it?.name || "item"; })()}]...`}
+                          className="refine-input"
+                          style={{ flex: 1, minHeight: 44 }}
+                          disabled={refineLoading}
+                        />
+                        <button
+                          className="refine-send"
+                          disabled={!refineText.trim() || refineLoading}
+                          onClick={() => { if (refineText.trim()) handleSmartRefine(); }}
+                          aria-label="Run smart refine"
+                        >
+                          {refineLoading
+                            ? <div className="ld-dot" style={{ width: 10, height: 10, background: "#fff" }} />
+                            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                          }
+                        </button>
                       </div>
                     )}
                   </div>
@@ -7937,221 +8035,298 @@ export default function App() {
               )}
 
               {/* ═══════════════════════════════════════════════════════════
-                  CORE: Per-item collapsible sections with horizontal product scroll
+                  Save Look + Saved Looks dropdown
                   ═══════════════════════════════════════════════════════════ */}
-              <div style={{ padding: "0 0 8px" }}>
-                {results.items.map((item, i) => {
-                  if (!pickedItems.has(i)) return null;
-                  const isExpanded = expandedItems.has(i);
-                  const TIER_CFG = { budget: { label: "Budget", accent: "#5AC8FF" }, mid: { label: "Match", accent: "#C9A96E" }, premium: { label: "Premium", accent: "#C77DFF" }, resale: { label: "Resale", accent: "#7BC47F" } };
-                  const allTierProducts = item.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(item.tiers[tk]).map(p => ({ ...p, _tier: tk }))) : [];
+              {phase === "done" && (
+                <div style={{ padding: "0 20px 8px", display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+                  <button
+                    onClick={handleSaveLook}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px",
+                      background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10,
+                      color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12,
+                      fontWeight: 600, cursor: "pointer", transition: "all .2s",
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                    Save Look
+                  </button>
+                  {savedLooks.length > 0 && (
+                    <button
+                      onClick={() => setSavedLooksOpen(o => !o)}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 12px",
+                        background: savedLooksOpen ? "rgba(201,169,110,.12)" : "var(--bg-input)",
+                        border: `1px solid ${savedLooksOpen ? "rgba(201,169,110,.3)" : "var(--border)"}`,
+                        borderRadius: 10, color: savedLooksOpen ? "var(--accent)" : "var(--text-tertiary)",
+                        fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                      }}
+                    >
+                      Saved Looks ({savedLooks.length})
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform .2s", transform: savedLooksOpen ? "rotate(180deg)" : "rotate(0)" }}><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                  )}
+                </div>
+              )}
+              {savedLooksOpen && savedLooks.length > 0 && (
+                <div style={{ padding: "0 20px 12px", animation: "slideDown .2s ease" }}>
+                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
+                    {savedLooks.map((look, li) => (
+                      <div key={look.id} onClick={() => {
+                        setResults(prev => prev ? { ...prev, items: JSON.parse(JSON.stringify(look.items)) } : prev);
+                        setSavedLooksOpen(false);
+                        setRefineToast("Restored saved look");
+                        setTimeout(() => setRefineToast(null), 2000);
+                      }} style={{
+                        flexShrink: 0, width: 80, cursor: "pointer", textAlign: "center",
+                        background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10,
+                        padding: 6, transition: "all .2s",
+                      }}>
+                        {look.thumbnail && <img src={look.thumbnail} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, marginBottom: 4 }} />}
+                        <div style={{ fontSize: 9, color: "var(--text-tertiary)", fontWeight: 600 }}>Look {li + 1}</div>
+                        <div style={{ fontSize: 8, color: "var(--text-tertiary)" }}>{look.items.filter(it => it.tiers).length} items</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                  // Dupe detection: find highest-priced product, flag 40%+ cheaper alternatives
-                  const dupeMap = new Map(); // key: "tierKey_j" → { savings, vsPrice, vsStore, vsTier }
-                  if (item.tiers) {
-                    const allPriced = allTierProducts
-                      .map(p => ({ ...p, _numPrice: parseFloat((p.price || "").replace(/[^0-9.]/g, "")) }))
-                      .filter(p => p._numPrice > 0);
-                    if (allPriced.length >= 2) {
-                      const maxProduct = allPriced.reduce((a, b) => a._numPrice > b._numPrice ? a : b);
-                      allPriced.forEach(p => {
-                        if (p === maxProduct) return;
-                        const savings = 1 - (p._numPrice / maxProduct._numPrice);
-                        if (savings >= 0.4) {
-                          const tierProducts = asTierArray(item.tiers[p._tier]);
-                          const idx = tierProducts.findIndex(tp => tp.url === p.url && tp.product_name === p.product_name);
-                          if (idx >= 0) {
-                            dupeMap.set(`${p._tier}_${idx}`, {
-                              savings: Math.round(savings * 100),
-                              vsPrice: maxProduct.price,
-                              vsStore: maxProduct.brand,
-                              vsTier: maxProduct._tier,
-                              vsUrl: maxProduct.url,
-                            });
-                          }
-                        }
-                      });
-                    }
-                  }
+              {/* ═══════════════════════════════════════════════════════════
+                  CORE: Horizontal item tabs with active item product scroll
+                  ═══════════════════════════════════════════════════════════ */}
+              {(() => {
+                const pickedItemsList = results.items.map((item, i) => ({ item, i })).filter(({ i }) => pickedItems.has(i));
+                // Clamp activeItemIdx to valid range
+                const clampedIdx = Math.min(activeItemIdx, pickedItemsList.length - 1);
+                const activeEntry = pickedItemsList[clampedIdx >= 0 ? clampedIdx : 0];
+                if (!activeEntry) return null;
+                const { item, i } = activeEntry;
+                const TIER_CFG = { budget: { label: "Budget", accent: "#5AC8FF" }, mid: { label: "Match", accent: "#C9A96E" }, premium: { label: "Premium", accent: "#C77DFF" }, resale: { label: "Resale", accent: "#7BC47F" } };
+                const allTierProducts = item.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(item.tiers[tk]).map(p => ({ ...p, _tier: tk }))) : [];
 
-                  return (
-                    <div key={i} style={{ borderBottom: "1px solid var(--border)" }}>
-                      {/* Item header — tap to expand/collapse */}
-                      <button
-                        onClick={() => {
-                          setExpandedItems(prev => {
-                            const next = new Set(prev);
-                            if (next.has(i)) next.delete(i); else next.add(i);
-                            return next;
+                // Dupe detection: find highest-priced product, flag 40%+ cheaper alternatives
+                const dupeMap = new Map();
+                if (item.tiers) {
+                  const allPriced = allTierProducts
+                    .map(p => ({ ...p, _numPrice: parseFloat((p.price || "").replace(/[^0-9.]/g, "")) }))
+                    .filter(p => p._numPrice > 0);
+                  if (allPriced.length >= 2) {
+                    const maxProduct = allPriced.reduce((a, b) => a._numPrice > b._numPrice ? a : b);
+                    allPriced.forEach(p => {
+                      if (p === maxProduct) return;
+                      const savings = 1 - (p._numPrice / maxProduct._numPrice);
+                      if (savings >= 0.4) {
+                        const tierProducts = asTierArray(item.tiers[p._tier]);
+                        const idx = tierProducts.findIndex(tp => tp.url === p.url && tp.product_name === p.product_name);
+                        if (idx >= 0) {
+                          dupeMap.set(`${p._tier}_${idx}`, {
+                            savings: Math.round(savings * 100),
+                            vsPrice: maxProduct.price,
+                            vsStore: maxProduct.brand,
+                            vsTier: maxProduct._tier,
+                            vsUrl: maxProduct.url,
                           });
-                          setSelIdx(i);
-                        }}
-                        style={{
-                          width: "100%", display: "flex", alignItems: "center", gap: 10,
-                          padding: "14px 20px", background: "none", border: "none",
-                          cursor: "pointer", fontFamily: "var(--font-sans)", textAlign: "left",
-                          transition: "background .15s",
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
-                            {item.name}
-                            {item.priority && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, verticalAlign: "middle" }}>Circled</span>}
-                          </div>
-                          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
-                            {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
-                          </div>
+                        }
+                      }
+                    });
+                  }
+                }
+
+                // Ad card insertion for free tier: every 5th product
+                const shouldInsertAds = isFree && showAds;
+                const insertAdAt = (flatIdx) => shouldInsertAds && flatIdx > 0 && flatIdx % 5 === 0;
+
+                return (
+                  <div style={{ padding: "0 0 8px" }}>
+                    {/* Horizontal item tab bar */}
+                    <div className="item-tabs-wrap">
+                      {pickedItemsList.map(({ item: tabItem, i: tabI }, tabIdx) => {
+                        const tabProducts = tabItem.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(tabItem.tiers[tk])) : [];
+                        return (
+                          <button
+                            key={tabI}
+                            className={`item-tab${tabIdx === clampedIdx ? " active" : ""}`}
+                            onClick={() => { setActiveItemIdx(tabIdx); setSelIdx(tabI); }}
+                          >
+                            <span className="item-tab-name">{tabItem.name}</span>
+                            {tabItem.status === "searching" && <span className="ld-dot" style={{ width: 6, height: 6, background: "var(--accent)", flexShrink: 0 }} />}
+                            {tabItem.status === "verified" && tabProducts.length > 0 && (
+                              <span style={{ fontSize: 9, color: "var(--text-tertiary)", fontWeight: 500 }}>{tabProducts.length}</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Item detail sub-header */}
+                    <div style={{ padding: "8px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
+                          {item.name}
+                          {item.priority && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, verticalAlign: "middle" }}>Circled</span>}
                         </div>
-                        {item.status === "searching" && <div className="ld-dot" style={{ width: 8, height: 8, background: "var(--accent)", flexShrink: 0 }} />}
-                        {item.status === "verified" && allTierProducts.length > 0 && (
-                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-tertiary)", flexShrink: 0 }}>{allTierProducts.length} products</span>
-                        )}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform .2s", transform: isExpanded ? "rotate(180deg)" : "rotate(0)" }}>
-                          <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                      </button>
-
-                      {/* Expanded content */}
-                      {isExpanded && (
-                        <div style={{ padding: "0 0 16px", overflow: "hidden", animation: "slideDown .2s ease" }}>
-                          {/* Searching state */}
-                          {item.status === "searching" && (
-                            <div style={{ padding: "12px 20px", textAlign: "center", color: "rgba(201,169,110,.5)", fontSize: 12 }}>
-                              Finding products...
-                            </div>
-                          )}
-
-                          {/* Failed state */}
-                          {item.status === "failed" && !item.tiers && (
-                            <div style={{ padding: "12px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 12 }}>
-                              No products found.{" "}
-                              <span style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => { setSelIdx(i); setItemViewModes(m => ({ ...m, [i]: "id" })); }}>Correct the AI</span>
-                            </div>
-                          )}
-
-                          {/* Horizontal product scroll per tier */}
-                          {item.tiers && ["budget", "mid", "premium", "resale"].map(tierKey => {
-                            const products = asTierArray(item.tiers[tierKey]);
-                            if (!products.length) return null;
-                            const cfg = TIER_CFG[tierKey];
-                            return (
-                              <div key={tierKey} style={{ marginBottom: 12 }}>
-                                <div style={{ padding: "0 20px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
-                                  {products.length > 2 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
-                                </div>
-                                <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
-                                  {products.map((p, j) => {
-                                    const isFallback = !p.is_product_page && p.brand === "Google Shopping";
-                                    const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
-                                    const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
-                                    const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
-                                    const dupeInfo = dupeMap.get(`${tierKey}_${j}`);
-                                    return (
-                                      <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
-                                        {/* Style Match Score pill */}
-                                        {p.style_match != null && p.style_match >= 50 ? (
-                                          <div
-                                            className={`style-match-pill ${p.style_match >= 80 ? "style-match-green" : "style-match-yellow"}`}
-                                            onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
-                                            style={{ cursor: "pointer" }}
-                                          >
-                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                            {p.style_match}% your style
-                                            {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
-                                              <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
-                                                Based on your Style DNA profile
-                                              </div>
-                                            )}
-                                          </div>
-                                        ) : p.style_match === null && j === 0 && (
-                                          <div
-                                            className="style-match-pill style-match-new"
-                                            onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
-                                            style={{ cursor: "pointer" }}
-                                          >
-                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-                                            New to you
-                                            {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
-                                              <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
-                                                <span>Scan more outfits to unlock match scores</span>
-                                                <div onClick={e => { e.stopPropagation(); setTab("profile"); setStyleMatchTooltip(null); }} style={{ marginTop: 4, fontSize: 9, fontWeight: 700, color: "var(--accent)", cursor: "pointer", letterSpacing: 0.3 }}>
-                                                  Build your Style DNA &rarr;
-                                                </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-                                        {/* Dupe Alert pill — reserved for affiliate items only (TODO: re-enable for affiliates) */}
-                                        <a href={href} target="_blank" rel="noopener noreferrer"
-                                          onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback, is_dupe: !!dupeInfo }, scanId, "scan")}
-                                          style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
-                                          {p.image_url && (
-                                            <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
-                                              <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
-                                            </div>
-                                          )}
-                                          <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
-                                            {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>ORIGINAL</span>}
-                                            <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                                              {isFallback ? "Search results" : (p.product_name || "Product")}
-                                            </div>
-                                            <div style={{ fontSize: 10, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
-                                            <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : p.price}</div>
-                                            <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
-                                          </div>
-                                        </a>
-                                        {/* Find Similar Look button — only on products $150+ */}
-                                        {(() => { const pNum = parseFloat((p.price || "").replace(/[^0-9.]/g, "")); return pNum >= 150 && !isFallback; })() && (
-                                          <button
-                                            onClick={e => { e.preventDefault(); e.stopPropagation(); openDupeModal(p, item, tierKey); }}
-                                            className="dupe-finder-btn"
-                                            style={{ position: "absolute", bottom: 54, left: 4, right: 4, zIndex: 2, padding: "5px 8px", background: "rgba(76,175,80,.9)", backdropFilter: "blur(8px)", border: "none", borderRadius: 8, color: "#fff", fontSize: 9, fontWeight: 700, fontFamily: "var(--font-sans)", cursor: "pointer", letterSpacing: 0.3, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, transition: "all .2s" }}
-                                          >
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                            Similar Look
-                                          </button>
-                                        )}
-                                        {/* Save heart */}
-                                        <button
-                                          aria-label={isSavedProduct ? "Remove from Likes" : "Save to Likes"}
-                                          onClick={e => { e.preventDefault(); e.stopPropagation(); quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId); }}
-                                          style={{ position: "absolute", top: 6, right: 6, width: 28, height: 28, borderRadius: "50%", background: isSavedProduct ? "rgba(255,60,80,.9)" : "rgba(0,0,0,.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", zIndex: 2 }}>
-                                          <svg viewBox="0 0 24 24" width="12" height="12" fill={isSavedProduct ? "#fff" : "none"} stroke={isSavedProduct ? "#fff" : "rgba(255,255,255,.8)"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                                          </svg>
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {/* Not finding what you want? */}
-                          {item.tiers && (() => {
-                            const allProducts = ["budget", "mid", "premium"].flatMap(tk => asTierArray(item.tiers[tk]));
-                            const hasFallback = allProducts.some(p => !p.is_product_page && p.brand === "Google Shopping");
-                            if (!hasFallback) return null;
-                            const googleQuery = item.search_query || `${item.brand || ""} ${item.name || ""}`.trim();
-                            return (
-                              <div style={{ padding: "0 20px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-                                <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`} target="_blank" rel="noopener noreferrer"
-                                  onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
-                                  style={{ padding: "8px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                                  Google Shopping
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                                </a>
-                              </div>
-                            );
-                          })()}
+                        <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
+                          {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
                         </div>
+                      </div>
+                      {item.status === "verified" && allTierProducts.length > 0 && (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text-tertiary)" }}>{allTierProducts.length} products</span>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Active item content */}
+                    <div style={{ padding: "0 0 16px", overflow: "hidden", animation: "slideDown .2s ease" }}>
+                      {/* Searching state */}
+                      {item.status === "searching" && (
+                        <div style={{ padding: "12px 20px", textAlign: "center", color: "rgba(201,169,110,.5)", fontSize: 12 }}>
+                          Finding products...
+                        </div>
+                      )}
+
+                      {/* Failed state */}
+                      {item.status === "failed" && !item.tiers && (
+                        <div style={{ padding: "12px 20px", textAlign: "center", color: "var(--text-tertiary)", fontSize: 12 }}>
+                          No products found.{" "}
+                          <span style={{ color: "var(--accent)", cursor: "pointer" }} onClick={() => { setSelIdx(i); setItemViewModes(m => ({ ...m, [i]: "id" })); }}>Correct the AI</span>
+                        </div>
+                      )}
+
+                      {/* Horizontal product scroll per tier */}
+                      {item.tiers && ["budget", "mid", "premium", "resale"].map(tierKey => {
+                        const products = asTierArray(item.tiers[tierKey]);
+                        if (!products.length) return null;
+                        const cfg = TIER_CFG[tierKey];
+                        return (
+                          <div key={tierKey} style={{ marginBottom: 12 }}>
+                            <div style={{ padding: "0 20px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
+                              {products.length > 2 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
+                            </div>
+                            <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+                              {products.map((p, j) => {
+                                const isFallback = !p.is_product_page && p.brand === "Google Shopping";
+                                const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
+                                const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
+                                const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
+                                const dupeInfo = dupeMap.get(`${tierKey}_${j}`);
+
+                                // Compute flat index for ad insertion
+                                const tiersBefore = ["budget", "mid", "premium", "resale"].slice(0, ["budget", "mid", "premium", "resale"].indexOf(tierKey));
+                                const flatIdx = tiersBefore.reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) + j;
+
+                                return (
+                                  <React.Fragment key={j}>
+                                    {/* Inline ad card for free tier */}
+                                    {insertAdAt(flatIdx) && (
+                                      <div style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "linear-gradient(135deg, rgba(201,169,110,.06), rgba(201,169,110,.02))", border: "1px dashed rgba(201,169,110,.2)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 12, gap: 6, textAlign: "center" }}>
+                                        <span style={{ fontSize: 8, color: "rgba(201,169,110,.4)", letterSpacing: 1, textTransform: "uppercase" }}>Sponsored</span>
+                                        <span style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.4 }}>Upgrade to Pro for ad-free results</span>
+                                        <button onClick={() => setUpgradeModal("remove_ads")} style={{ padding: "6px 14px", background: "var(--accent)", border: "none", borderRadius: 100, fontSize: 10, fontWeight: 700, color: "var(--text-inverse)", cursor: "pointer", fontFamily: "var(--font-sans)" }}>Go Pro</button>
+                                      </div>
+                                    )}
+                                    <div className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
+                                      {/* Style Match Score pill */}
+                                      {p.style_match != null && p.style_match >= 50 ? (
+                                        <div
+                                          className={`style-match-pill ${p.style_match >= 80 ? "style-match-green" : "style-match-yellow"}`}
+                                          onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
+                                          style={{ cursor: "pointer" }}
+                                        >
+                                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                          {p.style_match}% your style
+                                          {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
+                                            <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
+                                              Based on your Style DNA profile
+                                            </div>
+                                          )}
+                                        </div>
+                                      ) : p.style_match === null && j === 0 && (
+                                        <div
+                                          className="style-match-pill style-match-new"
+                                          onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
+                                          style={{ cursor: "pointer" }}
+                                        >
+                                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                                          New to you
+                                          {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
+                                            <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
+                                              <span>Scan more outfits to unlock match scores</span>
+                                              <div onClick={e => { e.stopPropagation(); setTab("profile"); setStyleMatchTooltip(null); }} style={{ marginTop: 4, fontSize: 9, fontWeight: 700, color: "var(--accent)", cursor: "pointer", letterSpacing: 0.3 }}>
+                                                Build your Style DNA &rarr;
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                      {/* Dupe Alert pill — reserved for affiliate items only (TODO: re-enable for affiliates) */}
+                                      <a href={href} target="_blank" rel="noopener noreferrer"
+                                        onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback, is_dupe: !!dupeInfo }, scanId, "scan")}
+                                        style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
+                                        {p.image_url && (
+                                          <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
+                                            <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                          </div>
+                                        )}
+                                        <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
+                                          {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>ORIGINAL</span>}
+                                          <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                                            {isFallback ? "Search results" : (p.product_name || "Product")}
+                                          </div>
+                                          <div style={{ fontSize: 10, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
+                                          <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : p.price}</div>
+                                          <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
+                                        </div>
+                                      </a>
+                                      {/* Find Similar Look button — only on products $150+ */}
+                                      {(() => { const pNum = parseFloat((p.price || "").replace(/[^0-9.]/g, "")); return pNum >= 150 && !isFallback; })() && (
+                                        <button
+                                          onClick={e => { e.preventDefault(); e.stopPropagation(); openDupeModal(p, item, tierKey); }}
+                                          className="dupe-finder-btn"
+                                          style={{ position: "absolute", bottom: 54, left: 4, right: 4, zIndex: 2, padding: "5px 8px", background: "rgba(76,175,80,.9)", backdropFilter: "blur(8px)", border: "none", borderRadius: 8, color: "#fff", fontSize: 9, fontWeight: 700, fontFamily: "var(--font-sans)", cursor: "pointer", letterSpacing: 0.3, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, transition: "all .2s" }}
+                                        >
+                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                          Similar Look
+                                        </button>
+                                      )}
+                                      {/* Save heart */}
+                                      <button
+                                        aria-label={isSavedProduct ? "Remove from Likes" : "Save to Likes"}
+                                        onClick={e => { e.preventDefault(); e.stopPropagation(); quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId); }}
+                                        style={{ position: "absolute", top: 6, right: 6, width: 28, height: 28, borderRadius: "50%", background: isSavedProduct ? "rgba(255,60,80,.9)" : "rgba(0,0,0,.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", zIndex: 2 }}>
+                                        <svg viewBox="0 0 24 24" width="12" height="12" fill={isSavedProduct ? "#fff" : "none"} stroke={isSavedProduct ? "#fff" : "rgba(255,255,255,.8)"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </React.Fragment>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Not finding what you want? */}
+                      {item.tiers && (() => {
+                        const allProducts = ["budget", "mid", "premium"].flatMap(tk => asTierArray(item.tiers[tk]));
+                        const hasFallback = allProducts.some(p => !p.is_product_page && p.brand === "Google Shopping");
+                        if (!hasFallback) return null;
+                        const googleQuery = item.search_query || `${item.brand || ""} ${item.name || ""}`.trim();
+                        return (
+                          <div style={{ padding: "0 20px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                            <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`} target="_blank" rel="noopener noreferrer"
+                              onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
+                              style={{ padding: "8px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                              Google Shopping
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            </a>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="aff-note" style={{ padding: "8px 20px calc(80px + env(safe-area-inset-bottom, 0px))" }}>Links may include affiliate partnerships</div>
             </div>
@@ -11053,6 +11228,43 @@ export default function App() {
             <div className="reel-preview-tip">
               Optimized for TikTok, Reels & Shorts
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refine toast */}
+      {refineToast && (
+        <div style={{
+          position: "fixed", bottom: 140, left: "50%", transform: "translateX(-50%)", zIndex: 10001,
+          background: "var(--accent)", color: "#000", padding: "10px 20px", borderRadius: 12,
+          fontWeight: 700, fontSize: 13, fontFamily: "var(--font-sans)",
+          boxShadow: "0 4px 20px rgba(0,0,0,.3)", animation: "slideUp .3s ease",
+          maxWidth: "90vw", textAlign: "center",
+        }}>
+          {refineToast}
+        </div>
+      )}
+
+      {/* Refine interstitial ad overlay */}
+      {refineInterstitial && (
+        <div className="refine-interstitial">
+          <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+            <div className="ld-dot" style={{ width: 14, height: 14, background: "var(--accent)" }} />
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>Loading your refined results...</div>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>AI is finding better matches</div>
+            {(() => {
+              const spot = RETAILER_SPOTLIGHTS[Math.floor(Math.random() * RETAILER_SPOTLIGHTS.length)];
+              return (
+                <div style={{ marginTop: 20, padding: "16px 24px", background: spot.gradient, borderRadius: 16, border: "1px solid rgba(255,255,255,.08)", maxWidth: 300, textAlign: "center" }}>
+                  <span style={{ fontSize: 9, color: "rgba(255,255,255,.3)", letterSpacing: 1, textTransform: "uppercase" }}>Featured Retailer</span>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: spot.accent, margin: "8px 0 4px", fontFamily: "var(--font-sans)" }}>{spot.name}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginBottom: 12 }}>{spot.tagline}</div>
+                  <a href={spot.url} target="_blank" rel="noopener noreferrer" onClick={() => { API.logAdEvent("interstitial", "refine", "click", spot.name); }}
+                    style={{ display: "inline-block", padding: "10px 24px", background: spot.accent, borderRadius: 100, fontSize: 12, fontWeight: 700, color: spot.accent === "#fff" || spot.accent === "#e0e0e0" ? "#0C0C0E" : "#fff", fontFamily: "var(--font-sans)", textDecoration: "none" }}>{spot.cta}</a>
+                </div>
+              );
+            })()}
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)", marginTop: 8 }}>Upgrade to Pro to remove ads</div>
           </div>
         </div>
       )}

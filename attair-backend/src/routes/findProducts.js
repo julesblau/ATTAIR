@@ -275,4 +275,169 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
+// ─── Refine search ─────────────────────────────────────────
+const FREE_REFINE_LIMIT = 1; // per scan for free/expired tier
+
+/**
+ * POST /api/find-products/refine
+ *
+ * Takes the identified items from a scan, a natural-language refinement
+ * request, and returns updated product results for the modified items.
+ */
+router.post("/refine", requireAuth, async (req, res) => {
+  const {
+    items,
+    active_item_index,
+    refinement,
+    gender,
+    scan_id,
+    search_mode: rawSearchMode,
+  } = req.body;
+
+  const searchMode = rawSearchMode === "extended" ? "extended" : "fast";
+
+  // ── Validate input ───────────────────────────────────────
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: "Missing or empty items array" });
+  }
+  if (!refinement || typeof refinement !== "string" || !refinement.trim()) {
+    return res.status(400).json({ error: "Missing refinement string" });
+  }
+  if (!gender || !["male", "female"].includes(gender)) {
+    return res.status(400).json({ error: 'gender must be "male" or "female"' });
+  }
+  const activeIdx = Number(active_item_index) || 0;
+  if (activeIdx < 0 || activeIdx >= items.length) {
+    return res.status(400).json({ error: "active_item_index out of range" });
+  }
+
+  try {
+    // ── Refine limit check ───────────────────────────────────
+    if (scan_id) {
+      const [profileRes, scanRes] = await Promise.all([
+        supabase.from("profiles").select("tier, trial_ends_at").eq("id", req.userId).single(),
+        supabase.from("scans").select("refine_count").eq("id", scan_id).eq("user_id", req.userId).single(),
+      ]);
+
+      let tier = profileRes.data?.tier || "free";
+      if (tier === "trial" && profileRes.data?.trial_ends_at && new Date(profileRes.data.trial_ends_at) < new Date()) {
+        tier = "expired";
+      }
+
+      if (tier !== "pro" && tier !== "trial") {
+        const refineCount = scanRes.data?.refine_count || 0;
+        if (refineCount >= FREE_REFINE_LIMIT) {
+          return res.status(429).json({
+            error: "Refine limit reached",
+            message: "Upgrade to Pro for unlimited refinements",
+          });
+        }
+      }
+    }
+
+    // ── Ask Claude to interpret the refinement ───────────────
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const itemList = items
+      .map((item, i) => `[${i}] ${item.name} - ${item.brand || "unknown"} - ${item.color || ""} ${item.material || ""} - ${item.price_range || ""}`)
+      .join("\n");
+
+    const message = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 300,
+      messages: [
+        {
+          role: "user",
+          content: `You are a shopping assistant. The user is viewing identified clothing items from a scan.
+
+Items:
+${itemList}
+
+The user is currently focused on item [${activeIdx}]: ${items[activeIdx].name}
+
+User's refinement request: "${refinement.trim().slice(0, 500)}"
+
+Return a JSON object with modifications to apply. For each item that needs to change, include it in the array. If the user's request is vague (e.g., "find in red"), apply it only to the focused item. If specific (e.g., "red jacket and brown shoes"), apply to the referenced items.
+
+Response format:
+{
+  "modifications": [
+    { "item_index": 0, "modified_search_query": "red wool blazer", "explanation": "Changed color from navy to red" }
+  ]
+}
+
+Only return the JSON, no other text.`,
+        },
+      ],
+    });
+
+    const rawText = message.content?.[0]?.text || "";
+    let modifications;
+    try {
+      const parsed = JSON.parse(rawText);
+      modifications = parsed.modifications;
+      if (!Array.isArray(modifications) || modifications.length === 0) {
+        return res.status(422).json({ error: "Could not interpret refinement" });
+      }
+    } catch {
+      console.error("Refine parse error, raw:", rawText);
+      return res.status(422).json({ error: "Could not interpret refinement" });
+    }
+
+    // ── Fetch profile for budget/size defaults ───────────────
+    const [profileResult, prefProfile] = await Promise.all([
+      supabase.from("profiles").select("budget_min, budget_max, size_prefs").eq("id", req.userId).single(),
+      getPreferenceProfile(req.userId).catch(() => null),
+    ]);
+    const profile = profileResult.data;
+
+    // ── Build modified items and run product search ──────────
+    const modifiedItems = modifications.map((mod) => {
+      const original = items[mod.item_index] || items[activeIdx];
+      return {
+        ...original,
+        name: mod.modified_search_query,
+        _refined: true,
+      };
+    });
+
+    const results = await findProductsForItems(
+      modifiedItems,
+      gender,
+      profile?.budget_min,
+      profile?.budget_max,
+      null, // no image URL for refined searches
+      profile?.size_prefs || {},
+      null, // no occasion
+      null, // no search_notes
+      null, // no custom occasion modifiers
+      searchMode,
+      prefProfile,
+    );
+
+    // ── Increment refine_count on scan ───────────────────────
+    if (scan_id) {
+      supabase
+        .from("scans")
+        .update({ refine_count: (await supabase.from("scans").select("refine_count").eq("id", scan_id).single()).data?.refine_count + 1 || 1 })
+        .eq("id", scan_id)
+        .eq("user_id", req.userId)
+        .then(() => {})
+        .catch((err) => console.error("Refine count increment error:", err.message));
+    }
+
+    return res.json({
+      results,
+      modifications: modifications.map((mod) => ({
+        item_index: mod.item_index,
+        modified_search_query: mod.modified_search_query,
+        explanation: mod.explanation,
+      })),
+    });
+  } catch (err) {
+    console.error("Refine search error:", err.message);
+    return res.status(500).json({ error: "Refinement search failed" });
+  }
+});
+
 export default router;
