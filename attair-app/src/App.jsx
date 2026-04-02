@@ -8231,24 +8231,62 @@ export default function App() {
                           <div key={tierKey} style={{ marginBottom: 12 }}>
                             <div style={{ padding: "0 20px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
-                              {products.length > 2 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
+                              {products.length > 1 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
                             </div>
-                            <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollPaddingLeft: 20, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
-                              {products.map((p, j) => {
+                            <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollPaddingLeft: 20, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}
+                              ref={el => {
+                                if (el && products.length >= 3 && !el.dataset.loopInit) {
+                                  el.dataset.loopInit = "1";
+                                  // Start at middle (original) set: products.length cards * 160px each + 20px padding
+                                  requestAnimationFrame(() => {
+                                    el.style.scrollBehavior = "auto";
+                                    el.scrollLeft = products.length * 160;
+                                    el.style.scrollBehavior = "";
+                                  });
+                                }
+                              }}
+                              onScroll={e => {
+                                const el = e.currentTarget;
+                                if (products.length < 3) return;
+                                const n = products.length;
+                                const stride = 160; // card 150 + gap 10
+                                const setWidth = n * stride;
+                                // If scrolled into first (clone) set, jump forward to middle
+                                if (el.scrollLeft < stride * 0.5) {
+                                  el.style.scrollSnapType = "none";
+                                  el.style.scrollBehavior = "auto";
+                                  el.scrollLeft += setWidth;
+                                  el.style.scrollBehavior = "";
+                                  requestAnimationFrame(() => { el.style.scrollSnapType = "x mandatory"; });
+                                }
+                                // If scrolled into last (clone) set, jump back to middle
+                                else if (el.scrollLeft > setWidth * 2 - stride * 0.5) {
+                                  el.style.scrollSnapType = "none";
+                                  el.style.scrollBehavior = "auto";
+                                  el.scrollLeft -= setWidth;
+                                  el.style.scrollBehavior = "";
+                                  requestAnimationFrame(() => { el.style.scrollSnapType = "x mandatory"; });
+                                }
+                              }}
+                            >
+                              {(products.length >= 3 ? [...products, ...products, ...products] : products).map((p, j) => {
+                                const n = products.length;
+                                const realJ = n >= 3 ? j % n : j;
+                                const isMiddleSet = n < 3 || (j >= n && j < n * 2);
                                 const isFallback = !p.is_product_page && p.brand === "Google Shopping";
-                                const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
+                                const clickId = `${scanId || "x"}_${i}_${tierKey}_${realJ}`;
                                 const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
                                 const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
-                                const dupeInfo = dupeMap.get(`${tierKey}_${j}`);
+                                const dupeInfo = dupeMap.get(`${tierKey}_${realJ}`);
 
-                                // Compute flat index for ad insertion
+                                // Compute flat index for ad insertion (only in middle/original set)
                                 const tiersBefore = ["budget", "mid", "premium", "resale"].slice(0, ["budget", "mid", "premium", "resale"].indexOf(tierKey));
-                                const flatIdx = tiersBefore.reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) + j;
+                                const flatIdx = tiersBefore.reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) + realJ;
 
                                 return (
                                   <Fragment key={j}>
-                                    {/* Inline ad card for free tier */}
-                                    {insertAdAt(flatIdx) && (
+                                    {/* Inline ad card for free tier — only in original set */}
+                                    {isMiddleSet && insertAdAt(flatIdx) && (
                                       <div style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "linear-gradient(135deg, rgba(201,169,110,.06), rgba(201,169,110,.02))", border: "1px dashed rgba(201,169,110,.2)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 12, gap: 6, textAlign: "center" }}>
                                         <span style={{ fontSize: 8, color: "rgba(201,169,110,.4)", letterSpacing: 1, textTransform: "uppercase" }}>Sponsored</span>
                                         <span style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.4 }}>Upgrade to Pro for ad-free results</span>
@@ -8260,26 +8298,26 @@ export default function App() {
                                       {p.style_match != null && p.style_match >= 50 ? (
                                         <div
                                           className={`style-match-pill ${p.style_match >= 80 ? "style-match-green" : "style-match-yellow"}`}
-                                          onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
+                                          onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${realJ}` ? null : { key: `${i}_${tierKey}_${realJ}` }); }}
                                           style={{ cursor: "pointer" }}
                                         >
                                           <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                                           {p.style_match}% your style
-                                          {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
+                                          {styleMatchTooltip?.key === `${i}_${tierKey}_${realJ}` && (
                                             <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
                                               Based on your Style DNA profile
                                             </div>
                                           )}
                                         </div>
-                                      ) : p.style_match === null && j === 0 && (
+                                      ) : p.style_match === null && realJ === 0 && (
                                         <div
                                           className="style-match-pill style-match-new"
-                                          onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
+                                          onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${realJ}` ? null : { key: `${i}_${tierKey}_${realJ}` }); }}
                                           style={{ cursor: "pointer" }}
                                         >
                                           <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
                                           New to you
-                                          {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
+                                          {styleMatchTooltip?.key === `${i}_${tierKey}_${realJ}` && (
                                             <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
                                               <span>Scan more outfits to unlock match scores</span>
                                               <div onClick={e => { e.stopPropagation(); setTab("profile"); setStyleMatchTooltip(null); }} style={{ marginTop: 4, fontSize: 9, fontWeight: 700, color: "var(--accent)", cursor: "pointer", letterSpacing: 0.3 }}>
