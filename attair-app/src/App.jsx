@@ -7903,15 +7903,17 @@ export default function App() {
                                   <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
                                   {products.length > 2 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
                                 </div>
-                                <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
-                                  {products.map((p, j) => {
+                                <div className="scroll-x scroll-x-fade" ref={el => { if (el && !el._loopInit && products.length > 2) { el._loopInit = true; const cardW = 160; el.scrollLeft = products.length * cardW; el.addEventListener("scroll", () => { const maxScroll = el.scrollWidth - el.clientWidth; if (el.scrollLeft < 10) el.scrollLeft += products.length * cardW; else if (el.scrollLeft > maxScroll - 10) el.scrollLeft -= products.length * cardW; }); } }} style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+                                  <div style={{ flexShrink: 0, width: 20 }} />
+                                  {(products.length > 2 ? [...products, ...products, ...products] : products).map((p, j) => {
+                                    const realIdx = j % products.length;
                                     const isFallback = !p.is_product_page && p.brand === "Google Shopping";
-                                    const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
+                                    const clickId = `${scanId || "x"}_${i}_${tierKey}_${realIdx}`;
                                     const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
                                     const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
-                                    const dupeInfo = dupeMap.get(`${tierKey}_${j}`);
+                                    const dupeInfo = dupeMap.get(`${tierKey}_${realIdx}`);
                                     return (
-                                      <div key={j} className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
+                                      <div key={`${tierKey}_${j}`} className="card-press" style={{ flexShrink: 0, width: 150, position: "relative" }}>
                                         {/* Style Match Score pill */}
                                         {p.style_match != null && p.style_match >= 50 ? (
                                           <div
@@ -7992,6 +7994,7 @@ export default function App() {
                                       </div>
                                     );
                                   })}
+                                  <div style={{ flexShrink: 0, width: 20 }} />
                                 </div>
                               </div>
                             );
