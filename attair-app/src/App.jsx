@@ -841,7 +841,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
   const [plan, setPlan] = useState("yearly");
   const [loadingPlan, setLoadingPlan] = useState(false);
   const msgs = {
-    scan_limit: { title: "You've used all 12 free scans this month", sub: "Go Pro for unlimited scans, zero ads, and price drop alerts.", cta: "Unlock Unlimited Scans" },
+    scan_limit: { title: `You've used all ${userStatus?.scans_limit || 12} free scans this month`, sub: "Go Pro for unlimited scans, zero ads, and price drop alerts.", cta: "Unlock Unlimited Scans" },
     ad_fatigue: { title: "Tired of ads?", sub: "Pro members get a completely ad-free experience plus unlimited scans.", cta: "Remove Ads Forever" },
     history_expiring: { title: "Your scan history expires soon", sub: "Free accounts only keep 7 days. Pro keeps everything forever.", cta: "Keep My History" },
     save_limit: { title: "You've saved 20 items", sub: "Unlock unlimited saves, price drop alerts, and an ad-free experience.", cta: "Save Unlimited Items" },
@@ -5216,7 +5216,7 @@ export default function App() {
       }
       if (err.message.includes("scan limit") || err.message.includes("12/12") || err.message.includes("3/3")) {
         setUpgradeModal("scan_limit");
-        setError("You've used all 12 free scans this month.");
+        setError(`You've used all ${scansLimit} free scans this month.`);
       } else if (err.message.includes("Session expired")) {
         setError("Your session expired. Please log in again.");
         setAuthed(false);
@@ -5638,7 +5638,7 @@ export default function App() {
           }}>
             {authed ? (upgradeLoading ? "Loading..." : `Start Pro — ${selPlan === "yearly" ? "$29.99/yr" : "$4.99/mo"}`) : "Get started"}
           </button>
-          <div className="pw-terms">12 free scans per month. Upgrade anytime.</div>
+          <div className="pw-terms">{scansLimit} free scans per month. Upgrade anytime.</div>
         </div>
       )}
 
@@ -6231,7 +6231,7 @@ export default function App() {
               ? <button className="cta" style={{ padding: "6px 16px", fontSize: 12, borderRadius: 100 }} onClick={() => trans(() => { setScreen("auth"); setAuthScreen("signup"); })}>Sign Up Free</button>
               : isPro
               ? <div className="pro">PRO</div>
-              : <div className="free-badge" onClick={() => setUpgradeModal("general")}>FREE · {scansLeft}/{scansLimit}</div>
+              : <div className="free-badge" onClick={() => setUpgradeModal("general")}>FREE · {scansLimit - scansLeft}/{scansLimit} scans</div>
             }
             {userStatus?.tier === "trial" && userStatus?.trial_ends_at && (() => {
               const daysLeft = Math.max(0, Math.ceil((new Date(userStatus.trial_ends_at) - new Date()) / 86400000));
@@ -7127,11 +7127,11 @@ export default function App() {
 
               {isGuest ? (
                 <div style={{ marginBottom: 24 }}>
-                  <div className="scan-counter" style={{ display: "inline-block" }}><strong>{guestScans}</strong> of 3 free scans used</div>
+                  <div className="scan-counter" style={{ display: "inline-block" }}><strong>{guestScans}</strong>/3 scans used</div>
                 </div>
               ) : isFree && scansLeft != null ? (
                 <div style={{ marginBottom: 24 }}>
-                  <div className="scan-counter" style={{ display: "inline-block" }}>{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong> of {scansLimit} scans used</> : <>No scans left &middot; <span style={{color:"var(--accent)",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
+                  <div className="scan-counter" style={{ display: "inline-block" }}>{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong>/{scansLimit} scans used</> : <>No scans left &middot; <span style={{color:"var(--accent)",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
                 </div>
               ) : null}
 
