@@ -566,7 +566,7 @@ const API = {
     return await res.json();
   },
 
-  // ─── Hanger Test ──────────────────────────────────────────
+  // ─── Hanger Check ──────────────────────────────────────────
   async hangerTestToday() {
     const res = await authFetch(`${API_BASE}/api/hanger-test/today`);
     return res.json();
@@ -1045,7 +1045,7 @@ const STRINGS = {
     scans_label: "Scans",
     edit_profile: "Edit Profile",
     style_dna: "Style DNA",
-    hanger_test: "Hanger Test",
+    hanger_test: "Hanger Check",
     tell_style: "Tell people about your style...",
     no_followers: "No followers yet",
     no_following: "Not following anyone yet",
@@ -3956,7 +3956,7 @@ export default function App() {
   const [lookDetailLoading, setLookDetailLoading] = useState(false);
   const [buyAllLoading, setBuyAllLoading] = useState(null);        // scan_id being processed
 
-  // ─── Hanger Test ────────────────────────────────────────────
+  // ─── Hanger Check ────────────────────────────────────────────
   const [hangerOutfits, setHangerOutfits] = useState([]);
   const [hangerVotes, setHangerVotes] = useState({});
   const [hangerStatsMap, setHangerStatsMap] = useState({});
@@ -3985,7 +3985,7 @@ export default function App() {
   const deepSearchesLeft = userStatus?.extended_searches_remaining ?? 3;
   const fastSearchesLeft = userStatus?.fast_searches_remaining ?? 12;
 
-  // ─── Load Hanger Test (batch of 5) ────────────────
+  // ─── Load Hanger Check (batch of 5) ────────────────
   useEffect(() => {
     if (!authed || screen !== "app") return;
     if (tab !== "home" && !hangerFullscreen) return;
@@ -6252,7 +6252,7 @@ export default function App() {
                 );
               })()}
 
-              {/* ─── Hanger Test daily card ─── */}
+              {/* ─── Hanger Check daily card ─── */}
               {hangerOutfits.length > 0 && !isGuest && (
                 <div
                   className="card-press hanger-home-card"
@@ -6274,7 +6274,7 @@ export default function App() {
                       <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2C12 2 8 6 8 10C8 14 12 16 12 16C12 16 16 14 16 10C16 6 12 2 12 2Z"/><path d="M8 16L4 20M16 16L20 20"/></svg>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", letterSpacing: 1.2, textTransform: "uppercase" }}>Hanger Test</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", letterSpacing: 1.2, textTransform: "uppercase" }}>Hanger Check</span>
                     </div>
                     {hangerStreak && hangerStreak.current_streak > 0 && (
                       <div style={{ position: "absolute", top: 10, right: 12, fontSize: 12, fontWeight: 700, color: "#FFB74D", display: "flex", alignItems: "center", gap: 3, zIndex: 5 }}>
@@ -8724,7 +8724,7 @@ export default function App() {
                   </div>
                 ) : null}
 
-                {/* Hanger Test streak + entry point */}
+                {/* Hanger Check streak + entry point */}
                 <button onClick={async () => {
                   setHangerFullscreen(true);
                   if (hangerOutfits.length === 0) {
@@ -8750,7 +8750,7 @@ export default function App() {
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8
                 }}>
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2C12 2 8 6 8 10C8 14 12 16 12 16C12 16 16 14 16 10C16 6 12 2 12 2Z"/><path d="M8 16L4 20M16 16L20 20"/></svg>
-                  Hanger Test {hangerStreak?.current_streak > 0 ? `\u00B7 ${hangerStreak.current_streak} day streak \uD83D\uDD25` : "\u00B7 Daily Outfit Verdict"}
+                  Hanger Check {hangerStreak?.current_streak > 0 ? `\u00B7 ${hangerStreak.current_streak} day streak \uD83D\uDD25` : "\u00B7 Daily Outfit Verdict"}
                 </button>
               </div>
 
@@ -11090,14 +11090,14 @@ export default function App() {
           Added to {addToListConfirm.wishlistName}
         </div>
       )}
-      {/* ═══ Hanger Test Fullscreen Overlay ═══ */}
+      {/* ═══ Hanger Check Fullscreen Overlay ═══ */}
       {hangerFullscreen && (
         <div className="hanger-overlay" style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-app, #0C0C0E)", display: "flex", flexDirection: "column", minHeight: "100vh", minHeight: "100dvh" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))" }}>
             <button onClick={() => setHangerFullscreen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: 4 }}>&#x2715;</button>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Hanger Test</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Hanger Check</span>
               {hangerStreak?.current_streak > 0 && <span style={{ fontSize: 13, color: "#FFB74D" }}>&#128293; {hangerStreak.current_streak}</span>}
             </div>
             <button onClick={() => { setHangerHistoryOpen(true); API.hangerTestHistory(20, 0).then(d => setHangerHistory(d.history || [])).catch(() => {}); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 13, cursor: "pointer", padding: 4 }}>History</button>
@@ -11252,7 +11252,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ═══ Hanger Test Style Insight Modal ═══ */}
+      {/* ═══ Hanger Check Style Insight Modal ═══ */}
       {hangerInsight && (
         <div style={{ position: "fixed", inset: 0, zIndex: 10002, background: "rgba(0,0,0,.7)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
           onClick={() => setHangerInsight(null)}>
@@ -11306,7 +11306,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ═══ Hanger Test History Modal ═══ */}
+      {/* ═══ Hanger Check History Modal ═══ */}
       {hangerHistoryOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-primary)", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(env(safe-area-inset-top), 12px) 16px 12px", borderBottom: "1px solid var(--border)" }}>
