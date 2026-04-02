@@ -395,11 +395,17 @@ Only return the JSON, no other text.`,
     const profile = profileResult.data;
 
     // ── Build modified items and run product search ──────────
+    // Replace search_query (the primary text search field) with the modified query.
+    // Also clear alt_search so it doesn't override the refinement,
+    // and reset brand_confidence to prevent brand-locked queries from dominating.
     const modifiedItems = modifications.map((mod) => {
       const original = items[mod.item_index] || items[activeIdx];
       return {
         ...original,
         name: mod.modified_search_query,
+        search_query: mod.modified_search_query,
+        alt_search: null,
+        brand_confidence: "low", // prevent brand query from overriding refinement
         _refined: true,
       };
     });
