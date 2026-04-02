@@ -97,10 +97,10 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Logging
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-// Global IP rate limit — prevent abuse (100 req/min per IP)
+// Global IP rate limit — prevent abuse (300 req/min per IP)
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 100,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests, please try again later" },
