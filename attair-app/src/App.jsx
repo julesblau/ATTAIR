@@ -4200,6 +4200,7 @@ export default function App() {
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedDetailScan, setFeedDetailScan] = useState(null); // scan object for overlay
   const [feedDetailIdx, setFeedDetailIdx] = useState(-1); // index in feedScans for swipe navigation
+  const reelScrollerRef = useRef(null);
   const [feedFilterQuery, setFeedFilterQuery] = useState(""); // "I'm looking for..." filter
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -9767,149 +9768,104 @@ export default function App() {
           </div>
         )}
 
-        {/* ─── Feed Detail Overlay (TikTok-style) ─────────────────────── */}
+        {/* ─── Feed Detail Overlay (Reels-style fullscreen) ─────────────────────── */}
         {feedDetailScan && (() => {
-          const scan = feedDetailScan;
-          const u = scan.user || {};
-          const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
-          const items = scan.items || [];
-          const scanIsSaved = saved.some(s => s.scan_id === scan.id);
-          const isFollowing = followingSet.has(u.id);
+          const renderPost = (scan, idx) => {
+            const u = scan.user || {};
+            const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+            const items = scan.items || [];
+            const isSaved = saved.some(s => s.scan_id === scan.id);
+            const isFlw = followingSet.has(u.id);
+            const q0 = (item) => item.search_query || item.alt_search || `${item.brand || ""} ${item.name || item.category || ""}`.trim();
+            return (
+              <div key={scan.id || idx} className="reel-slide">
+                {/* Background image — fills entire viewport */}
+                {scan.image_url && <img className="reel-bg" src={scan.image_url} alt="" />}
 
-          const goNext = () => {
-            if (feedDetailIdx < feedScans.length - 1) {
-              const next = feedScans[feedDetailIdx + 1];
-              setFeedDetailScan(next);
-              setFeedDetailIdx(feedDetailIdx + 1);
-              if (feedDetailIdx + 3 >= feedScans.length && feedHasMore && !feedLoading) {
-                loadFeed(feedPage + 1, true);
-              }
-            }
-          };
-          const goPrev = () => {
-            if (feedDetailIdx > 0) {
-              const prev = feedScans[feedDetailIdx - 1];
-              setFeedDetailScan(prev);
-              setFeedDetailIdx(feedDetailIdx - 1);
-            }
+                {/* Gradient overlays for text readability */}
+                <div className="reel-grad-top" />
+                <div className="reel-grad-bot" />
+
+                {/* Right action bar (like TikTok/Reels) */}
+                <div className="reel-actions">
+                  <button className="reel-action" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: u.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill={isSaved ? "#C9A96E" : "none"} stroke={isSaved ? "#C9A96E" : "#fff"} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    <span className="reel-action-label">{scan.save_count || ""}</span>
+                  </button>
+                  <button className="reel-action" onClick={(e) => { e.stopPropagation(); if (navigator.share) navigator.share({ title: scan.summary || "Check out this outfit on ATTAIRE", url: `${window.location.origin}/scan/${scan.id}` }).catch(() => {}); else navigator.clipboard.writeText(`${window.location.origin}/scan/${scan.id}`); }}>
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    <span className="reel-action-label">Share</span>
+                  </button>
+                  {items.length > 0 && (
+                    <button className="reel-action" onClick={(e) => { e.stopPropagation(); const el = e.currentTarget.closest(".reel-slide").querySelector(".reel-items"); if (el) el.classList.toggle("open"); }}>
+                      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                      <span className="reel-action-label">Shop</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Bottom overlay — user info + caption */}
+                <div className="reel-bottom">
+                  <div className="reel-user-row">
+                    <div className="reel-avatar">{ini}</div>
+                    <span className="reel-username">{u.display_name || "Anonymous"}</span>
+                    {u.id && u.id !== authUserId && (
+                      <button className={`reel-follow${isFlw ? " following" : ""}`} onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(u.id); }}>
+                        {isFlw ? "Following" : "Follow"}
+                      </button>
+                    )}
+                  </div>
+                  {scan.summary && <div className="reel-caption">{scan.summary}</div>}
+                  {scan.item_count > 0 && <div className="reel-meta">{scan.item_count} item{scan.item_count !== 1 ? "s" : ""} identified{(scan.save_count || 0) >= 3 ? " \u00B7 Trending" : ""}</div>}
+                </div>
+
+                {/* Shop drawer — slides up when Shop button tapped */}
+                {items.length > 0 && (
+                  <div className="reel-items">
+                    <div className="reel-items-handle" onClick={(e) => { e.stopPropagation(); e.currentTarget.closest(".reel-items").classList.remove("open"); }} />
+                    <div className="reel-items-title">Shop this look</div>
+                    <div className="reel-items-list">
+                      {items.map((item, i) => (
+                        <button key={i} className="reel-item-chip" onClick={(e) => { e.stopPropagation(); window.open(`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(q0(item))}`, "_blank"); }}>
+                          <div className="reel-item-name">{item.name || item.category || "Item"}</div>
+                          <div className="reel-item-sub">{[item.brand !== "Unidentified" && item.brand, item.price_range].filter(Boolean).join(" \u00B7 ")}</div>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="reel-item-arrow"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
           };
 
           return (
-            <div className="feed-detail-overlay"
-              onTouchStart={e => {
-                e.currentTarget._touchX = e.touches[0].clientX;
-              }}
-              onTouchEnd={e => {
-                const dx = e.currentTarget._touchX - e.changedTouches[0].clientX;
-                if (Math.abs(dx) > 80) { dx > 0 ? goNext() : goPrev(); }
+            <div className="reel-overlay">
+              {/* Close button */}
+              <button className="reel-close" onClick={() => { setFeedDetailScan(null); setFeedDetailIdx(-1); }}>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+
+              {/* Snap scroll container */}
+              <div className="reel-scroller" ref={el => {
+                if (el && !el._initScrolled) {
+                  el._initScrolled = true;
+                  el.scrollTop = feedDetailIdx * el.clientHeight;
+                }
+              }} onScroll={(e) => {
+                const el = e.currentTarget;
+                const slideH = el.clientHeight;
+                const newIdx = Math.round(el.scrollTop / slideH);
+                if (newIdx !== feedDetailIdx && newIdx >= 0 && newIdx < feedScans.length) {
+                  setFeedDetailIdx(newIdx);
+                  setFeedDetailScan(feedScans[newIdx]);
+                  // Pre-fetch more when near end
+                  if (newIdx + 3 >= feedScans.length && feedHasMore && !feedLoading) {
+                    loadFeed(feedPage + 1, true);
+                  }
+                }
               }}>
-              {/* Top bar */}
-              <div className="feed-detail-topbar">
-                <button className="feed-detail-close" onClick={() => { setFeedDetailScan(null); setFeedDetailIdx(-1); }}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-                {feedScans.length > 1 && (
-                  <div className="feed-detail-counter">{feedDetailIdx + 1} / {feedScans.length}</div>
-                )}
-              </div>
-
-              <div className="feed-detail-scroll">
-                {/* Image with pinch-to-zoom and double-tap */}
-                {scan.image_url && (
-                  <div className="feed-detail-img-wrap" style={{ touchAction: "pan-x pan-y pinch-zoom", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
-                    <img
-                      className="feed-detail-img"
-                      src={scan.image_url}
-                      alt={scan.summary || "Outfit"}
-                    />
-                  </div>
-                )}
-
-                <div className="feed-detail-body">
-                  {/* User row */}
-                  <div className="feed-detail-user-row">
-                    <div className="feed-detail-user">
-                      <div className="feed-card-avatar" style={{ width: 36, height: 36, fontSize: 13 }}>{ini}</div>
-                      <div>
-                        <div className="feed-detail-name">{u.display_name || "Anonymous"}</div>
-                        {scan.created_at && <div className="feed-detail-date">{new Date(scan.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>}
-                      </div>
-                    </div>
-                    <div className="feed-detail-user-actions">
-                      {u.id && u.id !== authUserId && (
-                        <button className={`feed-detail-follow-btn${isFollowing ? " following" : ""}`} onClick={() => handleFollowFromSearch(u.id)}>
-                          {isFollowing ? "Following" : "Follow"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {scan.summary && <div className="feed-detail-summary">{scan.summary}</div>}
-
-                  <div className="feed-detail-stats">
-                    {scan.item_count > 0 && <span>{scan.item_count} item{scan.item_count !== 1 ? "s" : ""}</span>}
-                    {(scan.save_count || 0) > 0 && <span>&#10084; {scan.save_count}</span>}
-                    {(scan.save_count || 0) >= 3 && <span className="feed-detail-trending">Trending</span>}
-                  </div>
-
-                  <div className="feed-detail-actions">
-                    <button className="feed-detail-action-btn" onClick={() => { const itemData = { name: scan.summary || "Scanned outfit", brand: u.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
-                      <svg viewBox="0 0 24 24" width="20" height="20" fill={scanIsSaved ? "var(--accent)" : "none"} stroke={scanIsSaved ? "var(--accent)" : "currentColor"} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                      {scanIsSaved ? "Saved" : "Save"}
-                    </button>
-                    <button className="feed-detail-action-btn" onClick={() => { if (navigator.share) navigator.share({ title: scan.summary || "Check out this outfit on ATTAIRE", url: `${window.location.origin}/scan/${scan.id}` }).catch(() => {}); else { navigator.clipboard.writeText(`${window.location.origin}/scan/${scan.id}`); } }}>
-                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                      Share
-                    </button>
-                  </div>
-
-                  {/* Shop this look — item cards */}
-                  {items.length > 0 && (
-                    <div className="feed-detail-items">
-                      <div className="feed-detail-items-header">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                        Shop this look
-                      </div>
-                      {items.map((item, i) => {
-                        const q = item.search_query || item.alt_search || `${item.brand || ""} ${item.name || item.category || ""}`.trim();
-                        const tiers = item.product_tiers || item.tiers || [];
-                        return (
-                          <div key={i} className="feed-detail-item-card">
-                            <div className="feed-detail-item-info">
-                              <div className="feed-detail-item-name">{item.name || item.category || "Item"}</div>
-                              <div className="feed-detail-item-meta">
-                                {item.brand && item.brand !== "Unidentified" && <span className="feed-detail-item-brand">{item.brand}</span>}
-                                {item.material && <span>{item.material}</span>}
-                                {item.price_range && <span>{item.price_range}</span>}
-                              </div>
-                            </div>
-                            <div className="feed-detail-item-btns">
-                              {tiers.length > 0 ? tiers.slice(0, 2).map((tier, ti) => (
-                                <button key={ti} className={`feed-detail-shop-btn${ti > 0 ? " alt" : ""}`} onClick={() => { window.open(tier.url || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(tier.query || q)}`, "_blank"); }}>
-                                  {tier.label || tier.tier || "Shop"}
-                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-                                </button>
-                              )) : (
-                                <button className="feed-detail-shop-btn" onClick={() => { window.open(`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(q)}`, "_blank"); }}>
-                                  Shop
-                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Swipe nav hint */}
-                  {feedScans.length > 1 && (
-                    <div className="feed-detail-nav-hint">
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
-                      Swipe to browse
-                    </div>
-                  )}
-                </div>
+                {feedScans.map((scan, idx) => renderPost(scan, idx))}
               </div>
             </div>
           );
