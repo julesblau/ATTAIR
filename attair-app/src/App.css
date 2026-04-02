@@ -2677,7 +2677,9 @@
 .profile-v2-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0;position:relative;z-index:2}
 .profile-v2-username{font-size:16px;font-weight:800;letter-spacing:0.5px;color:var(--text-primary);font-family:var(--font-sans)}
 .profile-v2-row{display:flex;align-items:center;gap:20px;padding:20px 20px 0}
-.profile-v2-avatar{width:80px;height:80px;border-radius:50%;background:var(--accent-bg);border:3px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);font-size:30px;font-family:var(--font-sans);flex-shrink:0}
+.profile-v2-avatar{width:80px;height:80px;border-radius:50%;background:var(--accent-bg);border:3px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);font-size:30px;font-family:var(--font-sans);flex-shrink:0;overflow:hidden;position:relative}
+.profile-avatar-camera{position:absolute;bottom:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;border:2px solid var(--bg-primary);pointer-events:none}
+.profile-avatar-camera svg{width:12px;height:12px;color:#fff;stroke:#fff}
 .profile-v2-stats{flex:1;display:flex;justify-content:space-around}
 .profile-v2-stat{display:flex;flex-direction:column;align-items:center;gap:1px}
 .profile-v2-gear{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;cursor:pointer;border-radius:50%;transition:background var(--transition-fast);-webkit-tap-highlight-color:transparent}

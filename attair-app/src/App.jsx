@@ -239,6 +239,15 @@ const API = {
     window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
   },
 
+  async uploadAvatar(base64DataUri) {
+    const res = await authFetch(`${API_BASE}/api/user/avatar`, {
+      method: "POST",
+      body: JSON.stringify({ image: base64DataUri }),
+    });
+    if (!res.ok) { const data = await res.json(); throw new Error(data.error || "Avatar upload failed"); }
+    return await res.json();
+  },
+
   async renameScan(scanId, name) {
     const res = await authFetch(`${API_BASE}/api/user/scan/${scanId}`, { method: "PATCH", body: JSON.stringify({ scan_name: name }) });
     return res.ok ? await res.json() : null;
@@ -3734,6 +3743,8 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [authName, setAuthName] = useState("");
+  const [authAvatarUrl, setAuthAvatarUrl] = useState(null);
+  const avatarInputRef = useRef(null);
   const [authPhone, setAuthPhone] = useState("");
   const [budgetMin, setBudgetMin] = useState(50);
   const [budgetMax, setBudgetMax] = useState(100);
@@ -4594,6 +4605,7 @@ export default function App() {
         .then(profile => {
           if (profile.id) setAuthUserId(profile.id);
           if (profile.display_name) setAuthName(profile.display_name);
+          if (profile.avatar_url) setAuthAvatarUrl(profile.avatar_url);
           if (profile.gender_pref) setPrefs(p => ({ ...p, gender: profile.gender_pref }));
           if (profile.budget_min != null) setBudgetMin(profile.budget_min);
           if (profile.budget_max != null) setBudgetMax(profile.budget_max);
@@ -4971,6 +4983,7 @@ export default function App() {
         } catch {}
         try {
           const profile = await authFetch(`${API_BASE}/api/user/profile`).then(r => r.json());
+          if (profile.avatar_url) setAuthAvatarUrl(profile.avatar_url);
           if (profile.gender_pref) setPrefs(p => ({ ...p, gender: profile.gender_pref }));
           if (profile.budget_min != null) setBudgetMin(profile.budget_min);
           if (profile.budget_max != null) setBudgetMax(profile.budget_max);
@@ -5444,7 +5457,7 @@ export default function App() {
 
   const brandConfLabel = (c) => ({ confirmed: { t: "Confirmed", c: "#C9A96E" }, high: { t: "High confidence", c: "rgba(201,169,110,0.7)" }, moderate: { t: "Moderate", c: "rgba(255,255,255,0.4)" }, low: { t: "Estimated", c: "rgba(255,255,255,0.25)" } }[c] || { t: "Unknown", c: "rgba(255,255,255,0.2)" });
 
-  const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); setAuthed(false); setAuthEmail(""); setAuthName(""); setUserStatus(null); setScreen("onboarding"); setObIdx(0); };
+  const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); setAuthed(false); setAuthEmail(""); setAuthName(""); setAuthAvatarUrl(null); setUserStatus(null); setScreen("onboarding"); setObIdx(0); };
 
   const step = OB_STEPS[obIdx];
   const prog = ((obIdx + 1) / OB_STEPS.length) * 100;
@@ -8586,8 +8599,38 @@ export default function App() {
 
               {/* Profile info row: avatar left, stats right (Instagram layout) */}
               <div className="profile-v2-row">
-                <div className="profile-v2-avatar" aria-label="Profile avatar">
-                  {(authName || authEmail || "U")[0].toUpperCase()}
+                <div className="profile-v2-avatar" aria-label="Profile avatar" onClick={() => avatarInputRef.current?.click()} style={{ cursor: "pointer", position: "relative" }}>
+                  {authAvatarUrl ? (
+                    <img src={authAvatarUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} onError={() => setAuthAvatarUrl(null)} />
+                  ) : (
+                    (authName || authEmail || "U")[0].toUpperCase()
+                  )}
+                  <div className="profile-avatar-camera">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  </div>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) { alert("Image too large. Max 5MB."); return; }
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        try {
+                          const { avatar_url } = await API.uploadAvatar(reader.result);
+                          setAuthAvatarUrl(avatar_url);
+                        } catch (err) {
+                          console.error("Avatar upload failed:", err);
+                          alert("Failed to upload avatar. Please try again.");
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                      e.target.value = "";
+                    }}
+                  />
                 </div>
                 <div className="profile-v2-stats" role="list" aria-label="Profile statistics">
                   <div className="profile-v2-stat" role="listitem">

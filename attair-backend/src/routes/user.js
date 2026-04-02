@@ -89,6 +89,73 @@ router.get("/status", requireAuth, async (req, res) => {
   }
 });
 
+// ─── POST /api/user/avatar ─────────────────────────────────
+router.post("/avatar", requireAuth, async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image || typeof image !== "string") {
+      return res.status(400).json({ error: "Missing image data" });
+    }
+
+    // Parse data URI: data:image/jpeg;base64,/9j/4AAQ...
+    const match = image.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
+    if (!match) {
+      return res.status(400).json({ error: "Invalid image format. Expected data:image/{jpeg|png|webp};base64,..." });
+    }
+
+    const mimeType = match[1];
+    const ext = match[2] === "jpeg" ? "jpg" : match[2];
+    const base64Data = match[3];
+    const buffer = Buffer.from(base64Data, "base64");
+
+    // Limit to 5MB
+    if (buffer.length > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: "Image too large. Max 5MB." });
+    }
+
+    const fileName = `avatars/${req.userId}.${ext}`;
+
+    // Upsert: overwrite existing avatar
+    const { data, error } = await supabase.storage
+      .from("scan-images")
+      .upload(fileName, buffer, {
+        contentType: mimeType,
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Avatar upload error:", error.message);
+      return res.status(500).json({ error: "Failed to upload avatar" });
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from("scan-images")
+      .getPublicUrl(data.path);
+
+    const avatar_url = urlData?.publicUrl;
+    if (!avatar_url) {
+      return res.status(500).json({ error: "Failed to get avatar URL" });
+    }
+
+    // Update profile
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ avatar_url })
+      .eq("id", req.userId);
+
+    if (updateError) {
+      console.error("Avatar profile update error:", updateError.message);
+      return res.status(500).json({ error: "Failed to update profile" });
+    }
+
+    return res.json({ avatar_url });
+  } catch (err) {
+    console.error("Avatar upload error:", err.message);
+    return res.status(500).json({ error: "Failed to upload avatar" });
+  }
+});
+
 // ─── GET /api/user/profile ──────────────────────────────────
 router.get("/profile", requireAuth, async (req, res) => {
   const { data: profile, error } = await supabase
