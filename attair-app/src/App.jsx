@@ -9781,7 +9781,6 @@ export default function App() {
               const next = feedScans[feedDetailIdx + 1];
               setFeedDetailScan(next);
               setFeedDetailIdx(feedDetailIdx + 1);
-              setFeedDetailZoom(1);
               if (feedDetailIdx + 3 >= feedScans.length && feedHasMore && !feedLoading) {
                 loadFeed(feedPage + 1, true);
               }
@@ -9792,21 +9791,17 @@ export default function App() {
               const prev = feedScans[feedDetailIdx - 1];
               setFeedDetailScan(prev);
               setFeedDetailIdx(feedDetailIdx - 1);
-              setFeedDetailZoom(1);
             }
           };
 
           return (
             <div className="feed-detail-overlay"
               onTouchStart={e => {
-                e.currentTarget._touchY = e.touches[0].clientY;
                 e.currentTarget._touchX = e.touches[0].clientX;
               }}
               onTouchEnd={e => {
-                const dy = e.currentTarget._touchY - e.changedTouches[0].clientY;
                 const dx = e.currentTarget._touchX - e.changedTouches[0].clientX;
-                if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)) { dy > 0 ? goNext() : goPrev(); }
-                else if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) { dx > 0 ? goNext() : goPrev(); }
+                if (Math.abs(dx) > 80) { dx > 0 ? goNext() : goPrev(); }
               }}>
               {/* Top bar */}
               <div className="feed-detail-topbar">
