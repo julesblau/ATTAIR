@@ -8082,12 +8082,7 @@ export default function App() {
                                             )}
                                           </div>
                                         )}
-                                        {/* Dupe Alert pill — tappable to open dupe finder */}
-                                        {dupeInfo && (
-                                          <div className="dupe-alert-pill" onClick={e => { e.preventDefault(); e.stopPropagation(); const priceNum = parseFloat((dupeInfo.vsPrice || "").replace(/[^0-9.]/g, "")); if (priceNum >= 150) { openDupeModal({ product_name: p.product_name || item.name, price: dupeInfo.vsPrice, image_url: p.image_url }, item, tierKey); } else if (dupeInfo.vsUrl) { window.open(dupeInfo.vsUrl, "_blank"); } }} style={{ cursor: "pointer" }} title={`Find similar looks for less`}>
-                                            {dupeInfo.savings}% less vs {dupeInfo.vsStore} ({dupeInfo.vsPrice})
-                                          </div>
-                                        )}
+                                        {/* Dupe Alert pill — reserved for affiliate items only (TODO: re-enable for affiliates) */}
                                         <a href={href} target="_blank" rel="noopener noreferrer"
                                           onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback, is_dupe: !!dupeInfo }, scanId, "scan")}
                                           style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
