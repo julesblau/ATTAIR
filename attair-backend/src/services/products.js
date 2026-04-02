@@ -532,25 +532,27 @@ function logSearchTelemetry(tel, searchMode, itemCount) {
   const total = tel.tierCounts.budget + tel.tierCounts.mid + tel.tierCounts.premium + tel.tierCounts.resale;
   console.log(`[Telemetry] ${searchMode} | ${itemCount} items | ${elapsed}ms | cache ${hitRate}% (${tel.cacheHits}/${tel.cacheHits + tel.cacheMisses}) | serp calls: ${tel.serpApiCalls} | results: ${total} (${tel.pricedResults} priced) | domains: ${tel.uniqueDomains.size} | diversity fills: ${tel.diversityFills}`);
   // Fire-and-forget persist — don't block the response
-  supabase.from("events").insert({
-    event_type: "search_telemetry",
-    data: {
-      search_mode: searchMode,
-      item_count: itemCount,
-      elapsed_ms: elapsed,
-      cache_hit_rate: hitRate,
-      cache_hits: tel.cacheHits,
-      cache_misses: tel.cacheMisses,
-      serp_api_calls: tel.serpApiCalls,
-      lens_results: tel.lensResults,
-      text_results: tel.textResults,
-      priced_results: tel.pricedResults,
-      unique_domains: tel.uniqueDomains.size,
-      tier_counts: tel.tierCounts,
-      diversity_fills: tel.diversityFills,
-      rerank_items: tel.rerankItems,
-    },
-  }).catch(() => {}); // silent — telemetry must never break search
+  try {
+    supabase.from("events").insert({
+      event_type: "search_telemetry",
+      data: {
+        search_mode: searchMode,
+        item_count: itemCount,
+        elapsed_ms: elapsed,
+        cache_hit_rate: hitRate,
+        cache_hits: tel.cacheHits,
+        cache_misses: tel.cacheMisses,
+        serp_api_calls: tel.serpApiCalls,
+        lens_results: tel.lensResults,
+        text_results: tel.textResults,
+        priced_results: tel.pricedResults,
+        unique_domains: tel.uniqueDomains.size,
+        tier_counts: tel.tierCounts,
+        diversity_fills: tel.diversityFills,
+        rerank_items: tel.rerankItems,
+      },
+    }).then(() => {}).catch(() => {});
+  } catch {} // silent — telemetry must never break search
 }
 
 function getCacheTTLForResults(results) {
