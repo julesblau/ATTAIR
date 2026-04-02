@@ -2230,10 +2230,10 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       }
     }
     // Sort each tier by price (ascending for budget, descending for premium)
-    const extractPrice = p => parseFloat((p.price || "0").toString().replace(/[^0-9.]/g, "")) || 0;
-    tiers.budget.sort((a, b) => extractPrice(a) - extractPrice(b));
-    tiers.mid.sort((a, b) => extractPrice(a) - extractPrice(b));
-    tiers.premium.sort((a, b) => extractPrice(b) - extractPrice(a));
+    const tierPrice = p => parseFloat((p.price || "0").toString().replace(/[^0-9.]/g, "")) || 0;
+    tiers.budget.sort((a, b) => tierPrice(a) - tierPrice(b));
+    tiers.mid.sort((a, b) => tierPrice(a) - tierPrice(b));
+    tiers.premium.sort((a, b) => tierPrice(b) - tierPrice(a));
 
     const brandVerified = item.brand && item.brand !== "Unidentified" &&
       [...tiers.budget, ...tiers.mid, ...tiers.premium].some(t => t?.is_identified_brand);
