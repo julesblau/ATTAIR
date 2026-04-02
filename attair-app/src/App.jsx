@@ -8202,14 +8202,14 @@ export default function App() {
                               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
                               {products.length > 1 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
                             </div>
-                            <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollPaddingLeft: 20, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}
+                            <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 12, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollPaddingLeft: 20, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}
                               ref={el => {
                                 if (el && products.length >= 3 && !el.dataset.loopInit) {
                                   el.dataset.loopInit = "1";
                                   // Start at middle (original) set: products.length cards * 160px each + 20px padding
                                   requestAnimationFrame(() => {
                                     el.style.scrollBehavior = "auto";
-                                    el.scrollLeft = products.length * 160;
+                                    el.scrollLeft = products.length * 162;
                                     el.style.scrollBehavior = "";
                                   });
                                 }
@@ -8218,7 +8218,7 @@ export default function App() {
                                 const el = e.currentTarget;
                                 if (products.length < 3) return;
                                 const n = products.length;
-                                const stride = 160; // card 150 + gap 10
+                                const stride = 162; // card 150 + gap 12
                                 const setWidth = n * stride;
                                 // If scrolled into first (clone) set, jump forward to middle
                                 if (el.scrollLeft < stride * 0.5) {
@@ -8254,14 +8254,6 @@ export default function App() {
 
                                 return (
                                   <Fragment key={j}>
-                                    {/* Inline ad card for free tier — only in original set */}
-                                    {isMiddleSet && insertAdAt(flatIdx) && (
-                                      <div style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "linear-gradient(135deg, rgba(201,169,110,.06), rgba(201,169,110,.02))", border: "1px dashed rgba(201,169,110,.2)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 12, gap: 6, textAlign: "center" }}>
-                                        <span style={{ fontSize: 8, color: "rgba(201,169,110,.4)", letterSpacing: 1, textTransform: "uppercase" }}>Sponsored</span>
-                                        <span style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.4 }}>Upgrade to Pro for ad-free results</span>
-                                        <button onClick={() => setUpgradeModal("remove_ads")} style={{ padding: "6px 14px", background: "var(--accent)", border: "none", borderRadius: 100, fontSize: 10, fontWeight: 700, color: "var(--text-inverse)", cursor: "pointer", fontFamily: "var(--font-sans)" }}>Go Pro</button>
-                                      </div>
-                                    )}
                                     <div className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
                                       {/* Style Match Score pill */}
                                       {p.style_match != null && p.style_match >= 50 ? (
