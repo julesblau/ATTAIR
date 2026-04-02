@@ -9590,33 +9590,42 @@ export default function App() {
                     ${bMin} – ${bMax}{bMax >= 1000 ? "+" : ""}
                   </div>
 
-                  {/* Preset chips */}
-                  <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-                    {[
+                  {/* Preset chips — multi-select */}
+                  {(() => {
+                    const itemPresets = [
                       { label: "$", min: 0, max: 50 },
                       { label: "$$", min: 50, max: 150 },
                       { label: "$$$", min: 150, max: 500 },
                       { label: "$$$$", min: 500, max: 1000 },
-                    ].map(preset => {
-                      const isPresetActive = bMin === preset.min && bMax === preset.max;
+                    ];
+                    const itemSel = ov._selectedTiers || new Set();
+                    const itemMinIdx = itemSel.size > 0 ? Math.min(...itemSel) : -1;
+                    const itemMaxIdx = itemSel.size > 0 ? Math.max(...itemSel) : -1;
+                    return (
+                  <div className="budget-tier-bar-wrap">
+                    <div className="budget-tier-bar-track" />
+                    {itemSel.size > 0 && <div className="budget-tier-bar-fill" style={{ left: `${(itemMinIdx / itemPresets.length) * 100}%`, width: `${((itemMaxIdx - itemMinIdx + 1) / itemPresets.length) * 100}%` }} />}
+                    {itemPresets.map((preset, pi) => {
+                      const active = itemSel.has(pi);
+                      const inRange = itemSel.size > 0 && pi >= itemMinIdx && pi <= itemMaxIdx;
                       return (
                         <button
                           key={preset.label}
                           aria-label={`Set budget to ${preset.label} range: $${preset.min} to $${preset.max}`}
-                          onClick={() => setOv(o2 => ({ ...(o2 || ov), budgetMin: preset.min, budgetMax: preset.max }))}
-                          style={{
-                            flex: 1, padding: "8px 6px", minHeight: 44,
-                            background: isPresetActive ? "var(--accent-bg)" : "var(--bg-input)",
-                            border: `1px solid ${isPresetActive ? "var(--accent-border)" : "var(--border)"}`,
-                            borderRadius: "var(--radius-sm)", cursor: "pointer",
-                            fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600,
-                            color: isPresetActive ? "var(--accent)" : "var(--text-tertiary)",
-                            transition: "all var(--transition-fast)",
-                          }}
+                          onClick={() => setOv(o2 => {
+                            const prev = (o2 || ov)._selectedTiers || new Set();
+                            const next = new Set(prev);
+                            if (next.has(pi)) next.delete(pi); else next.add(pi);
+                            if (next.size === 0) return { ...(o2 || ov), budgetMin: 0, budgetMax: 1000, _selectedTiers: next };
+                            return { ...(o2 || ov), budgetMin: Math.min(...[...next].map(i => itemPresets[i].min)), budgetMax: Math.max(...[...next].map(i => itemPresets[i].max)), _selectedTiers: next };
+                          })}
+                          className={`budget-tier-btn${active ? " budget-tier-active" : ""}${inRange && !active ? " budget-tier-inrange" : ""}`}
                         >{preset.label}</button>
                       );
                     })}
                   </div>
+                    );
+                  })()}
                   <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginTop: 8, textAlign: "center" }}>
                     Budget: under ${bMin} · Mid: ${bMin}–${bMax} · Premium: ${bMax}+
                   </div>
