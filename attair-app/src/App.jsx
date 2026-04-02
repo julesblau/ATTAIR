@@ -8215,7 +8215,7 @@ export default function App() {
                                 const flatIdx = tiersBefore.reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) + j;
 
                                 return (
-                                  <React.Fragment key={j}>
+                                  <Fragment key={j}>
                                     {/* Inline ad card for free tier */}
                                     {insertAdAt(flatIdx) && (
                                       <div style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "linear-gradient(135deg, rgba(201,169,110,.06), rgba(201,169,110,.02))", border: "1px dashed rgba(201,169,110,.2)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 12, gap: 6, textAlign: "center" }}>
@@ -8298,7 +8298,7 @@ export default function App() {
                                         </svg>
                                       </button>
                                     </div>
-                                  </React.Fragment>
+                                  </Fragment>
                                 );
                               })}
                             </div>
