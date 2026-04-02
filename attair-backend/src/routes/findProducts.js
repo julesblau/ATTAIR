@@ -374,13 +374,16 @@ Only return the JSON, no other text.`,
     const rawText = message.content?.[0]?.text || "";
     let modifications;
     try {
-      const parsed = JSON.parse(rawText);
+      // Strip markdown code fences if Haiku wraps the JSON
+      const cleaned = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      const parsed = JSON.parse(cleaned);
       modifications = parsed.modifications;
       if (!Array.isArray(modifications) || modifications.length === 0) {
+        console.error("Refine: empty modifications, raw:", rawText);
         return res.status(422).json({ error: "Could not interpret refinement" });
       }
-    } catch {
-      console.error("Refine parse error, raw:", rawText);
+    } catch (parseErr) {
+      console.error("Refine parse error:", parseErr.message, "raw:", rawText);
       return res.status(422).json({ error: "Could not interpret refinement" });
     }
 

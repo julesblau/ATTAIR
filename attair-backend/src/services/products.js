@@ -2191,6 +2191,50 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       if (!tiers.premium.length) tiers.premium.push(...pickTopN(pricedRetail.sort((a, b) => b.price - a.price), 6, "premium"));
     }
 
+    // ── Post-tier price sanity check ──────────────────────────
+    // Ensure no premium product is cheaper than any match product,
+    // and no match product is cheaper than any budget product.
+    // If misplaced, demote to the correct tier.
+    function medianPrice(arr) {
+      const prices = arr.map(p => parseFloat((p.price || "0").toString().replace(/[^0-9.]/g, ""))).filter(p => p > 0).sort((a, b) => a - b);
+      if (!prices.length) return 0;
+      return prices[Math.floor(prices.length / 2)];
+    }
+    const midMedian = medianPrice(tiers.mid);
+    const budgetMedian = medianPrice(tiers.budget);
+    // Demote premium items cheaper than the mid median (if mid has items)
+    if (midMedian > 0 && tiers.premium.length) {
+      const demoted = [];
+      tiers.premium = tiers.premium.filter(p => {
+        const pNum = parseFloat((p.price || "0").toString().replace(/[^0-9.]/g, ""));
+        if (pNum > 0 && pNum < midMedian * 0.8) { demoted.push(p); return false; }
+        return true;
+      });
+      if (demoted.length) {
+        // Push demoted items into budget (they're cheap)
+        tiers.budget.push(...demoted);
+        console.log(`[Tier-fix] Demoted ${demoted.length} premium items below mid median ($${midMedian})`);
+      }
+    }
+    // Demote mid items cheaper than the budget median (if budget has items)
+    if (budgetMedian > 0 && tiers.mid.length) {
+      const demoted = [];
+      tiers.mid = tiers.mid.filter(p => {
+        const pNum = parseFloat((p.price || "0").toString().replace(/[^0-9.]/g, ""));
+        if (pNum > 0 && pNum < budgetMedian * 0.7) { demoted.push(p); return false; }
+        return true;
+      });
+      if (demoted.length) {
+        tiers.budget.push(...demoted);
+        console.log(`[Tier-fix] Demoted ${demoted.length} mid items below budget median ($${budgetMedian})`);
+      }
+    }
+    // Sort each tier by price (ascending for budget, descending for premium)
+    const extractPrice = p => parseFloat((p.price || "0").toString().replace(/[^0-9.]/g, "")) || 0;
+    tiers.budget.sort((a, b) => extractPrice(a) - extractPrice(b));
+    tiers.mid.sort((a, b) => extractPrice(a) - extractPrice(b));
+    tiers.premium.sort((a, b) => extractPrice(b) - extractPrice(a));
+
     const brandVerified = item.brand && item.brand !== "Unidentified" &&
       [...tiers.budget, ...tiers.mid, ...tiers.premium].some(t => t?.is_identified_brand);
 

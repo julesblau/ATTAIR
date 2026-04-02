@@ -5441,18 +5441,42 @@ export default function App() {
   };
 
   // ─── Save Look snapshot ───────────────────────────────────
-  const handleSaveLook = () => {
-    if (!results) return;
-    const snapshot = {
-      id: Date.now(),
-      items: JSON.parse(JSON.stringify(results.items)),
-      gender: results.gender,
-      timestamp: new Date().toISOString(),
-      thumbnail: img,
-    };
-    setSavedLooks(prev => [...prev, snapshot]);
-    setRefineToast("Look saved!");
-    setTimeout(() => setRefineToast(null), 2500);
+  const [saveLookBusy, setSaveLookBusy] = useState(false);
+  const handleSaveLook = async () => {
+    if (!results || saveLookBusy) return;
+    if (isGuest) { setSignupPrompt("save"); return; }
+    setSaveLookBusy(true);
+    try {
+      // Save all unsaved items from this scan
+      const unsavedItems = results.items.filter(it => !saved.some(s => (s.item_data?.name || s.name) === it.name));
+      const savePromises = unsavedItems.map(it => API.saveItem(scanId, it).catch(() => null));
+      const savedResults = await Promise.all(savePromises);
+      const newSaved = savedResults.filter(Boolean);
+      if (newSaved.length) setSaved(prev => [...prev, ...newSaved]);
+      // Refresh saved items
+      API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
+      // Open wishlist picker with the first saved item
+      const firstSaved = newSaved[0] || saved.find(s => results.items.some(it => (s.item_data?.name || s.name) === it.name));
+      if (firstSaved) {
+        setWishlistPickerScan(firstSaved);
+      } else {
+        setRefineToast("Look saved!");
+        setTimeout(() => setRefineToast(null), 2500);
+      }
+      // Also store local snapshot for refine restoration
+      const snapshot = {
+        id: Date.now(),
+        items: JSON.parse(JSON.stringify(results.items)),
+        gender: results.gender,
+        timestamp: new Date().toISOString(),
+        thumbnail: img,
+      };
+      setSavedLooks(prev => [...prev, snapshot]);
+    } catch {
+      setRefineToast("Failed to save. Try again.");
+      setTimeout(() => setRefineToast(null), 2500);
+    }
+    setSaveLookBusy(false);
   };
 
   // ─── Refresh looks data (debounced) ────────────────────────
@@ -8043,18 +8067,20 @@ export default function App() {
                   Save Look + Saved Looks dropdown
                   ═══════════════════════════════════════════════════════════ */}
               {phase === "done" && (
-                <div style={{ padding: "0 20px 8px", display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+                <div style={{ padding: "12px 20px 8px", display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
                   <button
                     onClick={handleSaveLook}
+                    disabled={saveLookBusy}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px",
-                      background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10,
-                      color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12,
-                      fontWeight: 600, cursor: "pointer", transition: "all .2s",
+                      background: saveLookBusy ? "rgba(201,169,110,.12)" : "var(--bg-input)", border: `1px solid ${saveLookBusy ? "rgba(201,169,110,.3)" : "var(--border)"}`, borderRadius: 10,
+                      color: saveLookBusy ? "var(--accent)" : "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12,
+                      fontWeight: 600, cursor: saveLookBusy ? "default" : "pointer", transition: "all .2s",
+                      opacity: saveLookBusy ? 0.7 : 1,
                     }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                    Save Look
+                    {saveLookBusy ? "Saving..." : "Save Look"}
                   </button>
                   {savedLooks.length > 0 && (
                     <button
@@ -8207,7 +8233,7 @@ export default function App() {
                               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
                               {products.length > 2 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
                             </div>
-                            <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+                            <div className="scroll-x scroll-x-fade" style={{ display: "flex", gap: 10, overflowX: "auto", paddingLeft: 20, paddingRight: 20, paddingBottom: 4, scrollPaddingLeft: 20, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
                               {products.map((p, j) => {
                                 const isFallback = !p.is_product_page && p.brand === "Google Shopping";
                                 const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
