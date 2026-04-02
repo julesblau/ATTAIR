@@ -8202,23 +8202,24 @@ export default function App() {
                               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
                               {products.length > 2 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
                             </div>
-                            <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none", overscrollBehaviorX: "contain" }}>
+                            <div ref={el => { if (el && !el._loopInit && products.length > 2) { el._loopInit = true; const cardW = 162; requestAnimationFrame(() => { el.scrollLeft = products.length * cardW + 20; }); let ticking = false; el.addEventListener("scroll", () => { if (ticking) return; ticking = true; requestAnimationFrame(() => { ticking = false; const sectionW = products.length * cardW; if (el.scrollLeft < sectionW * 0.25) el.scrollLeft += sectionW; else if (el.scrollLeft > sectionW * 1.75) el.scrollLeft -= sectionW; }); }); } }} style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none", overscrollBehaviorX: "contain" }}>
                               {/* Left spacer to match page padding */}
                               <div style={{ flexShrink: 0, width: 20 }} />
-                              {products.map((p, j) => {
+                              {(products.length > 2 ? [...products, ...products, ...products] : products).map((p, j) => {
+                                const realIdx = j % products.length;
                                 const isFallback = !p.is_product_page && p.brand === "Google Shopping";
-                                const clickId = `${scanId || "x"}_${i}_${tierKey}_${j}`;
+                                const clickId = `${scanId || "x"}_${i}_${tierKey}_${realIdx}`;
                                 const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
                                 const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
-                                const dupeInfo = dupeMap.get(`${tierKey}_${j}`);
+                                const dupeInfo = dupeMap.get(`${tierKey}_${realIdx}`);
 
                                 // Compute flat index for ad insertion
                                 const tiersBefore = ["budget", "mid", "premium", "resale"].slice(0, ["budget", "mid", "premium", "resale"].indexOf(tierKey));
-                                const flatIdx = tiersBefore.reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) + j;
+                                const flatIdx = tiersBefore.reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) + realIdx;
 
                                 return (
-                                  <Fragment key={j}>
-                                    <div className="card-press" style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", position: "relative" }}>
+                                  <Fragment key={`${tierKey}_loop_${j}`}>
+                                    <div className="card-press" style={{ flexShrink: 0, width: 150, position: "relative" }}>
                                       {/* Style Match Score pill */}
                                       {p.style_match != null && p.style_match >= 50 ? (
                                         <div
