@@ -9,6 +9,20 @@ const router = Router();
 const FREE_SCAN_LIMIT = 12;
 const FREE_SAVE_LIMIT = 20;
 const FREE_HISTORY_DAYS = 7;
+const FREE_EXTENDED_SEARCH_LIMIT = 3;   // per week
+const FREE_FAST_SEARCH_LIMIT = 12;      // per month
+
+function isSameISOWeek(d1, d2) {
+  const getISOWeekStart = (d) => {
+    const date = new Date(d);
+    const day = date.getUTCDay();
+    const diff = (day === 0 ? -6 : 1) - day;
+    date.setUTCDate(date.getUTCDate() + diff);
+    date.setUTCHours(0, 0, 0, 0);
+    return date.getTime();
+  };
+  return getISOWeekStart(d1) === getISOWeekStart(d2);
+}
 
 // ─── GET /api/user/status ───────────────────────────────────
 router.get("/status", requireAuth, async (req, res) => {
@@ -36,6 +50,25 @@ router.get("/status", requireAuth, async (req, res) => {
 
     const isUnlimited = tier === "pro" || tier === "trial";
 
+    // ─── Compute remaining search counts ──────────────────
+    let extendedSearchesRemaining = -1;
+    let fastSearchesRemaining = -1;
+    if (!isUnlimited) {
+      const now = new Date();
+      // Extended (weekly reset)
+      const storedWeek = profile.extended_searches_week ? new Date(profile.extended_searches_week) : null;
+      const sameWeek = storedWeek && isSameISOWeek(storedWeek, now);
+      const extUsed = sameWeek ? (profile.extended_searches_count || 0) : 0;
+      extendedSearchesRemaining = Math.max(0, FREE_EXTENDED_SEARCH_LIMIT - extUsed);
+
+      // Fast (monthly reset)
+      const storedMonth = profile.fast_searches_month ? new Date(profile.fast_searches_month).toISOString().slice(0, 7) : null;
+      const currentMonth = now.toISOString().slice(0, 7);
+      const sameMonth = storedMonth === currentMonth;
+      const fastUsed = sameMonth ? (profile.fast_searches_count || 0) : 0;
+      fastSearchesRemaining = Math.max(0, FREE_FAST_SEARCH_LIMIT - fastUsed);
+    }
+
     return res.json({
       tier,
       scans_remaining_today: isUnlimited ? -1 : Math.max(0, FREE_SCAN_LIMIT - scansToday),
@@ -45,6 +78,10 @@ router.get("/status", requireAuth, async (req, res) => {
       history_days: isUnlimited ? -1 : FREE_HISTORY_DAYS,
       trial_ends_at: profile.trial_ends_at || null,
       show_ads: tier === "free" || tier === "expired",
+      extended_searches_remaining: extendedSearchesRemaining,
+      extended_searches_limit: isUnlimited ? -1 : FREE_EXTENDED_SEARCH_LIMIT,
+      fast_searches_remaining: fastSearchesRemaining,
+      fast_searches_limit: isUnlimited ? -1 : FREE_FAST_SEARCH_LIMIT,
     });
   } catch (err) {
     console.error("User status error:", err.message);

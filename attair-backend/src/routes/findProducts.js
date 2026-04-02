@@ -8,6 +8,110 @@ import { getPreferenceProfile } from "../services/preferences.js";
 
 const router = Router();
 
+const FREE_EXTENDED_SEARCH_LIMIT = 3;   // per week
+const FREE_FAST_SEARCH_LIMIT = 12;      // per month
+
+/**
+ * Check and enforce search limits for free-tier users.
+ * Resets counters when the week/month rolls over.
+ * Returns { allowed: true } or { allowed: false, message } .
+ */
+async function checkSearchLimit(userId, searchMode) {
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("tier, trial_ends_at, extended_searches_count, extended_searches_week, fast_searches_count, fast_searches_month")
+    .eq("id", userId)
+    .single();
+
+  if (error || !profile) return { allowed: true }; // fail open if profile missing
+
+  let tier = profile.tier || "free";
+  if (tier === "trial" && profile.trial_ends_at && new Date(profile.trial_ends_at) < new Date()) {
+    tier = "expired";
+  }
+  if (tier === "pro" || tier === "trial") return { allowed: true };
+
+  const now = new Date();
+
+  if (searchMode === "extended") {
+    // Week resets on Monday — check if stored week is in the current ISO week
+    const storedWeek = profile.extended_searches_week ? new Date(profile.extended_searches_week) : null;
+    const sameWeek = storedWeek && isSameISOWeek(storedWeek, now);
+    const count = sameWeek ? (profile.extended_searches_count || 0) : 0;
+
+    if (count >= FREE_EXTENDED_SEARCH_LIMIT) {
+      return { allowed: false, message: `You've used all ${FREE_EXTENDED_SEARCH_LIMIT} Deep Searches this week. Upgrade to Pro for unlimited.` };
+    }
+    return { allowed: true, resetWeek: !sameWeek };
+  } else {
+    // Month resets on the 1st
+    const storedMonth = profile.fast_searches_month ? new Date(profile.fast_searches_month).toISOString().slice(0, 7) : null;
+    const currentMonth = now.toISOString().slice(0, 7);
+    const sameMonth = storedMonth === currentMonth;
+    const count = sameMonth ? (profile.fast_searches_count || 0) : 0;
+
+    if (count >= FREE_FAST_SEARCH_LIMIT) {
+      return { allowed: false, message: `You've used all ${FREE_FAST_SEARCH_LIMIT} Fast Searches this month. Upgrade to Pro for unlimited.` };
+    }
+    return { allowed: true, resetMonth: !sameMonth };
+  }
+}
+
+/**
+ * Increment the appropriate search counter after a successful search.
+ */
+async function incrementSearchCounter(userId, searchMode) {
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+
+  if (searchMode === "extended") {
+    // Read current to decide if we need a reset
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("extended_searches_count, extended_searches_week")
+      .eq("id", userId)
+      .single();
+
+    const storedWeek = profile?.extended_searches_week ? new Date(profile.extended_searches_week) : null;
+    const sameWeek = storedWeek && isSameISOWeek(storedWeek, now);
+
+    await supabase.from("profiles").update({
+      extended_searches_count: sameWeek ? (profile?.extended_searches_count || 0) + 1 : 1,
+      extended_searches_week: todayStr,
+    }).eq("id", userId);
+  } else {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("fast_searches_count, fast_searches_month")
+      .eq("id", userId)
+      .single();
+
+    const storedMonth = profile?.fast_searches_month ? new Date(profile.fast_searches_month).toISOString().slice(0, 7) : null;
+    const currentMonth = now.toISOString().slice(0, 7);
+    const sameMonth = storedMonth === currentMonth;
+
+    await supabase.from("profiles").update({
+      fast_searches_count: sameMonth ? (profile?.fast_searches_count || 0) + 1 : 1,
+      fast_searches_month: todayStr,
+    }).eq("id", userId);
+  }
+}
+
+/**
+ * Check whether two dates fall in the same ISO week (Mon–Sun).
+ */
+function isSameISOWeek(d1, d2) {
+  const getISOWeekStart = (d) => {
+    const date = new Date(d);
+    const day = date.getUTCDay(); // 0=Sun, 1=Mon, ...
+    const diff = (day === 0 ? -6 : 1) - day; // shift to Monday
+    date.setUTCDate(date.getUTCDate() + diff);
+    date.setUTCHours(0, 0, 0, 0);
+    return date.getTime();
+  };
+  return getISOWeekStart(d1) === getISOWeekStart(d2);
+}
+
 // ─── Custom occasion cache (in-memory, process-lifetime) ────
 // Maps sanitized occasion string → comma-separated keyword modifiers
 // SECURITY: Capped at 1000 entries to prevent unbounded memory growth from distinct user inputs
@@ -108,6 +212,12 @@ router.post("/", requireAuth, async (req, res) => {
   }
 
   try {
+    // ─── Search limit check (free/expired tier only) ──────────
+    const limitCheck = await checkSearchLimit(req.userId, searchMode);
+    if (!limitCheck.allowed) {
+      return res.status(429).json({ error: "Search limit reached", message: limitCheck.message });
+    }
+
     // Run profile + image URL + preference + Style DNA lookups in parallel
     const [profileResult, scanResult, prefProfile, styleDnaResult] = await Promise.all([
       supabase.from("profiles").select("budget_min, budget_max, size_prefs, preference_profile").eq("id", req.userId).single(),
@@ -139,6 +249,11 @@ router.post("/", requireAuth, async (req, res) => {
     // Apply Style Match scores using both Style DNA and preference profile
     // This replaces the basic preference-only scoring in products.js
     applyStyleMatchScores(results, styleDnaResult, prefProfile);
+
+    // Increment search counter (non-blocking — don't fail the response)
+    incrementSearchCounter(req.userId, searchMode).catch(err =>
+      console.error("Search counter increment error:", err.message)
+    );
 
     // Persist tier results back to the scan row
     if (scan_id) {

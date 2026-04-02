@@ -3737,6 +3737,7 @@ export default function App() {
   const [authPhone, setAuthPhone] = useState("");
   const [budgetMin, setBudgetMin] = useState(50);
   const [budgetMax, setBudgetMax] = useState(100);
+  const [selectedBudgetTiers, setSelectedBudgetTiers] = useState(new Set());
   const [settingsBudgetError, setSettingsBudgetError] = useState(null);
   const [sizePrefs, setSizePrefs] = useState({ body_type: [], fit: [], sizes: {} });
 
@@ -3909,6 +3910,11 @@ export default function App() {
   const [addToListConfirm, setAddToListConfirm] = useState(null); // { savedItemId, wishlistName }
   const [wishlistPickerScan, setWishlistPickerScan] = useState(null); // scan object for wishlist picker modal
   const [newWishlistName, setNewWishlistName] = useState("");
+  const [wishlistEditId, setWishlistEditId] = useState(null); // id of wishlist being edited
+  const [wishlistEditName, setWishlistEditName] = useState(""); // rename input value
+  const [wishlistEditOpen, setWishlistEditOpen] = useState(false); // action sheet visible
+  const [wishlistRenaming, setWishlistRenaming] = useState(false); // inline rename mode
+  const wishlistLongPressRef = useRef(null); // long-press timer
 
   // ─── Likes / Collections tab ──────────────────────────────
   const [likesCollectionFilter, setLikesCollectionFilter] = useState("all");
@@ -3965,6 +3971,8 @@ export default function App() {
   const scansLeft = userStatus?.scans_remaining_today ?? 12;
   const scansLimit = userStatus?.scans_limit ?? 12;
   const showAds = userStatus?.show_ads ?? true;
+  const deepSearchesLeft = userStatus?.extended_searches_remaining ?? 3;
+  const fastSearchesLeft = userStatus?.fast_searches_remaining ?? 12;
 
   // ─── Load Hanger Test (batch of 5) ────────────────
   useEffect(() => {
@@ -4181,6 +4189,8 @@ export default function App() {
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedDetailScan, setFeedDetailScan] = useState(null); // scan object for overlay
   const [feedDetailIdx, setFeedDetailIdx] = useState(-1); // index in feedScans for swipe navigation
+  const [feedFilterQuery, setFeedFilterQuery] = useState(""); // "I'm looking for..." filter
+  const [feedDetailZoom, setFeedDetailZoom] = useState(1); // pinch/double-tap zoom level
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState([]);
@@ -5229,7 +5239,13 @@ export default function App() {
       searchFailed = true;
       console.error("Product search failed:", err);
       setResults(prev => prev ? { ...prev, items: prev.items.map(it => it.status === "searching" ? { ...it, status: "failed" } : it) } : prev);
-      setError(t("search_failed") || "Search failed. Please try refining your items and searching again.");
+      if (err.message.includes("limit") || err.message.includes("Limit") || err.message.includes("Deep Search") || err.message.includes("Fast Search")) {
+        setUpgradeModal("search_limit");
+        setError(err.message);
+        refreshStatus();
+      } else {
+        setError(t("search_failed") || "Search failed. Please try refining your items and searching again.");
+      }
     }
 
     // Staggered reveal for first-time search takeover (not re-search)
@@ -5243,6 +5259,8 @@ export default function App() {
 
     setPhase("done");
     setIsResearch(false);
+    // Refresh status to update search remaining counts
+    if (!isGuest && !searchFailed) refreshStatus();
     // Auto-expand first picked item in results
     setExpandedItems(new Set([pickedIndices[0]]));
     // Auto-switch picked items to "shop" view once search completes
@@ -6166,11 +6184,22 @@ export default function App() {
               {/* For You / Following toggle */}
               <div className="feed-tabs-wrap">
                 <button className={`feed-tab${feedTab === "foryou" ? " active" : ""}`} onClick={() => { setFeedTab("foryou"); setFeedPage(1); }}>{t("for_you")}</button>
-                <button className={`feed-tab${feedTab === "trending" ? " active" : ""}`} onClick={() => { setFeedTab("trending"); setFeedPage(1); }}>
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4, verticalAlign: -1 }}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                  Trending
-                </button>
                 <button className={`feed-tab${feedTab === "following" ? " active" : ""}`} onClick={() => { setFeedTab("following"); setFeedPage(1); }}>{t("following")}</button>
+              </div>
+
+              {/* "I'm looking for..." filter */}
+              <div className="feed-filter-wrap">
+                <svg className="feed-filter-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input
+                  className="feed-filter-input"
+                  type="text"
+                  placeholder="I'm looking for..."
+                  value={feedFilterQuery}
+                  onChange={e => setFeedFilterQuery(e.target.value)}
+                />
+                {feedFilterQuery && (
+                  <button className="feed-filter-clear" onClick={() => setFeedFilterQuery("")}>&times;</button>
+                )}
               </div>
 
               {/* ─── Active Style Challenge card ─── */}
@@ -6375,7 +6404,7 @@ export default function App() {
               )}
 
               {/* Empty state — For You / Trending: featured scans from community */}
-              {!feedLoading && feedScans.length === 0 && (feedTab === "foryou" || feedTab === "trending") && (
+              {!feedLoading && feedScans.length === 0 && feedTab === "foryou" && (
                 <FeaturedScansEmpty onScan={() => setTab("scan")} onDiscover={() => { setTab("search"); setShowUserSearch(true); }} />
               )}
 
@@ -6422,14 +6451,30 @@ export default function App() {
               )}
 
               {/* Feed cards */}
-              {feedScans.length > 0 && (
+              {feedScans.length > 0 && (() => {
+                const fq = feedFilterQuery.toLowerCase().trim();
+                const filteredFeedScans = fq ? feedScans.filter(scan => {
+                  const items = scan.items || [];
+                  const haystack = [
+                    scan.summary,
+                    scan.user?.display_name,
+                    ...items.map(it => [it.name, it.brand, it.category, ...(it.tags || [])].join(" "))
+                  ].join(" ").toLowerCase();
+                  return haystack.includes(fq);
+                }) : feedScans;
+                return (
                 <div className="feed-list">
-                  {feedScans.map((scan, idx) => {
+                  {fq && filteredFeedScans.length === 0 && (
+                    <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--text-tertiary)", fontSize: 13 }}>
+                      No outfits match "{feedFilterQuery}"
+                    </div>
+                  )}
+                  {filteredFeedScans.map((scan, idx) => {
                     const u = scan.user || {};
                     const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
                     const isSaved = saved.some(s => s.scan_id === scan.id);
                     const isTrending = (scan.save_count || 0) >= 3;
-                    const trendingRank = feedTab === "trending" ? idx + 1 + ((feedPage - 1) * 20) : null;
+                    const trendingRank = null;
                     const showAd = userStatus?.tier !== "pro" && userStatus?.tier !== "trial" && idx > 0 && idx % 5 === 0;
                     return (
                       <Fragment key={scan.id || idx}>
@@ -6446,7 +6491,7 @@ export default function App() {
                             </div>
                           </div>
                         )}
-                        <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setFeedDetailScan(scan); setFeedDetailIdx(idx); }}>
+                        <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { const realIdx = feedScans.indexOf(scan); setFeedDetailScan(scan); setFeedDetailIdx(realIdx >= 0 ? realIdx : idx); }}>
                           <div style={{ position: "relative" }}>
                             {scan.image_url
                               ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
@@ -6500,7 +6545,8 @@ export default function App() {
                     </div>
                   )}
                 </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
@@ -7106,37 +7152,61 @@ export default function App() {
                     {`$${budgetMin} – ${budgetMax >= 500 ? "$500+" : `$${budgetMax}`}`}
                   </span>
                 </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {[
+                {(() => {
+                  const presets = [
                     { label: "$", min: 0, max: 50, desc: t("budget_tier_under50") },
                     { label: "$$", min: 50, max: 150, desc: t("budget_tier_mid") },
                     { label: "$$$", min: 150, max: 300, desc: t("budget_tier_high") },
                     { label: "$$$$", min: 300, max: 500, desc: t("budget_tier_premium") },
-                  ].map(p => {
-                    const active = budgetMin === p.min && budgetMax === p.max;
-                    return (
-                      <button key={p.label} aria-label={`Budget tier ${p.label}: ${p.desc}`}
-                        onClick={() => { setBudgetMin(p.min); setBudgetMax(p.max); }}
-                        style={{ flex: 1, padding: "7px 4px", minHeight: 44, background: active ? "var(--accent-bg)" : "var(--bg-input)", border: `1px solid ${active ? "var(--accent-border)" : "var(--border)"}`, borderRadius: "var(--radius-sm)", cursor: "pointer", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, color: active ? "var(--accent)" : "var(--text-tertiary)", transition: "all var(--transition-fast)", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
-                      >
-                        <span>{p.label}</span>
-                        <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>{p.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                  ];
+                  const sel = selectedBudgetTiers;
+                  const minIdx = sel.size > 0 ? Math.min(...sel) : -1;
+                  const maxIdx = sel.size > 0 ? Math.max(...sel) : -1;
+                  const fillLeft = sel.size > 0 ? (minIdx / presets.length) * 100 : 0;
+                  const fillWidth = sel.size > 0 ? ((maxIdx - minIdx + 1) / presets.length) * 100 : 0;
+                  return (
+                    <div className="budget-tier-bar-wrap">
+                      <div className="budget-tier-bar-track" />
+                      {sel.size > 0 && <div className="budget-tier-bar-fill" style={{ left: `${fillLeft}%`, width: `${fillWidth}%` }} />}
+                      {presets.map((p, idx) => {
+                        const active = sel.has(idx);
+                        const inRange = sel.size > 0 && idx >= minIdx && idx <= maxIdx;
+                        return (
+                          <button key={p.label} aria-label={`Budget tier ${p.label}: ${p.desc}`}
+                            onClick={() => {
+                              setSelectedBudgetTiers(prev => {
+                                const next = new Set(prev);
+                                if (next.has(idx)) next.delete(idx); else next.add(idx);
+                                if (next.size === 0) { setBudgetMin(0); setBudgetMax(500); }
+                                else {
+                                  setBudgetMin(Math.min(...[...next].map(i => presets[i].min)));
+                                  setBudgetMax(Math.max(...[...next].map(i => presets[i].max)));
+                                }
+                                return next;
+                              });
+                            }}
+                            className={`budget-tier-btn${active ? " budget-tier-active" : ""}${inRange && !active ? " budget-tier-inrange" : ""}`}
+                          >
+                            <span>{p.label}</span>
+                            <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>{p.desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
                 {/* Dual-thumb range slider */}
                 <div style={{ position: "relative", height: 28, marginTop: 8 }}>
                   <div style={{ position: "absolute", top: 12, left: 0, right: 0, height: 4, background: "var(--bg-input)", borderRadius: 2 }} />
                   <div style={{ position: "absolute", top: 12, left: `${(budgetMin / 500) * 100}%`, right: `${100 - (budgetMax / 500) * 100}%`, height: 4, background: "var(--accent)", borderRadius: 2 }} />
                   <input type="range" min={0} max={500} step={10} value={budgetMin}
-                    onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) setBudgetMin(v); }}
+                    onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) { setBudgetMin(v); setSelectedBudgetTiers(new Set()); } }}
                     aria-label="Minimum budget"
                     style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2 }}
                     className="budget-range-thumb"
                   />
                   <input type="range" min={0} max={500} step={10} value={budgetMax}
-                    onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) setBudgetMax(v); }}
+                    onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) { setBudgetMax(v); setSelectedBudgetTiers(new Set()); } }}
                     aria-label="Maximum budget"
                     style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 28, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3 }}
                     className="budget-range-thumb"
@@ -7340,26 +7410,30 @@ export default function App() {
               {/* Search Mode Toggle */}
               <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 <button
-                  onClick={() => setSearchMode("fast")}
+                  onClick={() => { if (isFree && fastSearchesLeft <= 0) { setUpgradeModal("search_limit"); return; } setSearchMode("fast"); }}
                   style={{
                     flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 13, fontWeight: 600,
                     border: searchMode === "fast" ? "2px solid var(--accent)" : "1px solid var(--border)",
                     background: searchMode === "fast" ? "var(--accent-bg)" : "transparent",
                     color: searchMode === "fast" ? "var(--accent)" : "var(--text-secondary)",
+                    opacity: (isFree && fastSearchesLeft <= 0) ? 0.45 : 1,
                   }}
                 >
-                  ⚡ Fast Search
+                  <div>⚡ Fast Search</div>
+                  {isFree && <div style={{ fontSize: 10, fontWeight: 400, opacity: .7, marginTop: 2 }}>{fastSearchesLeft > 0 ? `${fastSearchesLeft} left this month` : "Limit reached"}</div>}
                 </button>
                 <button
-                  onClick={() => setSearchMode("extended")}
+                  onClick={() => { if (isFree && deepSearchesLeft <= 0) { setUpgradeModal("search_limit"); return; } setSearchMode("extended"); }}
                   style={{
                     flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 13, fontWeight: 600,
                     border: searchMode === "extended" ? "2px solid var(--accent)" : "1px solid var(--border)",
                     background: searchMode === "extended" ? "var(--accent-bg)" : "transparent",
                     color: searchMode === "extended" ? "var(--accent)" : "var(--text-secondary)",
+                    opacity: (isFree && deepSearchesLeft <= 0) ? 0.45 : 1,
                   }}
                 >
-                  🔍 Deep Search
+                  <div>🔍 Deep Search</div>
+                  {isFree && <div style={{ fontSize: 10, fontWeight: 400, opacity: .7, marginTop: 2 }}>{deepSearchesLeft > 0 ? `${deepSearchesLeft} left this week` : "Limit reached"}</div>}
                 </button>
               </div>
               <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginBottom: 8 }}>
@@ -8096,6 +8170,13 @@ export default function App() {
                       key={wl.id}
                       className={`scan-vis-chip${activeWishlist?.id === wl.id ? " active" : ""}`}
                       onClick={() => { setActiveWishlist(activeWishlist?.id === wl.id ? null : wl); if (activeWishlist?.id !== wl.id) setHistoryFilter("all"); }}
+                      onTouchStart={() => { wishlistLongPressRef.current = setTimeout(() => { setWishlistEditId(wl.id); setWishlistEditName(wl.name); setWishlistEditOpen(true); }, 500); }}
+                      onTouchEnd={() => { clearTimeout(wishlistLongPressRef.current); }}
+                      onTouchMove={() => { clearTimeout(wishlistLongPressRef.current); }}
+                      onMouseDown={() => { wishlistLongPressRef.current = setTimeout(() => { setWishlistEditId(wl.id); setWishlistEditName(wl.name); setWishlistEditOpen(true); }, 500); }}
+                      onMouseUp={() => { clearTimeout(wishlistLongPressRef.current); }}
+                      onMouseLeave={() => { clearTimeout(wishlistLongPressRef.current); }}
+                      onContextMenu={e => { e.preventDefault(); setWishlistEditId(wl.id); setWishlistEditName(wl.name); setWishlistEditOpen(true); }}
                       style={{ flexShrink: 0 }}
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
@@ -8413,10 +8494,22 @@ export default function App() {
                 })()}
 
                 {/* ── Saved items grid ── */}
-                {saved.length > 0 && (
+                {saved.length > 0 && (() => {
+                  const displayedItems = activeWishlist ? saved.filter(si => si.wishlist_id === activeWishlist.id) : saved;
+                  if (displayedItems.length === 0 && activeWishlist) return (
+                    <div style={{ padding: "40px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>No items in this list</div>
+                      <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Add items from your scans</div>
+                    </div>
+                  );
+                  return (
                   <div style={{ padding: "12px 16px 0" }}>
+                    {activeWishlist && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{activeWishlist.name} · {displayedItems.length} item{displayedItems.length !== 1 ? "s" : ""}</span>
+                    </div>}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
-                      {saved.map(si => {
+                      {displayedItems.map(si => {
                         const item = si.item_data || si;
                         const product = si.tier_product || {};
                         const img = product.image_url || item.image_url || item.thumbnail;
@@ -8440,6 +8533,16 @@ export default function App() {
                               <button onClick={async (e) => { e.preventDefault(); e.stopPropagation(); await API.deleteSaved(si.id).catch(() => {}); setSaved(s => s.filter(i => i.id !== si.id)); refreshStatus(); }} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,.6)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }} aria-label="Remove saved item">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                               </button>
+                              {/* Remove from list button (only when viewing a wishlist) */}
+                              {activeWishlist && (
+                                <button onClick={async (e) => {
+                                  e.preventDefault(); e.stopPropagation();
+                                  await API.removeFromWishlist(activeWishlist.id, si.id).catch(() => {});
+                                  setSaved(s => s.map(i => i.id === si.id ? { ...i, wishlist_id: null } : i));
+                                }} style={{ position: "absolute", top: 4, left: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,.6)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }} aria-label="Remove from list">
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                                </button>
+                              )}
                             </div>
                             <div style={{ padding: "4px 2px 0", overflow: "hidden" }}>
                               <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
@@ -8450,7 +8553,8 @@ export default function App() {
                       })}
                     </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 {saved.length === 0 && (
                   <div style={{ padding: "40px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
@@ -8639,7 +8743,7 @@ export default function App() {
                         <div key={hx.id} className="profile-v2-grid-cell" onClick={() => setProfileScanOverlay(hx)} aria-label={`Scan: ${hxItems.length} items`}>
                           {hxImg ? <img src={hxImg} alt="" loading="lazy" onError={e => { e.target.style.display = "none"; }} /> : <div className="profile-v2-grid-placeholder">{hx.detected_gender === "female" ? "\uD83D\uDC57" : "\uD83D\uDC54"}</div>}
                           {hxItems.length > 0 && <span className="grid-items-badge">{hxItems.length}</span>}
-                          {hx.visibility !== "public" && (
+                          {hx.visibility === "private" && (
                             <div className="profile-grid-private-badge">
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
@@ -8666,7 +8770,6 @@ export default function App() {
                       <div className="scan-overlay-meta">
                         <span className="scan-overlay-tag">{hsItems.length} item{hsItems.length !== 1 ? "s" : ""}</span>
                         <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{new Date(hs.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
-                        {hs.detected_gender && <span className="scan-overlay-tag">{hs.detected_gender}</span>}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border)" }}
                         onClick={(e) => { e.stopPropagation(); toggleVisibility(e, hs); }}
@@ -9636,6 +9739,7 @@ export default function App() {
               const next = feedScans[feedDetailIdx + 1];
               setFeedDetailScan(next);
               setFeedDetailIdx(feedDetailIdx + 1);
+              setFeedDetailZoom(1);
               if (feedDetailIdx + 3 >= feedScans.length && feedHasMore && !feedLoading) {
                 loadFeed(feedPage + 1, true);
               }
@@ -9646,30 +9750,72 @@ export default function App() {
               const prev = feedScans[feedDetailIdx - 1];
               setFeedDetailScan(prev);
               setFeedDetailIdx(feedDetailIdx - 1);
+              setFeedDetailZoom(1);
             }
           };
 
+          const handleImgDoubleTap = (e) => {
+            e.preventDefault();
+            setFeedDetailZoom(z => z === 1 ? 2 : 1);
+          };
+
           return (
-            <div className="feed-detail-overlay" onTouchStart={e => { e.currentTarget._touchY = e.touches[0].clientY; }} onTouchEnd={e => { const dy = e.currentTarget._touchY - e.changedTouches[0].clientY; if (Math.abs(dy) > 60) { dy > 0 ? goNext() : goPrev(); } }}>
-              <button className="feed-detail-close" onClick={() => { setFeedDetailScan(null); setFeedDetailIdx(-1); }}>&#x2715;</button>
+            <div className="feed-detail-overlay"
+              onTouchStart={e => {
+                e.currentTarget._touchY = e.touches[0].clientY;
+                e.currentTarget._touchX = e.touches[0].clientX;
+              }}
+              onTouchEnd={e => {
+                const dy = e.currentTarget._touchY - e.changedTouches[0].clientY;
+                const dx = e.currentTarget._touchX - e.changedTouches[0].clientX;
+                if (feedDetailZoom > 1) return;
+                if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)) { dy > 0 ? goNext() : goPrev(); }
+                else if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) { dx > 0 ? goNext() : goPrev(); }
+              }}>
+              {/* Top bar */}
+              <div className="feed-detail-topbar">
+                <button className="feed-detail-close" onClick={() => { setFeedDetailScan(null); setFeedDetailIdx(-1); setFeedDetailZoom(1); }}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                {feedScans.length > 1 && (
+                  <div className="feed-detail-counter">{feedDetailIdx + 1} / {feedScans.length}</div>
+                )}
+              </div>
 
               <div className="feed-detail-scroll">
-                {scan.image_url && <img className="feed-detail-img" src={scan.image_url} alt="" />}
+                {/* Image with pinch-to-zoom and double-tap */}
+                {scan.image_url && (
+                  <div className="feed-detail-img-wrap" style={{ touchAction: feedDetailZoom > 1 ? "pan-x pan-y" : "pinch-zoom" }}>
+                    <img
+                      className="feed-detail-img"
+                      src={scan.image_url}
+                      alt={scan.summary || "Outfit"}
+                      style={{ transform: `scale(${feedDetailZoom})`, transformOrigin: "center center" }}
+                      onDoubleClick={handleImgDoubleTap}
+                    />
+                    {feedDetailZoom === 1 && (
+                      <div className="feed-detail-zoom-hint">Double-tap to zoom</div>
+                    )}
+                  </div>
+                )}
 
                 <div className="feed-detail-body">
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  {/* User row */}
+                  <div className="feed-detail-user-row">
                     <div className="feed-detail-user">
-                      <div className="feed-card-avatar" style={{ width: 40, height: 40, fontSize: 15 }}>{ini}</div>
+                      <div className="feed-card-avatar" style={{ width: 36, height: 36, fontSize: 13 }}>{ini}</div>
                       <div>
                         <div className="feed-detail-name">{u.display_name || "Anonymous"}</div>
                         {scan.created_at && <div className="feed-detail-date">{new Date(scan.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</div>}
                       </div>
                     </div>
-                    {u.id && u.id !== authUserId && (
-                      <button className={`feed-detail-follow-btn${isFollowing ? " following" : ""}`} onClick={() => handleFollowFromSearch(u.id)}>
-                        {isFollowing ? "Following" : "Follow"}
-                      </button>
-                    )}
+                    <div className="feed-detail-user-actions">
+                      {u.id && u.id !== authUserId && (
+                        <button className={`feed-detail-follow-btn${isFollowing ? " following" : ""}`} onClick={() => handleFollowFromSearch(u.id)}>
+                          {isFollowing ? "Following" : "Follow"}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {scan.summary && <div className="feed-detail-summary">{scan.summary}</div>}
@@ -9680,7 +9826,7 @@ export default function App() {
                     {(scan.save_count || 0) >= 3 && <span className="feed-detail-trending">Trending</span>}
                   </div>
 
-                  <div style={{ display: "flex", gap: 10, padding: "12px 0" }}>
+                  <div className="feed-detail-actions">
                     <button className="feed-detail-action-btn" onClick={() => { const itemData = { name: scan.summary || "Scanned outfit", brand: u.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
                       <svg viewBox="0 0 24 24" width="20" height="20" fill={scanIsSaved ? "var(--accent)" : "none"} stroke={scanIsSaved ? "var(--accent)" : "currentColor"} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                       {scanIsSaved ? "Saved" : "Save"}
@@ -9691,36 +9837,50 @@ export default function App() {
                     </button>
                   </div>
 
+                  {/* Shop this look — item cards */}
                   {items.length > 0 && (
                     <div className="feed-detail-items">
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                      <div className="feed-detail-items-header">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                         Shop this look
                       </div>
-                      {items.map((item, i) => (
-                        <div key={i} className="feed-detail-item-card">
-                          <div className="feed-detail-item-info">
-                            <div className="feed-detail-item-name">{item.name || item.category || "Item"}</div>
-                            <div className="feed-detail-item-meta">
-                              {item.brand && item.brand !== "Unidentified" && <span className="feed-detail-item-brand">{item.brand}</span>}
-                              {item.price_range && <span>{item.price_range}</span>}
+                      {items.map((item, i) => {
+                        const q = item.search_query || item.alt_search || `${item.brand || ""} ${item.name || item.category || ""}`.trim();
+                        const tiers = item.product_tiers || item.tiers || [];
+                        return (
+                          <div key={i} className="feed-detail-item-card">
+                            <div className="feed-detail-item-info">
+                              <div className="feed-detail-item-name">{item.name || item.category || "Item"}</div>
+                              <div className="feed-detail-item-meta">
+                                {item.brand && item.brand !== "Unidentified" && <span className="feed-detail-item-brand">{item.brand}</span>}
+                                {item.material && <span>{item.material}</span>}
+                                {item.price_range && <span>{item.price_range}</span>}
+                              </div>
+                            </div>
+                            <div className="feed-detail-item-btns">
+                              {tiers.length > 0 ? tiers.slice(0, 2).map((tier, ti) => (
+                                <button key={ti} className={`feed-detail-shop-btn${ti > 0 ? " alt" : ""}`} onClick={() => { window.open(tier.url || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(tier.query || q)}`, "_blank"); }}>
+                                  {tier.label || tier.tier || "Shop"}
+                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                                </button>
+                              )) : (
+                                <button className="feed-detail-shop-btn" onClick={() => { window.open(`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(q)}`, "_blank"); }}>
+                                  Shop
+                                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                                </button>
+                              )}
                             </div>
                           </div>
-                          <button className="feed-detail-shop-btn" onClick={() => {
-                            const q = item.search_query || item.alt_search || `${item.brand || ""} ${item.name || item.category || ""}`.trim();
-                            window.open(`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(q)}`, "_blank");
-                          }}>
-                            Shop
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                          </button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
 
+                  {/* Swipe nav hint */}
                   {feedScans.length > 1 && (
-                    <div style={{ textAlign: "center", padding: "16px 0 8px", fontSize: 11, color: "var(--text-tertiary)", opacity: 0.6 }}>
-                      Swipe up for next &middot; {feedDetailIdx + 1} of {feedScans.length}
+                    <div className="feed-detail-nav-hint">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+                      Swipe to browse
                     </div>
                   )}
                 </div>
@@ -9743,7 +9903,7 @@ export default function App() {
 
         {/* ─── Tab bar (5 tabs: Feed, Discover, Scan, Saved, Profile) ── */}
         <div className="tb">
-          <button className={`tab${tab==="home"?" on":""}`} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); setShowUserSearch(false); }} aria-label="Feed">
+          <button className={`tab${tab==="home"?" on":""}`} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); setFeedTab("foryou"); setFeedPage(1); setShowUserSearch(false); }} aria-label="Feed">
             <svg viewBox="0 0 24 24" fill={tab==="home"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
             <span className="tab-l">Feed</span>
           </button>
@@ -10566,6 +10726,68 @@ export default function App() {
                 style={{ padding: "12px 18px", background: newWishlistName.trim() ? "var(--accent)" : "var(--bg-input)", color: newWishlistName.trim() ? "#000" : "var(--text-tertiary)", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: newWishlistName.trim() ? "pointer" : "default", fontFamily: "var(--font-sans)", minHeight: 44, transition: "all .2s" }}
               >Create</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Wishlist Edit Action Sheet ═══════════════════════════ */}
+      {wishlistEditOpen && wishlistEditId && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => { setWishlistEditOpen(false); setWishlistRenaming(false); }}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)" }} />
+          <div style={{ position: "relative", width: "100%", maxWidth: 400, background: "var(--bg-secondary)", borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", animation: "slideUp .25s ease" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Edit Collection</div>
+              <button onClick={() => { setWishlistEditOpen(false); setWishlistRenaming(false); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>&times;</button>
+            </div>
+            {wishlistRenaming ? (
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  autoFocus
+                  value={wishlistEditName}
+                  onChange={e => setWishlistEditName(e.target.value)}
+                  placeholder="List name..."
+                  style={{ flex: 1, padding: "12px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none", minHeight: 44 }}
+                  onKeyDown={async e => {
+                    if (e.key === "Enter" && wishlistEditName.trim()) {
+                      await API.renameWishlist(wishlistEditId, wishlistEditName.trim()).catch(() => {});
+                      setWishlists(prev => prev.map(wl => wl.id === wishlistEditId ? { ...wl, name: wishlistEditName.trim() } : wl));
+                      if (activeWishlist?.id === wishlistEditId) setActiveWishlist(prev => ({ ...prev, name: wishlistEditName.trim() }));
+                      setWishlistEditOpen(false);
+                      setWishlistRenaming(false);
+                    }
+                  }}
+                />
+                <button
+                  disabled={!wishlistEditName.trim()}
+                  onClick={async () => {
+                    if (!wishlistEditName.trim()) return;
+                    await API.renameWishlist(wishlistEditId, wishlistEditName.trim()).catch(() => {});
+                    setWishlists(prev => prev.map(wl => wl.id === wishlistEditId ? { ...wl, name: wishlistEditName.trim() } : wl));
+                    if (activeWishlist?.id === wishlistEditId) setActiveWishlist(prev => ({ ...prev, name: wishlistEditName.trim() }));
+                    setWishlistEditOpen(false);
+                    setWishlistRenaming(false);
+                  }}
+                  style={{ padding: "12px 18px", background: wishlistEditName.trim() ? "var(--accent)" : "var(--bg-input)", color: wishlistEditName.trim() ? "#000" : "var(--text-tertiary)", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: wishlistEditName.trim() ? "pointer" : "default", fontFamily: "var(--font-sans)", minHeight: 44, transition: "all .2s" }}
+                >Save</button>
+              </div>
+            ) : (
+              <>
+                <button onClick={() => setWishlistRenaming(true)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", marginBottom: 8, minHeight: 48 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Rename</span>
+                </button>
+                <button onClick={async () => {
+                  if (!confirm("Delete this collection? Items will be kept in your wardrobe.")) return;
+                  await API.deleteWishlist(wishlistEditId).catch(() => {});
+                  setWishlists(prev => prev.filter(wl => wl.id !== wishlistEditId));
+                  if (activeWishlist?.id === wishlistEditId) setActiveWishlist(null);
+                  setWishlistEditOpen(false);
+                }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid rgba(255,59,48,.2)", borderRadius: 12, cursor: "pointer", marginBottom: 8, minHeight: 48 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "#FF3B30" }}>Delete Collection</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

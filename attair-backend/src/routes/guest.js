@@ -5,6 +5,59 @@ import { findProductsForItems } from "../services/products.js";
 
 const router = Router();
 
+// ─── Guest search limits (in-memory, IP-keyed) ─────────────
+const GUEST_EXTENDED_LIMIT = 3;  // per week
+const GUEST_FAST_LIMIT = 12;     // per month
+const guestSearchCounters = new Map(); // ip → { ext: { count, weekStart }, fast: { count, month } }
+
+function getISOWeekStart(d) {
+  const date = new Date(d);
+  const day = date.getUTCDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  date.setUTCDate(date.getUTCDate() + diff);
+  date.setUTCHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+function checkGuestSearchLimit(ip, searchMode) {
+  const now = new Date();
+  let entry = guestSearchCounters.get(ip);
+  if (!entry) {
+    entry = {
+      ext: { count: 0, weekStart: getISOWeekStart(now) },
+      fast: { count: 0, month: now.toISOString().slice(0, 7) },
+    };
+    guestSearchCounters.set(ip, entry);
+  }
+
+  if (searchMode === "extended") {
+    const currentWeekStart = getISOWeekStart(now);
+    if (entry.ext.weekStart !== currentWeekStart) {
+      entry.ext = { count: 0, weekStart: currentWeekStart };
+    }
+    if (entry.ext.count >= GUEST_EXTENDED_LIMIT) {
+      return { allowed: false, message: `You've used all ${GUEST_EXTENDED_LIMIT} Deep Searches this week. Sign up for free to get more!` };
+    }
+    return { allowed: true };
+  } else {
+    const currentMonth = now.toISOString().slice(0, 7);
+    if (entry.fast.month !== currentMonth) {
+      entry.fast = { count: 0, month: currentMonth };
+    }
+    if (entry.fast.count >= GUEST_FAST_LIMIT) {
+      return { allowed: false, message: `You've used all ${GUEST_FAST_LIMIT} Fast Searches this month. Sign up for free to get more!` };
+    }
+    return { allowed: true };
+  }
+}
+
+function incrementGuestSearchCounter(ip, searchMode) {
+  const entry = guestSearchCounters.get(ip);
+  if (!entry) return;
+  if (searchMode === "extended") entry.ext.count++;
+  else entry.fast.count++;
+}
+
 /**
  * POST /api/guest/identify
  *
@@ -95,6 +148,13 @@ router.post("/find-products", guestRateLimit, async (req, res) => {
 
   const searchMode = rawSearchMode === "extended" ? "extended" : "fast";
 
+  // ─── Guest search limit check ──────────────────────────
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "unknown";
+  const limitCheck = checkGuestSearchLimit(ip, searchMode);
+  if (!limitCheck.allowed) {
+    return res.status(429).json({ error: "Search limit reached", message: limitCheck.message });
+  }
+
   try {
     const results = await findProductsForItems(
       items,
@@ -108,6 +168,9 @@ router.post("/find-products", guestRateLimit, async (req, res) => {
       null, // customOccasionModifiers
       searchMode,
     );
+
+    // Increment counter after successful search
+    incrementGuestSearchCounter(ip, searchMode);
 
     return res.json(results);
   } catch (err) {
