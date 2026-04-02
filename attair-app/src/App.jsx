@@ -5440,43 +5440,14 @@ export default function App() {
     setRefineLoading(false);
   };
 
-  // ─── Save Look snapshot ───────────────────────────────────
-  const [saveLookBusy, setSaveLookBusy] = useState(false);
-  const handleSaveLook = async () => {
-    if (!results || saveLookBusy) return;
+  // ─── Save Look — opens wishlist picker, saves on selection ──
+  const [saveLookPending, setSaveLookPending] = useState(null); // { items, scanId } when Save Look picker is open
+  const handleSaveLook = () => {
+    if (!results) return;
     if (isGuest) { setSignupPrompt("save"); return; }
-    setSaveLookBusy(true);
-    try {
-      // Save all unsaved items from this scan
-      const unsavedItems = results.items.filter(it => !saved.some(s => (s.item_data?.name || s.name) === it.name));
-      const savePromises = unsavedItems.map(it => API.saveItem(scanId, it).catch(() => null));
-      const savedResults = await Promise.all(savePromises);
-      const newSaved = savedResults.filter(Boolean);
-      if (newSaved.length) setSaved(prev => [...prev, ...newSaved]);
-      // Refresh saved items
-      API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
-      // Open wishlist picker with the first saved item
-      const firstSaved = newSaved[0] || saved.find(s => results.items.some(it => (s.item_data?.name || s.name) === it.name));
-      if (firstSaved) {
-        setWishlistPickerScan(firstSaved);
-      } else {
-        setRefineToast("Look saved!");
-        setTimeout(() => setRefineToast(null), 2500);
-      }
-      // Also store local snapshot for refine restoration
-      const snapshot = {
-        id: Date.now(),
-        items: JSON.parse(JSON.stringify(results.items)),
-        gender: results.gender,
-        timestamp: new Date().toISOString(),
-        thumbnail: img,
-      };
-      setSavedLooks(prev => [...prev, snapshot]);
-    } catch {
-      setRefineToast("Failed to save. Try again.");
-      setTimeout(() => setRefineToast(null), 2500);
-    }
-    setSaveLookBusy(false);
+    // Store the look data and open the wishlist picker
+    setSaveLookPending({ items: results.items, scanId });
+    setWishlistPickerScan({ id: "__save_look__" }); // opens picker with special marker
   };
 
   // ─── Refresh looks data (debounced) ────────────────────────
@@ -8070,17 +8041,15 @@ export default function App() {
                 <div style={{ padding: "12px 20px 8px", display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
                   <button
                     onClick={handleSaveLook}
-                    disabled={saveLookBusy}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px",
-                      background: saveLookBusy ? "rgba(201,169,110,.12)" : "var(--bg-input)", border: `1px solid ${saveLookBusy ? "rgba(201,169,110,.3)" : "var(--border)"}`, borderRadius: 10,
-                      color: saveLookBusy ? "var(--accent)" : "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12,
-                      fontWeight: 600, cursor: saveLookBusy ? "default" : "pointer", transition: "all .2s",
-                      opacity: saveLookBusy ? 0.7 : 1,
+                      background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10,
+                      color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12,
+                      fontWeight: 600, cursor: "pointer", transition: "all .2s",
                     }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                    {saveLookBusy ? "Saving..." : "Save Look"}
+                    Save Look
                   </button>
                   {savedLooks.length > 0 && (
                     <button
@@ -10884,27 +10853,45 @@ export default function App() {
         </div>
       )}
       {/* ─── Wishlist Picker Modal ─── */}
-      {wishlistPickerScan && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => { setWishlistPickerScan(null); setNewWishlistName(""); }}>
+      {wishlistPickerScan && (() => {
+        const isSaveLook = wishlistPickerScan.id === "__save_look__";
+        // Handler: save to a wishlist (existing or newly created)
+        const addToWishlist = async (wishlistId, wishlistName) => {
+          if (isSaveLook && saveLookPending) {
+            // Save Look flow: save all items from the scan, then add each to the wishlist
+            const items = saveLookPending.items || [];
+            const sid = saveLookPending.scanId;
+            for (const it of items) {
+              try {
+                const res = await API.saveItem(sid, it);
+                if (res?.id) await API.addToWishlist(wishlistId, res.id).catch(() => {});
+              } catch { /* 429 or dupe — skip silently */ }
+            }
+            setSaveLookPending(null);
+            setAddToListConfirm({ savedItemId: null, wishlistName });
+          } else {
+            // Single item flow (existing behavior)
+            const itemId = wishlistPickerScan.id;
+            if (itemId) await API.addToWishlist(wishlistId, itemId).catch(() => {});
+            setAddToListConfirm({ savedItemId: itemId, wishlistName });
+          }
+          setTimeout(() => setAddToListConfirm(null), 2000);
+          API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
+          API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
+          setWishlistPickerScan(null);
+          setNewWishlistName("");
+        };
+        return (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => { setWishlistPickerScan(null); setSaveLookPending(null); setNewWishlistName(""); }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)" }} />
           <div style={{ position: "relative", width: "100%", maxWidth: 400, background: "var(--bg-secondary)", borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", maxHeight: "60vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Add to Collection</div>
-              <button onClick={() => { setWishlistPickerScan(null); setNewWishlistName(""); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>&times;</button>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{isSaveLook ? "Save Look to Collection" : "Add to Collection"}</div>
+              <button onClick={() => { setWishlistPickerScan(null); setSaveLookPending(null); setNewWishlistName(""); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>&times;</button>
             </div>
+            {isSaveLook && <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 12 }}>All items from this scan will be saved to the selected collection.</div>}
             {wishlists.length > 0 && wishlists.map(wl => (
-              <button key={wl.id} onClick={async () => {
-                const itemId = wishlistPickerScan.id;
-                if (itemId) {
-                  await API.addToWishlist(wl.id, itemId).catch(() => {});
-                  setAddToListConfirm({ savedItemId: itemId, wishlistName: wl.name });
-                  setTimeout(() => setAddToListConfirm(null), 2000);
-                  // Instant refresh
-                  API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
-                  API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
-                }
-                setWishlistPickerScan(null);
-              }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", marginBottom: 8, minHeight: 48 }}>
+              <button key={wl.id} onClick={() => addToWishlist(wl.id, wl.name)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", marginBottom: 8, minHeight: 48 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                 <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{wl.name}</span>
               </button>
@@ -10913,23 +10900,15 @@ export default function App() {
               <input
                 value={newWishlistName}
                 onChange={e => setNewWishlistName(e.target.value)}
-                placeholder="New wishlist name..."
+                placeholder="New collection name..."
                 style={{ flex: 1, padding: "12px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, outline: "none", minHeight: 44 }}
                 onKeyDown={e => {
                   if (e.key === "Enter" && newWishlistName.trim()) {
                     API.createWishlist(newWishlistName.trim()).then(async d => {
                       if (d?.wishlist) {
                         setWishlists(prev => [...prev, d.wishlist]);
-                        const itemId = wishlistPickerScan.id;
-                        if (itemId) await API.addToWishlist(d.wishlist.id, itemId).catch(() => {});
-                        setAddToListConfirm({ savedItemId: itemId, wishlistName: d.wishlist.name });
-                        setTimeout(() => setAddToListConfirm(null), 2000);
-                        // Instant refresh: re-fetch wishlists + saved items
-                        API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
-                        API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
+                        await addToWishlist(d.wishlist.id, d.wishlist.name);
                       }
-                      setWishlistPickerScan(null);
-                      setNewWishlistName("");
                     }).catch(() => {});
                   }
                 }}
@@ -10941,16 +10920,8 @@ export default function App() {
                   API.createWishlist(newWishlistName.trim()).then(async d => {
                     if (d?.wishlist) {
                       setWishlists(prev => [...prev, d.wishlist]);
-                      const itemId = wishlistPickerScan.id;
-                      if (itemId) await API.addToWishlist(d.wishlist.id, itemId).catch(() => {});
-                      setAddToListConfirm({ savedItemId: itemId, wishlistName: d.wishlist.name });
-                      setTimeout(() => setAddToListConfirm(null), 2000);
-                      // Instant refresh: re-fetch wishlists + saved items
-                      API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
-                      API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
+                      await addToWishlist(d.wishlist.id, d.wishlist.name);
                     }
-                    setWishlistPickerScan(null);
-                    setNewWishlistName("");
                   }).catch(() => {});
                 }}
                 style={{ padding: "12px 18px", background: newWishlistName.trim() ? "var(--accent)" : "var(--bg-input)", color: newWishlistName.trim() ? "#000" : "var(--text-tertiary)", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: newWishlistName.trim() ? "pointer" : "default", fontFamily: "var(--font-sans)", minHeight: 44, transition: "all .2s" }}
@@ -10958,7 +10929,8 @@ export default function App() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ═══ Wishlist Edit Action Sheet ═══════════════════════════ */}
       {wishlistEditOpen && wishlistEditId && (
