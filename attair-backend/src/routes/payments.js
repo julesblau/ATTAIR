@@ -19,7 +19,6 @@ function getStripe() {
 
 const getSuccessUrl = () =>
   process.env.FRONTEND_URL ||
-  process.env.CORS_ORIGINS?.split(",")[0]?.trim() ||
   "https://attair.vercel.app";
 
 /**
@@ -114,6 +113,26 @@ router.post("/webhook", async (req, res) => {
             .update({ tier: "pro", upgrade_source: "stripe_web", stripe_customer_id: session.customer })
             .eq("id", userId);
           console.log(`[Webhook] User ${userId} upgraded to pro (customer: ${session.customer})`);
+        }
+        break;
+      }
+      case "customer.subscription.updated": {
+        const sub = event.data.object;
+        const custId = sub.customer;
+        if (custId) {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("stripe_customer_id", custId)
+            .single();
+          if (prof) {
+            const newTier = ["active", "trialing"].includes(sub.status) ? "pro" : "expired";
+            await supabase
+              .from("profiles")
+              .update({ tier: newTier })
+              .eq("id", prof.id);
+            console.log(`[Webhook] User ${prof.id} subscription updated → ${newTier} (status: ${sub.status})`);
+          }
         }
         break;
       }

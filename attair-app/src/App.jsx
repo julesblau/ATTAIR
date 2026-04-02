@@ -4695,15 +4695,20 @@ export default function App() {
       // Handle post-Stripe-checkout redirect
       const params = new URLSearchParams(window.location.search);
       if (params.has("session_id") || params.has("upgrade-success")) {
-        setTimeout(async () => {
-          try {
-            const status = await API.getUserStatus();
-            setUserStatus(status);
-            setUpgradeSuccess(true);
-            setTimeout(() => setUpgradeSuccess(false), 5000);
-          } catch {}
+        (async () => {
+          let upgraded = false;
+          for (let i = 0; i < 5; i++) {
+            await new Promise(r => setTimeout(r, 1000));
+            try {
+              const status = await API.getUserStatus();
+              setUserStatus(status);
+              if (status?.tier === "pro") { upgraded = true; break; }
+            } catch {}
+          }
+          setUpgradeSuccess(true);
+          setTimeout(() => setUpgradeSuccess(false), 5000);
           window.history.replaceState({}, "", window.location.pathname);
-        }, 1500);
+        })();
       }
     }
   }, [authed]);
