@@ -4190,7 +4190,6 @@ export default function App() {
   const [feedDetailScan, setFeedDetailScan] = useState(null); // scan object for overlay
   const [feedDetailIdx, setFeedDetailIdx] = useState(-1); // index in feedScans for swipe navigation
   const [feedFilterQuery, setFeedFilterQuery] = useState(""); // "I'm looking for..." filter
-  const [feedDetailZoom, setFeedDetailZoom] = useState(1); // pinch/double-tap zoom level
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState([]);
@@ -9754,11 +9753,6 @@ export default function App() {
             }
           };
 
-          const handleImgDoubleTap = (e) => {
-            e.preventDefault();
-            setFeedDetailZoom(z => z === 1 ? 2 : 1);
-          };
-
           return (
             <div className="feed-detail-overlay"
               onTouchStart={e => {
@@ -9768,13 +9762,12 @@ export default function App() {
               onTouchEnd={e => {
                 const dy = e.currentTarget._touchY - e.changedTouches[0].clientY;
                 const dx = e.currentTarget._touchX - e.changedTouches[0].clientX;
-                if (feedDetailZoom > 1) return;
                 if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx)) { dy > 0 ? goNext() : goPrev(); }
                 else if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy)) { dx > 0 ? goNext() : goPrev(); }
               }}>
               {/* Top bar */}
               <div className="feed-detail-topbar">
-                <button className="feed-detail-close" onClick={() => { setFeedDetailScan(null); setFeedDetailIdx(-1); setFeedDetailZoom(1); }}>
+                <button className="feed-detail-close" onClick={() => { setFeedDetailScan(null); setFeedDetailIdx(-1); }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
                 {feedScans.length > 1 && (
@@ -9785,17 +9778,12 @@ export default function App() {
               <div className="feed-detail-scroll">
                 {/* Image with pinch-to-zoom and double-tap */}
                 {scan.image_url && (
-                  <div className="feed-detail-img-wrap" style={{ touchAction: feedDetailZoom > 1 ? "pan-x pan-y" : "pinch-zoom" }}>
+                  <div className="feed-detail-img-wrap" style={{ touchAction: "pan-x pan-y pinch-zoom", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
                     <img
                       className="feed-detail-img"
                       src={scan.image_url}
                       alt={scan.summary || "Outfit"}
-                      style={{ transform: `scale(${feedDetailZoom})`, transformOrigin: "center center" }}
-                      onDoubleClick={handleImgDoubleTap}
                     />
-                    {feedDetailZoom === 1 && (
-                      <div className="feed-detail-zoom-hint">Double-tap to zoom</div>
-                    )}
                   </div>
                 )}
 
@@ -11115,7 +11103,7 @@ export default function App() {
       )}
       {/* ═══ Hanger Test Fullscreen Overlay ═══ */}
       {hangerFullscreen && (
-        <div className="hanger-overlay" style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-app)", display: "flex", flexDirection: "column" }}>
+        <div className="hanger-overlay" style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-app, #0C0C0E)", display: "flex", flexDirection: "column", minHeight: "100vh", minHeight: "100dvh" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))" }}>
             <button onClick={() => setHangerFullscreen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: 4 }}>&#x2715;</button>
@@ -11139,7 +11127,7 @@ export default function App() {
           </div>
 
           {/* Card stack area */}
-          <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+          <div style={{ flex: "1 1 0%", position: "relative", overflow: "hidden", minHeight: 0 }}>
             {hangerCurrentIndex < hangerOutfits.length ? (
               <>
                 {hangerOutfits.map((outfit, idx) => {

@@ -2940,8 +2940,7 @@
 .feed-detail-close{width:36px;height:36px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px)}
 .feed-detail-counter{font-size:12px;font-weight:700;color:rgba(255,255,255,.85);background:rgba(0,0,0,.4);padding:4px 12px;border-radius:100px;backdrop-filter:blur(4px)}
 .feed-detail-img-wrap{position:relative;width:100%;max-height:55vh;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center}
-.feed-detail-img{width:100%;max-height:55vh;object-fit:contain;display:block;transition:transform .2s ease}
-.feed-detail-zoom-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.5);background:rgba(0,0,0,.3);padding:3px 10px;border-radius:100px;pointer-events:none;animation:fadeIn .3s ease}
+.feed-detail-img{width:100%;max-height:55vh;object-fit:contain;display:block}
 .feed-detail-body{padding:16px 16px 40px}
 .feed-detail-user-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .feed-detail-user{display:flex;align-items:center;gap:10px}
