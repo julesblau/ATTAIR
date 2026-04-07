@@ -9089,29 +9089,36 @@ export default function App() {
 
                     {settingsBudgetExpanded && (
                       <div style={{ padding: "0 16px 16px", animation: "slideDown .2s ease" }}>
-                        {/* Preset chips */}
-                        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-                          {[
-                            { l: t("budget_tier_under50"), min: 0, max: 50 },
-                            { l: t("budget_tier_mid"), min: 50, max: 150 },
-                            { l: t("budget_tier_high"), min: 150, max: 500 },
-                            { l: t("budget_tier_premium"), min: 500, max: 1000 },
-                          ].map(preset => {
-                            const isActive = budgetMin === preset.min && budgetMax === preset.max;
-                            return (
-                              <button key={preset.l}
-                                onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
-                                style={{
-                                  flex: 1, padding: "8px 4px", borderRadius: 20, fontSize: 10, fontWeight: 600, fontFamily: "var(--font-sans)", cursor: "pointer", transition: "all .2s", minHeight: 44,
-                                  background: isActive ? "rgba(201,169,110,.12)" : "var(--bg-input)",
-                                  border: `1px solid ${isActive ? "rgba(201,169,110,.4)" : "var(--border)"}`,
-                                  color: isActive ? "var(--accent)" : "var(--text-tertiary)",
-                                }}>
-                                {preset.l}
-                              </button>
-                            );
-                          })}
-                        </div>
+                        {/* Preset chips — dynamically split into 4 equal ranges based on max */}
+                        {(() => {
+                          const capMax = Math.max(budgetMax, 200);
+                          const step = Math.round(capMax / 4);
+                          const presets = [
+                            { min: 0, max: step },
+                            { min: step, max: step * 2 },
+                            { min: step * 2, max: step * 3 },
+                            { min: step * 3, max: capMax },
+                          ];
+                          return (
+                          <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+                            {presets.map((preset, pi) => {
+                              const isActive = budgetMin === preset.min && budgetMax === preset.max;
+                              const label = pi === 0 ? `Under $${preset.max.toLocaleString()}` : pi === 3 ? `$${preset.min.toLocaleString()}+` : `$${preset.min.toLocaleString()}–${preset.max.toLocaleString()}`;
+                              return (
+                                <button key={pi}
+                                  onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
+                                  style={{
+                                    flex: 1, padding: "8px 4px", borderRadius: 20, fontSize: 10, fontWeight: 600, fontFamily: "var(--font-sans)", cursor: "pointer", transition: "all .2s", minHeight: 44,
+                                    background: isActive ? "rgba(201,169,110,.12)" : "var(--bg-input)",
+                                    border: `1px solid ${isActive ? "rgba(201,169,110,.4)" : "var(--border)"}`,
+                                    color: isActive ? "var(--accent)" : "var(--text-tertiary)",
+                                  }}>
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>);
+                        })()}
 
                         {/* Dual-thumb range slider */}
                         {(() => { const sliderMax = Math.max(1000, Math.ceil(budgetMax / 500) * 500); return (<>
