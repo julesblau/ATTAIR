@@ -3940,6 +3940,7 @@ export default function App() {
   // ─── Price Drop Alerts ────────────────────────────────────
   const [priceAlertCount, setPriceAlertCount] = useState(0);
   const [priceAlerts, setPriceAlerts] = useState([]);
+  const [priceAlertsLoading, setPriceAlertsLoading] = useState(false);
   const [showPriceAlerts, setShowPriceAlerts] = useState(false);
 
   // ─── Wishlists ────────────────────────────────────────────
@@ -4164,8 +4165,9 @@ export default function App() {
     if (tab === "likes" && authed && history.length === 0) {
       API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
     }
-    if (tab === "likes" && authed && isPro && priceAlerts.length === 0) {
-      API.priceAlerts().then(d => setPriceAlerts(d.data || [])).catch(() => {});
+    if (tab === "likes" && authed && isPro && priceAlerts.length === 0 && !priceAlertsLoading) {
+      setPriceAlertsLoading(true);
+      API.priceAlerts().then(d => setPriceAlerts(d.data || [])).catch(() => {}).finally(() => setPriceAlertsLoading(false));
     }
     if (tab === "likes" && authed && looks.length === 0) {
       setLooksLoading(true);
@@ -8337,7 +8339,7 @@ export default function App() {
                           <div key={tierKey} style={{ marginBottom: 12 }}>
                             <div style={{ padding: "0 20px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
-                              {products.length > 2 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
+                              {products.length > 1 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
                             </div>
                             <div ref={el => { if (el && !el._loopInit && products.length > 2) { el._loopInit = true; const cardW = 162; requestAnimationFrame(() => { el.scrollLeft = products.length * cardW + 20; }); let ticking = false; el.addEventListener("scroll", () => { if (ticking) return; ticking = true; requestAnimationFrame(() => { ticking = false; const sectionW = products.length * cardW; if (el.scrollLeft < sectionW * 0.25) el.scrollLeft += sectionW; else if (el.scrollLeft > sectionW * 1.75) el.scrollLeft -= sectionW; }); }); } }} style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none", overscrollBehaviorX: "contain" }}>
                               {/* Left spacer to match page padding */}
@@ -8394,18 +8396,17 @@ export default function App() {
                                       <a href={href} target="_blank" rel="noopener noreferrer"
                                         onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback, is_dupe: !!dupeInfo }, scanId, "scan")}
                                         style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
-                                        {p.image_url && (
-                                          <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
-                                            <img src={p.image_url} alt={p.product_name || "Product image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
-                                          </div>
-                                        )}
+                                        <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                          {p.image_url && <img src={p.image_url} alt={p.product_name || "Product image"} style={{ width: "100%", height: "100%", objectFit: "cover", position: "relative", zIndex: 1 }} onError={e => { e.target.style.display = "none"; }} />}
+                                          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, opacity: 0.3, pointerEvents: "none" }}>👕</div>
+                                        </div>
                                         <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
                                           {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>ORIGINAL</span>}
                                           <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                                             {isFallback ? "Search results" : (p.product_name || "Product")}
                                           </div>
                                           <div style={{ fontSize: 10, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
-                                          <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : p.price}</div>
+                                          <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : (p.price || "Price unavailable")}</div>
                                           <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
                                         </div>
                                       </a>
@@ -10891,8 +10892,17 @@ export default function App() {
           }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)", margin: "0 auto 16px" }} />
             <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 }}>Price Drops</div>
-            {priceAlerts.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 24, color: "var(--text-tertiary)" }}>Loading alerts...</div>
+            {priceAlertsLoading ? (
+              <div style={{ textAlign: "center", padding: "32px 16px" }}>
+                <div className="ld-dots" style={{ justifyContent: "center", marginBottom: 8 }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Loading price drops...</div>
+              </div>
+            ) : priceAlerts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 24px" }}>
+                <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.4 }}>💰</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>No price drops yet</div>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>We'll notify you when saved items go on sale</div>
+              </div>
             ) : priceAlerts.map((alert, i) => (
               <div key={alert.id || i} style={{
                 display: "flex", alignItems: "center", gap: 12, padding: "12px 0",
