@@ -776,6 +776,8 @@ const StatusPill = ({ status }) => {
 
 const TierCard = ({ tier, data, scanId, itemIndex }) => {
   if (!data) return null;
+  const _lang = localStorage.getItem("attair_lang") || "en";
+  const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
   const tierCfg = { budget: { label: "Save", icon: "$", accent: "#5AC8FF" }, mid: { label: "Best value", icon: "$$", accent: "#C9A96E" }, premium: { label: "Splurge", icon: "$$$", accent: "#C77DFF" } }[tier];
   const clickId = `${scanId || "x"}_${itemIndex}_${tier}`;
   const href = data.url ? API.affiliateUrl(clickId, data.url, scanId, itemIndex, tier, data.brand) : "#";
@@ -787,16 +789,16 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: isFallback ? "var(--text-tertiary)" : tierCfg.accent, textTransform: "uppercase" }}>{tierCfg.icon} {tierCfg.label}</span>
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          {data.is_identified_brand && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(201,169,110,0.12)", color: "var(--accent)" }}>ORIGINAL</span>}
-          {data.is_resale && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(120,200,120,0.12)", color: "#7BC87B" }}>RESALE</span>}
+          {data.is_identified_brand && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(201,169,110,0.12)", color: "var(--accent)" }}>{_t("badge_original")}</span>}
+          {data.is_resale && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(120,200,120,0.12)", color: "#7BC87B" }}>{_t("badge_resale")}</span>}
           {data.is_product_page && !data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: .5, padding: "2px 6px", borderRadius: 3, background: "var(--bg-input)", color: "var(--text-tertiary)" }}>Product page</span>}
         </div>
       </div>
       {isFallback ? (
         <>
-          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, color: "var(--text-tertiary)" }}>No exact match found</div>
+          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, color: "var(--text-tertiary)" }}>{_t("no_match")}</div>
           <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{data.price}</div>
-          <div style={{ marginTop: "auto", padding: "10px 0 2px", fontSize: 12, fontWeight: 700, color: tierCfg.accent, textAlign: "center", borderTop: "1px solid var(--border)" }}>Search Google Shopping →</div>
+          <div style={{ marginTop: "auto", padding: "10px 0 2px", fontSize: 12, fontWeight: 700, color: tierCfg.accent, textAlign: "center", borderTop: "1px solid var(--border)" }}>{_t("search_google")} →</div>
         </>
       ) : (
         <>
@@ -804,7 +806,7 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
           <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>{data.brand}</div>
           <div style={{ fontSize: 18, fontWeight: 700, color: tierCfg.accent, fontFamily: "var(--font-sans)" }}>{data.price}</div>
           {data.why && <div style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.4, fontStyle: "italic" }}>{data.why}</div>}
-          <div style={{ marginTop: "auto", padding: "10px 0 2px", fontSize: 12, fontWeight: 700, color: tierCfg.accent, textAlign: "center", borderTop: "1px solid var(--border)" }}>Shop →</div>
+          <div style={{ marginTop: "auto", padding: "10px 0 2px", fontSize: 12, fontWeight: 700, color: tierCfg.accent, textAlign: "center", borderTop: "1px solid var(--border)" }}>{_t("btn_shop")} →</div>
         </>
       )}
     </a>
@@ -1192,6 +1194,55 @@ const STRINGS = {
     ob_skip: "Skip for now",
     ob_youre_offline: "You're offline",
     ob_pinch_drag: "Pinch to zoom \u00b7 Drag to position",
+    // Wave 11 — hardcoded string translations
+    tab_feed: "Feed",
+    tab_discover: "Discover",
+    tab_scan: "Scan",
+    tab_profile: "Profile",
+    btn_take_photo: "Take Photo",
+    btn_gallery: "Choose from Gallery",
+    btn_shop: "Shop",
+    btn_share: "Share",
+    btn_follow: "Follow",
+    btn_following: "Following",
+    feed_for_you: "For You",
+    feed_following: "Following",
+    feed_trending: "Trending",
+    scan_identifying: "Identifying outfit",
+    scan_what_shop: "What do you want to shop?",
+    scan_tap_items: "Tap items on the image or below",
+    scan_budget: "Budget",
+    scan_err_connection: "Connection issue",
+    scan_err_limit: "Scan limit reached",
+    scan_err_failed: "Scan didn't work",
+    scan_err_no_clothing: "No clothing detected",
+    scan_tip_visible: "Make sure the outfit is clearly visible",
+    scan_tip_lit: "Try a well-lit, head-to-toe photo",
+    scan_try_another: "Try another photo",
+    badge_original: "ORIGINAL",
+    badge_resale: "RESALE",
+    no_match: "No exact match found",
+    search_google: "Search Google Shopping",
+    price_unavailable: "Price unavailable",
+    swipe_hint: "Swipe",
+    shop_this_look: "Shop this look",
+    hanger_check: "Hanger Check",
+    hanger_history: "History",
+    hanger_wear: "WEAR",
+    hanger_pass: "PASS",
+    hanger_your_taste: "Your Taste",
+    hanger_view_taste: "View Taste Profile",
+    hanger_find_similar: "Find Similar Items",
+    hanger_next_batch: "Next batch at midnight",
+    hanger_verdicts: "My Verdicts",
+    hanger_taste_profile: "Your Taste Profile",
+    settings_appearance: "APPEARANCE",
+    settings_preferences: "PREFERENCES",
+    settings_account: "ACCOUNT",
+    settings_support: "SUPPORT",
+    no_bio: "No bio yet",
+    mark_all_read: "Mark all read",
+    price_drops: "Price Drops",
   },
   es: {
     home: "Inicio",
@@ -1399,6 +1450,54 @@ const STRINGS = {
     ob_skip: "Omitir por ahora",
     ob_youre_offline: "Sin conexión",
     ob_pinch_drag: "Pellizca para zoom \u00b7 Arrastra para posicionar",
+    tab_feed: "Inicio",
+    tab_discover: "Descubrir",
+    tab_scan: "Escanear",
+    tab_profile: "Perfil",
+    btn_take_photo: "Tomar foto",
+    btn_gallery: "Elegir de galería",
+    btn_shop: "Comprar",
+    btn_share: "Compartir",
+    btn_follow: "Seguir",
+    btn_following: "Siguiendo",
+    feed_for_you: "Para ti",
+    feed_following: "Siguiendo",
+    feed_trending: "Tendencias",
+    scan_identifying: "Identificando atuendo",
+    scan_what_shop: "¿Qué quieres comprar?",
+    scan_tap_items: "Toca los artículos en la imagen o abajo",
+    scan_budget: "Presupuesto",
+    scan_err_connection: "Problema de conexión",
+    scan_err_limit: "Límite de escaneos alcanzado",
+    scan_err_failed: "El escaneo no funcionó",
+    scan_err_no_clothing: "No se detectó ropa",
+    scan_tip_visible: "Asegúrate de que el atuendo sea visible",
+    scan_tip_lit: "Prueba una foto bien iluminada de cuerpo entero",
+    scan_try_another: "Prueba otra foto",
+    badge_original: "ORIGINAL",
+    badge_resale: "REVENTA",
+    no_match: "No se encontró coincidencia",
+    search_google: "Buscar en Google Shopping",
+    price_unavailable: "Precio no disponible",
+    swipe_hint: "Desliza",
+    shop_this_look: "Compra este look",
+    hanger_check: "Prueba del perchero",
+    hanger_history: "Historial",
+    hanger_wear: "USAR",
+    hanger_pass: "PASAR",
+    hanger_your_taste: "Tu gusto",
+    hanger_view_taste: "Ver perfil de gusto",
+    hanger_find_similar: "Buscar artículos similares",
+    hanger_next_batch: "Próxima tanda a medianoche",
+    hanger_verdicts: "Mis veredictos",
+    hanger_taste_profile: "Tu perfil de gusto",
+    settings_appearance: "APARIENCIA",
+    settings_preferences: "PREFERENCIAS",
+    settings_account: "CUENTA",
+    settings_support: "SOPORTE",
+    no_bio: "Sin biografía aún",
+    mark_all_read: "Marcar todo leído",
+    price_drops: "Bajadas de precio",
   },
   fr: {
     home: "Accueil",
@@ -1606,6 +1705,54 @@ const STRINGS = {
     ob_skip: "Passer pour le moment",
     ob_youre_offline: "Hors ligne",
     ob_pinch_drag: "Pincez pour zoomer \u00b7 Glissez pour positionner",
+    tab_feed: "Fil",
+    tab_discover: "Découvrir",
+    tab_scan: "Scanner",
+    tab_profile: "Profil",
+    btn_take_photo: "Prendre une photo",
+    btn_gallery: "Choisir dans la galerie",
+    btn_shop: "Acheter",
+    btn_share: "Partager",
+    btn_follow: "Suivre",
+    btn_following: "Suivi",
+    feed_for_you: "Pour toi",
+    feed_following: "Abonnements",
+    feed_trending: "Tendances",
+    scan_identifying: "Identification en cours",
+    scan_what_shop: "Que voulez-vous acheter ?",
+    scan_tap_items: "Touchez les articles sur l'image",
+    scan_budget: "Budget",
+    scan_err_connection: "Problème de connexion",
+    scan_err_limit: "Limite de scans atteinte",
+    scan_err_failed: "Le scan n'a pas fonctionné",
+    scan_err_no_clothing: "Aucun vêtement détecté",
+    scan_tip_visible: "Assurez-vous que la tenue est visible",
+    scan_tip_lit: "Essayez une photo bien éclairée en pied",
+    scan_try_another: "Essayez une autre photo",
+    badge_original: "ORIGINAL",
+    badge_resale: "REVENTE",
+    no_match: "Aucune correspondance trouvée",
+    search_google: "Chercher sur Google Shopping",
+    price_unavailable: "Prix indisponible",
+    swipe_hint: "Balayez",
+    shop_this_look: "Acheter ce look",
+    hanger_check: "Test du cintre",
+    hanger_history: "Historique",
+    hanger_wear: "PORTER",
+    hanger_pass: "PASSER",
+    hanger_your_taste: "Vos goûts",
+    hanger_view_taste: "Voir le profil",
+    hanger_find_similar: "Trouver des articles similaires",
+    hanger_next_batch: "Prochain lot à minuit",
+    hanger_verdicts: "Mes verdicts",
+    hanger_taste_profile: "Votre profil de goût",
+    settings_appearance: "APPARENCE",
+    settings_preferences: "PRÉFÉRENCES",
+    settings_account: "COMPTE",
+    settings_support: "SUPPORT",
+    no_bio: "Pas encore de bio",
+    mark_all_read: "Tout marquer comme lu",
+    price_drops: "Baisses de prix",
   },
   de: {
     home: "Start",
@@ -1813,6 +1960,54 @@ const STRINGS = {
     ob_skip: "Erstmal überspringen",
     ob_youre_offline: "Du bist offline",
     ob_pinch_drag: "Zum Zoomen zusammenziehen \u00b7 Zum Positionieren ziehen",
+    tab_feed: "Feed",
+    tab_discover: "Entdecken",
+    tab_scan: "Scannen",
+    tab_profile: "Profil",
+    btn_take_photo: "Foto aufnehmen",
+    btn_gallery: "Aus Galerie wählen",
+    btn_shop: "Kaufen",
+    btn_share: "Teilen",
+    btn_follow: "Folgen",
+    btn_following: "Folge ich",
+    feed_for_you: "Für dich",
+    feed_following: "Folge ich",
+    feed_trending: "Trends",
+    scan_identifying: "Outfit wird erkannt",
+    scan_what_shop: "Was möchtest du kaufen?",
+    scan_tap_items: "Tippe auf die Artikel im Bild",
+    scan_budget: "Budget",
+    scan_err_connection: "Verbindungsproblem",
+    scan_err_limit: "Scan-Limit erreicht",
+    scan_err_failed: "Scan hat nicht funktioniert",
+    scan_err_no_clothing: "Keine Kleidung erkannt",
+    scan_tip_visible: "Stelle sicher, dass das Outfit sichtbar ist",
+    scan_tip_lit: "Versuche ein gut beleuchtetes Ganzkörperfoto",
+    scan_try_another: "Versuche ein anderes Foto",
+    badge_original: "ORIGINAL",
+    badge_resale: "GEBRAUCHT",
+    no_match: "Keine genaue Übereinstimmung",
+    search_google: "Bei Google Shopping suchen",
+    price_unavailable: "Preis nicht verfügbar",
+    swipe_hint: "Wischen",
+    shop_this_look: "Diesen Look kaufen",
+    hanger_check: "Kleiderbügel-Check",
+    hanger_history: "Verlauf",
+    hanger_wear: "TRAGEN",
+    hanger_pass: "PASSEN",
+    hanger_your_taste: "Dein Geschmack",
+    hanger_view_taste: "Geschmacksprofil anzeigen",
+    hanger_find_similar: "Ähnliche Artikel finden",
+    hanger_next_batch: "Nächste Runde um Mitternacht",
+    hanger_verdicts: "Meine Urteile",
+    hanger_taste_profile: "Dein Geschmacksprofil",
+    settings_appearance: "DARSTELLUNG",
+    settings_preferences: "EINSTELLUNGEN",
+    settings_account: "KONTO",
+    settings_support: "HILFE",
+    no_bio: "Noch keine Bio",
+    mark_all_read: "Alle als gelesen markieren",
+    price_drops: "Preissenkungen",
   },
   zh: {
     home: "首页",
@@ -2020,6 +2215,54 @@ const STRINGS = {
     ob_skip: "暂时跳过",
     ob_youre_offline: "你已离线",
     ob_pinch_drag: "双指缩放 \u00b7 拖动定位",
+    tab_feed: "动态",
+    tab_discover: "发现",
+    tab_scan: "扫描",
+    tab_profile: "个人",
+    btn_take_photo: "拍照",
+    btn_gallery: "从相册选择",
+    btn_shop: "购买",
+    btn_share: "分享",
+    btn_follow: "关注",
+    btn_following: "已关注",
+    feed_for_you: "推荐",
+    feed_following: "关注",
+    feed_trending: "热门",
+    scan_identifying: "正在识别穿搭",
+    scan_what_shop: "你想买什么？",
+    scan_tap_items: "点击图片上的单品",
+    scan_budget: "预算",
+    scan_err_connection: "连接问题",
+    scan_err_limit: "扫描次数已达上限",
+    scan_err_failed: "扫描失败",
+    scan_err_no_clothing: "未检测到衣物",
+    scan_tip_visible: "确保穿搭清晰可见",
+    scan_tip_lit: "试试光线充足的全身照",
+    scan_try_another: "试试另一张照片",
+    badge_original: "正品",
+    badge_resale: "二手",
+    no_match: "未找到精确匹配",
+    search_google: "在Google购物搜索",
+    price_unavailable: "价格暂无",
+    swipe_hint: "滑动",
+    shop_this_look: "购买此穿搭",
+    hanger_check: "衣架测试",
+    hanger_history: "历史",
+    hanger_wear: "穿",
+    hanger_pass: "不穿",
+    hanger_your_taste: "你的品味",
+    hanger_view_taste: "查看品味档案",
+    hanger_find_similar: "查找相似单品",
+    hanger_next_batch: "下一批在午夜",
+    hanger_verdicts: "我的评价",
+    hanger_taste_profile: "你的品味档案",
+    settings_appearance: "外观",
+    settings_preferences: "偏好",
+    settings_account: "账户",
+    settings_support: "支持",
+    no_bio: "暂无简介",
+    mark_all_read: "全部标为已读",
+    price_drops: "降价",
   },
   ja: {
     home: "ホーム",
@@ -2227,6 +2470,54 @@ const STRINGS = {
     ob_skip: "今はスキップ",
     ob_youre_offline: "オフラインです",
     ob_pinch_drag: "ピンチでズーム \u00b7 ドラッグで移動",
+    tab_feed: "フィード",
+    tab_discover: "発見",
+    tab_scan: "スキャン",
+    tab_profile: "プロフィール",
+    btn_take_photo: "写真を撮る",
+    btn_gallery: "ギャラリーから選択",
+    btn_shop: "ショップ",
+    btn_share: "シェア",
+    btn_follow: "フォロー",
+    btn_following: "フォロー中",
+    feed_for_you: "おすすめ",
+    feed_following: "フォロー中",
+    feed_trending: "トレンド",
+    scan_identifying: "コーデを分析中",
+    scan_what_shop: "何をお探しですか？",
+    scan_tap_items: "画像のアイテムをタップ",
+    scan_budget: "予算",
+    scan_err_connection: "接続の問題",
+    scan_err_limit: "スキャン上限に達しました",
+    scan_err_failed: "スキャンに失敗しました",
+    scan_err_no_clothing: "衣類が見つかりません",
+    scan_tip_visible: "服装がはっきり見えるようにしてください",
+    scan_tip_lit: "明るい場所で全身写真を撮ってみてください",
+    scan_try_another: "別の写真を試してください",
+    badge_original: "オリジナル",
+    badge_resale: "リセール",
+    no_match: "一致するものが見つかりません",
+    search_google: "Google ショッピングで検索",
+    price_unavailable: "価格なし",
+    swipe_hint: "スワイプ",
+    shop_this_look: "このコーデを購入",
+    hanger_check: "ハンガーチェック",
+    hanger_history: "履歴",
+    hanger_wear: "着る",
+    hanger_pass: "パス",
+    hanger_your_taste: "あなたの好み",
+    hanger_view_taste: "テイストプロフィールを見る",
+    hanger_find_similar: "似たアイテムを探す",
+    hanger_next_batch: "次のバッチは深夜0時",
+    hanger_verdicts: "マイ評価",
+    hanger_taste_profile: "あなたのテイストプロフィール",
+    settings_appearance: "外観",
+    settings_preferences: "設定",
+    settings_account: "アカウント",
+    settings_support: "サポート",
+    no_bio: "自己紹介未設定",
+    mark_all_read: "すべて既読にする",
+    price_drops: "値下げ",
   },
   ko: {
     home: "홈",
@@ -2434,6 +2725,54 @@ const STRINGS = {
     ob_skip: "나중에 하기",
     ob_youre_offline: "오프라인 상태",
     ob_pinch_drag: "핀치로 확대 \u00b7 드래그로 위치 조정",
+    tab_feed: "피드",
+    tab_discover: "탐색",
+    tab_scan: "스캔",
+    tab_profile: "프로필",
+    btn_take_photo: "사진 촬영",
+    btn_gallery: "갤러리에서 선택",
+    btn_shop: "쇼핑",
+    btn_share: "공유",
+    btn_follow: "팔로우",
+    btn_following: "팔로잉",
+    feed_for_you: "추천",
+    feed_following: "팔로잉",
+    feed_trending: "트렌딩",
+    scan_identifying: "의상 분석 중",
+    scan_what_shop: "무엇을 쇼핑하시겠어요?",
+    scan_tap_items: "이미지에서 아이템을 탭하세요",
+    scan_budget: "예산",
+    scan_err_connection: "연결 문제",
+    scan_err_limit: "스캔 한도 도달",
+    scan_err_failed: "스캔이 작동하지 않았습니다",
+    scan_err_no_clothing: "의류가 감지되지 않았습니다",
+    scan_tip_visible: "의상이 잘 보이게 해주세요",
+    scan_tip_lit: "밝은 곳에서 전신 사진을 찍어보세요",
+    scan_try_another: "다른 사진을 시도해보세요",
+    badge_original: "정품",
+    badge_resale: "리셀",
+    no_match: "정확한 일치 항목 없음",
+    search_google: "Google 쇼핑에서 검색",
+    price_unavailable: "가격 미정",
+    swipe_hint: "스와이프",
+    shop_this_look: "이 룩 쇼핑하기",
+    hanger_check: "행거 체크",
+    hanger_history: "기록",
+    hanger_wear: "입기",
+    hanger_pass: "패스",
+    hanger_your_taste: "당신의 취향",
+    hanger_view_taste: "취향 프로필 보기",
+    hanger_find_similar: "비슷한 아이템 찾기",
+    hanger_next_batch: "다음 배치는 자정에",
+    hanger_verdicts: "내 판정",
+    hanger_taste_profile: "당신의 취향 프로필",
+    settings_appearance: "외관",
+    settings_preferences: "환경설정",
+    settings_account: "계정",
+    settings_support: "지원",
+    no_bio: "아직 소개글이 없습니다",
+    mark_all_read: "모두 읽음 처리",
+    price_drops: "가격 하락",
   },
   pt: {
     home: "Inicio",
@@ -2641,6 +2980,54 @@ const STRINGS = {
     ob_skip: "Pular por enquanto",
     ob_youre_offline: "Você está offline",
     ob_pinch_drag: "Aperte para zoom \u00b7 Arraste para posicionar",
+    tab_feed: "Feed",
+    tab_discover: "Descobrir",
+    tab_scan: "Digitalizar",
+    tab_profile: "Perfil",
+    btn_take_photo: "Tirar foto",
+    btn_gallery: "Escolher da galeria",
+    btn_shop: "Comprar",
+    btn_share: "Compartilhar",
+    btn_follow: "Seguir",
+    btn_following: "Seguindo",
+    feed_for_you: "Para você",
+    feed_following: "Seguindo",
+    feed_trending: "Tendências",
+    scan_identifying: "Identificando look",
+    scan_what_shop: "O que você quer comprar?",
+    scan_tap_items: "Toque nos itens na imagem",
+    scan_budget: "Orçamento",
+    scan_err_connection: "Problema de conexão",
+    scan_err_limit: "Limite de scans atingido",
+    scan_err_failed: "O scan não funcionou",
+    scan_err_no_clothing: "Nenhuma roupa detectada",
+    scan_tip_visible: "Certifique-se de que o look esteja visível",
+    scan_tip_lit: "Tente uma foto bem iluminada de corpo inteiro",
+    scan_try_another: "Tente outra foto",
+    badge_original: "ORIGINAL",
+    badge_resale: "REVENDA",
+    no_match: "Nenhuma correspondência encontrada",
+    search_google: "Buscar no Google Shopping",
+    price_unavailable: "Preço indisponível",
+    swipe_hint: "Deslize",
+    shop_this_look: "Compre este look",
+    hanger_check: "Teste do cabide",
+    hanger_history: "Histórico",
+    hanger_wear: "USAR",
+    hanger_pass: "PASSAR",
+    hanger_your_taste: "Seu gosto",
+    hanger_view_taste: "Ver perfil de gosto",
+    hanger_find_similar: "Encontrar itens similares",
+    hanger_next_batch: "Próximo lote à meia-noite",
+    hanger_verdicts: "Meus vereditos",
+    hanger_taste_profile: "Seu perfil de gosto",
+    settings_appearance: "APARÊNCIA",
+    settings_preferences: "PREFERÊNCIAS",
+    settings_account: "CONTA",
+    settings_support: "SUPORTE",
+    no_bio: "Sem bio ainda",
+    mark_all_read: "Marcar tudo como lido",
+    price_drops: "Quedas de preço",
   },
 };
 
@@ -5986,7 +6373,7 @@ export default function App() {
                     </span>
                     {dupeResults.dupes.length > 1 && (
                       <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>
-                        {dupeSlide + 1}/{dupeResults.dupes.length} · Swipe →
+                        {dupeSlide + 1}/{dupeResults.dupes.length} · {t("swipe_hint")} →
                       </span>
                     )}
                   </div>
@@ -6421,7 +6808,7 @@ export default function App() {
               className={`user-search-follow-btn ${followingSet.has(styleTwinCompare.id) ? "following" : "follow"}`}
               onClick={() => handleFollowFromSearch(styleTwinCompare.id)}
               style={{ width: "100%", minHeight: 48, fontSize: 15, borderRadius: 12, fontWeight: 600, marginTop: 8 }}
-            >{followingSet.has(styleTwinCompare.id) ? "Following" : "Follow Your Style Twin"}</button>
+            >{followingSet.has(styleTwinCompare.id) ? t("btn_following") : t("btn_follow")}</button>
           </div>
         </>
       )}
@@ -6464,7 +6851,7 @@ export default function App() {
                       setNotifications(prev => prev.map(n => ({...n, read_at: new Date().toISOString()})));
                       showToast("All caught up!", "info");
                     }).catch(() => showToast("Couldn't mark as read", "error"));
-                  }} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "4px 8px" }}>Mark all read</button>
+                  }} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "4px 8px" }}>{t("mark_all_read")}</button>
                 )}
                 <button onClick={() => setShowNotifPanel(false)} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>x</button>
               </div>
@@ -6616,7 +7003,7 @@ export default function App() {
                       <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2C12 2 8 6 8 10C8 14 12 16 12 16C12 16 16 14 16 10C16 6 12 2 12 2Z"/><path d="M8 16L4 20M16 16L20 20"/></svg>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", letterSpacing: 1.2, textTransform: "uppercase" }}>Hanger Check</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", letterSpacing: 1.2, textTransform: "uppercase" }}>{t("hanger_check")}</span>
                     </div>
                     {hangerStreak && hangerStreak.current_streak > 0 && (
                       <div style={{ position: "absolute", top: 10, right: 12, fontSize: 12, fontWeight: 700, color: "#FFB74D", display: "flex", alignItems: "center", gap: 3, zIndex: 5 }}>
@@ -6799,7 +7186,7 @@ export default function App() {
                             <div className="feed-suggested-name">{acct.name}</div>
                             <div className="feed-suggested-meta">{acct.desc}</div>
                           </div>
-                          <button className="feed-suggested-follow-btn" onClick={(e) => { e.stopPropagation(); API.searchUsers(acct.name).then(r => { const user = (r.users || []).find(u => u.display_name === acct.name); if (user) API.followUser(user.id).then(() => { e.target.textContent = "Following"; e.target.style.opacity = "0.5"; }); }); }}>Follow</button>
+                          <button className="feed-suggested-follow-btn" onClick={(e) => { e.stopPropagation(); API.searchUsers(acct.name).then(r => { const user = (r.users || []).find(u => u.display_name === acct.name); if (user) API.followUser(user.id).then(() => { e.target.textContent = t("btn_following"); e.target.style.opacity = "0.5"; }); }); }}>{t("btn_follow")}</button>
                         </div>
                       ))}
                     </div>
@@ -7018,7 +7405,7 @@ export default function App() {
                                 className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
                                 onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(usr.id); }}
                                 style={{ width: "100%", minHeight: 36, fontSize: 12, borderRadius: 8 }}
-                              >{isFlw ? "Following" : "Follow"}</button>
+                              >{isFlw ? t("btn_following") : t("btn_follow")}</button>
                             </div>
                           );
                         })}
@@ -7039,7 +7426,7 @@ export default function App() {
                         <button
                           className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
                           onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(usr.id); }}
-                        >{isFlw ? "Following" : "Follow"}</button>
+                        >{isFlw ? t("btn_following") : t("btn_follow")}</button>
                       </div>
                     );
                   })}
@@ -7279,7 +7666,7 @@ export default function App() {
                                 className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
                                 onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(top.id); }}
                                 style={{ flex: 1, minHeight: 40, fontSize: 13, borderRadius: 10, fontWeight: 600 }}
-                              >{isFlw ? "Following" : "Follow Twin"}</button>
+                              >{isFlw ? t("btn_following") : t("btn_follow")}</button>
                               <button
                                 className="btn-ghost"
                                 onClick={(e) => { e.stopPropagation(); setStyleTwinCompare(top); }}
@@ -7339,7 +7726,7 @@ export default function App() {
                                   className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`}
                                   onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(twin.id); }}
                                   style={{ width: "100%", minHeight: 34, fontSize: 12, borderRadius: 8 }}
-                                >{isFlw ? "Following" : "Follow"}</button>
+                                >{isFlw ? t("btn_following") : t("btn_follow")}</button>
                               </div>
                             );
                           })}
@@ -7380,11 +7767,11 @@ export default function App() {
               <div style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12 }}>
                 <button className="btn-primary" onClick={async () => { if (!(await nativePhotoToFile(takeNativePhoto))) fileRef.current?.click(); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
-                  Take Photo
+                  {t("btn_take_photo")}
                 </button>
                 <button className="btn-secondary" onClick={async () => { if (!(await nativePhotoToFile(pickNativePhoto))) galleryRef.current?.click(); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  Choose from Gallery
+                  {t("btn_gallery")}
                 </button>
               </div>
             </div>
@@ -7416,7 +7803,7 @@ export default function App() {
 
                 {/* Animated status text */}
                 <div style={{ textAlign: "center" }}>
-                  <div className="identify-shimmer" style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 10 }}>Identifying outfit</div>
+                  <div className="identify-shimmer" style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 10 }}>{t("scan_identifying")}</div>
                   <div className="serif" style={{ fontSize: 18, color: "var(--text-primary)", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0, minHeight: 28 }}>{SCAN_MESSAGES[loadMsgIdx]}</div>
                 </div>
 
@@ -7448,15 +7835,15 @@ export default function App() {
                   {error.includes("internet") || error.includes("server") ? "📡" : error.includes("scan") && error.includes("limit") ? "🔒" : "🔍"}
                 </div>
                 <div className="scan-error-title">
-                  {error.includes("internet") || error.includes("server") ? "Connection issue" : error.includes("scan") && error.includes("limit") ? "Scan limit reached" : "Scan didn't work"}
+                  {error.includes("internet") || error.includes("server") ? t("scan_err_connection") : error.includes("scan") && error.includes("limit") ? t("scan_err_limit") : t("scan_err_failed")}
                 </div>
                 <div className="scan-error-msg">{error}</div>
                 <div className="scan-error-tips">
-                  <div className="scan-error-tip">Make sure the outfit is clearly visible</div>
-                  <div className="scan-error-tip">Try a well-lit, head-to-toe photo</div>
+                  <div className="scan-error-tip">{t("scan_tip_visible")}</div>
+                  <div className="scan-error-tip">{t("scan_tip_lit")}</div>
                   <div className="scan-error-tip">Screenshots from social media work great</div>
                 </div>
-                <button className="btn-primary" style={{width:"100%",marginTop:16}} onClick={reset}>Try another photo</button>
+                <button className="btn-primary" style={{width:"100%",marginTop:16}} onClick={reset}>{t("scan_try_another")}</button>
               </div>
             </div>
           )}
@@ -7467,14 +7854,14 @@ export default function App() {
               {img && <img src={img} style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)",borderRadius:16,marginBottom:16}} alt="" />}
               <div className="scan-error-state">
                 <div className="scan-error-icon">👀</div>
-                <div className="scan-error-title">No clothing detected</div>
+                <div className="scan-error-title">{t("scan_err_no_clothing")}</div>
                 <div className="scan-error-msg">Our AI couldn't identify any clothing items in this photo. This usually means the image doesn't contain a clear outfit.</div>
                 <div className="scan-error-tips">
                   <div className="scan-error-tip">Upload a photo with visible clothing</div>
                   <div className="scan-error-tip">Close-ups of single items work too</div>
                   <div className="scan-error-tip">Avoid photos that are mostly scenery</div>
                 </div>
-                <button className="btn-primary" style={{width:"100%",marginTop:16}} onClick={reset}>Try another photo</button>
+                <button className="btn-primary" style={{width:"100%",marginTop:16}} onClick={reset}>{t("scan_try_another")}</button>
               </div>
             </div>
           )}
@@ -7515,14 +7902,14 @@ export default function App() {
 
               {/* Prompt */}
               <div style={{ padding: "16px 20px 6px", textAlign: "center" }}>
-                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 22, color: "var(--text-primary)", marginBottom: 6 }}>What do you want to shop?</div>
-                <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>Tap items on the image or below</div>
+                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 22, color: "var(--text-primary)", marginBottom: 6 }}>{t("scan_what_shop")}</div>
+                <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>{t("scan_tap_items")}</div>
               </div>
 
               {/* Global budget — preset chips + dual-thumb slider */}
               <div style={{ padding: "12px 20px 4px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Budget</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>{t("scan_budget")}</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)" }}>
                     {`$${budgetMin} – ${budgetMax >= 500 ? "$500+" : `$${budgetMax}`}`}
                   </span>
@@ -8060,7 +8447,7 @@ export default function App() {
                       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>{s.name}</div>
                       <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{s.tagline}</div>
                     </div>
-                    <div style={{ fontSize: 9, color: "var(--accent)", fontWeight: 700, letterSpacing: .3, flexShrink: 0 }}>Shop</div>
+                    <div style={{ fontSize: 9, color: "var(--accent)", fontWeight: 700, letterSpacing: .3, flexShrink: 0 }}>{t("btn_shop")}</div>
                   </div>
                 </a>
               ); })()}
@@ -8121,7 +8508,7 @@ export default function App() {
                                 <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod?.product_name || p.name || "Item"}</div>
                                 {(prod?.brand || p.brand) && <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{prod?.brand || p.brand}</div>}
                                 {(prod?.price || p.price) && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", marginTop: 2 }}>{prod?.price || p.price}</div>}
-                                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>{t("btn_shop")}</div>
                               </div>
                             </a>
                           );
@@ -8532,13 +8919,13 @@ export default function App() {
                                           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, opacity: 0.3, pointerEvents: "none" }}>👕</div>
                                         </div>
                                         <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
-                                          {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>ORIGINAL</span>}
+                                          {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>{t("badge_original")}</span>}
                                           <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                                             {isFallback ? "Search results" : (p.product_name || "Product")}
                                           </div>
                                           <div style={{ fontSize: 10, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
-                                          <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : (p.price || "Price unavailable")}</div>
-                                          <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>Shop</div>
+                                          <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : (p.price || t("price_unavailable"))}</div>
+                                          <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>{t("btn_shop")}</div>
                                         </div>
                                       </a>
                                       {/* Find Similar Look button — only on products $150+ */}
@@ -9139,7 +9526,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 4, lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                    {profileBio || <span style={{ fontStyle: "italic", color: "var(--text-tertiary)" }}>No bio yet</span>}
+                    {profileBio || <span style={{ fontStyle: "italic", color: "var(--text-tertiary)" }}>{t("no_bio")}</span>}
                   </div>
                 )}
                 {/* Edit Profile button */}
@@ -9206,7 +9593,7 @@ export default function App() {
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8
                 }}>
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2C12 2 8 6 8 10C8 14 12 16 12 16C12 16 16 14 16 10C16 6 12 2 12 2Z"/><path d="M8 16L4 20M16 16L20 20"/></svg>
-                  Hanger Check {hangerStreak?.current_streak > 0 ? `\u00B7 ${hangerStreak.current_streak} day streak \uD83D\uDD25` : "\u00B7 Daily Outfit Verdict"}
+                  {t("hanger_check")} {hangerStreak?.current_streak > 0 ? `\u00B7 ${hangerStreak.current_streak} ${t("streak")}` : "\u00B7 Daily Outfit Verdict"}
                 </button>
               </div>
 
@@ -9330,7 +9717,7 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>APPEARANCE</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>{t("settings_appearance")}</div>
                   {/* Theme toggle */}
                   <div className="settings-sheet-item card-press" onClick={toggleTheme} role="button" aria-label="Toggle theme">
                     <span className="settings-label">{t("appearance")}</span>
@@ -9353,7 +9740,7 @@ export default function App() {
                   </div>
 
                   <div style={{ height: 1, background: "var(--border)", margin: "8px 0", opacity: 0.5 }} />
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>PREFERENCES</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>{t("settings_preferences")}</div>
                   {/* Budget Range — tappable row toggles inline expansion */}
                   <div className="settings-budget-section">
                     <div className="settings-sheet-item" style={{ cursor: "pointer" }} onClick={() => {
@@ -9520,7 +9907,7 @@ export default function App() {
                   </div>
 
                   <div style={{ height: 1, background: "var(--border)", margin: "8px 0", opacity: 0.5 }} />
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>ACCOUNT</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>{t("settings_account")}</div>
                   {/* Subscription */}
                   <div className="settings-sheet-item" style={{ cursor: "default" }}>
                     <span className="settings-label">{t("subscription")}</span>
@@ -9575,7 +9962,7 @@ export default function App() {
                   </div>
 
                   <div style={{ height: 1, background: "var(--border)", margin: "8px 0", opacity: 0.5 }} />
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>SUPPORT</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>{t("settings_support")}</div>
                   {/* Referral */}
                   {referralCode && (
                     <div style={{ padding: "14px 0", borderTop: "1px solid var(--border)" }}>
@@ -9940,7 +10327,7 @@ export default function App() {
                       {usr.bio && <div className="user-search-bio">{usr.bio}</div>}
                       <div className="user-search-followers">{usr.follower_count || 0} follower{(usr.follower_count || 0) !== 1 ? "s" : ""}</div>
                     </div>
-                    <button className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`} onClick={() => handleFollowFromSearch(usr.id)}>{isFlw ? "Following" : "Follow"}</button>
+                    <button className={`user-search-follow-btn ${isFlw ? "following" : "follow"}`} onClick={() => handleFollowFromSearch(usr.id)}>{isFlw ? t("btn_following") : t("btn_follow")}</button>
                   </div>
                 );
               })}
@@ -10216,12 +10603,12 @@ export default function App() {
                   </button>
                   <button className="reel-action" onClick={(e) => { e.stopPropagation(); if (navigator.share) navigator.share({ title: scan.summary || "Check out this outfit on ATTAIRE", url: `${window.location.origin}/scan/${scan.id}` }).catch(() => {}); else { navigator.clipboard.writeText(`${window.location.origin}/scan/${scan.id}`); showToast("Link copied!", "success"); } }}>
                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                    <span className="reel-action-label">Share</span>
+                    <span className="reel-action-label">{t("btn_share")}</span>
                   </button>
                   {items.length > 0 && (
                     <button className="reel-action" onClick={(e) => { e.stopPropagation(); const el = e.currentTarget.closest(".reel-slide").querySelector(".reel-items"); if (el) el.classList.toggle("open"); }}>
                       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                      <span className="reel-action-label">Shop</span>
+                      <span className="reel-action-label">{t("btn_shop")}</span>
                     </button>
                   )}
                 </div>
@@ -10233,7 +10620,7 @@ export default function App() {
                     <span className="reel-username">{u.display_name || "Anonymous"}</span>
                     {u.id && u.id !== authUserId && (
                       <button className={`reel-follow${isFlw ? " following" : ""}`} onClick={(e) => { e.stopPropagation(); handleFollowFromSearch(u.id); }}>
-                        {isFlw ? "Following" : "Follow"}
+                        {isFlw ? t("btn_following") : t("btn_follow")}
                       </button>
                     )}
                   </div>
@@ -10245,7 +10632,7 @@ export default function App() {
                 {items.length > 0 && (
                   <div className="reel-items">
                     <div className="reel-items-handle" onClick={(e) => { e.stopPropagation(); e.currentTarget.closest(".reel-items").classList.remove("open"); }} />
-                    <div className="reel-items-title">Shop this look</div>
+                    <div className="reel-items-title">{t("shop_this_look")}</div>
                     <div className="reel-items-list">
                       {items.map((item, i) => (
                         <button key={i} className="reel-item-chip" onClick={(e) => { e.stopPropagation(); window.open(`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(q0(item))}`, "_blank"); }}>
@@ -10309,17 +10696,17 @@ export default function App() {
         <div className="tb">
           <button className={`tab${tab==="home"?" on":""}`} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); setFeedTab("foryou"); setFeedPage(1); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Feed">
             <svg viewBox="0 0 24 24" fill={tab==="home"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
-            <span className="tab-l">Feed</span>
+            <span className="tab-l">{t("tab_feed")}</span>
           </button>
           <button className={`tab${tab==="search"?" on":""}`} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Discover">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-            <span className="tab-l">Discover</span>
+            <span className="tab-l">{t("tab_discover")}</span>
           </button>
           <button className="tab-scan" onClick={() => { track("tab_switched", { tab: "scan" }); if (tab === "scan" && phase !== "idle") { reset(); if (fileRef.current) fileRef.current.value = ""; if (galleryRef.current) galleryRef.current.value = ""; } setTab("scan"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Scan outfit">
             <div className="tab-scan-icon">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </div>
-            <span className="tab-l">Scan</span>
+            <span className="tab-l">{t("tab_scan")}</span>
           </button>
           <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Wardrobe">
             <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -10330,7 +10717,7 @@ export default function App() {
           </button>
           <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("social"); return; } track("tab_switched", { tab: "profile" }); setTab("profile"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Profile">
             <svg viewBox="0 0 24 24" fill={tab==="profile"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
-            <span className="tab-l">Profile</span>
+            <span className="tab-l">{t("tab_profile")}</span>
           </button>
         </div>
       </>)}
@@ -11034,7 +11421,7 @@ export default function App() {
             animation: "slideIn .3s var(--ease-spring) forwards"
           }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border)", margin: "0 auto 16px" }} />
-            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 }}>Price Drops</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 }}>{t("price_drops")}</div>
             {priceAlertsLoading ? (
               <div style={{ textAlign: "center", padding: "32px 16px" }}>
                 <div className="ld-dots" style={{ justifyContent: "center", marginBottom: 8 }}><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
@@ -11579,10 +11966,10 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))" }}>
             <button onClick={() => setHangerFullscreen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: 4 }}>&#x2715;</button>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Hanger Check</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("hanger_check")}</span>
               {hangerStreak?.current_streak > 0 && <span style={{ fontSize: 13, color: "#FFB74D" }}>&#128293; {hangerStreak.current_streak}</span>}
             </div>
-            <button onClick={() => { setHangerHistoryOpen(true); API.hangerTestHistory(20, 0).then(d => setHangerHistory(d.history || [])).catch(() => {}); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 13, cursor: "pointer", padding: 4 }}>History</button>
+            <button onClick={() => { setHangerHistoryOpen(true); API.hangerTestHistory(20, 0).then(d => setHangerHistory(d.history || [])).catch(() => {}); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 13, cursor: "pointer", padding: 4 }}>{t("hanger_history")}</button>
           </div>
 
           {/* Progress dots */}
@@ -11646,10 +12033,10 @@ export default function App() {
 
                       {/* Swipe labels */}
                       {isActive && swipeDir === "wear" && (
-                        <div style={{ position: "absolute", top: 40, left: 20, padding: "8px 20px", border: "3px solid #4CAF50", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#4CAF50", transform: "rotate(-15deg)", opacity: swipeProgress, letterSpacing: 2 }}>WEAR</div>
+                        <div style={{ position: "absolute", top: 40, left: 20, padding: "8px 20px", border: "3px solid #4CAF50", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#4CAF50", transform: "rotate(-15deg)", opacity: swipeProgress, letterSpacing: 2 }}>{t("hanger_wear")}</div>
                       )}
                       {isActive && swipeDir === "pass" && (
-                        <div style={{ position: "absolute", top: 40, right: 20, padding: "8px 20px", border: "3px solid #EF5350", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#EF5350", transform: "rotate(15deg)", opacity: swipeProgress, letterSpacing: 2 }}>PASS</div>
+                        <div style={{ position: "absolute", top: 40, right: 20, padding: "8px 20px", border: "3px solid #EF5350", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#EF5350", transform: "rotate(15deg)", opacity: swipeProgress, letterSpacing: 2 }}>{t("hanger_pass")}</div>
                       )}
 
                       {/* Info section */}
@@ -11695,7 +12082,7 @@ export default function App() {
                 )}
                 {hangerTasteProfile && (
                   <div style={{ padding: 16, background: "var(--bg-card)", borderRadius: 14, border: "1px solid var(--border)", marginBottom: 16, width: "100%", maxWidth: 280 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>Your Taste</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>{t("hanger_your_taste")}</div>
                     <div style={{ fontSize: 18, fontWeight: 800, color: "var(--accent)", marginBottom: 8 }}>{hangerTasteProfile.archetype}</div>
                     {hangerTasteProfile.style_breakdown?.slice(0, 3).map((s, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -11708,9 +12095,9 @@ export default function App() {
                     ))}
                   </div>
                 )}
-                <button onClick={() => setHangerTasteProfileOpen(true)} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--accent)", color: "#000", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", marginBottom: 10 }}>View Taste Profile</button>
-                <button onClick={() => { setHangerFullscreen(false); setTab("scan"); }} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--bg-card)", color: "var(--text-primary)", fontWeight: 600, fontSize: 14, border: "1px solid var(--border)", cursor: "pointer" }}>Find Similar Items</button>
-                <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 16 }}>Next batch at midnight</div>
+                <button onClick={() => setHangerTasteProfileOpen(true)} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--accent)", color: "#000", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", marginBottom: 10 }}>{t("hanger_view_taste")}</button>
+                <button onClick={() => { setHangerFullscreen(false); setTab("scan"); }} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--bg-card)", color: "var(--text-primary)", fontWeight: 600, fontSize: 14, border: "1px solid var(--border)", cursor: "pointer" }}>{t("hanger_find_similar")}</button>
+                <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 16 }}>{t("hanger_next_batch")}</div>
               </div>
             )}
           </div>
@@ -11818,7 +12205,7 @@ export default function App() {
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" style={{ verticalAlign: -4, marginRight: 4 }}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
               Back
             </button>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>My Verdicts</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>{t("hanger_verdicts")}</div>
             <div style={{ width: 60 }} />
           </div>
 
@@ -11882,7 +12269,7 @@ export default function App() {
         <div style={{ position: "fixed", inset: 0, zIndex: 10002, background: "var(--bg-app)", overflowY: "auto" }}>
           <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))", borderBottom: "1px solid var(--border)" }}>
             <button onClick={() => setHangerTasteProfileOpen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: 4 }}>&#x2190;</button>
-            <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Your Taste Profile</span>
+            <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("hanger_taste_profile")}</span>
             <div style={{ width: 32 }} />
           </div>
 
