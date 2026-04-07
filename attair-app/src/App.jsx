@@ -2848,6 +2848,7 @@ function FeaturedScansEmpty({ onScan, onDiscover }) {
                   className="feed-card-img"
                   loading="lazy"
                   style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }}
+                  onError={e => { e.target.style.opacity = 0; }}
                 />
                 <div className="feed-card-overlay">
                   <div className="feed-card-user">
@@ -6723,9 +6724,9 @@ export default function App() {
                           </div>
                         )}
                         <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setReelScans(null); const realIdx = feedScans.indexOf(scan); setFeedDetailScan(scan); setFeedDetailIdx(realIdx >= 0 ? realIdx : idx); }}>
-                          <div style={{ position: "relative" }}>
+                          <div style={{ position: "relative" }} onDoubleClick={(e) => { e.stopPropagation(); if (!isSaved) { const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); } /* brief heart flash */ const heart = document.createElement("div"); heart.innerHTML = "\u2764\uFE0F"; Object.assign(heart.style, { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) scale(0)", fontSize: "64px", pointerEvents: "none", zIndex: 10, transition: "transform .3s ease, opacity .3s ease", opacity: "1" }); e.currentTarget.appendChild(heart); requestAnimationFrame(() => { heart.style.transform = "translate(-50%,-50%) scale(1)"; }); setTimeout(() => { heart.style.opacity = "0"; heart.style.transform = "translate(-50%,-50%) scale(1.4)"; }, 600); setTimeout(() => heart.remove(), 1000); }}>
                             {scan.image_url
-                              ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                              ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.opacity = 0; }} />
                               : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                   <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                                 </div>
@@ -10076,7 +10077,7 @@ export default function App() {
                     <svg viewBox="0 0 24 24" width="26" height="26" fill={isSaved ? "#C9A96E" : "none"} stroke={isSaved ? "#C9A96E" : "#fff"} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                     <span className="reel-action-label">{scan.save_count || ""}</span>
                   </button>
-                  <button className="reel-action" onClick={(e) => { e.stopPropagation(); if (navigator.share) navigator.share({ title: scan.summary || "Check out this outfit on ATTAIRE", url: `${window.location.origin}/scan/${scan.id}` }).catch(() => {}); else navigator.clipboard.writeText(`${window.location.origin}/scan/${scan.id}`); }}>
+                  <button className="reel-action" onClick={(e) => { e.stopPropagation(); if (navigator.share) navigator.share({ title: scan.summary || "Check out this outfit on ATTAIRE", url: `${window.location.origin}/scan/${scan.id}` }).catch(() => {}); else { navigator.clipboard.writeText(`${window.location.origin}/scan/${scan.id}`); showToast("Link copied!", "success"); } }}>
                     <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                     <span className="reel-action-label">Share</span>
                   </button>
