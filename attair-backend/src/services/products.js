@@ -2191,7 +2191,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       // Pick one more mid-tier product near the same price range
       const midCompanions = pricedRetail
         .filter(s => !usedUrls.has(getUrl(s)) && s.price != null &&
-          Math.abs(s.price - (original.price || itemTierBounds.min)) / Math.max(original.price || 1, 1) < 0.5)
+          Math.abs(s.price - (original.price || itemTierBounds.min)) / Math.max(original.price || 1, 1) < 0.35)
         .sort((a, b) => b.score - a.score);
       tiers.mid.push(...pickTopN(midCompanions.slice(0, 15), 5, "mid"));
 

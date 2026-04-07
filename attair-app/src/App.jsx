@@ -8876,7 +8876,7 @@ export default function App() {
 
                                 return (
                                   <Fragment key={`${tierKey}_loop_${j}`}>
-                                    <div className="card-press" style={{ flexShrink: 0, width: 150, position: "relative" }}>
+                                    <div className="card-press" style={{ flexShrink: 0, width: 150, position: "relative", display: "flex", flexDirection: "column" }}>
                                       {/* Style Match Score pill */}
                                       {p.style_match != null && p.style_match >= 50 ? (
                                         <div
@@ -8913,19 +8913,19 @@ export default function App() {
                                       {/* Dupe Alert pill — reserved for affiliate items only (TODO: re-enable for affiliates) */}
                                       <a href={href} target="_blank" rel="noopener noreferrer"
                                         onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback, is_dupe: !!dupeInfo }, scanId, "scan")}
-                                        style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
+                                        style={{ display: "flex", flexDirection: "column", flex: 1, textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
                                         <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                           {p.image_url && <img src={p.image_url} alt={p.product_name || "Product image"} className="product-card-img" width={150} height={150} loading="lazy" onError={e => { e.target.style.display = "none"; }} />}
                                           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, opacity: 0.3, pointerEvents: "none" }}>👕</div>
                                         </div>
-                                        <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
+                                        <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3, flex: 1 }}>
                                           {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>{t("badge_original")}</span>}
                                           <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                                             {isFallback ? "Search results" : (p.product_name || "Product")}
                                           </div>
                                           <div style={{ fontSize: 10, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
                                           <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : (p.price || t("price_unavailable"))}</div>
-                                          <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>{t("btn_shop")}</div>
+                                          <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)", marginTop: "auto" }}>{t("btn_shop")}</div>
                                         </div>
                                       </a>
                                       {/* Find Similar Look button — only on products $150+ */}
