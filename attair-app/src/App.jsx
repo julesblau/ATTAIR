@@ -4219,6 +4219,7 @@ export default function App() {
   const [feedHasMore, setFeedHasMore] = useState(false);
   const [feedDetailScan, setFeedDetailScan] = useState(null); // scan object for overlay
   const [feedDetailIdx, setFeedDetailIdx] = useState(-1); // index in feedScans for swipe navigation
+  const [reelScans, setReelScans] = useState(null); // override scan list for reel (e.g. OOTW scans)
   const reelScrollerRef = useRef(null);
   const [feedFilterQuery, setFeedFilterQuery] = useState(""); // "I'm looking for..." filter
   const [showUserSearch, setShowUserSearch] = useState(false);
@@ -6598,7 +6599,7 @@ export default function App() {
                             </div>
                           </div>
                         )}
-                        <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { const realIdx = feedScans.indexOf(scan); setFeedDetailScan(scan); setFeedDetailIdx(realIdx >= 0 ? realIdx : idx); }}>
+                        <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setReelScans(null); const realIdx = feedScans.indexOf(scan); setFeedDetailScan(scan); setFeedDetailIdx(realIdx >= 0 ? realIdx : idx); }}>
                           <div style={{ position: "relative" }}>
                             {scan.image_url
                               ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
@@ -9755,7 +9756,7 @@ export default function App() {
                   const u = scan.user || {};
                   const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
                   return (
-                    <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setOotwExpanded(false); setFeedDetailScan(scan); }}>
+                    <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setReelScans(ootwData.scans || []); setFeedDetailIdx(idx); setFeedDetailScan(scan); setOotwExpanded(false); }}>
                       <div style={{ position: "relative" }}>
                         {scan.image_url
                           ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
@@ -9948,6 +9949,7 @@ export default function App() {
 
         {/* ─── Feed Detail Overlay (Reels-style fullscreen) ─────────────────────── */}
         {feedDetailScan && (() => {
+          const activeScans = reelScans || feedScans;
           const renderPost = (scan, idx) => {
             const u = scan.user || {};
             const ini = (u.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
@@ -10020,7 +10022,7 @@ export default function App() {
           return (
             <div className="reel-overlay">
               {/* Close button */}
-              <button className="reel-close" onClick={() => { setFeedDetailScan(null); setFeedDetailIdx(-1); }}>
+              <button className="reel-close" onClick={() => { setFeedDetailScan(null); setFeedDetailIdx(-1); setReelScans(null); }}>
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
 
@@ -10034,16 +10036,16 @@ export default function App() {
                 const el = e.currentTarget;
                 const slideH = el.clientHeight;
                 const newIdx = Math.round(el.scrollTop / slideH);
-                if (newIdx !== feedDetailIdx && newIdx >= 0 && newIdx < feedScans.length) {
+                if (newIdx !== feedDetailIdx && newIdx >= 0 && newIdx < activeScans.length) {
                   setFeedDetailIdx(newIdx);
-                  setFeedDetailScan(feedScans[newIdx]);
-                  // Pre-fetch more when near end
-                  if (newIdx + 3 >= feedScans.length && feedHasMore && !feedLoading) {
+                  setFeedDetailScan(activeScans[newIdx]);
+                  // Pre-fetch more when near end (only for main feed, not OOTW)
+                  if (!reelScans && newIdx + 3 >= activeScans.length && feedHasMore && !feedLoading) {
                     loadFeed(feedPage + 1, true);
                   }
                 }
               }}>
-                {feedScans.map((scan, idx) => renderPost(scan, idx))}
+                {activeScans.map((scan, idx) => renderPost(scan, idx))}
               </div>
             </div>
           );
