@@ -3998,6 +3998,9 @@ export default function App() {
   const [hangerTrialCelebration, setHangerTrialCelebration] = useState(false);
   const [hangerHistory, setHangerHistory] = useState([]);
   const [hangerHistoryOpen, setHangerHistoryOpen] = useState(false);
+
+  // ─── Toast notifications ──────────────────────────────────
+  const [toast, setToast] = useState(null);
   const [hangerSwipeX, setHangerSwipeX] = useState(0);             // swipe offset
   const hangerTouchRef = useRef(null);
 
@@ -4009,6 +4012,11 @@ export default function App() {
   const showAds = userStatus?.show_ads ?? true;
   const deepSearchesLeft = userStatus?.extended_searches_remaining ?? 3;
   const fastSearchesLeft = userStatus?.fast_searches_remaining ?? 12;
+
+  const showToast = useCallback((message, type = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
 
   // ─── Load Hanger Check (batch of 5) ────────────────
   useEffect(() => {
@@ -4927,11 +4935,13 @@ export default function App() {
       if (followingSet.has(userId)) {
         await API.unfollowUser(userId);
         setFollowingSet(prev => { const n = new Set(prev); n.delete(userId); return n; });
+        showToast("Unfollowed", "info");
       } else {
         await API.followUser(userId);
         setFollowingSet(prev => new Set(prev).add(userId));
+        showToast("Following!", "success");
       }
-    } catch (err) { console.error("Follow error:", err); }
+    } catch (err) { console.error("Follow error:", err); showToast("Couldn't update follow", "error"); }
   };
 
   // ─── Upgrade / Trial handlers ──────────────────────────────
@@ -8862,7 +8872,7 @@ export default function App() {
                           setAuthAvatarUrl(avatar_url);
                         } catch (err) {
                           console.error("Avatar upload failed:", err);
-                          alert("Failed to upload avatar. Please try again.");
+                          showToast("Upload failed, try again", "error");
                         }
                       };
                       reader.readAsDataURL(file);
@@ -8919,7 +8929,7 @@ export default function App() {
                       <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{profileBio.length}/200</span>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button className="btn-ghost" style={{ padding: "6px 14px", fontSize: 12 }} onClick={() => setProfileBioEditing(false)}>{t("cancel")}</button>
-                        <button className="btn-primary" style={{ padding: "6px 14px", fontSize: 12 }} onClick={async () => { setProfileBioSaving(true); try { await API.updateProfile({ bio: profileBio }); } catch {} setProfileBioSaving(false); setProfileBioEditing(false); }}>{profileBioSaving ? t("saving") : t("save_bio")}</button>
+                        <button className="btn-primary" style={{ padding: "6px 14px", fontSize: 12 }} onClick={async () => { setProfileBioSaving(true); try { await API.updateProfile({ bio: profileBio }); showToast("Bio saved", "success"); } catch { showToast("Couldn't save bio", "error"); } setProfileBioSaving(false); setProfileBioEditing(false); }}>{profileBioSaving ? t("saving") : t("save_bio")}</button>
                       </div>
                     </div>
                   </div>
@@ -9270,9 +9280,11 @@ export default function App() {
                                 setSettingsBudgetDirty(false);
                                 setSettingsBudgetExpanded(false);
                                 budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
+                                showToast("Budget updated", "success");
                               } catch (err) {
                                 console.error("Budget save failed:", err);
                                 setSettingsBudgetError(t("budget_save_error"));
+                                showToast("Couldn't save budget", "error");
                               }
                               setSettingsBudgetSaving(false);
                             }}
@@ -9483,12 +9495,14 @@ export default function App() {
                                     await API.unfollowUser(user.id);
                                     setFollowingSet(prev => { const n = new Set(prev); n.delete(user.id); return n; });
                                     setProfileStats(ps => ps ? { ...ps, following_count: Math.max(0, (ps.following_count || 0) - 1) } : ps);
+                                    showToast("Unfollowed", "info");
                                   } else {
                                     await API.followUser(user.id);
                                     setFollowingSet(prev => new Set(prev).add(user.id));
                                     setProfileStats(ps => ps ? { ...ps, following_count: (ps.following_count || 0) + 1 } : ps);
+                                    showToast("Following!", "success");
                                   }
-                                } catch {}
+                                } catch { showToast("Couldn't update follow", "error"); }
                               }}
                               style={{ flexShrink: 0, padding: "6px 16px", fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: "pointer", minHeight: 32 }}
                             >{isFlw ? t("unfollow") : t("follow")}</button>
@@ -10383,7 +10397,7 @@ export default function App() {
                 setPrefs(prev => ({ ...prev, budget_min: prefSheetBudgetMin, budget_max: prefSheetBudgetMax, size_prefs: { ...prev.size_prefs, fit: prefSheetFit } }));
                 // Persist to backend if authed
                 if (authed) {
-                  API.updateProfile({ budget_min: prefSheetBudgetMin, budget_max: prefSheetBudgetMax }).catch(() => {});
+                  API.updateProfile({ budget_min: prefSheetBudgetMin, budget_max: prefSheetBudgetMax }).catch(() => showToast("Couldn't save budget", "error"));
                 }
                 setShowPrefSheet(false);
                 // Show style fingerprint card briefly
@@ -10853,6 +10867,7 @@ export default function App() {
             // Single item flow (existing behavior)
             const itemId = wishlistPickerScan.id;
             if (itemId) await API.addToWishlist(wishlistId, itemId).catch(() => {});
+            showToast("Saved!", "success");
             setAddToListConfirm({ savedItemId: itemId, wishlistName });
           }
           setTimeout(() => setAddToListConfirm(null), 2000);
@@ -10889,7 +10904,7 @@ export default function App() {
                         setWishlists(prev => [...prev, d.wishlist]);
                         await addToWishlist(d.wishlist.id, d.wishlist.name);
                       }
-                    }).catch(() => {});
+                    }).catch(() => showToast("Couldn't create list", "error"));
                   }
                 }}
               />
@@ -10902,7 +10917,7 @@ export default function App() {
                       setWishlists(prev => [...prev, d.wishlist]);
                       await addToWishlist(d.wishlist.id, d.wishlist.name);
                     }
-                  }).catch(() => {});
+                  }).catch(() => showToast("Couldn't create list", "error"));
                 }}
                 style={{ padding: "12px 18px", background: newWishlistName.trim() ? "var(--accent)" : "var(--bg-input)", color: newWishlistName.trim() ? "#000" : "var(--text-tertiary)", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: newWishlistName.trim() ? "pointer" : "default", fontFamily: "var(--font-sans)", minHeight: 44, transition: "all .2s" }}
               >Create</button>
@@ -11102,7 +11117,7 @@ export default function App() {
                     document.body.removeChild(a);
                     track("share_card", { method: "download" }, scanId, "scan");
                   }
-                } catch (e) { console.error("Share card generation failed:", e); }
+                } catch (e) { console.error("Share card generation failed:", e); showToast("Couldn't generate share card", "error"); }
                 setShareCardLoading(false);
                 setShowShareSheet(false);
               }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", opacity: shareCardLoading ? 0.5 : 1 }}>
@@ -11719,5 +11734,10 @@ export default function App() {
       )}
 
     </div>
+    {toast && (
+      <div className="toast-container">
+        <div className={`toast toast-${toast.type}`}>{toast.message}</div>
+      </div>
+    )}
   </>);
 }
