@@ -47,8 +47,12 @@ vi.mock("../lib/supabase.js", () => {
   };
 
   const makeProfilesChain = () => ({
-    select: vi.fn().mockReturnThis(),
-    in: vi.fn(async () => ({ data: mockProfilesData, error: null })),
+    select: vi.fn().mockReturnValue({
+      in: vi.fn(async () => ({ data: mockProfilesData, error: null })),
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+      }),
+    }),
   });
 
   const makeSavedItemsChain = () => ({

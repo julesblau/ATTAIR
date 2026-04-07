@@ -78,6 +78,15 @@ vi.mock("../lib/supabase.js", () => {
             }),
           };
         }),
+        upsert: vi.fn().mockImplementation((row) => {
+          insertedRows.push({ table, ...row });
+          const result = mockOotwInsertResult || { ...row, id: "ootw-gen-1", view_count: 0, generated_at: new Date().toISOString() };
+          return {
+            select: vi.fn().mockReturnValue({
+              single: vi.fn(async () => ({ data: result, error: null })),
+            }),
+          };
+        }),
         update: vi.fn().mockImplementation((data) => {
           updatedRows.push({ table, ...data });
           return {
