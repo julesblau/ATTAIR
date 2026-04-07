@@ -115,6 +115,22 @@ const authLimiter = rateLimit({
 });
 app.use("/api/auth/", authLimiter);
 
+// ─── Browser cache headers for read-only endpoints ─────────
+const cacheHeaders = (maxAge, scope = 'private') => (req, res, next) => {
+  if (req.method === 'GET') {
+    res.set('Cache-Control', `${scope}, max-age=${maxAge}`);
+  }
+  next();
+};
+
+app.use('/api/stats', cacheHeaders(300, 'public'));           // 5 min, public (no auth)
+app.use('/api/feed', cacheHeaders(60, 'private'));            // 1 min, private
+app.use('/api/user/history', cacheHeaders(300, 'private'));   // 5 min
+app.use('/api/user/saved', cacheHeaders(120, 'private'));     // 2 min
+app.use('/api/wishlists', cacheHeaders(300, 'private'));      // 5 min
+app.use('/api/user/style-dna', cacheHeaders(3600, 'private')); // 1 hr
+app.use('/api/hanger-test/today', cacheHeaders(60, 'private')); // 1 min
+
 // ─── Routes ─────────────────────────────────────────────────
 app.use("/api/auth", authRouter);
 app.use("/api/guest", guestRouter);

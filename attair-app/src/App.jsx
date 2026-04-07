@@ -4253,6 +4253,25 @@ const CircleToSearchOverlay = ({ imageRef, onConfirm, onCancel }) => {
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════
 export default function App() {
+  // ─── localStorage cache helper (instant loads on return visits) ────
+  const lsCache = {
+    get(key, ttlMs) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const { data, ts } = JSON.parse(raw);
+        if (Date.now() - ts > ttlMs) return null;
+        return data;
+      } catch { return null; }
+    },
+    set(key, data) {
+      try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
+    },
+    clear(key) {
+      try { localStorage.removeItem(key); } catch {}
+    }
+  };
+
   // ─── Auth state ───────────────────────────────────────────
   const [authed, setAuthed] = useState(!!Auth.getToken());
   const [authScreen, setAuthScreen] = useState("login"); // login | signup
@@ -4654,7 +4673,7 @@ export default function App() {
   // Load scan history, price alerts, and looks when Saved tab is opened
   useEffect(() => {
     if (tab === "likes" && authed && history.length === 0) {
-      API.getHistory().then(d => { setHistory(d.scans || []); setHistoryLoaded(true); }).catch(() => { setHistoryLoaded(true); });
+      API.getHistory().then(d => { const scans = d.scans || []; setHistory(scans); setHistoryLoaded(true); lsCache.set("attair_history_cache", scans); }).catch(() => { setHistoryLoaded(true); });
     }
     if (tab === "likes" && authed && isPro && priceAlerts.length === 0 && !priceAlertsLoading) {
       setPriceAlertsLoading(true);
@@ -5175,23 +5194,31 @@ export default function App() {
         if (jwt?.sub) setAuthUserId(jwt.sub);
       }
       refreshStatus();
+      // Restore profile from cache for instant render
+      const cachedProfile = lsCache.get("attair_profile_cache", 60 * 60 * 1000);
+      const applyProfile = (profile) => {
+        if (profile.id) setAuthUserId(profile.id);
+        if (profile.display_name) setAuthName(profile.display_name);
+        if (profile.avatar_url) setAuthAvatarUrl(profile.avatar_url);
+        if (profile.gender_pref) setPrefs(p => ({ ...p, gender: profile.gender_pref }));
+        if (profile.budget_min != null) setBudgetMin(profile.budget_min);
+        if (profile.budget_max != null) setBudgetMax(profile.budget_max);
+        if (profile.size_prefs) setSizePrefs(profile.size_prefs);
+        if (profile.referral_code) setReferralCode(profile.referral_code);
+        if (profile.bio) setProfileBio(profile.bio);
+        if (profile.style_interests) setSelectedInterests(profile.style_interests);
+        if (profile.followers_count != null || profile.following_count != null) {
+          setProfileStats({ followers_count: profile.followers_count || 0, following_count: profile.following_count || 0 });
+        }
+        setProfileStatsLoaded(true);
+      };
+      if (cachedProfile) applyProfile(cachedProfile);
+      // Always fetch fresh in background
       authFetch(`${API_BASE}/api/user/profile`)
         .then(r => r.json())
         .then(profile => {
-          if (profile.id) setAuthUserId(profile.id);
-          if (profile.display_name) setAuthName(profile.display_name);
-          if (profile.avatar_url) setAuthAvatarUrl(profile.avatar_url);
-          if (profile.gender_pref) setPrefs(p => ({ ...p, gender: profile.gender_pref }));
-          if (profile.budget_min != null) setBudgetMin(profile.budget_min);
-          if (profile.budget_max != null) setBudgetMax(profile.budget_max);
-          if (profile.size_prefs) setSizePrefs(profile.size_prefs);
-          if (profile.referral_code) setReferralCode(profile.referral_code);
-          if (profile.bio) setProfileBio(profile.bio);
-          if (profile.style_interests) setSelectedInterests(profile.style_interests);
-          if (profile.followers_count != null || profile.following_count != null) {
-            setProfileStats({ followers_count: profile.followers_count || 0, following_count: profile.following_count || 0 });
-          }
-          setProfileStatsLoaded(true);
+          applyProfile(profile);
+          lsCache.set("attair_profile_cache", profile);
         })
         .catch(() => {});
       // Populate followingSet in parallel (uses authUserId from JWT, not profile fetch)
@@ -5201,9 +5228,14 @@ export default function App() {
           if (ids.length) setFollowingSet(new Set(ids));
         }).catch(() => {});
       }
+      // Restore history from cache for instant render
+      const cachedHistory = lsCache.get("attair_history_cache", 30 * 60 * 1000);
+      if (cachedHistory) { setHistory(cachedHistory); setHistoryLoaded(true); }
+      // Always fetch fresh in background
       API.getHistory().then(d => {
         const scans = d.scans || [];
         setHistory(scans);
+        lsCache.set("attair_history_cache", scans);
         // Calculate streak: consecutive days with at least 1 scan, from most recent day back
         if (scans.length > 0) {
           const daySet = new Set(scans.map(s => new Date(s.created_at).toDateString()));
@@ -5225,9 +5257,15 @@ export default function App() {
           setScanStreak(streak);
         }
         setHistoryLoaded(true);
-      }).catch(() => { setHistoryLoaded(true); });
-      API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
-      API.getWishlists().then(d => setWishlists(d.wishlists || [])).catch(() => {});
+      }).catch(() => { if (!cachedHistory) setHistoryLoaded(true); });
+      // Restore saved from cache for instant render
+      const cachedSaved = lsCache.get("attair_saved_cache", 5 * 60 * 1000);
+      if (cachedSaved) setSaved(cachedSaved);
+      API.getSaved().then(d => { const items = d.items || []; setSaved(items); lsCache.set("attair_saved_cache", items); }).catch(() => {});
+      // Restore wishlists from cache for instant render
+      const cachedWl = lsCache.get("attair_wishlists_cache", 10 * 60 * 1000);
+      if (cachedWl) setWishlists(cachedWl);
+      API.getWishlists().then(d => { const wl = d.wishlists || []; setWishlists(wl); lsCache.set("attair_wishlists_cache", wl); }).catch(() => {});
       API.getStreak().then(s => { if (s?.streak > 0) setScanStreak(s.streak); }).catch(() => {});
       API.priceAlertCount().then(d => setPriceAlertCount(d.unseen_count || 0)).catch(() => {});
       API.getUnreadNotifCount().then(d => setNotifCount(d.count || 0)).catch(() => {});
@@ -5258,8 +5296,11 @@ export default function App() {
       }
 
       if (!styleDna && !styleDnaLoading) {
+        const cachedDna = lsCache.get("attair_styledna_cache", 7 * 24 * 60 * 60 * 1000);
+        if (cachedDna) { setStyleDna(cachedDna); }
+        // Always fetch fresh in background (Style DNA is expensive but should stay current)
         setStyleDnaLoading(true);
-        API.styleDna().then(data => setStyleDna(data)).catch(() => {}).finally(() => setStyleDnaLoading(false));
+        API.styleDna().then(data => { setStyleDna(data); lsCache.set("attair_styledna_cache", data); }).catch(() => {}).finally(() => setStyleDnaLoading(false));
       }
       if (screen === "onboarding" || screen === "inspiration") setScreen("app");
 
@@ -5949,8 +5990,11 @@ export default function App() {
 
     // Refresh history + saved so those tabs are up to date (authed only)
     if (!isGuest) {
-      API.getHistory().then(d => { setHistory(d.scans || []); setHistoryLoaded(true); }).catch(() => { setHistoryLoaded(true); });
-      API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
+      lsCache.clear("attair_history_cache");
+      lsCache.clear("attair_saved_cache");
+      lsCache.clear("attair_styledna_cache");
+      API.getHistory().then(d => { setHistory(d.scans || []); setHistoryLoaded(true); lsCache.set("attair_history_cache", d.scans || []); }).catch(() => { setHistoryLoaded(true); });
+      API.getSaved().then(d => { setSaved(d.items || []); lsCache.set("attair_saved_cache", d.items || []); }).catch(() => {});
     }
 
     // Schedule a follow-up nudge (10-15 min) so if the user leaves without
@@ -6091,6 +6135,7 @@ export default function App() {
     if (existing) {
       await API.deleteSaved(existing.id).catch(() => {});
       setSaved(s => s.filter(i => i.id !== existing.id));
+      lsCache.clear("attair_saved_cache");
       refreshStatus();
       refreshLooks();
       track("item_unsaved", { item_name: item.name }, scanId, "scan");
@@ -6104,6 +6149,7 @@ export default function App() {
       try {
         const res = await API.saveItem(scanId, item);
         setSaved(s => [...s, { id: res.id, item_data: item, created_at: new Date().toISOString() }]);
+        lsCache.clear("attair_saved_cache");
         refreshStatus();
         refreshLooks();
         track("item_saved", { item_name: item.name }, scanId, "scan");
@@ -6147,6 +6193,7 @@ export default function App() {
     if (existing) {
       await API.deleteSaved(existing.id).catch(() => {});
       setSaved(s => s.filter(i => i.id !== existing.id));
+      lsCache.clear("attair_saved_cache");
       refreshStatus();
       refreshLooks();
     } else {
@@ -6157,6 +6204,7 @@ export default function App() {
       try {
         const res = await API.saveItem(sid, item);
         setSaved(s => [...s, { id: res.id, item_data: item, scan_id: sid, created_at: new Date().toISOString() }]);
+        lsCache.clear("attair_saved_cache");
         refreshStatus();
         refreshLooks();
         track("item_saved", { item_name: item.name }, sid, "scan");
@@ -6177,7 +6225,7 @@ export default function App() {
 
   const brandConfLabel = (c) => ({ confirmed: { t: "Confirmed", c: "#C9A96E" }, high: { t: "High confidence", c: "rgba(201,169,110,0.7)" }, moderate: { t: "Moderate", c: "rgba(255,255,255,0.4)" }, low: { t: "Estimated", c: "rgba(255,255,255,0.25)" } }[c] || { t: "Unknown", c: "rgba(255,255,255,0.2)" });
 
-  const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); setAuthed(false); setAuthEmail(""); setAuthName(""); setAuthAvatarUrl(null); setUserStatus(null); setScreen("onboarding"); setObIdx(0); };
+  const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); lsCache.clear("attair_history_cache"); lsCache.clear("attair_saved_cache"); lsCache.clear("attair_wishlists_cache"); lsCache.clear("attair_styledna_cache"); lsCache.clear("attair_profile_cache"); setAuthed(false); setAuthEmail(""); setAuthName(""); setAuthAvatarUrl(null); setUserStatus(null); setScreen("onboarding"); setObIdx(0); };
 
   const step = OB_STEPS[obIdx];
   const prog = ((obIdx + 1) / OB_STEPS.length) * 100;
@@ -6616,6 +6664,7 @@ export default function App() {
             <button className="cta" onClick={async () => {
               try {
                 await API.updateProfile({ style_interests: selectedInterests });
+                lsCache.clear("attair_profile_cache");
               } catch {}
               setShowInterestPicker(false);
               localStorage.setItem("attair_interests_picked", "1");
@@ -8426,7 +8475,8 @@ export default function App() {
                                   }
                                 }
                               });
-                              API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
+                              lsCache.clear("attair_saved_cache");
+                              API.getSaved().then(d => { setSaved(d.items || []); lsCache.set("attair_saved_cache", d.items || []); }).catch(() => {});
                             }
                           }
                         }}
@@ -9393,7 +9443,7 @@ export default function App() {
                                 <a href={API.affiliateUrl(crypto.randomUUID(), url, si.scan_id || "", 0, "saved", "")} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ position: "absolute", inset: 0 }} aria-label={`Shop ${name}`} />
                               )}
                               {/* Delete button */}
-                              <button onClick={async (e) => { e.preventDefault(); e.stopPropagation(); await API.deleteSaved(si.id).catch(() => {}); setSaved(s => s.filter(i => i.id !== si.id)); refreshStatus(); }} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,.6)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }} aria-label="Remove saved item">
+                              <button onClick={async (e) => { e.preventDefault(); e.stopPropagation(); await API.deleteSaved(si.id).catch(() => {}); setSaved(s => s.filter(i => i.id !== si.id)); lsCache.clear("attair_saved_cache"); refreshStatus(); }} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,.6)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }} aria-label="Remove saved item">
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                               </button>
                               {/* Remove from list button (only when viewing a wishlist) */}
@@ -9479,6 +9529,7 @@ export default function App() {
                         try {
                           const { avatar_url } = await API.uploadAvatar(reader.result);
                           setAuthAvatarUrl(avatar_url);
+                          lsCache.clear("attair_profile_cache");
                         } catch (err) {
                           console.error("Avatar upload failed:", err);
                           showToast("Upload failed, try again", "error");
@@ -9540,7 +9591,7 @@ export default function App() {
                       <span style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{profileBio.length}/200</span>
                       <div style={{ display: "flex", gap: 6 }}>
                         <button className="btn-ghost" style={{ padding: "6px 14px", fontSize: 12 }} onClick={() => setProfileBioEditing(false)}>{t("cancel")}</button>
-                        <button className="btn-primary" style={{ padding: "6px 14px", fontSize: 12 }} onClick={async () => { setProfileBioSaving(true); try { await API.updateProfile({ bio: profileBio }); showToast("Bio saved", "success"); } catch { showToast("Couldn't save bio", "error"); } setProfileBioSaving(false); setProfileBioEditing(false); }}>{profileBioSaving ? t("saving") : t("save_bio")}</button>
+                        <button className="btn-primary" style={{ padding: "6px 14px", fontSize: 12 }} onClick={async () => { setProfileBioSaving(true); try { await API.updateProfile({ bio: profileBio }); lsCache.clear("attair_profile_cache"); showToast("Bio saved", "success"); } catch { showToast("Couldn't save bio", "error"); } setProfileBioSaving(false); setProfileBioEditing(false); }}>{profileBioSaving ? t("saving") : t("save_bio")}</button>
                       </div>
                     </div>
                   </div>
@@ -9898,6 +9949,7 @@ export default function App() {
                               setSettingsBudgetError(null);
                               try {
                                 await API.updateProfile({ budget_min: budgetMin, budget_max: budgetMax });
+                                lsCache.clear("attair_profile_cache");
                                 setSettingsBudgetDirty(false);
                                 setSettingsBudgetExpanded(false);
                                 budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
@@ -10065,6 +10117,7 @@ export default function App() {
                             },
                           };
                           await API.updateProfile({ size_prefs: newSizePrefs });
+                          lsCache.clear("attair_profile_cache");
                           setSizePrefs(newSizePrefs);
                           setSizePrefsModalOpen(false);
                         } catch {}
@@ -11516,8 +11569,10 @@ export default function App() {
             setAddToListConfirm({ savedItemId: itemId, wishlistName });
           }
           setTimeout(() => setAddToListConfirm(null), 2000);
-          API.getWishlists().then(w => setWishlists(w.wishlists || [])).catch(() => {});
-          API.getSaved().then(s => setSaved(s.items || [])).catch(() => {});
+          lsCache.clear("attair_wishlists_cache");
+          lsCache.clear("attair_saved_cache");
+          API.getWishlists().then(w => { setWishlists(w.wishlists || []); lsCache.set("attair_wishlists_cache", w.wishlists || []); }).catch(() => {});
+          API.getSaved().then(s => { setSaved(s.items || []); lsCache.set("attair_saved_cache", s.items || []); }).catch(() => {});
           setWishlistPickerScan(null);
           setNewWishlistName("");
         };
@@ -11547,6 +11602,7 @@ export default function App() {
                     API.createWishlist(newWishlistName.trim()).then(async d => {
                       if (d?.wishlist) {
                         setWishlists(prev => [...prev, d.wishlist]);
+                        lsCache.clear("attair_wishlists_cache");
                         await addToWishlist(d.wishlist.id, d.wishlist.name);
                       }
                     }).catch(() => showToast("Couldn't create list", "error"));
@@ -11560,6 +11616,7 @@ export default function App() {
                   API.createWishlist(newWishlistName.trim()).then(async d => {
                     if (d?.wishlist) {
                       setWishlists(prev => [...prev, d.wishlist]);
+                      lsCache.clear("attair_wishlists_cache");
                       await addToWishlist(d.wishlist.id, d.wishlist.name);
                     }
                   }).catch(() => showToast("Couldn't create list", "error"));
@@ -11593,6 +11650,7 @@ export default function App() {
                     if (e.key === "Enter" && wishlistEditName.trim()) {
                       await API.renameWishlist(wishlistEditId, wishlistEditName.trim()).catch(() => {});
                       setWishlists(prev => prev.map(wl => wl.id === wishlistEditId ? { ...wl, name: wishlistEditName.trim() } : wl));
+                      lsCache.clear("attair_wishlists_cache");
                       if (activeWishlist?.id === wishlistEditId) setActiveWishlist(prev => ({ ...prev, name: wishlistEditName.trim() }));
                       setWishlistEditOpen(false);
                       setWishlistRenaming(false);
@@ -11605,6 +11663,7 @@ export default function App() {
                     if (!wishlistEditName.trim()) return;
                     await API.renameWishlist(wishlistEditId, wishlistEditName.trim()).catch(() => {});
                     setWishlists(prev => prev.map(wl => wl.id === wishlistEditId ? { ...wl, name: wishlistEditName.trim() } : wl));
+                    lsCache.clear("attair_wishlists_cache");
                     if (activeWishlist?.id === wishlistEditId) setActiveWishlist(prev => ({ ...prev, name: wishlistEditName.trim() }));
                     setWishlistEditOpen(false);
                     setWishlistRenaming(false);
@@ -11622,6 +11681,7 @@ export default function App() {
                   if (!confirm("Delete this collection? Items will be kept in your wardrobe.")) return;
                   await API.deleteWishlist(wishlistEditId).catch(() => {});
                   setWishlists(prev => prev.filter(wl => wl.id !== wishlistEditId));
+                  lsCache.clear("attair_wishlists_cache");
                   if (activeWishlist?.id === wishlistEditId) setActiveWishlist(null);
                   setWishlistEditOpen(false);
                 }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid rgba(255,59,48,.2)", borderRadius: 12, cursor: "pointer", marginBottom: 8, minHeight: 48 }}>
