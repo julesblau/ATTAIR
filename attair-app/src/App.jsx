@@ -4018,6 +4018,11 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  // ─── Skeleton loader helper ────────────────────────────────
+  const Skeleton = useCallback(({ w = "100%", h = 16, r = 8, style = {} }) => (
+    <div className="skeleton-pulse" style={{ width: w, height: h, borderRadius: r, ...style }} />
+  ), []);
+
   // ─── Load Hanger Check (batch of 5) ────────────────
   useEffect(() => {
     if (!authed || screen !== "app") return;
@@ -4931,17 +4936,31 @@ export default function App() {
   }, [tab, searchSubTab, authed, loadStyleTwins]);
 
   const handleFollowFromSearch = async (userId) => {
+    const wasFollowing = followingSet.has(userId);
+    // Optimistic update
+    if (wasFollowing) {
+      setFollowingSet(prev => { const n = new Set(prev); n.delete(userId); return n; });
+    } else {
+      setFollowingSet(prev => new Set(prev).add(userId));
+    }
     try {
-      if (followingSet.has(userId)) {
+      if (wasFollowing) {
         await API.unfollowUser(userId);
-        setFollowingSet(prev => { const n = new Set(prev); n.delete(userId); return n; });
         showToast("Unfollowed", "info");
       } else {
         await API.followUser(userId);
-        setFollowingSet(prev => new Set(prev).add(userId));
         showToast("Following!", "success");
       }
-    } catch (err) { console.error("Follow error:", err); showToast("Couldn't update follow", "error"); }
+    } catch (err) {
+      // Revert on error
+      if (wasFollowing) {
+        setFollowingSet(prev => new Set(prev).add(userId));
+      } else {
+        setFollowingSet(prev => { const n = new Set(prev); n.delete(userId); return n; });
+      }
+      console.error("Follow error:", err);
+      showToast("Couldn't update follow", "error");
+    }
   };
 
   // ─── Upgrade / Trial handlers ──────────────────────────────
@@ -6579,10 +6598,17 @@ export default function App() {
 
               {/* Skeleton loading */}
               {feedLoading && feedScans.length === 0 && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: "4px 12px" }}>
-                  {[0,1,2,3].map(i => (
-                    <div key={i} className="skeleton" style={{ borderRadius: 12, overflow: "hidden" }}>
-                      <div className="skeleton-image" style={{ width: "100%", aspectRatio: "3/4" }} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: 16 }}>
+                  {[0,1,2].map(i => (
+                    <div key={i} style={{ borderRadius: 16, overflow: "hidden" }}>
+                      <Skeleton h={300} r={16} />
+                      <div style={{ padding: "12px 0", display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <Skeleton w={32} h={32} r={16} />
+                          <Skeleton h={12} w={100} />
+                        </div>
+                        <Skeleton h={11} w="60%" />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -6800,7 +6826,20 @@ export default function App() {
               {/* ─── People search results ─── */}
               {searchSubTab === "people" && (
                 <div style={{ padding: "12px 16px" }}>
-                  {userSearchLoading && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>Searching...</div>}
+                  {userSearchLoading && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "16px 0" }}>
+                      {[0,1,2].map(i => (
+                        <div key={i} style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                          <Skeleton w={44} h={44} r={22} />
+                          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                            <Skeleton h={13} w="50%" />
+                            <Skeleton h={11} w="30%" />
+                          </div>
+                          <Skeleton w={72} h={32} r={8} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {!userSearchLoading && userSearchQuery.trim() && userSearchResults.length === 0 && <div style={{ textAlign: "center", padding: 32, color: "var(--text-tertiary)", fontSize: 13 }}>{t("no_users_found")}</div>}
                   {!userSearchLoading && !userSearchQuery.trim() && (
                     <div>
@@ -8496,9 +8535,16 @@ export default function App() {
 
                   if (looksLoading) {
                     return (
-                      <div style={{ padding: "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-                        <div className="look-skeleton-card" />
-                        <div className="look-skeleton-card" />
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16 }}>
+                        {[0,1,2].map(i => (
+                          <div key={i} style={{ display: "flex", gap: 12 }}>
+                            <Skeleton w={56} h={56} r={10} />
+                            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                              <Skeleton h={14} w="60%" />
+                              <Skeleton h={11} w="30%" />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     );
                   }
