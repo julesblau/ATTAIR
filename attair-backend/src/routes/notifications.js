@@ -116,6 +116,23 @@ router.patch("/read", requireAuth, async (req, res) => {
   }
 });
 
+// ─── POST /api/notifications/mark-all-read ───────────────────
+router.post("/mark-all-read", requireAuth, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from("notification_log")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", req.userId)
+      .is("read_at", null);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[Notifications] Mark all read error:", err.message);
+    res.status(500).json({ error: "Failed to mark notifications as read" });
+  }
+});
+
 // ─── POST /api/notifications/nudge ────────────────────────────
 // Schedule a follow-up nudge (10-15 min) for the current user.
 // Called by the frontend when AI returns results that need input.

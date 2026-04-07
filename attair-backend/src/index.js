@@ -299,6 +299,11 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   // Runs every 7 days (604800000 ms). On startup, schedule first
   // check after 60s, then repeat weekly. In production this could
   // also be triggered by an external cron service via POST /api/style-twins/weekly-notify.
+  //
+  // NOTE: These cron jobs use localhost self-calls rather than direct function
+  // invocation. This keeps route auth (x-cron-key) exercised and avoids
+  // importing route handler internals. The trade-off is fragility in
+  // containerized environments where 127.0.0.1 may not resolve as expected.
   const WEEKLY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
   const runWeeklyTwinsNotify = async () => {
     try {
@@ -310,6 +315,10 @@ const server = app.listen(PORT, "0.0.0.0", () => {
           "x-cron-key": process.env.CRON_SECRET,
         },
       });
+      if (!res.ok) {
+        console.error(`[Cron] Style Twins weekly notify HTTP ${res.status}`);
+        return;
+      }
       const data = await res.json();
       console.log(`[Cron] Style Twins weekly notify: notified=${data.notified || 0}`);
     } catch (err) {
@@ -337,6 +346,10 @@ const server = app.listen(PORT, "0.0.0.0", () => {
           "x-cron-key": process.env.CRON_SECRET,
         },
       });
+      if (!res.ok) {
+        console.error(`[Cron] OOTW generate HTTP ${res.status}`);
+        return;
+      }
       const data = await res.json();
       console.log(`[Cron] OOTW generate: created=${data.created || false}`);
     } catch (err) {
@@ -364,6 +377,10 @@ const server = app.listen(PORT, "0.0.0.0", () => {
           "x-cron-key": process.env.CRON_SECRET,
         },
       });
+      if (!res.ok) {
+        console.error(`[Cron] Weekly Style Reports HTTP ${res.status}`);
+        return;
+      }
       const data = await res.json();
       console.log(`[Cron] Weekly Style Reports: sent=${data.sent || 0}`);
     } catch (err) {

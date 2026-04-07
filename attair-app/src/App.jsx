@@ -828,7 +828,7 @@ const MiniCard = ({ tier, data, scanId, itemIndex, onSave, isSavedItem }) => {
         style={{ padding: 12, background: "var(--bg-card)", border: `1px solid ${data.is_identified_brand ? "var(--accent-border)" : "var(--border)"}`, borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 6, transition: "all 0.2s", minWidth: 0 }}>
         {data.image_url && (
           <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "var(--bg-input)", marginBottom: 2 }}>
-            <img src={data.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+            <img src={data.image_url} alt={data.product_name || "Product image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
           </div>
         )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -874,7 +874,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e => e.stopPropagation()} style={{ overflowY: "auto", maxHeight: "90vh" }}>
-        <button className="modal-x" onClick={onClose}>✕</button>
+        <button className="modal-x" onClick={onClose} aria-label="Close">✕</button>
         <div className="pw-badge">✦ ATTAIRE PRO</div>
         <h2 className="modal-title">{m.title}</h2>
         <p className="modal-sub">{m.sub}</p>
@@ -2708,7 +2708,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
             <div className="ob-social-carousel">
               {stats.recent_scans.map((scan) => (
                 <div key={scan.id} className="ob-social-scan">
-                  <img src={scan.image_url} alt="" className="ob-social-scan-img" loading="lazy" />
+                  <img src={scan.image_url} alt="Scan photo" className="ob-social-scan-img" loading="lazy" />
                   <div className="ob-social-scan-count">{scan.item_count} items</div>
                 </div>
               ))}
@@ -5796,6 +5796,7 @@ export default function App() {
                 </div>
               </div>
               <button onClick={() => { setDupeModal(null); setDupeResults(null); setDupeError(null); }}
+                aria-label="Close"
                 style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--bg-input)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text-tertiary)", fontSize: 16, fontFamily: "var(--font-sans)" }}>
                 ✕
               </button>
@@ -5878,7 +5879,7 @@ export default function App() {
                             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", textAlign: "center", padding: "8px 0 4px", color: "var(--text-tertiary)" }}>ORIGINAL</div>
                             <div style={{ aspectRatio: "3/4", background: "var(--bg-input)", overflow: "hidden" }}>
                               {dupeResults.original.image_url ? (
-                                <img src={dupeResults.original.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                <img src={dupeResults.original.image_url} alt={dupeResults.original.name || "Original product"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                               ) : (
                                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 11 }}>No image</div>
                               )}
@@ -5908,7 +5909,7 @@ export default function App() {
                             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", textAlign: "center", padding: "8px 0 4px", color: "#4CAF50" }}>SIMILAR LOOK</div>
                             <div style={{ aspectRatio: "3/4", background: "var(--bg-input)", overflow: "hidden" }}>
                               {dupe.image_url ? (
-                                <img src={dupe.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                <img src={dupe.image_url} alt={dupe.product_name || "Similar product"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                               ) : (
                                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 11 }}>No image</div>
                               )}
@@ -6018,7 +6019,7 @@ export default function App() {
       {signupPrompt && (
         <div className="modal-overlay" onClick={() => setSignupPrompt(null)}>
           <div className="modal-box" onClick={e => e.stopPropagation()} style={{ textAlign: "center", padding: "32px 24px" }}>
-            <button className="modal-x" onClick={() => setSignupPrompt(null)}>✕</button>
+            <button className="modal-x" onClick={() => setSignupPrompt(null)} aria-label="Close">✕</button>
             <div style={{ fontSize: 40, marginBottom: 16 }}>
               {signupPrompt === "scan_limit" ? "✦" : signupPrompt === "save" ? "♡" : signupPrompt === "social" ? "👥" : "✦"}
             </div>
@@ -6055,7 +6056,7 @@ export default function App() {
       {showInterestPicker && (
         <div className="modal-overlay" onClick={() => { setShowInterestPicker(false); localStorage.setItem("attair_interests_picked", "1"); }}>
           <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxHeight: "85vh", overflowY: "auto" }}>
-            <button className="modal-x" onClick={() => { setShowInterestPicker(false); localStorage.setItem("attair_interests_picked", "1"); }}>✕</button>
+            <button className="modal-x" onClick={() => { setShowInterestPicker(false); localStorage.setItem("attair_interests_picked", "1"); }} aria-label="Close">✕</button>
             <h2 className="modal-title" style={{ fontSize: 20, marginBottom: 6 }}>{t("who_inspires")}</h2>
             <p className="modal-sub" style={{ marginBottom: 20 }}>Pick up to 5. We'll personalize your results.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
@@ -6178,7 +6179,7 @@ export default function App() {
               <div style={{ textAlign: "center" }}>
                 <div className="style-twin-avatar-sm" style={{ margin: "0 auto 8px", width: 48, height: 48 }}>
                   {styleTwinCompare.avatar_url ? (
-                    <img src={styleTwinCompare.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                    <img src={styleTwinCompare.avatar_url} alt={styleTwinCompare.display_name ? styleTwinCompare.display_name + "'s avatar" : "User avatar"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
                   ) : (
                     <span style={{ fontSize: 16 }}>{(styleTwinCompare.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}</span>
                   )}
@@ -6316,7 +6317,7 @@ export default function App() {
           <div style={{ position: "fixed", top: 52, right: 8, left: 8, maxHeight: "calc(100vh - 68px)", background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,.5)", zIndex: 9999, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("notifications")}</div>
-              <button onClick={() => setShowNotifPanel(false)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>x</button>
+              <button onClick={() => setShowNotifPanel(false)} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>x</button>
             </div>
             {("Notification" in window) && Notification.permission === "default" && !pushEnabled && (
               <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "rgba(201,169,110,.06)" }}>
@@ -6402,7 +6403,7 @@ export default function App() {
                   onChange={e => setFeedFilterQuery(e.target.value)}
                 />
                 {feedFilterQuery && (
-                  <button className="feed-filter-clear" onClick={() => setFeedFilterQuery("")}>&times;</button>
+                  <button className="feed-filter-clear" onClick={() => setFeedFilterQuery("")} aria-label="Clear filter">&times;</button>
                 )}
               </div>
 
@@ -6453,7 +6454,7 @@ export default function App() {
                   <div style={{ position: "relative", width: "100%", height: 140, overflow: "hidden" }}>
                     {/* Stack preview: show up to 3 overlapping images */}
                     {hangerOutfits.slice(0, 3).map((o, i) => (
-                      <img key={o.id} src={o.image_url} alt="" style={{
+                      <img key={o.id} src={o.image_url} alt="Outfit photo" style={{
                         position: "absolute", top: i * 3, left: i * 6,
                         width: `calc(100% - ${i * 12}px)`, height: `calc(100% - ${i * 6}px)`,
                         objectFit: "cover", zIndex: 3 - i, opacity: 1 - i * 0.15,
@@ -6576,7 +6577,7 @@ export default function App() {
                       {ootwData.scans.slice(0, 6).map((s, i) => (
                         <div key={s.id || i} style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}>
                           {s.image_url ? (
-                            <img src={s.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                            <img src={s.image_url} alt="Scan photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                           ) : (
                             <div style={{ width: "100%", height: "100%", background: "var(--bg-input)" }} />
                           )}
@@ -7081,7 +7082,7 @@ export default function App() {
                             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                               <div className="style-twin-avatar-lg">
                                 {top.avatar_url ? (
-                                  <img src={top.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                                  <img src={top.avatar_url} alt={(top.display_name || "User") + "'s avatar"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
                                 ) : (
                                   <span>{ini}</span>
                                 )}
@@ -7148,11 +7149,11 @@ export default function App() {
                             const isFlw = followingSet ? followingSet.has(twin.id) : false;
                             const matchTier = (twin.match_pct || 0) >= 85 ? "high" : (twin.match_pct || 0) >= 70 ? "mid" : "low";
                             return (
-                              <div key={twin.id || idx} className="style-twin-card" onClick={() => setStyleTwinCompare(twin)}>
+                              <div key={twin.id || idx} className="style-twin-card card-press" onClick={() => setStyleTwinCompare(twin)}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                                   <div className="style-twin-avatar-sm">
                                     {twin.avatar_url ? (
-                                      <img src={twin.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                                      <img src={twin.avatar_url} alt={(twin.display_name || "User") + "'s avatar"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
                                     ) : (
                                       <span>{ini}</span>
                                     )}
@@ -7346,7 +7347,7 @@ export default function App() {
 
               {/* Image with toggleable hotspots */}
               <div className="res-img-sec">
-                <img src={img} className="res-img" alt="" /><div className="res-grad" />
+                <img src={img} className="res-img" alt="Scanned outfit" /><div className="res-grad" />
                 <button className="res-close" onClick={reset}><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
                 <button className="res-new" onClick={reset}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>{t("new_scan")}</button>
                 {results.items.map((item, i) => {
@@ -7691,7 +7692,7 @@ export default function App() {
 
               {/* Blurred photo background */}
               <div className="search-takeover-bg">
-                <img src={img} alt="" />
+                <img src={img} alt="Scanned outfit" />
               </div>
 
               {/* Content */}
@@ -7813,7 +7814,7 @@ export default function App() {
               <div style={{ display: "flex", gap: 14, padding: "14px 20px", alignItems: "flex-start" }}>
                 {img && (
                   <div style={{ width: 90, height: 120, borderRadius: 12, overflow: "hidden", flexShrink: 0, position: "relative" }}>
-                    <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img src={img} alt="Scanned outfit" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     <button onClick={reset} style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.5)", border: "none", color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} aria-label="New scan">
                       <svg viewBox="0 0 14 14" width="10" height="10" stroke="currentColor" strokeWidth="2"><path d="M2 2l10 10M12 2L2 12"/></svg>
                     </button>
@@ -7959,7 +7960,7 @@ export default function App() {
                               style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, textDecoration: "none", color: "inherit", overflow: "hidden" }}>
                               {prod?.image_url ? (
                                 <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
-                                  <img src={prod.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                  <img src={prod.image_url} alt="Pairing suggestion" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                                 </div>
                               ) : (
                                 <div style={{ width: "100%", aspectRatio: "1", background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
@@ -8201,7 +8202,7 @@ export default function App() {
                         background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10,
                         padding: 6, transition: "all .2s",
                       }}>
-                        {look.thumbnail && <img src={look.thumbnail} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, marginBottom: 4 }} />}
+                        {look.thumbnail && <img src={look.thumbnail} alt="Saved look thumbnail" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, marginBottom: 4 }} />}
                         <div style={{ fontSize: 9, color: "var(--text-tertiary)", fontWeight: 600 }}>Look {li + 1}</div>
                         <div style={{ fontSize: 8, color: "var(--text-tertiary)" }}>{look.items.filter(it => it.tiers).length} items</div>
                       </div>
@@ -8378,7 +8379,7 @@ export default function App() {
                                         style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
                                         {p.image_url && (
                                           <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
-                                            <img src={p.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                            <img src={p.image_url} alt={p.product_name || "Product image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                                           </div>
                                         )}
                                         <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
@@ -8627,12 +8628,12 @@ export default function App() {
                         const detailUnsaved = (detailItems || []).filter(si => !si.is_saved);
 
                         return (
-                          <div key={look.scan_id} className={`look-card${isExpanded ? " look-card-expanded" : ""}`} style={{ margin: "0 16px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", transition: "all .3s ease" }}>
+                          <div key={look.scan_id} className={`look-card card-press${isExpanded ? " look-card-expanded" : ""}`} style={{ margin: "0 16px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", transition: "all .3s ease" }}>
                             {/* Header with scan thumbnail */}
                             <div style={{ display: "flex", gap: 12, padding: 12, cursor: "pointer" }} onClick={handleExpand}>
                               <div style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "var(--bg-input)" }}>
                                 {look.scan_thumbnail ? (
-                                  <img src={look.scan_thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                                  <img src={look.scan_thumbnail} alt={look.scan_name || "Scan thumbnail"} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
                                 ) : (
                                   <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.2 }}><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
@@ -9076,8 +9077,8 @@ export default function App() {
                       const hxImg = hx.image_thumbnail || hx.image_url;
                       const hxItems = hx.items || [];
                       return (
-                        <div key={hx.id} className="profile-v2-grid-cell" onClick={() => setProfileScanOverlay(hx)} aria-label={`Scan: ${hxItems.length} items`}>
-                          {hxImg ? <img src={hxImg} alt="" loading="lazy" onError={e => { e.target.style.display = "none"; }} /> : <div className="profile-v2-grid-placeholder">{hx.detected_gender === "female" ? "\uD83D\uDC57" : "\uD83D\uDC54"}</div>}
+                        <div key={hx.id} className="profile-v2-grid-cell card-press" onClick={() => setProfileScanOverlay(hx)} aria-label={`Scan: ${hxItems.length} items`}>
+                          {hxImg ? <img src={hxImg} alt="Scan photo" loading="lazy" onError={e => { e.target.style.display = "none"; }} /> : <div className="profile-v2-grid-placeholder">{hx.detected_gender === "female" ? "\uD83D\uDC57" : "\uD83D\uDC54"}</div>}
                           {hxItems.length > 0 && <span className="grid-items-badge">{hxItems.length}</span>}
                           {hx.visibility === "private" && (
                             <div className="profile-grid-private-badge">
@@ -9173,7 +9174,7 @@ export default function App() {
                   </div>
 
                   {/* Theme toggle */}
-                  <div className="settings-sheet-item" onClick={toggleTheme} role="button" aria-label="Toggle theme">
+                  <div className="settings-sheet-item card-press" onClick={toggleTheme} role="button" aria-label="Toggle theme">
                     <span className="settings-label">{t("appearance")}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span className="settings-value">{theme === "dark" ? t("dark") : t("light")}</span>
@@ -9341,7 +9342,7 @@ export default function App() {
                   </div>
 
                   {/* Size Preferences — tappable row opens popup */}
-                  <div className="settings-sheet-item" style={{ cursor: "pointer" }} onClick={() => {
+                  <div className="settings-sheet-item card-press" style={{ cursor: "pointer" }} onClick={() => {
                     sizePrefsOrigRef.current = JSON.parse(JSON.stringify(sizePrefs));
                     setSizePrefsEdit({ tops: sizePrefs.sizes?.tops || "", bottoms_waist: sizePrefs.sizes?.bottoms_waist || "", bottoms_length: sizePrefs.sizes?.bottoms_length || "", shoes: sizePrefs.sizes?.shoes || "", dresses: sizePrefs.sizes?.dresses || "" });
                     setSizePrefsGender(sizePrefs.gender || "women");
@@ -9436,7 +9437,7 @@ export default function App() {
               {sizePrefsModalOpen && (
                 <div className="modal-overlay" onClick={() => setSizePrefsModalOpen(false)}>
                   <div className="modal-box" onClick={e => e.stopPropagation()} style={{ padding: "28px 24px 24px", maxHeight: "80vh", overflowY: "auto" }}>
-                    <button className="modal-x" onClick={() => setSizePrefsModalOpen(false)}>✕</button>
+                    <button className="modal-x" onClick={() => setSizePrefsModalOpen(false)} aria-label="Close">✕</button>
                     <h2 className="modal-title" style={{ fontSize: 22, marginBottom: 4 }}>{t("size_prefs_title")}</h2>
                     <p className="modal-sub" style={{ marginBottom: 16 }}>{t("size_prefs_sub")}</p>
 
@@ -9796,7 +9797,7 @@ export default function App() {
             {/* Hero cover */}
             <div style={{ position: "relative", width: "100%", height: 280, overflow: "hidden" }}>
               {ootwData.cover_image ? (
-                <img src={ootwData.cover_image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.5)" }} onError={e => { e.target.style.display = "none"; }} />
+                <img src={ootwData.cover_image} alt="Outfit of the Week cover" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.5)" }} onError={e => { e.target.style.display = "none"; }} />
               ) : (
                 <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
               )}
@@ -9954,7 +9955,7 @@ export default function App() {
             {/* Hero */}
             <div style={{ position: "relative", width: "100%", height: 220, overflow: "hidden" }}>
               {weeklyReport.scans[0]?.image_url ? (
-                <img src={weeklyReport.scans[0].image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.4) saturate(1.2)" }} />
+                <img src={weeklyReport.scans[0].image_url} alt="Weekly report cover" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.4) saturate(1.2)" }} />
               ) : (
                 <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
               )}
@@ -10136,7 +10137,7 @@ export default function App() {
               <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Get the full app experience</div>
             </div>
             <button onClick={handleInstall} style={{ padding: "6px 16px", background: "var(--accent)", border: "none", borderRadius: 100, fontSize: 11, fontWeight: 700, color: "#0C0C0E", cursor: "pointer" }}>Install</button>
-            <button onClick={() => setShowInstallBanner(false)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: 4 }}>&times;</button>
+            <button onClick={() => setShowInstallBanner(false)} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: 4 }}>&times;</button>
           </div>
         )}
 
@@ -10279,7 +10280,7 @@ export default function App() {
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
             <><img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" /></>
-            <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
+            <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
           </div>
 
           {publicScanView.loading && (
@@ -10795,7 +10796,7 @@ export default function App() {
                 return (
                   <div key={sub.id} style={{ background: "var(--bg-card)", border: isWinner ? "2px solid var(--accent)" : "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
                     <div style={{ position: "relative" }}>
-                      <img src={sub.image_url} alt="" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} loading="lazy" />
+                      <img src={sub.image_url} alt="Challenge submission" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} loading="lazy" />
                       {si === 0 && activeChallengeDetail.status !== "active" && (
                         <div style={{ position: "absolute", top: 8, left: 8, padding: "3px 8px", borderRadius: 100, background: "rgba(201,169,110,.9)", fontSize: 9, fontWeight: 700, color: "#fff" }}>
                           {isWinner ? "WINNER" : "#1"}
@@ -10925,14 +10926,14 @@ export default function App() {
         return (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => { setWishlistPickerScan(null); setSaveLookPending(null); setNewWishlistName(""); }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.6)", backdropFilter: "blur(4px)" }} />
-          <div style={{ position: "relative", width: "100%", maxWidth: 400, background: "var(--bg-secondary)", borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", maxHeight: "60vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+          <div className="animate-slide-up" style={{ position: "relative", width: "100%", maxWidth: 400, background: "var(--bg-secondary)", borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", maxHeight: "60vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{isSaveLook ? "Save Look to Collection" : "Add to Collection"}</div>
-              <button onClick={() => { setWishlistPickerScan(null); setSaveLookPending(null); setNewWishlistName(""); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>&times;</button>
+              <button onClick={() => { setWishlistPickerScan(null); setSaveLookPending(null); setNewWishlistName(""); }} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>&times;</button>
             </div>
             {isSaveLook && <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginBottom: 12 }}>All items from this scan will be saved to the selected collection.</div>}
             {wishlists.length > 0 && wishlists.map(wl => (
-              <button key={wl.id} onClick={() => addToWishlist(wl.id, wl.name)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", marginBottom: 8, minHeight: 48 }}>
+              <button key={wl.id} className="card-press" onClick={() => addToWishlist(wl.id, wl.name)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", marginBottom: 8, minHeight: 48 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                 <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{wl.name}</span>
               </button>
@@ -10980,7 +10981,7 @@ export default function App() {
           <div style={{ position: "relative", width: "100%", maxWidth: 400, background: "var(--bg-secondary)", borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", animation: "slideUp .25s ease" }} onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Edit Collection</div>
-              <button onClick={() => { setWishlistEditOpen(false); setWishlistRenaming(false); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>&times;</button>
+              <button onClick={() => { setWishlistEditOpen(false); setWishlistRenaming(false); }} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minHeight: 44, minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>&times;</button>
             </div>
             {wishlistRenaming ? (
               <div style={{ display: "flex", gap: 8 }}>
@@ -11048,7 +11049,7 @@ export default function App() {
             {/* Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>Share This Look</div>
-              <button onClick={() => setShowShareSheet(false)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 22, cursor: "pointer", padding: 6, minWidth: 36, minHeight: 36 }}>&times;</button>
+              <button onClick={() => setShowShareSheet(false)} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 22, cursor: "pointer", padding: 6, minWidth: 36, minHeight: 36 }}>&times;</button>
             </div>
 
             {/* Share options grid */}
@@ -11250,7 +11251,7 @@ export default function App() {
             {/* Header */}
             <div className="reel-preview-header">
               <button onClick={() => { setShowReelPreview(false); URL.revokeObjectURL(reelResult.url); setReelResult(null); }}
-                className="reel-preview-close">&times;</button>
+                className="reel-preview-close" aria-label="Close">&times;</button>
               <div className="reel-preview-title">Your Reel</div>
               <div style={{ width: 36 }} />
             </div>
@@ -11463,7 +11464,7 @@ export default function App() {
                       } : undefined}
                     >
                       {/* Outfit image */}
-                      <img src={outfit.image_url} alt="" style={{ width: "100%", height: "65%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; }} />
+                      <img src={outfit.image_url} alt="Outfit photo" style={{ width: "100%", height: "65%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; }} />
 
                       {/* Swipe labels */}
                       {isActive && swipeDir === "wear" && (
@@ -11678,7 +11679,7 @@ export default function App() {
                   <div key={h.id} style={{ borderRadius: 14, overflow: "hidden", background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                     {h.outfit?.image_url && (
                       <div style={{ position: "relative", width: "100%", aspectRatio: "3/4", overflow: "hidden" }}>
-                        <img src={h.outfit.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <img src={h.outfit.image_url} alt="Outfit photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         <div style={{ position: "absolute", top: 8, right: 8, padding: "3px 10px", borderRadius: 100, fontSize: 10, fontWeight: 700, background: h.verdict === "wear" ? "rgba(76,175,80,.85)" : "rgba(255,82,82,.85)", color: "#fff", backdropFilter: "blur(4px)" }}>
                           {h.verdict === "wear" ? "Wear" : "Pass"}
                         </div>
