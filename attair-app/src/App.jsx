@@ -9152,7 +9152,8 @@ export default function App() {
                             <div className="budget-input-wrap">
                               <span>$</span>
                               <input type="number" value={budgetMin} min={0} max={budgetMax - 1}
-                                onChange={e => { const v = Math.max(0, parseInt(e.target.value) || 0); if (v < budgetMax) { setBudgetMin(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); } }}
+                                onChange={e => { const v = parseInt(e.target.value) || 0; setBudgetMin(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
+                                onBlur={() => { setBudgetMin(v => Math.max(0, Math.min(v, budgetMax - 1))); }}
                               />
                             </div>
                           </div>
@@ -9162,7 +9163,8 @@ export default function App() {
                             <div className="budget-input-wrap">
                               <span>$</span>
                               <input type="number" value={budgetMax} min={budgetMin + 1} max={10000}
-                                onChange={e => { const v = Math.min(10000, Math.max(budgetMin + 1, parseInt(e.target.value) || 0)); setBudgetMax(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
+                                onChange={e => { const v = parseInt(e.target.value) || 0; setBudgetMax(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
+                                onBlur={() => { setBudgetMax(v => Math.min(10000, Math.max(budgetMin + 1, v))); }}
                               />
                             </div>
                           </div>
