@@ -4,13 +4,9 @@ import { requireAuth } from "../middleware/auth.js";
 import supabase from "../lib/supabase.js";
 import { recordSignal, computePreferenceProfile, getPreferenceProfile } from "../services/preferences.js";
 
-const router = Router();
+import { FREE_SCAN_LIMIT, FREE_SAVE_LIMIT, FREE_HISTORY_DAYS, FREE_EXTENDED_SEARCH_LIMIT, FREE_FAST_SEARCH_LIMIT } from "../config/limits.js";
 
-const FREE_SCAN_LIMIT = 12;
-const FREE_SAVE_LIMIT = 20;
-const FREE_HISTORY_DAYS = 7;
-const FREE_EXTENDED_SEARCH_LIMIT = 3;   // per week
-const FREE_FAST_SEARCH_LIMIT = 12;      // per month
+const router = Router();
 
 function isSameISOWeek(d1, d2) {
   const getISOWeekStart = (d) => {

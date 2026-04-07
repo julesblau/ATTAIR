@@ -101,6 +101,8 @@ Return JSON only — no markdown:
   "avoid_vibes": ["preppy", "bright colors", "formal"]
 }`;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
   try {
     const res = await fetch(ANTHROPIC_URL, {
       method: "POST",
@@ -109,6 +111,7 @@ Return JSON only — no markdown:
         "x-api-key": process.env.ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 600,
@@ -123,6 +126,8 @@ Return JSON only — no markdown:
   } catch (err) {
     console.error("[HangerTest] Insight generation failed:", err.message);
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -137,6 +142,8 @@ async function generateOutfitDescription(imageUrl, items) {
 Return JSON only:
 { "description": "Brief outfit description", "style_tags": ["tag1", "tag2", "tag3"] }`;
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
   try {
     const res = await fetch(ANTHROPIC_URL, {
       method: "POST",
@@ -145,6 +152,7 @@ Return JSON only:
         "x-api-key": process.env.ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 200,
@@ -158,6 +166,8 @@ Return JSON only:
     return parseJSON(text);
   } catch {
     return { description: itemsSummary, style_tags: [] };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

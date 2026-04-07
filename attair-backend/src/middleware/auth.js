@@ -1,7 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import supabase from "../lib/supabase.js";
 
 /**
  * Verifies the Supabase access token from the Authorization header.
+ * Uses the shared service-role client — no per-request client creation.
  * Attaches req.user (auth user) and req.userId.
  * Returns 401 if invalid/missing.
  */
@@ -14,14 +15,7 @@ export async function requireAuth(req, res, next) {
   const token = header.slice(7);
 
   try {
-    // Create a one-off client with the user's token to verify it
-    const supabaseAuth = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY,
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
-    );
-
-    const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) {
       return res.status(401).json({ error: "Invalid or expired token" });
     }
@@ -52,15 +46,8 @@ export async function optionalAuth(req, res, next) {
   const token = header.slice(7);
 
   try {
-    const supabaseAuth = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY,
-      { global: { headers: { Authorization: `Bearer ${token}` } } }
-    );
-
-    const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) {
-      // Token is invalid/expired — continue as anonymous
       req.user = null;
       req.userId = null;
       return next();
@@ -70,7 +57,6 @@ export async function optionalAuth(req, res, next) {
     req.userId = user.id;
     next();
   } catch (err) {
-    // Any error — continue as anonymous, don't block the request
     req.user = null;
     req.userId = null;
     next();

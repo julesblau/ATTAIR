@@ -21,5 +21,14 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Scan Outfit",
+      "short_name": "Scan",
+      "url": "/?tab=scan",
+      "icons": [{"src": "/icon-192.svg", "sizes": "192x192"}]
+    }
   ]
 }

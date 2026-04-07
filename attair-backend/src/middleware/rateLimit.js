@@ -1,6 +1,5 @@
 import supabase from "../lib/supabase.js";
-
-const FREE_SCAN_LIMIT = 12;
+import { FREE_SCAN_LIMIT, GUEST_SCAN_LIMIT } from "../config/limits.js";
 
 /**
  * Checks and enforces the monthly scan limit using an atomic DB operation.
@@ -167,7 +166,6 @@ export async function incrementScanCount(userId) {
 // ═══════════════════════════════════════════════════════════════
 // GUEST RATE LIMIT — IP-based, 3 scans per day, in-memory
 // ═══════════════════════════════════════════════════════════════
-const GUEST_SCAN_LIMIT = 3;
 const guestScans = new Map(); // ip → { count, date }
 
 export function guestRateLimit(req, res, next) {

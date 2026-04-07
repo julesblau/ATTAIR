@@ -283,7 +283,7 @@ app.use((err, req, res, next) => {
 });
 
 // ─── Start ──────────────────────────────────────────────────
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`
   ╔═════════════════════════════════════════╗
   ║   ATTAIR API Server                     ║
@@ -377,5 +377,20 @@ app.listen(PORT, "0.0.0.0", () => {
   }, 120_000);
   console.log("  📅 Weekly Style Report cron scheduled (Sundays)");
 });
+
+// Graceful shutdown
+const shutdown = (signal) => {
+  console.log(`${signal} received, shutting down gracefully...`);
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+};
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 export default app;

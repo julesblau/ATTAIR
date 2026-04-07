@@ -4,10 +4,9 @@ import { scanRateLimit, incrementScanCount } from "../middleware/rateLimit.js";
 import { identifyClothing } from "../services/claude.js";
 import supabase from "../lib/supabase.js";
 import { v4 as uuidv4 } from "uuid";
+import { FREE_SCAN_LIMIT } from "../config/limits.js";
 
 const router = Router();
-
-const FREE_SCAN_LIMIT = 3;
 
 // Dedup logic
 function dedup(items) {
@@ -106,7 +105,14 @@ router.post("/", requireAuth, scanRateLimit, async (req, res) => {
 
   try {
     // 1. Upload full-res image to Supabase Storage (async, don't block)
-    const imageUrlPromise = uploadImage(cleanImage, mimeType, req.userId);
+    // Race against a 30s timeout so a stalled upload never hangs the request
+    const imageUrlPromise = Promise.race([
+      uploadImage(cleanImage, mimeType, req.userId),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Image upload timeout')), 30000))
+    ]).catch(err => {
+      console.error('[Identify] Image upload failed:', err.message);
+      return null; // Continue without image URL
+    });
 
     // 2. Call Claude (runs in parallel with upload)
     const raw = await identifyClothing(cleanImage, mimeType, prefs, priority_region_base64);
