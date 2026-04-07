@@ -522,11 +522,25 @@ router.post("/hanger-test/vote", requireAuth, async (req, res) => {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("tier")
+        .select("tier, trial_ends_at")
         .eq("id", req.userId)
         .single();
 
       const isPro = profile?.tier === "pro" || profile?.tier === "trial";
+
+      // 7-day streak reward: 48h Pro trial for free users (one-time only)
+      const currentTier = profile?.tier;
+      if ((currentTier === "free" || !currentTier) && !profile?.trial_ends_at) {
+        const trialEnd = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+        await supabase
+          .from("profiles")
+          .update({ tier: "trial", trial_ends_at: trialEnd })
+          .eq("id", req.userId);
+        profile.tier = "trial";
+        result.earned_trial = true;
+        result.trial_ends_at = trialEnd;
+      }
+
       const isFirstInsight = (streakData?.insight_count || 0) === 0;
 
       if (isFirstInsight || isPro) {

@@ -2,6 +2,9 @@ import { useState, useRef, useCallback, useEffect, Fragment } from "react";
 import ReactCrop from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import "./App.css";
+import { isNative } from './native.js';
+import { takeNativePhoto, pickNativePhoto } from './camera.js';
+import { registerNativePush, onNativePushReceived, onNativePushActionPerformed } from './push.js';
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIG — Set VITE_API_BASE in Vercel env vars for production
@@ -235,7 +238,9 @@ const API = {
   },
 
   oauthLogin(provider) {
-    const redirectTo = window.location.origin + "/";
+    const redirectTo = isNative
+      ? 'com.attaire.app://auth-callback'
+      : window.location.origin + '/';
     window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
   },
 
@@ -634,6 +639,19 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 async function subscribeToPush() {
+  // Native: APNs via Capacitor
+  if (isNative) {
+    try {
+      const deviceToken = await registerNativePush();
+      if (!deviceToken) return false;
+      await API.subscribePush({ type: 'apns', token: deviceToken });
+      return true;
+    } catch (err) {
+      console.error('[Push] Native subscribe error:', err);
+      return false;
+    }
+  }
+  // Web: VAPID
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
   try {
     const vapidKey = await API.getVapidKey();
@@ -3977,6 +3995,7 @@ export default function App() {
   const [hangerFullscreen, setHangerFullscreen] = useState(false); // show fullscreen verdict card
   const [hangerVoteAnim, setHangerVoteAnim] = useState(null);     // 'wear'|'pass' for animation
   const [hangerInsight, setHangerInsight] = useState(null);        // style insight modal data
+  const [hangerTrialCelebration, setHangerTrialCelebration] = useState(false);
   const [hangerHistory, setHangerHistory] = useState([]);
   const [hangerHistoryOpen, setHangerHistoryOpen] = useState(false);
   const [hangerSwipeX, setHangerSwipeX] = useState(0);             // swipe offset
@@ -4112,7 +4131,9 @@ export default function App() {
         setHangerSwipeX(0);
       }, 1200);
 
-      if (data.earned_insight && data.style_insight) {
+      if (data.earned_trial) {
+        setTimeout(() => setHangerTrialCelebration(true), 1800);
+      } else if (data.earned_insight && data.style_insight) {
         setTimeout(() => setHangerInsight(data.style_insight), 1800);
       }
       if (data.taste_profile_updated && data.taste_profile) {
@@ -4674,14 +4695,25 @@ export default function App() {
       API.getUnreadNotifCount().then(d => setNotifCount(d.count || 0)).catch(() => {});
 
       // Auto-subscribe to push if permission already granted
-      if ("Notification" in window && Notification.permission === "granted") {
+      if (isNative || ("Notification" in window && Notification.permission === "granted")) {
         subscribeToPush().then(ok => setPushEnabled(ok)).catch(() => {});
-      } else if ("Notification" in window && Notification.permission === "default") {
+      } else if (!isNative && "Notification" in window && Notification.permission === "default") {
         // Show prompt after a short delay (not on first visit)
         const prompted = localStorage.getItem("attair_notif_prompted");
         if (!prompted) {
           setTimeout(() => setShowNotifPrompt(true), 8000);
         }
+      }
+
+      // Native push foreground + tap handlers
+      if (isNative) {
+        onNativePushReceived(() => {
+          API.getUnreadNotifCount().then(d => setNotifCount(d.count || 0)).catch(() => {});
+        });
+        onNativePushActionPerformed((action) => {
+          const url = action.notification?.data?.url;
+          if (url) window.location.hash = url;
+        });
       }
 
       if (!styleDna && !styleDnaLoading) {
@@ -4963,6 +4995,29 @@ export default function App() {
     }
   }, []);
 
+  // Native OAuth deep link handler
+  useEffect(() => {
+    if (!isNative) return;
+    let listenerHandle;
+    import('@capacitor/app').then(({ App: CapApp }) => {
+      listenerHandle = CapApp.addListener('appUrlOpen', (event) => {
+        const url = event.url || '';
+        const hashIdx = url.indexOf('#');
+        if (hashIdx === -1) return;
+        const hash = url.substring(hashIdx + 1);
+        const params = new URLSearchParams(hash);
+        const access = params.get('access_token');
+        const refresh = params.get('refresh_token');
+        if (access && refresh) {
+          Auth.setTokens(access, refresh);
+          setAuthed(true);
+          setScreen('app');
+        }
+      });
+    });
+    return () => { listenerHandle?.then(h => h.remove()); };
+  }, []);
+
   // ─── Public scan deep link — /scan/:scanId ──────────────────
   useEffect(() => {
     const match = window.location.pathname.match(/^\/scan\/([a-zA-Z0-9\-]+)$/);
@@ -5075,6 +5130,21 @@ export default function App() {
     };
     tryBlob();
   }, []);
+
+  const nativePhotoToFile = useCallback(async (nativeFn) => {
+    try {
+      const result = await nativeFn();
+      if (!result) return false;
+      const resp = await fetch(result.dataUrl);
+      const blob = await resp.blob();
+      const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' });
+      handleFile(file);
+      return true;
+    } catch (err) {
+      console.error('[Camera] Native error:', err);
+      return false;
+    }
+  }, [handleFile]);
 
   // ─── Pre-scan gate: check limits ─────────────────────────
   const canScan = () => {
@@ -7108,11 +7178,11 @@ export default function App() {
 
               {/* Scan actions — camera or gallery */}
               <div style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12 }}>
-                <button className="btn-primary" onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
+                <button className="btn-primary" onClick={async () => { if (!(await nativePhotoToFile(takeNativePhoto))) fileRef.current?.click(); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
                   Take Photo
                 </button>
-                <button className="btn-secondary" onClick={() => galleryRef.current?.click()} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
+                <button className="btn-secondary" onClick={async () => { if (!(await nativePhotoToFile(pickNativePhoto))) galleryRef.current?.click(); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                   Choose from Gallery
                 </button>
@@ -11474,6 +11544,28 @@ export default function App() {
                 <button onClick={() => setHangerInsight(null)} className="btn-primary" style={{ width: "100%", borderRadius: 14, padding: "14px 0" }}>Nice!</button>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {hangerTrialCelebration && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10003, background: "rgba(0,0,0,.8)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          onClick={() => setHangerTrialCelebration(false)}>
+          <div className="animate-scale-in" onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 360, background: "var(--bg-card)", borderRadius: 24, padding: "32px 24px", border: "1px solid var(--accent-border)", textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>&#127881;</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>Style DNA Unlocked!</div>
+            <div style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 20 }}>
+              You voted 7 days straight! Enjoy <strong style={{ color: "var(--accent)" }}>ATTAIRE Pro</strong> free for 48 hours.
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 20 }}>
+              {["Style Insights", "Price Alerts", "Outfit Reports", "Extended Search"].map(f => (
+                <span key={f} style={{ fontSize: 11, fontWeight: 600, padding: "4px 12px", borderRadius: 100, background: "rgba(201,169,110,.1)", color: "var(--accent)", border: "1px solid rgba(201,169,110,.2)" }}>{f}</span>
+              ))}
+            </div>
+            <button onClick={() => {
+              setHangerTrialCelebration(false);
+              if (hangerInsight) setTimeout(() => setHangerInsight(hangerInsight), 300);
+            }} className="btn-primary" style={{ width: "100%", borderRadius: 14, padding: "14px 0", fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 15 }}>Let's go!</button>
           </div>
         </div>
       )}

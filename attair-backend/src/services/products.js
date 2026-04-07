@@ -1333,7 +1333,7 @@ function wordMatch(text, term) {
 // ═════════════════════════════════════════════════════════════
 // SCORING — How relevant is this product to the identified item?
 // ═════════════════════════════════════════════════════════════
-function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = null) {
+function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = null, hangerTaste = null) {
   const title = (product.title || "").toLowerCase();
   const source = (product.source || "").toLowerCase();
   const link = product.link || product.product_link || product.url || "";
@@ -1500,6 +1500,49 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   for (const fs of fitStyles) {
     const fitTerm = FIT_TERMS[fs];
     if (fitTerm && wordMatch(title, fitTerm.toLowerCase())) { score += 10; break; }
+  }
+
+  // ── Hanger Taste alignment ─────────────────────────────────
+  if (hangerTaste && score > 0) {
+    const TASTE_KEYWORDS = {
+      streetwear: ["streetwear", "urban", "oversized", "hoodie", "sneaker", "graphic"],
+      minimalist: ["minimal", "clean", "simple", "neutral"],
+      classic: ["classic", "preppy", "tailored", "blazer", "oxford"],
+      bold: ["bold", "statement", "bright", "pattern", "colorful"],
+      athleisure: ["athletic", "sporty", "gym", "activewear"],
+      vintage: ["vintage", "retro", "thrift"],
+      formal: ["formal", "elegant", "suit", "dress shirt"],
+      coastal: ["coastal", "linen", "relaxed", "beach"],
+    };
+    const combined = (title + " " + source).toLowerCase();
+
+    // Style breakdown match
+    const styleBreakdown = hangerTaste.style_breakdown || [];
+    for (let i = 0; i < Math.min(styleBreakdown.length, 4); i++) {
+      const { style, pct } = styleBreakdown[i];
+      const keywords = TASTE_KEYWORDS[style] || [style];
+      if (keywords.some(kw => combined.includes(kw))) {
+        if (i === 0 && pct >= 25) score += 12;
+        else if (i === 0) score += 8;
+        else if (i <= 2) score += 5;
+        else score += 3;
+        break;
+      }
+    }
+
+    // Favorite vibes boost (cap +12)
+    let vibeBoost = 0;
+    for (const vibe of (hangerTaste.favorite_vibes || [])) {
+      if (vibe.length > 2 && combined.includes(vibe.toLowerCase())) vibeBoost += 4;
+    }
+    score += Math.min(vibeBoost, 12);
+
+    // Avoid vibes penalty (cap -15)
+    let vibePenalty = 0;
+    for (const vibe of (hangerTaste.avoid_vibes || [])) {
+      if (vibe.length > 2 && combined.includes(vibe.toLowerCase())) vibePenalty += 5;
+    }
+    score -= Math.min(vibePenalty, 15);
   }
 
   // Price proximity — budget is the primary driver of result relevance.
@@ -1797,7 +1840,7 @@ const OCCASION_MODIFIERS = {
  *   Fast: Lens on full image + 3 text queries per item. ~5-10s.
  *   Extended: Lens on full image + per-item Lens + 3 text queries + AI re-ranking. ~15-25s.
  */
-export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null, searchMode = "fast", preferenceProfile = null) {
+export async function findProductsForItems(items, gender, budgetMin, budgetMax, imageUrl, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null, searchMode = "fast", preferenceProfile = null, hangerTaste = null) {
   console.log(`[Search] Mode: ${searchMode} | Items: ${items.length} | Image: ${!!imageUrl} | Occasion: ${occasion || "none"}`);
   const tel = createSearchTelemetry();
   cleanupExpiredCache();
@@ -1956,7 +1999,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     // Score everything
     const allScored = marketFiltered
       .map(({ product, isLens }) => {
-        let score = scoreProduct(product, item, isLens, itemSizePrefs, itemTierBounds);
+        let score = scoreProduct(product, item, isLens, itemSizePrefs, itemTierBounds, hangerTaste);
         // No-lens text bonus: when Lens produced nothing for this item, text
         // results from trusted retailers get +10 to compensate for the missing
         // Lens base bonus (+25). We use a smaller number (+10 not +15) to avoid
