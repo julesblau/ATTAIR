@@ -5406,11 +5406,14 @@ export default function App() {
 
   // ─── Outfit of the Week loader ────────────────────────────
   const loadOOTW = useCallback(() => {
+    // Restore from cache for instant render
+    const cached = lsCache.get("attair_ootw_cache", 30 * 60 * 1000);
+    if (cached && !ootwData) setOotwData(cached);
     setOotwLoading(true);
     setOotwError(false);
     API.getOOTW()
-      .then(d => { if (d.ootw) setOotwData(d.ootw); })
-      .catch(err => { console.error("[OOTW] fetch failed:", err); setOotwError(true); })
+      .then(d => { if (d.ootw) { setOotwData(d.ootw); lsCache.set("attair_ootw_cache", d.ootw); } })
+      .catch(err => { console.error("[OOTW] fetch failed:", err); if (!cached) setOotwError(true); })
       .finally(() => setOotwLoading(false));
   }, []);
 
@@ -7136,7 +7139,7 @@ export default function App() {
                         <img src={ootwData.cover_image} alt="This Week's Look" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.55)" }} onLoad={e => { const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) s.style.display = 'none'; }} onError={e => { e.target.style.display = "none"; const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) { s.className = ''; s.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-input);font-size:32px;opacity:0.3'; s.textContent = '\uD83D\uDC54'; } }} />
                       </>
                     ) : (
-                      <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
+                      <div className="skeleton-pulse" style={{ width: "100%", height: "100%" }} />
                     )}
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%)" }} />
 
