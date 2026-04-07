@@ -9,6 +9,8 @@
     font-weight="700"
     font-size="44"
     letter-spacing="-2"
+    textLength="155"
+    lengthAdjust="spacing"
   ><tspan fill="#1A1816">ATT</tspan><tspan fill="#C9A96E">AI</tspan><tspan fill="#1A1816">RE</tspan></text>
   <!-- RHCP-style 6-arm asterisk in gold, positioned top-right with breathing room -->
   <g transform="translate(177, 1) scale(0.12)">
