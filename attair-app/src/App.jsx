@@ -441,8 +441,24 @@ const API = {
   },
 
   async getStats() {
-    const res = await fetch(`${API_BASE}/api/stats`);
-    return res.json();
+    // Dedupe + cache: avoid 10+ rapid calls from remounting components
+    const CACHE_KEY = "attair_stats_cache";
+    const TTL = 5 * 60 * 1000; // 5 min
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const { data, ts } = JSON.parse(raw);
+        if (Date.now() - ts < TTL) return data;
+      }
+    } catch {}
+    // Dedupe in-flight request
+    if (API._statsFlight) return API._statsFlight;
+    API._statsFlight = fetch(`${API_BASE}/api/stats`).then(r => r.json()).then(data => {
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
+      API._statsFlight = null;
+      return data;
+    }).catch(err => { API._statsFlight = null; throw err; });
+    return API._statsFlight;
   },
 
   async styleDna() {
