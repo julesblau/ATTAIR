@@ -9114,16 +9114,17 @@ export default function App() {
                         </div>
 
                         {/* Dual-thumb range slider */}
+                        {(() => { const sliderMax = Math.max(1000, Math.ceil(budgetMax / 500) * 500); return (<>
                         <div style={{ position: "relative", height: 32, marginBottom: 4 }}>
                           <div style={{ position: "absolute", top: 14, left: 0, right: 0, height: 4, background: "var(--bg-input)", borderRadius: 2 }} />
-                          <div style={{ position: "absolute", top: 14, left: `${(budgetMin / 1000) * 100}%`, right: `${100 - (budgetMax / 1000) * 100}%`, height: 4, background: "var(--accent)", borderRadius: 2 }} />
-                          <input type="range" min={0} max={1000} step={10} value={budgetMin}
+                          <div style={{ position: "absolute", top: 14, left: `${(budgetMin / sliderMax) * 100}%`, right: `${100 - (Math.min(budgetMax, sliderMax) / sliderMax) * 100}%`, height: 4, background: "var(--accent)", borderRadius: 2 }} />
+                          <input type="range" min={0} max={sliderMax} step={10} value={budgetMin}
                             onChange={e => { const v = parseInt(e.target.value); if (v < budgetMax) { setBudgetMin(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); } }}
                             aria-label="Minimum budget"
                             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 32, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 2 }}
                             className="budget-range-thumb"
                           />
-                          <input type="range" min={0} max={1000} step={10} value={budgetMax}
+                          <input type="range" min={0} max={sliderMax} step={10} value={Math.min(budgetMax, sliderMax)}
                             onChange={e => { const v = parseInt(e.target.value); if (v > budgetMin) { setBudgetMax(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); } }}
                             aria-label="Maximum budget"
                             style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 32, appearance: "none", WebkitAppearance: "none", background: "transparent", pointerEvents: "none", zIndex: 3 }}
@@ -9133,8 +9134,9 @@ export default function App() {
 
                         {/* Scale labels */}
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-tertiary)", marginBottom: 14, padding: "0 2px" }}>
-                          <span>$0</span><span>$250</span><span>$500</span><span>$750</span><span>$1000+</span>
+                          {[0, 0.25, 0.5, 0.75, 1].map(pct => <span key={pct}>${Math.round(sliderMax * pct).toLocaleString()}{pct === 1 ? "+" : ""}</span>)}
                         </div>
+                        </>); })()}
 
                         {/* Min / Max number inputs */}
                         <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
@@ -9152,8 +9154,8 @@ export default function App() {
                             <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginBottom: 4, fontWeight: 600, letterSpacing: 0.5 }}>{t("budget_max_label")}</div>
                             <div className="budget-input-wrap">
                               <span>$</span>
-                              <input type="number" value={budgetMax} min={budgetMin + 1}
-                                onChange={e => { const v = Math.max(budgetMin + 1, parseInt(e.target.value) || 0); setBudgetMax(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
+                              <input type="number" value={budgetMax} min={budgetMin + 1} max={10000}
+                                onChange={e => { const v = Math.min(10000, Math.max(budgetMin + 1, parseInt(e.target.value) || 0)); setBudgetMax(v); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
                               />
                             </div>
                           </div>
