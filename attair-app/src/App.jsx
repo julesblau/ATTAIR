@@ -5110,6 +5110,8 @@ export default function App() {
     setCircleSearchActive(false);
     setPriorityRegionBase64(null);
     setCircleConfirmed(false);
+    if (fileRef.current) fileRef.current.value = "";
+    if (galleryRef.current) galleryRef.current.value = "";
   };
 
   const onCropImageLoad = (e) => {
