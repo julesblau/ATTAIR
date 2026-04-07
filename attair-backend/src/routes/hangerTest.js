@@ -41,14 +41,18 @@ function classifyArchetype(styleTags) {
 
 // ── Helper: parse Claude JSON ──────────────────────────────────
 function parseJSON(text) {
-  let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-  const fo = s.indexOf("{");
-  const fa = s.indexOf("[");
-  const start = fo === -1 ? fa : fa === -1 ? fo : Math.min(fo, fa);
-  const isArr = s[start] === "[";
-  const end = isArr ? s.lastIndexOf("]") : s.lastIndexOf("}");
-  if (start !== -1 && end > start) s = s.substring(start, end + 1);
-  return JSON.parse(s);
+  try {
+    let s = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+    const fo = s.indexOf("{");
+    const fa = s.indexOf("[");
+    const start = fo === -1 ? fa : fa === -1 ? fo : Math.min(fo, fa);
+    const isArr = s[start] === "[";
+    const end = isArr ? s.lastIndexOf("]") : s.lastIndexOf("}");
+    if (start !== -1 && end > start) s = s.substring(start, end + 1);
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
 }
 
 // ── Helper: generate style insight via Claude ──────────────────
@@ -163,7 +167,7 @@ Return JSON only:
     if (!res.ok) return { description: itemsSummary, style_tags: [] };
     const data = await res.json();
     const text = data.content?.map(c => c.text || "").join("") || "";
-    return parseJSON(text);
+    return parseJSON(text) || { description: itemsSummary, style_tags: [] };
   } catch {
     return { description: itemsSummary, style_tags: [] };
   } finally {
@@ -609,7 +613,7 @@ router.get("/hanger-test/streak", requireAuth, async (req, res) => {
       longest_streak: streak.longest_streak,
       total_votes: streak.total_votes,
       taste_badge: streak.taste_badge,
-      style_insight: streak.style_insight ? JSON.parse(streak.style_insight) : null,
+      style_insight: streak.style_insight ? (() => { try { return JSON.parse(streak.style_insight); } catch { return null; } })() : null,
       last_vote_date: streak.last_vote_date,
     });
   } catch (err) {

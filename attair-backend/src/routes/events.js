@@ -34,9 +34,27 @@ router.post("/", eventsLimiter, optionalAuth, async (req, res) => {
   const body = req.body;
   const rawEvents = Array.isArray(body) ? body : [body];
 
+  // Validate batch is non-empty
+  if (rawEvents.length === 0) {
+    return res.status(400).json({ error: "events must be a non-empty array" });
+  }
+
   // Cap batch size
   if (rawEvents.length > EVENTS_MAX_BATCH) {
-    return res.status(400).json({ error: `Batch too large: max ${EVENTS_MAX_BATCH} events per request` });
+    return res.status(400).json({ error: `Maximum ${EVENTS_MAX_BATCH} events per request` });
+  }
+
+  // Validate each event has a valid event_type
+  for (const event of rawEvents) {
+    if (!event || typeof event.event_type !== "string" || event.event_type.length === 0 || event.event_type.length > EVENT_NAME_MAX_LEN) {
+      return res.status(400).json({ error: "Each event must have an event_type (string, max 100 chars)" });
+    }
+    if (event.event_data && typeof event.event_data === "object") {
+      const serialised = JSON.stringify(event.event_data);
+      if (Buffer.byteLength(serialised, "utf8") > EVENT_METADATA_MAX_BYTES) {
+        return res.status(400).json({ error: "event_data exceeds maximum size (1 KB)" });
+      }
+    }
   }
 
   const events = rawEvents;

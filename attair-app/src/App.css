@@ -1355,6 +1355,11 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton-pulse {
+    animation: none !important;
+    background: var(--bg-input) !important;
   }
 }
 
@@ -4728,4 +4733,9 @@ textarea:focus-visible {
 @keyframes overlay-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ─── Scroll anchoring — prevent jump on content reflow ──── */
+.scroll-y, [style*="overflowY: auto"], [style*="overflow-y: auto"] {
+  overflow-anchor: auto;
 }

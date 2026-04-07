@@ -160,6 +160,13 @@ router.post("/:id/submit", requireAuth, async (req, res) => {
   const { image_url, caption, scan_id } = req.body;
 
   if (!image_url) return res.status(400).json({ error: "image_url is required" });
+  if (caption !== undefined && (typeof caption !== "string" || caption.length > 200)) {
+    return res.status(400).json({ error: "caption must be a string (max 200 chars)" });
+  }
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (scan_id !== undefined && scan_id !== null && (typeof scan_id !== "string" || !UUID_RE.test(scan_id))) {
+    return res.status(400).json({ error: "scan_id must be a valid UUID" });
+  }
 
   try {
     // Verify challenge is active
