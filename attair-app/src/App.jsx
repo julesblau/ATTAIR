@@ -8843,7 +8843,7 @@ export default function App() {
                         const price = (() => { const p = product.price || item.price || item.estimated_price; if (!p) return null; const n = typeof p === "string" ? parseFloat(p.replace(/[^0-9.]/g, "")) : p; return n && isFinite(n) ? `$${n.toFixed(2)}` : null; })();
                         const url = product.url || item.url;
                         return (
-                          <div key={si.id} className="look-item-card" style={{ position: "relative" }}>
+                          <div key={si.id} className="look-item-card card-press" style={{ position: "relative" }}>
                             <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, overflow: "hidden", background: "var(--bg-input)", position: "relative" }}>
                               {img ? (
                                 <img src={img} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
@@ -9133,7 +9133,7 @@ export default function App() {
                     <div className="scan-overlay-body">
                       <div className="scan-overlay-meta">
                         <span className="scan-overlay-tag">{hsItems.length} item{hsItems.length !== 1 ? "s" : ""}</span>
-                        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{new Date(hs.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>
+                        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{relativeDate(hs.created_at)}</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border)" }}
                         onClick={(e) => { e.stopPropagation(); toggleVisibility(e, hs); }}
@@ -9200,6 +9200,7 @@ export default function App() {
                     </button>
                   </div>
 
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>APPEARANCE</div>
                   {/* Theme toggle */}
                   <div className="settings-sheet-item card-press" onClick={toggleTheme} role="button" aria-label="Toggle theme">
                     <span className="settings-label">{t("appearance")}</span>
@@ -9221,6 +9222,8 @@ export default function App() {
                     </div>
                   </div>
 
+                  <div style={{ height: 1, background: "var(--border)", margin: "8px 0", opacity: 0.5 }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>PREFERENCES</div>
                   {/* Budget Range — tappable row toggles inline expansion */}
                   <div className="settings-budget-section">
                     <div className="settings-sheet-item" style={{ cursor: "pointer" }} onClick={() => {
@@ -9386,6 +9389,8 @@ export default function App() {
                     </div>
                   </div>
 
+                  <div style={{ height: 1, background: "var(--border)", margin: "8px 0", opacity: 0.5 }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>ACCOUNT</div>
                   {/* Subscription */}
                   <div className="settings-sheet-item" style={{ cursor: "default" }}>
                     <span className="settings-label">{t("subscription")}</span>
@@ -9439,6 +9444,8 @@ export default function App() {
                     )}
                   </div>
 
+                  <div style={{ height: 1, background: "var(--border)", margin: "8px 0", opacity: 0.5 }} />
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>SUPPORT</div>
                   {/* Referral */}
                   {referralCode && (
                     <div style={{ padding: "14px 0", borderTop: "1px solid var(--border)" }}>
@@ -10170,28 +10177,28 @@ export default function App() {
 
         {/* ─── Tab bar (5 tabs: Feed, Discover, Scan, Saved, Profile) ── */}
         <div className="tb">
-          <button className={`tab${tab==="home"?" on":""}`} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); setFeedTab("foryou"); setFeedPage(1); setShowUserSearch(false); }} aria-label="Feed">
+          <button className={`tab${tab==="home"?" on":""}`} onClick={() => { track("tab_switched", { tab: "home" }); setTab("home"); setFeedTab("foryou"); setFeedPage(1); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Feed">
             <svg viewBox="0 0 24 24" fill={tab==="home"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V9.5z"/></svg>
             <span className="tab-l">Feed</span>
           </button>
-          <button className={`tab${tab==="search"?" on":""}`} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); setShowUserSearch(false); }} aria-label="Discover">
+          <button className={`tab${tab==="search"?" on":""}`} onClick={() => { track("tab_switched", { tab: "search" }); setTab("search"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Discover">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             <span className="tab-l">Discover</span>
           </button>
-          <button className="tab-scan" onClick={() => { track("tab_switched", { tab: "scan" }); if (tab === "scan" && phase !== "idle") { reset(); if (fileRef.current) fileRef.current.value = ""; if (galleryRef.current) galleryRef.current.value = ""; } setTab("scan"); setShowUserSearch(false); }} aria-label="Scan outfit">
+          <button className="tab-scan" onClick={() => { track("tab_switched", { tab: "scan" }); if (tab === "scan" && phase !== "idle") { reset(); if (fileRef.current) fileRef.current.value = ""; if (galleryRef.current) galleryRef.current.value = ""; } setTab("scan"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Scan outfit">
             <div className="tab-scan-icon">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </div>
             <span className="tab-l">Scan</span>
           </button>
-          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); }} aria-label="Wardrobe">
+          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Wardrobe">
             <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             <span className="tab-l">{t("wardrobe")}</span>
             {priceAlertCount > 0 && (
               <span className="tab-badge" />
             )}
           </button>
-          <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("social"); return; } track("tab_switched", { tab: "profile" }); setTab("profile"); setShowUserSearch(false); }} aria-label="Profile">
+          <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("social"); return; } track("tab_switched", { tab: "profile" }); setTab("profile"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Profile">
             <svg viewBox="0 0 24 24" fill={tab==="profile"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
             <span className="tab-l">Profile</span>
           </button>
