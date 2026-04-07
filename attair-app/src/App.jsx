@@ -8530,37 +8530,44 @@ export default function App() {
                 <div style={{ padding: "0 20px" }}>
                   {/* Smart refine input — targets active item tab */}
                   <div style={{ marginBottom: 12 }}>
-                    {/* Free tier refine limit */}
-                    {isFree && (refineCountMap[scanId || "x"] || 0) >= 1 ? (
-                      <div style={{ padding: "12px 16px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.15)", borderRadius: 12, textAlign: "center" }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>Refine limit reached</div>
-                        <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginBottom: 8 }}>Upgrade to Pro for unlimited refinements</div>
-                        <button onClick={() => setUpgradeModal("refine_limit")} style={{ padding: "8px 20px", background: "var(--accent)", border: "none", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "var(--text-inverse)", cursor: "pointer", fontFamily: "var(--font-sans)" }}>Upgrade to Pro</button>
-                      </div>
-                    ) : (
-                      <div className="refine-input-row">
-                        <input
-                          value={refineText}
-                          onChange={e => setRefineText(e.target.value.slice(0, 200))}
-                          onKeyDown={e => { if (e.key === "Enter" && refineText.trim()) { e.target.blur(); handleSmartRefine(); } }}
-                          placeholder={`Refine [${(() => { const picked = results.items.map((it, idx) => ({ it, idx })).filter(({ idx }) => pickedItems.has(idx)); const active = picked[Math.min(activeItemIdx, picked.length - 1)]; return active?.it?.name || "item"; })()}]...`}
-                          className="refine-input"
-                          style={{ flex: 1, minHeight: 44 }}
-                          disabled={refineLoading}
-                        />
-                        <button
-                          className="refine-send"
-                          disabled={!refineText.trim() || refineLoading}
-                          onClick={() => { if (refineText.trim()) handleSmartRefine(); }}
-                          aria-label="Run smart refine"
-                        >
-                          {refineLoading
-                            ? <div className="ld-dot" style={{ width: 10, height: 10, background: "#fff" }} />
-                            : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                          }
-                        </button>
-                      </div>
-                    )}
+                    {/* Refine input — always visible, locked for free tier after 1 use */}
+                    {(() => {
+                      const isRefineLocked = isFree && (refineCountMap[scanId || "x"] || 0) >= 1;
+                      return (
+                        <div className="refine-input-row" onClick={() => isRefineLocked && setUpgradeModal("refine_limit")} style={{ opacity: isRefineLocked ? 0.5 : 1, cursor: isRefineLocked ? "pointer" : undefined }}>
+                          <input
+                            value={refineText}
+                            onChange={e => setRefineText(e.target.value.slice(0, 200))}
+                            onKeyDown={e => { if (e.key === "Enter" && refineText.trim()) { e.target.blur(); handleSmartRefine(); } }}
+                            placeholder={isRefineLocked ? "Upgrade to Pro for unlimited refines" : `Refine [${(() => { const picked = results.items.map((it, idx) => ({ it, idx })).filter(({ idx }) => pickedItems.has(idx)); const active = picked[Math.min(activeItemIdx, picked.length - 1)]; return active?.it?.name || "item"; })()}]...`}
+                            className="refine-input"
+                            style={{ flex: 1, minHeight: 44, cursor: isRefineLocked ? "pointer" : undefined }}
+                            disabled={isRefineLocked || refineLoading}
+                          />
+                          {isRefineLocked ? (
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, padding: "0 4px" }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                              </svg>
+                              <span style={{ fontSize: 9, fontWeight: 800, color: "var(--accent)", letterSpacing: 0.5 }}>PRO</span>
+                            </div>
+                          ) : (
+                            <button
+                              className="refine-send"
+                              disabled={!refineText.trim() || refineLoading}
+                              onClick={() => { if (refineText.trim()) handleSmartRefine(); }}
+                              aria-label="Run smart refine"
+                            >
+                              {refineLoading
+                                ? <div className="ld-dot" style={{ width: 10, height: 10, background: "#fff" }} />
+                                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                              }
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* More options toggle — visually separated */}

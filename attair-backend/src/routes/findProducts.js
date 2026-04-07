@@ -420,7 +420,7 @@ Only return the JSON, no other text.`,
       null, // no image URL for refined searches
       profile?.size_prefs || {},
       null, // no occasion
-      null, // no search_notes
+      refinement, // pass refinement text as searchNotes
       null, // no custom occasion modifiers
       searchMode,
       prefProfile,
@@ -444,6 +444,7 @@ Only return the JSON, no other text.`,
         modified_search_query: mod.modified_search_query,
         explanation: mod.explanation,
       })),
+      updated_items: results,
     });
   } catch (err) {
     console.error("Refine search error:", err.message);
