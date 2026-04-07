@@ -3953,9 +3953,6 @@ export default function App() {
   const [followListData, setFollowListData] = useState([]);
   const [followListLoading, setFollowListLoading] = useState(false);
 
-  // ─── Language confirmation popup ──────────────────────────────
-  const [langConfirmOpen, setLangConfirmOpen] = useState(null); // null | language code
-
   // ─── Complete the Look ──────────────────────────────────────
   const [looks, setLooks] = useState([]);                          // grouped looks from backend
   const [looksLoading, setLooksLoading] = useState(false);
@@ -9033,12 +9030,15 @@ export default function App() {
               {/* Settings bottom sheet */}
               {profileSettingsOpen && <>
                 <div className="bottom-sheet-overlay" onClick={() => { setProfileSettingsOpen(false); }} />
-                <div className="bottom-sheet" role="dialog" aria-label="Settings" aria-modal="true"
-                  style={{ transform: settingsSheetY > 0 ? `translateY(${settingsSheetY}px)` : undefined, transition: settingsDragRef.current.dragging ? 'none' : 'transform 0.3s ease' }}
-                  onTouchStart={e => { settingsDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
-                  onTouchMove={e => { const dy = e.touches[0].clientY - settingsDragRef.current.startY; settingsDragRef.current.currentY = e.touches[0].clientY; if (dy > 0) { setSettingsSheetY(dy); } }}
-                  onTouchEnd={() => { const dy = settingsDragRef.current.currentY - settingsDragRef.current.startY; settingsDragRef.current.dragging = false; if (dy > 120) { setSettingsSheetY(window.innerHeight); setTimeout(() => { setProfileSettingsOpen(false); setSettingsSheetY(0); }, 300); } else { setSettingsSheetY(0); } }}>
-                  <div className="bottom-sheet-handle" />
+                <div role="dialog" aria-label="Settings" aria-modal="true"
+                  style={{ position: "fixed", inset: 0, zIndex: 1001, background: "var(--bg-primary)", display: "flex", flexDirection: "column", transform: settingsSheetY > 0 ? `translateY(${settingsSheetY}px)` : undefined, transition: settingsDragRef.current.dragging ? 'none' : 'transform 0.3s ease', animation: "slideUpSheet 0.25s ease" }}>
+                  <div style={{ padding: "12px 0 0", display: "flex", flexDirection: "column", alignItems: "center", cursor: "grab", flexShrink: 0 }}
+                    onTouchStart={e => { settingsDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
+                    onTouchMove={e => { const dy = e.touches[0].clientY - settingsDragRef.current.startY; settingsDragRef.current.currentY = e.touches[0].clientY; if (dy > 0) { setSettingsSheetY(dy); } }}
+                    onTouchEnd={() => { const dy = settingsDragRef.current.currentY - settingsDragRef.current.startY; settingsDragRef.current.dragging = false; if (dy > 120) { setSettingsSheetY(window.innerHeight); setTimeout(() => { setProfileSettingsOpen(false); setSettingsSheetY(0); }, 300); } else { setSettingsSheetY(0); } }}>
+                    <div style={{ width: 36, height: 4, background: "var(--text-tertiary)", borderRadius: 9999, marginBottom: 12 }} />
+                  </div>
+                  <div style={{ padding: "0 20px", overflowY: "auto", flex: 1, paddingBottom: 40 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                     <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{t("settings")}</div>
                     <button onClick={() => setProfileSettingsOpen(false)} aria-label="Close settings" style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", borderRadius: "50%", color: "var(--text-secondary)" }}>
@@ -9062,7 +9062,7 @@ export default function App() {
                     <span className="settings-label">{t("language")}</span>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {[["en","EN"],["es","ES"],["fr","FR"],["de","DE"],["zh","\u4E2D"],["ja","\u65E5"],["ko","\uD55C"],["pt","PT"]].map(([l, label]) => (
-                        <button key={l} className={`chip${lang === l ? " active" : ""}`} onClick={() => { if (l !== lang) setLangConfirmOpen(l); }} style={{ padding: "8px 14px", fontSize: 12, minHeight: 44 }}>{label}</button>
+                        <button key={l} className={`chip${lang === l ? " active" : ""}`} onClick={() => { if (l !== lang) { setLang(l); localStorage.setItem("attair_lang", l); } }} style={{ padding: "8px 14px", fontSize: 12, minHeight: 44 }}>{label}</button>
                       ))}
                     </div>
                   </div>
@@ -9288,6 +9288,7 @@ export default function App() {
 
                   {/* Sign out */}
                   <div className="settings-sheet-item danger" style={{ marginTop: 8 }} onClick={() => { setProfileSettingsOpen(false); handleLogout(); }} role="button" aria-label="Sign out">{t("log_out")}</div>
+                  </div>
                 </div>
               </>}
 
@@ -9300,72 +9301,30 @@ export default function App() {
                     <h2 className="modal-title" style={{ fontSize: 22, marginBottom: 4 }}>{t("size_prefs_title")}</h2>
                     <p className="modal-sub" style={{ marginBottom: 16 }}>{t("size_prefs_sub")}</p>
 
-                    {/* Size categories — universal, no gender split */}
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                      {/* Tops */}
-                      <div>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("tops")}</label>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {["XS","S","M","L","XL","XXL"].map(s => (
-                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, tops: p.tops === s ? "" : s }))}
-                              style={{ padding: "8px 14px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.tops === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.tops === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.tops === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
-                              {s}
-                            </button>
-                          ))}
+                    {/* Size categories — horizontal scroll pills */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {[
+                        { key: "tops", label: t("tops"), sizes: ["XS","S","M","L","XL","XXL"] },
+                        { key: "bottoms_waist", label: t("bottoms_waist"), sizes: ["24","25","26","27","28","29","30","31","32","33","34","36","38","40"] },
+                        { key: "bottoms_length", label: t("bottoms_length"), sizes: ["28","29","30","31","32","34","36"] },
+                        { key: "shoes", label: t("shoes"), sizes: ["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14","15"] },
+                        { key: "dresses", label: t("dresses"), sizes: ["0","2","4","6","8","10","12","14","16"] },
+                      ].map(cat => (
+                        <div key={cat.key} style={{ background: "var(--bg-input)", borderRadius: 12, padding: "10px 0" }}>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 0.8, textTransform: "uppercase", display: "block", padding: "0 14px 8px" }}>{cat.label}</label>
+                          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", padding: "0 14px" }}>
+                            {cat.sizes.map(s => {
+                              const sel = sizePrefsEdit[cat.key] === s;
+                              return (
+                                <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, [cat.key]: p[cat.key] === s ? "" : s }))}
+                                  style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 9999, border: sel ? "1.5px solid var(--accent)" : "1.5px solid var(--border)", background: sel ? "var(--accent)" : "transparent", color: sel ? "#0C0C0E" : "var(--text-secondary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 36, transition: "all .15s" }}>
+                                  {s}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Bottoms Waist */}
-                      <div>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("bottoms_waist")}</label>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {["24","25","26","27","28","29","30","31","32","33","34","36","38","40"].map(s => (
-                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, bottoms_waist: p.bottoms_waist === s ? "" : s }))}
-                              style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.bottoms_waist === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.bottoms_waist === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.bottoms_waist === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
-                              {s}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Bottoms Length */}
-                      <div>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("bottoms_length")}</label>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {["28","29","30","31","32","34","36"].map(s => (
-                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, bottoms_length: p.bottoms_length === s ? "" : s }))}
-                              style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.bottoms_length === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.bottoms_length === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.bottoms_length === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
-                              {s}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Shoes */}
-                      <div>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("shoes")}</label>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {["5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","13","14","15"].map(s => (
-                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, shoes: p.shoes === s ? "" : s }))}
-                              style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.shoes === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.shoes === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.shoes === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
-                              {s}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Dresses — optional for anyone */}
-                      <div>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>{t("dresses")}</label>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                          {["0","2","4","6","8","10","12","14","16"].map(s => (
-                            <button key={s} onClick={() => setSizePrefsEdit(p => ({ ...p, dresses: p.dresses === s ? "" : s }))}
-                              style={{ padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${sizePrefsEdit.dresses === s ? "var(--accent-border)" : "var(--border)"}`, background: sizePrefsEdit.dresses === s ? "var(--accent-bg)" : "var(--bg-input)", color: sizePrefsEdit.dresses === s ? "var(--accent)" : "var(--text-tertiary)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 40 }}>
-                              {s}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      ))}
                     </div>
 
                     {/* Save / Cancel */}
@@ -9460,29 +9419,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* ─── Language Change Confirmation ─────────── */}
-              {langConfirmOpen && (
-                <div className="modal-overlay" onClick={() => setLangConfirmOpen(null)} style={{ zIndex: 360 }}>
-                  <div className="modal-box" onClick={e => e.stopPropagation()} style={{ padding: "28px 24px 24px", textAlign: "center" }}>
-                    <h2 className="modal-title" style={{ fontSize: 20, marginBottom: 8 }}>
-                      {STRINGS[langConfirmOpen]?.confirm_language || "Change language?"}
-                    </h2>
-                    <p className="modal-sub" style={{ marginBottom: 20 }}>
-                      {STRINGS[langConfirmOpen]?.confirm_language_desc || "Change language to"} {({en:"English",es:"Español",fr:"Français",de:"Deutsch",zh:"中文",ja:"日本語",ko:"한국어",pt:"Português"})[langConfirmOpen] || langConfirmOpen}?
-                    </p>
-                    <button className="btn-primary" style={{ width: "100%", padding: "12px 0", fontSize: 14, fontWeight: 600 }}
-                      onClick={() => {
-                        setLang(langConfirmOpen);
-                        localStorage.setItem("attair_lang", langConfirmOpen);
-                        setLangConfirmOpen(null);
-                      }}
-                    >{STRINGS[langConfirmOpen]?.confirm_btn || "Confirm"}</button>
-                    <button className="modal-later" onClick={() => setLangConfirmOpen(null)}>
-                      {STRINGS[langConfirmOpen]?.cancel_btn || "Cancel"}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
             );
           })()}
