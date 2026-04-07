@@ -1180,6 +1180,18 @@ const STRINGS = {
     save_sizes: "Save Sizes",
     no_followers_yet: "No followers yet",
     no_following_yet: "Not following anyone yet",
+    ob_tagline: "See it. Scan it. Shop it.",
+    ob_subtitle: "Your AI-powered style assistant.",
+    ob_scan_desc: "Scan any outfit. Find every piece. Shop at any budget — solo or with friends.",
+    ob_style_vibe: "What's your style vibe?",
+    ob_pick_aesthetics: "Pick 3 or more aesthetics. We'll tailor your experience.",
+    ob_pick_at_least: "Pick at least 3",
+    ob_more_to_go: "more to go",
+    ob_continue_with: "Continue with",
+    ob_picks: "picks",
+    ob_skip: "Skip for now",
+    ob_youre_offline: "You're offline",
+    ob_pinch_drag: "Pinch to zoom \u00b7 Drag to position",
   },
   es: {
     home: "Inicio",
@@ -1375,6 +1387,18 @@ const STRINGS = {
     save_sizes: "Guardar tallas",
     no_followers_yet: "Sin seguidores aún",
     no_following_yet: "No sigues a nadie aún",
+    ob_tagline: "Míralo. Escanéalo. Cómpralo.",
+    ob_subtitle: "Tu asistente de estilo con IA.",
+    ob_scan_desc: "Escanea cualquier outfit. Encuentra cada pieza. Compra a cualquier presupuesto — solo o con amigos.",
+    ob_style_vibe: "¿Cuál es tu estilo?",
+    ob_pick_aesthetics: "Elige 3 o más estéticas. Personalizaremos tu experiencia.",
+    ob_pick_at_least: "Elige al menos 3",
+    ob_more_to_go: "más por elegir",
+    ob_continue_with: "Continuar con",
+    ob_picks: "selecciones",
+    ob_skip: "Omitir por ahora",
+    ob_youre_offline: "Sin conexión",
+    ob_pinch_drag: "Pellizca para zoom \u00b7 Arrastra para posicionar",
   },
   fr: {
     home: "Accueil",
@@ -1570,6 +1594,18 @@ const STRINGS = {
     save_sizes: "Sauvegarder les tailles",
     no_followers_yet: "Aucun abonné encore",
     no_following_yet: "Vous ne suivez personne encore",
+    ob_tagline: "Voyez-le. Scannez-le. Achetez-le.",
+    ob_subtitle: "Votre assistant style propulsé par l'IA.",
+    ob_scan_desc: "Scannez n'importe quelle tenue. Trouvez chaque pièce. Achetez à tout budget — seul ou entre amis.",
+    ob_style_vibe: "Quel est votre style ?",
+    ob_pick_aesthetics: "Choisissez 3 esthétiques ou plus. Nous personnaliserons votre expérience.",
+    ob_pick_at_least: "Choisissez au moins 3",
+    ob_more_to_go: "de plus",
+    ob_continue_with: "Continuer avec",
+    ob_picks: "choix",
+    ob_skip: "Passer pour le moment",
+    ob_youre_offline: "Hors ligne",
+    ob_pinch_drag: "Pincez pour zoomer \u00b7 Glissez pour positionner",
   },
   de: {
     home: "Start",
@@ -1765,6 +1801,18 @@ const STRINGS = {
     save_sizes: "Größen speichern",
     no_followers_yet: "Noch keine Follower",
     no_following_yet: "Du folgst noch niemandem",
+    ob_tagline: "Sehen. Scannen. Shoppen.",
+    ob_subtitle: "Dein KI-gestützter Stil-Assistent.",
+    ob_scan_desc: "Scanne jedes Outfit. Finde jedes Teil. Shoppe in jedem Budget — allein oder mit Freunden.",
+    ob_style_vibe: "Was ist dein Style?",
+    ob_pick_aesthetics: "Wähle 3 oder mehr Ästhetiken. Wir passen dein Erlebnis an.",
+    ob_pick_at_least: "Wähle mindestens 3",
+    ob_more_to_go: "noch nötig",
+    ob_continue_with: "Weiter mit",
+    ob_picks: "Auswahlen",
+    ob_skip: "Erstmal überspringen",
+    ob_youre_offline: "Du bist offline",
+    ob_pinch_drag: "Zum Zoomen zusammenziehen \u00b7 Zum Positionieren ziehen",
   },
   zh: {
     home: "首页",
@@ -1960,6 +2008,18 @@ const STRINGS = {
     save_sizes: "保存尺码",
     no_followers_yet: "暂无粉丝",
     no_following_yet: "暂未关注任何人",
+    ob_tagline: "看到。扫描。购买。",
+    ob_subtitle: "你的AI时尚助手。",
+    ob_scan_desc: "扫描任何穿搭。找到每件单品。以任何预算购物——独自或与朋友一起。",
+    ob_style_vibe: "你的风格是什么？",
+    ob_pick_aesthetics: "选择3种或更多美学风格。我们将为你量身定制。",
+    ob_pick_at_least: "至少选择3个",
+    ob_more_to_go: "还需选择",
+    ob_continue_with: "继续，已选",
+    ob_picks: "个",
+    ob_skip: "暂时跳过",
+    ob_youre_offline: "你已离线",
+    ob_pinch_drag: "双指缩放 \u00b7 拖动定位",
   },
   ja: {
     home: "ホーム",
@@ -2155,6 +2215,18 @@ const STRINGS = {
     save_sizes: "サイズを保存",
     no_followers_yet: "フォロワーはまだいません",
     no_following_yet: "まだ誰もフォローしていません",
+    ob_tagline: "見つけて。スキャン。ショッピング。",
+    ob_subtitle: "AIスタイルアシスタント。",
+    ob_scan_desc: "どんなコーデもスキャン。すべてのアイテムを発見。予算に合わせてお買い物。",
+    ob_style_vibe: "あなたのスタイルは？",
+    ob_pick_aesthetics: "3つ以上の美学を選んでください。体験をカスタマイズします。",
+    ob_pick_at_least: "3つ以上選んでください",
+    ob_more_to_go: "あと",
+    ob_continue_with: "続ける：",
+    ob_picks: "件選択済み",
+    ob_skip: "今はスキップ",
+    ob_youre_offline: "オフラインです",
+    ob_pinch_drag: "ピンチでズーム \u00b7 ドラッグで移動",
   },
   ko: {
     home: "홈",
@@ -2350,6 +2422,18 @@ const STRINGS = {
     save_sizes: "사이즈 저장",
     no_followers_yet: "아직 팔로워가 없습니다",
     no_following_yet: "아직 아무도 팔로우하지 않았습니다",
+    ob_tagline: "보고. 스캔하고. 쇼핑하세요.",
+    ob_subtitle: "AI 스타일 어시스턴트.",
+    ob_scan_desc: "어떤 코디든 스캔하세요. 모든 아이템을 찾으세요. 어떤 예산이든 쇼핑 — 혼자 또는 친구와.",
+    ob_style_vibe: "당신의 스타일은?",
+    ob_pick_aesthetics: "3개 이상의 미학을 선택하세요. 맞춤 경험을 제공합니다.",
+    ob_pick_at_least: "최소 3개 선택",
+    ob_more_to_go: "더 필요",
+    ob_continue_with: "계속하기:",
+    ob_picks: "개 선택됨",
+    ob_skip: "나중에 하기",
+    ob_youre_offline: "오프라인 상태",
+    ob_pinch_drag: "핀치로 확대 \u00b7 드래그로 위치 조정",
   },
   pt: {
     home: "Inicio",
@@ -2545,6 +2629,18 @@ const STRINGS = {
     save_sizes: "Salvar tamanhos",
     no_followers_yet: "Nenhum seguidor ainda",
     no_following_yet: "Não está seguindo ninguém ainda",
+    ob_tagline: "Veja. Escaneie. Compre.",
+    ob_subtitle: "Seu assistente de estilo com IA.",
+    ob_scan_desc: "Escaneie qualquer look. Encontre cada peça. Compre em qualquer orçamento — sozinho ou com amigos.",
+    ob_style_vibe: "Qual é o seu estilo?",
+    ob_pick_aesthetics: "Escolha 3 ou mais estéticas. Vamos personalizar sua experiência.",
+    ob_pick_at_least: "Escolha pelo menos 3",
+    ob_more_to_go: "faltam",
+    ob_continue_with: "Continuar com",
+    ob_picks: "escolhas",
+    ob_skip: "Pular por enquanto",
+    ob_youre_offline: "Você está offline",
+    ob_pinch_drag: "Aperte para zoom \u00b7 Arraste para posicionar",
   },
 };
 
@@ -2589,6 +2685,8 @@ const STYLE_AESTHETICS = [
 // ONBOARDING DEMO — TikTok-speed animated welcome
 // ═══════════════════════════════════════════════════════════════
 function OnboardingDemo({ fade, onGetStarted, onLogin }) {
+  const _lang = localStorage.getItem("attair_lang") || "en";
+  const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
   const [demoPhase, setDemoPhase] = useState(0); // 0=photo, 1=scanning, 2=items, 3=results, 4=fade-out
   const [cycleKey, setCycleKey] = useState(0);
   const [stats, setStats] = useState(null);
@@ -2616,7 +2714,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
       {/* Logo pinned to top */}
       <img src="/logo-dark.svg" alt="ATTAIRE" style={{ display: "block", margin: "0 auto", paddingTop: 16, width: "60%", maxWidth: 220, height: "auto" }} />
       <h2 style={{ textAlign: "center", margin: "12px 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: 1.5, color: "#FAFAFA" }}>
-        See it. Scan it. <span style={{ color: "#C9A96E" }}>Shop it.</span>
+        {(() => { const tl = _t("ob_tagline"); const parts = tl.split(". "); if (parts.length >= 2) { const last = parts.pop(); return <>{parts.join(". ")}. <span style={{ color: "#C9A96E" }}>{last}</span></>; } return tl; })()}
       </h2>
       {/* Animated demo viewport */}
       <div className="ob-demo-viewport">
@@ -2686,12 +2784,12 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
       {/* CTA section */}
       <div className="ob-demo-cta">
         <h1 className="ob-demo-title">
-          Your AI-powered<br /><span className="ob-demo-title-gold">style assistant.</span>
+          {(() => { const sub = _t("ob_subtitle"); const dotIdx = sub.indexOf("."); if (dotIdx > 0) { return <>{sub.slice(0, sub.lastIndexOf(" "))}<br /><span className="ob-demo-title-gold">{sub.slice(sub.lastIndexOf(" ") + 1)}</span></>; } return sub; })()}
         </h1>
         <p className="ob-demo-sub">
-          Scan any outfit. Find every piece. Shop at any budget — solo or with friends.
+          {_t("ob_scan_desc")}
         </p>
-        <button className="cta" onClick={onGetStarted}>Get Started</button>
+        <button className="cta" onClick={onGetStarted}>{_t("get_started")}</button>
         <button className="ob-demo-login" onClick={onLogin}>
           Already have an account? Log in
         </button>
@@ -2741,6 +2839,8 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
 // INSPIRATION PICKER — "Who inspires your style?"
 // ═══════════════════════════════════════════════════════════════
 function InspirationPicker({ fade, onContinue, onSkip }) {
+  const _lang = localStorage.getItem("attair_lang") || "en";
+  const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
   const [shopFor, setShopFor] = useState(null); // "women" | "men" | "both"
   const [selected, setSelected] = useState([]);
 
@@ -2759,8 +2859,8 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
   return (
     <div className={`ob ob-inspo ${fade}`}>
       <div className="ob-inspo-header">
-        <h1 className="ob-inspo-title">What's your<br />style vibe?</h1>
-        <p className="ob-inspo-sub">Pick 3 or more aesthetics. We'll tailor your experience.</p>
+        <h1 className="ob-inspo-title">{_t("ob_style_vibe")}</h1>
+        <p className="ob-inspo-sub">{_t("ob_pick_aesthetics")}</p>
       </div>
 
       {/* Shopping preference */}
@@ -2803,13 +2903,13 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
           disabled={selected.length < 3}
         >
           {selected.length === 0
-            ? "Pick at least 3"
+            ? _t("ob_pick_at_least")
             : selected.length < 3
-            ? `${3 - selected.length} more to go`
-            : `Continue with ${selected.length} picks`}
+            ? `${3 - selected.length} ${_t("ob_more_to_go")}`
+            : `${_t("ob_continue_with")} ${selected.length} ${_t("ob_picks")}`}
         </button>
         <button className="ob-inspo-skip" onClick={() => { localStorage.setItem("attair_inspirations", "[]"); onSkip(); }}>
-          Skip for now
+          {_t("ob_skip")}
         </button>
       </div>
     </div>
@@ -4333,6 +4433,31 @@ export default function App() {
     { code: "pt", label: "Português" },
   ];
 
+  // ─── Offline detection ─────────────────────────────────────
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
+  }, []);
+
+  // ─── Keyboard shortcuts (desktop) ────────────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setTab('search');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   // ─── Loading message rotation ─────────────────────────────
   const [loadMsgIdx, setLoadMsgIdx] = useState(0);
   const [loadMsgVisible, setLoadMsgVisible] = useState(true);
@@ -5668,6 +5793,11 @@ export default function App() {
     {/* REMOVED: ~690 lines of inline <style> */}
 
     <div className="app" data-theme={["onboarding","inspo","paywall","auth"].includes(screen) ? "dark" : theme}>
+      {isOffline && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 99999, background: "var(--error, #FF5252)", color: "#fff", textAlign: "center", fontSize: 12, fontWeight: 600, padding: "4px 0", fontFamily: "var(--font-sans)" }}>
+          {t("ob_youre_offline")}
+        </div>
+      )}
       {/* ─── ONBOARDING (TikTok-speed visual demo) ──────── */}
       {screen === "onboarding" && (
         <OnboardingDemo
@@ -10246,6 +10376,11 @@ export default function App() {
               </div>
             )}
           </div>
+          {cropMode && (
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", textAlign: "center", padding: "8px 16px", opacity: 0.8 }}>
+              {t("ob_pinch_drag")}
+            </div>
+          )}
           {!cropMode && (
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "8px 20px 0", gap: 8 }}>
               {priorityRegionBase64 ? (
