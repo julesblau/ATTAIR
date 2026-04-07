@@ -3329,13 +3329,15 @@ function FeaturedScansEmpty({ onScan, onDiscover }) {
           {featured.map((scan, idx) => (
             <div key={scan.id} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.08}s` }}>
               <div style={{ position: "relative" }}>
+                <div className="skeleton-pulse" style={{ position: "absolute", inset: 0, borderRadius: "inherit" }} />
                 <img
                   src={scan.image_url}
                   alt={scan.summary || "Outfit scan"}
                   className="feed-card-img"
                   loading="lazy"
                   style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }}
-                  onError={e => { e.target.style.opacity = 0; }}
+                  onLoad={e => { const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) s.style.display = 'none'; }}
+                  onError={e => { e.target.style.display = "none"; const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) { s.className = ''; s.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-input);font-size:32px;opacity:0.3'; s.textContent = '\uD83D\uDC54'; } }}
                 />
                 <div className="feed-card-overlay">
                   <div className="feed-card-user">
@@ -4325,6 +4327,7 @@ export default function App() {
   const [selIdx, setSelIdx] = useState(null);
   const [pickedItems, setPickedItems] = useState(new Set()); // indices of items user chose to search
   const [history, setHistory] = useState([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [saved, setSaved] = useState([]);
   const [fade, setFade] = useState("fi");
   const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "saved" | "picks"
@@ -4651,7 +4654,7 @@ export default function App() {
   // Load scan history, price alerts, and looks when Saved tab is opened
   useEffect(() => {
     if (tab === "likes" && authed && history.length === 0) {
-      API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
+      API.getHistory().then(d => { setHistory(d.scans || []); setHistoryLoaded(true); }).catch(() => { setHistoryLoaded(true); });
     }
     if (tab === "likes" && authed && isPro && priceAlerts.length === 0 && !priceAlertsLoading) {
       setPriceAlertsLoading(true);
@@ -5189,15 +5192,15 @@ export default function App() {
             setProfileStats({ followers_count: profile.followers_count || 0, following_count: profile.following_count || 0 });
           }
           setProfileStatsLoaded(true);
-          // Populate followingSet so follow buttons show correct state
-          if (profile.id) {
-            API.getFollowing(profile.id).then(fd => {
-              const ids = (fd.following || []).map(f => f.following_id || f.id).filter(Boolean);
-              if (ids.length) setFollowingSet(new Set(ids));
-            }).catch(() => {});
-          }
         })
         .catch(() => {});
+      // Populate followingSet in parallel (uses authUserId from JWT, not profile fetch)
+      if (authUserId) {
+        API.getFollowing(authUserId).then(fd => {
+          const ids = (fd.following || []).map(f => f.following_id || f.id).filter(Boolean);
+          if (ids.length) setFollowingSet(new Set(ids));
+        }).catch(() => {});
+      }
       API.getHistory().then(d => {
         const scans = d.scans || [];
         setHistory(scans);
@@ -5221,12 +5224,16 @@ export default function App() {
           }
           setScanStreak(streak);
         }
-      }).catch(() => {});
+        setHistoryLoaded(true);
+      }).catch(() => { setHistoryLoaded(true); });
       API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
       API.getWishlists().then(d => setWishlists(d.wishlists || [])).catch(() => {});
       API.getStreak().then(s => { if (s?.streak > 0) setScanStreak(s.streak); }).catch(() => {});
       API.priceAlertCount().then(d => setPriceAlertCount(d.unseen_count || 0)).catch(() => {});
       API.getUnreadNotifCount().then(d => setNotifCount(d.count || 0)).catch(() => {});
+
+      // Prefetch feed on auth so it's ready when user lands on home tab
+      setTimeout(() => { if (typeof loadFeed === 'function') loadFeed(); }, 100);
 
       // Auto-subscribe to push if permission already granted
       if (isNative || ("Notification" in window && Notification.permission === "granted")) {
@@ -5942,7 +5949,7 @@ export default function App() {
 
     // Refresh history + saved so those tabs are up to date (authed only)
     if (!isGuest) {
-      API.getHistory().then(d => setHistory(d.scans || [])).catch(() => {});
+      API.getHistory().then(d => { setHistory(d.scans || []); setHistoryLoaded(true); }).catch(() => { setHistoryLoaded(true); });
       API.getSaved().then(d => setSaved(d.items || [])).catch(() => {});
     }
 
@@ -7075,7 +7082,10 @@ export default function App() {
                   {/* Cover image with gradient */}
                   <div style={{ position: "relative", width: "100%", height: 180, overflow: "hidden" }}>
                     {ootwData.cover_image ? (
-                      <img src={ootwData.cover_image} alt="This Week's Look" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.55)" }} onError={e => { e.target.style.display = "none"; }} />
+                      <>
+                        <div className="skeleton-pulse" style={{ position: "absolute", inset: 0, borderRadius: "inherit" }} />
+                        <img src={ootwData.cover_image} alt="This Week's Look" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.55)" }} onLoad={e => { const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) s.style.display = 'none'; }} onError={e => { e.target.style.display = "none"; const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) { s.className = ''; s.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-input);font-size:32px;opacity:0.3'; s.textContent = '\uD83D\uDC54'; } }} />
+                      </>
                     ) : (
                       <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
                     )}
@@ -7243,7 +7253,10 @@ export default function App() {
                         <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setReelScans(null); const realIdx = feedScans.indexOf(scan); setFeedDetailScan(scan); setFeedDetailIdx(realIdx >= 0 ? realIdx : idx); }}>
                           <div style={{ position: "relative" }} onDoubleClick={(e) => { e.stopPropagation(); if (!isSaved) { const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); } /* brief heart flash */ const heart = document.createElement("div"); heart.innerHTML = "\u2764\uFE0F"; Object.assign(heart.style, { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) scale(0)", fontSize: "64px", pointerEvents: "none", zIndex: 10, transition: "transform .3s ease, opacity .3s ease", opacity: "1" }); e.currentTarget.appendChild(heart); requestAnimationFrame(() => { heart.style.transform = "translate(-50%,-50%) scale(1)"; }); setTimeout(() => { heart.style.opacity = "0"; heart.style.transform = "translate(-50%,-50%) scale(1.4)"; }, 600); setTimeout(() => heart.remove(), 1000); }}>
                             {scan.image_url
-                              ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} width={400} height={500} loading="lazy" onError={e => { e.target.style.opacity = 0; }} />
+                              ? <>
+                                  <div className="skeleton-pulse" style={{ position: "absolute", inset: 0, borderRadius: "inherit" }} />
+                                  <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} width={400} height={500} loading="lazy" onLoad={e => { const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) s.style.display = 'none'; }} onError={e => { e.target.style.display = "none"; const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) { s.className = ''; s.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-input);font-size:32px;opacity:0.3'; s.textContent = '\uD83D\uDC54'; } }} />
+                                </>
                               : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                   <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                                 </div>
@@ -9615,7 +9628,14 @@ export default function App() {
 
               {/* 3-column scan grid */}
               <div style={{ paddingBottom: 80 }}>
-                {history.length === 0 ? (
+                {!historyLoaded && history.length === 0 && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 2 }}>
+                    {[0,1,2,3,4,5].map(i => (
+                      <div key={i} className="skeleton-pulse" style={{ aspectRatio: "1", borderRadius: 0 }} />
+                    ))}
+                  </div>
+                )}
+                {historyLoaded && history.length === 0 ? (
                   <div className="empty" style={{ padding: "48px 20px" }}>
                     <div style={{ fontSize: 40, opacity: 0.15, marginBottom: 12 }}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg></div>
                     <div className="empty-t">No scans yet</div>
@@ -10355,7 +10375,10 @@ export default function App() {
             {/* Hero cover */}
             <div style={{ position: "relative", width: "100%", height: 280, overflow: "hidden" }}>
               {ootwData.cover_image ? (
-                <img src={ootwData.cover_image} alt="Outfit of the Week cover" width={400} height={280} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.5)" }} onError={e => { e.target.style.display = "none"; }} />
+                <>
+                  <div className="skeleton-pulse" style={{ position: "absolute", inset: 0, borderRadius: "inherit" }} />
+                  <img src={ootwData.cover_image} alt="Outfit of the Week cover" width={400} height={280} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.5)" }} onLoad={e => { const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) s.style.display = 'none'; }} onError={e => { e.target.style.display = "none"; const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) { s.className = ''; s.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-input);font-size:32px;opacity:0.3'; s.textContent = '\uD83D\uDC54'; } }} />
+                </>
               ) : (
                 <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
               )}
@@ -10395,7 +10418,10 @@ export default function App() {
                     <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setReelScans(ootwData.scans || []); setFeedDetailIdx(idx); setFeedDetailScan(scan); setOotwExpanded(false); }}>
                       <div style={{ position: "relative" }}>
                         {scan.image_url
-                          ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} width={400} height={500} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                          ? <>
+                              <div className="skeleton-pulse" style={{ position: "absolute", inset: 0, borderRadius: "inherit" }} />
+                              <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} width={400} height={500} loading="lazy" onLoad={e => { const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) s.style.display = 'none'; }} onError={e => { e.target.style.display = "none"; const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) { s.className = ''; s.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-input);font-size:32px;opacity:0.3'; s.textContent = '\uD83D\uDC54'; } }} />
+                            </>
                           : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                             </div>
