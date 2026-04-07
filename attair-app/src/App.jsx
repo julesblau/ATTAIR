@@ -9211,9 +9211,9 @@ export default function App() {
                     <span className="settings-label">{t("size_preferences")}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span className="settings-value">{(() => {
-                        const sizes = sizePrefs.sizes || {};
-                        const set2 = Object.values(sizes).filter(Boolean);
-                        return set2.length > 0 ? set2.slice(0, 3).join(", ") + (set2.length > 3 ? "..." : "") : t("not_set");
+                        const s = sizePrefs.sizes || {};
+                        const parts = [s.tops && `Top ${s.tops}`, s.bottoms_waist && `W${s.bottoms_waist}`, s.shoes && `Shoe ${s.shoes}`].filter(Boolean);
+                        return parts.length > 0 ? parts.join(" · ") : t("not_set");
                       })()}</span>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ color: "var(--text-tertiary)", flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
                     </div>
