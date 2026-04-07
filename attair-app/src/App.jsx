@@ -6214,7 +6214,7 @@ export default function App() {
         {/* Notification panel overlay */}
         {showNotifPanel && (<div onClick={() => setShowNotifPanel(false)} style={{ position: "fixed", inset: 0, zIndex: 9998 }} />)}
         {showNotifPanel && (
-          <div style={{ position: "fixed", top: 52, right: 8, width: "min(360px, calc(100vw - 16px))", maxHeight: "70vh", background: "var(--card-bg)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,.5)", zIndex: 9999, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <div style={{ position: "fixed", top: 52, right: 8, left: 8, maxHeight: "calc(100vh - 68px)", background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,.5)", zIndex: 9999, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("notifications")}</div>
               <button onClick={() => setShowNotifPanel(false)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>x</button>
@@ -6253,7 +6253,7 @@ export default function App() {
 
         {/* Push notification permission prompt */}
         {showNotifPrompt && !showNotifPanel && (
-          <div className="animate-slide-up" style={{ position: "fixed", bottom: 90, left: 16, right: 16, background: "var(--card-bg)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 12px 40px rgba(0,0,0,.5)", padding: "16px", zIndex: 9990, display: "flex", gap: 12, alignItems: "center" }}>
+          <div className="animate-slide-up" style={{ position: "fixed", bottom: 90, left: 16, right: 16, background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 12px 40px rgba(0,0,0,.5)", padding: "16px", zIndex: 9990, display: "flex", gap: 12, alignItems: "center" }}>
             <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(201,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             </div>
