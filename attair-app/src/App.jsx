@@ -536,6 +536,8 @@ const API = {
     });
   },
 
+  markAllNotifsRead() { return authFetch(`${API_BASE}/api/notifications/mark-all-read`, { method: "POST" }).then(r => r.json()); },
+
   async updateNotifPrefs(preferences) {
     const res = await authFetch(`${API_BASE}/api/notifications/preferences`, {
       method: "PATCH",
@@ -6317,7 +6319,18 @@ export default function App() {
           <div style={{ position: "fixed", top: 52, right: 8, left: 8, maxHeight: "calc(100vh - 68px)", background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,.5)", zIndex: 9999, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("notifications")}</div>
-              <button onClick={() => setShowNotifPanel(false)} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>x</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {notifCount > 0 && (
+                  <button onClick={() => {
+                    API.markAllNotifsRead().then(() => {
+                      setNotifCount(0);
+                      setNotifications(prev => prev.map(n => ({...n, read_at: new Date().toISOString()})));
+                      showToast("All caught up!", "info");
+                    }).catch(() => showToast("Couldn't mark as read", "error"));
+                  }} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "4px 8px" }}>Mark all read</button>
+                )}
+                <button onClick={() => setShowNotifPanel(false)} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>x</button>
+              </div>
             </div>
             {("Notification" in window) && Notification.permission === "default" && !pushEnabled && (
               <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "rgba(201,169,110,.06)" }}>
@@ -7331,7 +7344,7 @@ export default function App() {
 
           {/* ─── Picking — choose which items to search ── */}
           {tab === "scan" && results && phase === "picking" && (
-            <div className="res">
+            <div className="res animate-fade-in">
               <div className="v-banner">
                 <div className="v-steps">
                   <div className="v-step">
@@ -7684,7 +7697,7 @@ export default function App() {
 
           {/* ─── Search Takeover (A+B combo: branded full-screen + item cards) ── */}
           {tab === "scan" && results && phase === "searching" && !isResearch && (
-            <div className="search-takeover">
+            <div className="search-takeover animate-fade-in">
               {/* Back button */}
               <button className="search-takeover-back" onClick={() => { setPhase("picking"); setExpandedItems(new Set()); }}>
                 &larr; Back
@@ -7776,7 +7789,7 @@ export default function App() {
 
           {/* ─── Results (Minimalist Redesign) ───────────────────────────────── */}
           {tab === "scan" && results && (phase === "done" || (phase === "searching" && isResearch)) && (
-            <div className="res">
+            <div className="res animate-fade-in">
               {/* Re-search banner */}
               {phase === "searching" && isResearch && (
                 <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,.75)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>
@@ -8804,10 +8817,10 @@ export default function App() {
                 {saved.length > 0 && (() => {
                   const displayedItems = activeWishlist ? saved.filter(si => si.wishlist_id === activeWishlist.id) : saved;
                   if (displayedItems.length === 0 && activeWishlist) return (
-                    <div style={{ padding: "40px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>No items in this list</div>
-                      <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>Add items from your scans</div>
+                    <div style={{ textAlign: "center", padding: "48px 24px" }}>
+                      <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.4 }}>&#128717;</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 4 }}>No items yet</div>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Save items from your scans to this list</div>
                     </div>
                   );
                   return (
@@ -8883,7 +8896,7 @@ export default function App() {
           {tab === "profile" && (() => {
             const profileScansCount = history.length;
             return (
-            <div className="profile-v2">
+            <div className="profile-v2 animate-fade-in">
               {/* Top bar: username left, gear icon right (Instagram style) */}
               <div className="profile-v2-topbar">
                 <div className="profile-v2-username">{authName || authEmail?.split("@")[0] || "User"}</div>
