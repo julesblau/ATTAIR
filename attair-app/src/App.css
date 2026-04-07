@@ -4739,3 +4739,43 @@ textarea:focus-visible {
 .scroll-y, [style*="overflowY: auto"], [style*="overflow-y: auto"] {
   overflow-anchor: auto;
 }
+
+/* ─── Performance: extracted repeated inline styles ────────── */
+
+/* Product card image — used in tier product cards, pairing cards */
+.product-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: relative;
+  z-index: 1;
+}
+
+/* Toggle pill — used in body type, fit style selectors */
+.toggle-pill {
+  padding: 6px 13px;
+  border-radius: 100px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+.toggle-pill.active {
+  background: rgba(201,169,110,.1);
+  border-color: rgba(201,169,110,.4);
+  color: var(--accent);
+}
+
+/* Horizontal scroll container — used in product tiers, pairings, saved looks, etc. */
+.scroll-row {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.scroll-row::-webkit-scrollbar { display: none; }

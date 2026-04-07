@@ -6386,9 +6386,9 @@ export default function App() {
                       const cardW = el.scrollWidth / dupeResults.dupes.length;
                       setDupeSlide(Math.round(el.scrollLeft / cardW));
                     }}
+                    className="scroll-row"
                     style={{
-                      display: "flex", overflowX: "auto", scrollSnapType: "x mandatory",
-                      WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none",
+                      scrollSnapType: "x mandatory",
                       paddingLeft: 16, paddingRight: 16, gap: 12,
                     }}
                   >
@@ -6405,7 +6405,7 @@ export default function App() {
                             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", textAlign: "center", padding: "8px 0 4px", color: "var(--text-tertiary)" }}>ORIGINAL</div>
                             <div style={{ aspectRatio: "3/4", background: "var(--bg-input)", overflow: "hidden" }}>
                               {dupeResults.original.image_url ? (
-                                <img src={dupeResults.original.image_url} alt={dupeResults.original.name || "Original product"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                <img src={dupeResults.original.image_url} alt={dupeResults.original.name || "Original product"} width={150} height={200} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                               ) : (
                                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 11 }}>No image</div>
                               )}
@@ -6435,7 +6435,7 @@ export default function App() {
                             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", textAlign: "center", padding: "8px 0 4px", color: "#4CAF50" }}>SIMILAR LOOK</div>
                             <div style={{ aspectRatio: "3/4", background: "var(--bg-input)", overflow: "hidden" }}>
                               {dupe.image_url ? (
-                                <img src={dupe.image_url} alt={dupe.product_name || "Similar product"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                <img src={dupe.image_url} alt={dupe.product_name || "Similar product"} width={150} height={200} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                               ) : (
                                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)", fontSize: 11 }}>No image</div>
                               )}
@@ -6705,7 +6705,7 @@ export default function App() {
               <div style={{ textAlign: "center" }}>
                 <div className="style-twin-avatar-sm" style={{ margin: "0 auto 8px", width: 48, height: 48 }}>
                   {styleTwinCompare.avatar_url ? (
-                    <img src={styleTwinCompare.avatar_url} alt={styleTwinCompare.display_name ? styleTwinCompare.display_name + "'s avatar" : "User avatar"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                    <img src={styleTwinCompare.avatar_url} alt={styleTwinCompare.display_name ? styleTwinCompare.display_name + "'s avatar" : "User avatar"} width={32} height={32} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
                   ) : (
                     <span style={{ fontSize: 16 }}>{(styleTwinCompare.display_name || "?").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}</span>
                   )}
@@ -7114,7 +7114,7 @@ export default function App() {
                       {ootwData.scans.slice(0, 6).map((s, i) => (
                         <div key={s.id || i} style={{ width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}>
                           {s.image_url ? (
-                            <img src={s.image_url} alt="Scan photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                            <img src={s.image_url} alt="Scan photo" width={48} height={48} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                           ) : (
                             <div style={{ width: "100%", height: "100%", background: "var(--bg-input)" }} />
                           )}
@@ -7243,7 +7243,7 @@ export default function App() {
                         <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setReelScans(null); const realIdx = feedScans.indexOf(scan); setFeedDetailScan(scan); setFeedDetailIdx(realIdx >= 0 ? realIdx : idx); }}>
                           <div style={{ position: "relative" }} onDoubleClick={(e) => { e.stopPropagation(); if (!isSaved) { const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); } /* brief heart flash */ const heart = document.createElement("div"); heart.innerHTML = "\u2764\uFE0F"; Object.assign(heart.style, { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) scale(0)", fontSize: "64px", pointerEvents: "none", zIndex: 10, transition: "transform .3s ease, opacity .3s ease", opacity: "1" }); e.currentTarget.appendChild(heart); requestAnimationFrame(() => { heart.style.transform = "translate(-50%,-50%) scale(1)"; }); setTimeout(() => { heart.style.opacity = "0"; heart.style.transform = "translate(-50%,-50%) scale(1.4)"; }, 600); setTimeout(() => heart.remove(), 1000); }}>
                             {scan.image_url
-                              ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.opacity = 0; }} />
+                              ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} width={400} height={500} loading="lazy" onError={e => { e.target.style.opacity = 0; }} />
                               : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                   <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                                 </div>
@@ -7459,7 +7459,7 @@ export default function App() {
                         ]).map(product => (
                           <div key={product.id} style={{ background: "var(--bg-card)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
                             {product.image_url ? (
-                              <img src={product.image_url} alt={product.name} loading="lazy" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                              <img src={product.image_url} alt={product.name} width={150} height={200} loading="lazy" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                             ) : (
                               <div style={{ width: "100%", aspectRatio: "3/4", background: "linear-gradient(135deg, rgba(201,169,110,.08), rgba(201,169,110,.02))", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="rgba(201,169,110,.3)" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -7479,7 +7479,7 @@ export default function App() {
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                       {productSearchResults.map((product, idx) => (
                         <div key={product.id || idx} style={{ background: "var(--bg-card)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }}>
-                          {product.image_url && <img src={product.image_url} alt={product.name || ""} style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} />}
+                          {product.image_url && <img src={product.image_url} alt={product.name || ""} width={150} height={200} loading="lazy" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} />}
                           <div style={{ padding: 10 }}>
                             {product.brand && <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{product.brand}</div>}
                             <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1.3 }}>{product.name}</div>
@@ -7619,7 +7619,7 @@ export default function App() {
                             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                               <div className="style-twin-avatar-lg">
                                 {top.avatar_url ? (
-                                  <img src={top.avatar_url} alt={(top.display_name || "User") + "'s avatar"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                                  <img src={top.avatar_url} alt={(top.display_name || "User") + "'s avatar"} width={32} height={32} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
                                 ) : (
                                   <span>{ini}</span>
                                 )}
@@ -7690,7 +7690,7 @@ export default function App() {
                                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                                   <div className="style-twin-avatar-sm">
                                     {twin.avatar_url ? (
-                                      <img src={twin.avatar_url} alt={(twin.display_name || "User") + "'s avatar"} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+                                      <img src={twin.avatar_url} alt={(twin.display_name || "User") + "'s avatar"} width={32} height={32} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
                                     ) : (
                                       <span>{ini}</span>
                                     )}
@@ -8481,7 +8481,7 @@ export default function App() {
                   )}
                   {pairings && pairings.length > 0 && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                      <div className="scroll-x" style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none" }}>
+                      <div className="scroll-x scroll-row" style={{ gap: 10, paddingBottom: 4, scrollSnapType: "x mandatory" }}>
                         {pairings.map((p, pi) => {
                           const prod = p.product;
                           const shopUrl = prod?.url
@@ -8497,7 +8497,7 @@ export default function App() {
                               style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, textDecoration: "none", color: "inherit", overflow: "hidden" }}>
                               {prod?.image_url ? (
                                 <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
-                                  <img src={prod.image_url} alt="Pairing suggestion" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                  <img src={prod.image_url} alt="Pairing suggestion" width={150} height={150} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                                 </div>
                               ) : (
                                 <div style={{ width: "100%", aspectRatio: "1", background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
@@ -8727,7 +8727,7 @@ export default function App() {
               )}
               {savedLooksOpen && savedLooks.length > 0 && (
                 <div style={{ padding: "0 20px 12px", animation: "slideDown .2s ease" }}>
-                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
+                  <div className="scroll-row" style={{ gap: 10, paddingBottom: 4 }}>
                     {savedLooks.map((look, li) => (
                       <div key={look.id} onClick={() => {
                         setResults(prev => prev ? { ...prev, items: JSON.parse(JSON.stringify(look.items)) } : prev);
@@ -8739,7 +8739,7 @@ export default function App() {
                         background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10,
                         padding: 6, transition: "all .2s",
                       }}>
-                        {look.thumbnail && <img src={look.thumbnail} alt="Saved look thumbnail" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, marginBottom: 4 }} />}
+                        {look.thumbnail && <img src={look.thumbnail} alt="Saved look thumbnail" width={60} height={60} loading="lazy" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, marginBottom: 4 }} />}
                         <div style={{ fontSize: 9, color: "var(--text-tertiary)", fontWeight: 600 }}>Look {li + 1}</div>
                         <div style={{ fontSize: 8, color: "var(--text-tertiary)" }}>{look.items.filter(it => it.tiers).length} items</div>
                       </div>
@@ -8859,7 +8859,7 @@ export default function App() {
                               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
                               {products.length > 1 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
                             </div>
-                            <div ref={el => { if (el && !el._loopInit && products.length > 2) { el._loopInit = true; const cardW = 162; requestAnimationFrame(() => { el.scrollLeft = products.length * cardW + 20; }); let ticking = false; el.addEventListener("scroll", () => { if (ticking) return; ticking = true; requestAnimationFrame(() => { ticking = false; const sectionW = products.length * cardW; if (el.scrollLeft < sectionW * 0.25) el.scrollLeft += sectionW; else if (el.scrollLeft > sectionW * 1.75) el.scrollLeft -= sectionW; }); }); } }} style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch", msOverflowStyle: "none", scrollbarWidth: "none", overscrollBehaviorX: "contain" }}>
+                            <div ref={el => { if (el && !el._loopInit && products.length > 2) { el._loopInit = true; const cardW = 162; requestAnimationFrame(() => { el.scrollLeft = products.length * cardW + 20; }); let ticking = false; el.addEventListener("scroll", () => { if (ticking) return; ticking = true; requestAnimationFrame(() => { ticking = false; const sectionW = products.length * cardW; if (el.scrollLeft < sectionW * 0.25) el.scrollLeft += sectionW; else if (el.scrollLeft > sectionW * 1.75) el.scrollLeft -= sectionW; }); }); } }} className="scroll-row" style={{ gap: 12, paddingBottom: 4 }}>
                               {/* Left spacer to match page padding */}
                               <div style={{ flexShrink: 0, width: 20 }} />
                               {(products.length > 2 ? [...products, ...products, ...products] : products).map((p, j) => {
@@ -8915,7 +8915,7 @@ export default function App() {
                                         onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback, is_dupe: !!dupeInfo }, scanId, "scan")}
                                         style={{ display: "flex", flexDirection: "column", textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
                                         <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                          {p.image_url && <img src={p.image_url} alt={p.product_name || "Product image"} style={{ width: "100%", height: "100%", objectFit: "cover", position: "relative", zIndex: 1 }} onError={e => { e.target.style.display = "none"; }} />}
+                                          {p.image_url && <img src={p.image_url} alt={p.product_name || "Product image"} className="product-card-img" width={150} height={150} loading="lazy" onError={e => { e.target.style.display = "none"; }} />}
                                           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, opacity: 0.3, pointerEvents: "none" }}>👕</div>
                                         </div>
                                         <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3 }}>
@@ -9000,7 +9000,7 @@ export default function App() {
                 </div>
 
                 {/* Filter row: wishlist chips */}
-                <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "8px 16px 0", scrollbarWidth: "none" }}>
+                <div className="scroll-x scroll-row" style={{ gap: 8, padding: "8px 16px 0" }}>
                   {wishlists.map(wl => (
                     <button
                       key={wl.id}
@@ -9169,7 +9169,7 @@ export default function App() {
                             <div style={{ display: "flex", gap: 12, padding: 12, cursor: "pointer" }} onClick={handleExpand}>
                               <div style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "var(--bg-input)" }}>
                                 {look.scan_thumbnail ? (
-                                  <img src={look.scan_thumbnail} alt={look.scan_name || "Scan thumbnail"} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                                  <img src={look.scan_thumbnail} alt={look.scan_name || "Scan thumbnail"} width={64} height={64} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                 ) : (
                                   <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.2 }}><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>
@@ -9197,7 +9197,7 @@ export default function App() {
 
                             {/* Saved items horizontal scroll */}
                             {savedItemsList.length > 0 && (
-                              <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 12px 12px", scrollSnapType: "x mandatory", scrollbarWidth: "none" }}>
+                              <div className="scroll-x scroll-row" style={{ gap: 8, padding: "0 12px 12px", scrollSnapType: "x mandatory" }}>
                                 {savedItemsList.map(si => {
                                   const item = si.item_data || si;
                                   const product = si.tier_product || {};
@@ -9209,7 +9209,7 @@ export default function App() {
                                     <div key={si.id} className="look-item-card" style={{ flexShrink: 0, width: 100, scrollSnapAlign: "start" }}>
                                       <div style={{ width: 100, height: 100, borderRadius: 10, overflow: "hidden", background: "var(--bg-input)", position: "relative" }}>
                                         {img ? (
-                                          <img src={img} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                                          <img src={img} alt={name} width={100} height={100} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                                         ) : (
                                           <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--text-tertiary)" }}>
                                             {item.category || "Item"}
@@ -9245,7 +9245,7 @@ export default function App() {
                                     <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
                                       Complete your look ({detailUnsaved.length} remaining)
                                     </div>
-                                    <div className="scroll-x" style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
+                                    <div className="scroll-x scroll-row" style={{ gap: 8, paddingBottom: 4 }}>
                                       {detailUnsaved.map((ui, idx) => {
                                         const name = ui.name || ui.category || "Item";
                                         const img = ui.image_url || ui.thumbnail;
@@ -9254,7 +9254,7 @@ export default function App() {
                                           <div key={idx} style={{ flexShrink: 0, width: 90, opacity: 0.7 }}>
                                             <div style={{ width: 90, height: 90, borderRadius: 10, overflow: "hidden", background: "var(--bg-input)", border: "1px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
                                               {img ? (
-                                                <img src={img} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} loading="lazy" />
+                                                <img src={img} alt={name} width={100} height={100} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />
                                               ) : (
                                                 <div style={{ fontSize: 9, color: "var(--text-tertiary)", textAlign: "center", padding: 4 }}>{name}</div>
                                               )}
@@ -9363,7 +9363,7 @@ export default function App() {
                           <div key={si.id} className="look-item-card card-press" style={{ position: "relative" }}>
                             <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, overflow: "hidden", background: "var(--bg-input)", position: "relative" }}>
                               {img ? (
-                                <img src={img} alt={name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                                <img src={img} alt={name} width={100} height={100} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                               ) : (
                                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--text-tertiary)" }}>
                                   {item.category || "Item"}
@@ -9432,7 +9432,7 @@ export default function App() {
               <div className="profile-v2-row">
                 <div className="profile-v2-avatar" aria-label="Profile avatar" onClick={() => avatarInputRef.current?.click()} style={{ cursor: "pointer", position: "relative" }}>
                   {authAvatarUrl ? (
-                    <img src={authAvatarUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} onError={() => setAuthAvatarUrl(null)} />
+                    <img src={authAvatarUrl} alt="Profile" width={32} height={32} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} onError={() => setAuthAvatarUrl(null)} />
                   ) : (
                     (authName || authEmail || "U")[0].toUpperCase()
                   )}
@@ -9622,7 +9622,7 @@ export default function App() {
                       const hxItems = hx.items || [];
                       return (
                         <div key={hx.id} className="profile-v2-grid-cell card-press" onClick={() => setProfileScanOverlay(hx)} aria-label={`Scan: ${hxItems.length} items`}>
-                          {hxImg ? <img src={hxImg} alt="Scan photo" loading="lazy" onError={e => { e.target.style.display = "none"; }} /> : <div className="profile-v2-grid-placeholder">{hx.detected_gender === "female" ? "\uD83D\uDC57" : "\uD83D\uDC54"}</div>}
+                          {hxImg ? <img src={hxImg} alt="Scan photo" width={150} height={150} loading="lazy" onError={e => { e.target.style.display = "none"; }} /> : <div className="profile-v2-grid-placeholder">{hx.detected_gender === "female" ? "\uD83D\uDC57" : "\uD83D\uDC54"}</div>}
                           {hxItems.length > 0 && <span className="grid-items-badge">{hxItems.length}</span>}
                           {hx.visibility === "private" && (
                             <div className="profile-grid-private-badge">
@@ -10003,7 +10003,7 @@ export default function App() {
                       ].map(cat => (
                         <div key={cat.key} style={{ background: "var(--bg-input)", borderRadius: 12, padding: "10px 0" }}>
                           <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 0.8, textTransform: "uppercase", display: "block", padding: "0 14px 8px" }}>{cat.label}</label>
-                          <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch", padding: "0 14px" }}>
+                          <div className="scroll-row" style={{ gap: 6, padding: "0 14px" }}>
                             {cat.sizes.map(s => {
                               const sel = sizePrefsEdit[cat.key] === s;
                               return (
@@ -10266,7 +10266,7 @@ export default function App() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                     {[{l:"Standard",v:"standard"},{l:"Petite",v:"petite"},{l:"Tall",v:"tall"},{l:"Plus Size",v:"plus"},{l:"Big & Tall",v:"big_tall"},{l:"Athletic",v:"athletic"},{l:"Curvy",v:"curvy"},{l:"Hourglass",v:"hourglass"},{l:"Pear",v:"pear"},{l:"Apple",v:"apple"},{l:"Rectangle",v:"rectangle"},{l:"Inverted Triangle",v:"inverted_triangle"},{l:"Long Torso",v:"long_torso"},{l:"Short Torso",v:"short_torso"}].map(o => {
                       const on = (spVal.body_type||[]).includes(o.v);
-                      return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"var(--bg-input)", border:`1px solid ${on?"rgba(201,169,110,.4)":"var(--border)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"var(--accent)":"var(--text-secondary)", transition:"all .2s" }}
+                      return <div key={o.v} className={`toggle-pill${on?" active":""}`}
                         onClick={() => { const a=spVal.body_type||[]; setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, body_type: a.includes(o.v)?a.filter(x=>x!==o.v):[...a,o.v] } })); }}>{o.l}</div>;
                     })}
                   </div>
@@ -10278,7 +10278,7 @@ export default function App() {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
                     {[{l:"Slim/Fitted",v:"slim"},{l:"Regular",v:"regular"},{l:"Relaxed",v:"relaxed"},{l:"Oversized",v:"oversized"},{l:"Flowy",v:"flowy"},{l:"Tailored",v:"tailored"},{l:"Cropped",v:"cropped"},{l:"Longline",v:"longline"},{l:"Structured",v:"structured"},{l:"Draped",v:"draped"},{l:"Boxy",v:"boxy"},{l:"A-Line",v:"a_line"},{l:"Bodycon",v:"bodycon"}].map(o => {
                       const on = (spVal.fit||[]).includes(o.v);
-                      return <div key={o.v} style={{ padding:"6px 13px", background: on?"rgba(201,169,110,.1)":"var(--bg-input)", border:`1px solid ${on?"rgba(201,169,110,.4)":"var(--border)"}`, borderRadius:100, cursor:"pointer", fontSize:12, fontWeight:500, color: on?"var(--accent)":"var(--text-secondary)", transition:"all .2s" }}
+                      return <div key={o.v} className={`toggle-pill${on?" active":""}`}
                         onClick={() => { const a=spVal.fit||[]; setOv(o2 => ({ ...(o2||ov), sizePrefs: { ...(o2||ov).sizePrefs, fit: a.includes(o.v)?a.filter(x=>x!==o.v):[...a,o.v] } })); }}>{o.l}</div>;
                     })}
                   </div>
@@ -10348,7 +10348,7 @@ export default function App() {
             {/* Hero cover */}
             <div style={{ position: "relative", width: "100%", height: 280, overflow: "hidden" }}>
               {ootwData.cover_image ? (
-                <img src={ootwData.cover_image} alt="Outfit of the Week cover" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.5)" }} onError={e => { e.target.style.display = "none"; }} />
+                <img src={ootwData.cover_image} alt="Outfit of the Week cover" width={400} height={280} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.5)" }} onError={e => { e.target.style.display = "none"; }} />
               ) : (
                 <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
               )}
@@ -10388,7 +10388,7 @@ export default function App() {
                     <div key={scan.id || idx} className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setReelScans(ootwData.scans || []); setFeedDetailIdx(idx); setFeedDetailScan(scan); setOotwExpanded(false); }}>
                       <div style={{ position: "relative" }}>
                         {scan.image_url
-                          ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
+                          ? <img className="feed-card-img" src={scan.image_url} alt={scan.summary || "Outfit"} width={400} height={500} loading="lazy" onError={e => { e.target.style.display = "none"; }} />
                           : <div className="feed-card-img" style={{ background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
                             </div>
@@ -10506,7 +10506,7 @@ export default function App() {
             {/* Hero */}
             <div style={{ position: "relative", width: "100%", height: 220, overflow: "hidden" }}>
               {weeklyReport.scans[0]?.image_url ? (
-                <img src={weeklyReport.scans[0].image_url} alt="Weekly report cover" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.4) saturate(1.2)" }} />
+                <img src={weeklyReport.scans[0].image_url} alt="Weekly report cover" width={400} height={280} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.4) saturate(1.2)" }} />
               ) : (
                 <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1A1A1A 0%, #2A2520 100%)" }} />
               )}
@@ -10545,7 +10545,7 @@ export default function App() {
                   >
                     <div style={{ position: "relative" }}>
                       {scan.image_url ? (
-                        <img src={scan.image_url} alt={scan.summary || "Outfit"} loading="lazy" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} />
+                        <img src={scan.image_url} alt={scan.summary || "Outfit"} width={400} height={300} loading="lazy" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} />
                       ) : (
                         <div style={{ width: "100%", aspectRatio: "4/3", background: "var(--bg-input)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--text-tertiary)" strokeWidth="1"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /></svg>
@@ -11352,7 +11352,7 @@ export default function App() {
                 return (
                   <div key={sub.id} style={{ background: "var(--bg-card)", border: isWinner ? "2px solid var(--accent)" : "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
                     <div style={{ position: "relative" }}>
-                      <img src={sub.image_url} alt="Challenge submission" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} loading="lazy" />
+                      <img src={sub.image_url} alt="Challenge submission" width={150} height={200} loading="lazy" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} />
                       {si === 0 && activeChallengeDetail.status !== "active" && (
                         <div style={{ position: "absolute", top: 8, left: 8, padding: "3px 8px", borderRadius: 100, background: "rgba(201,169,110,.9)", fontSize: 9, fontWeight: 700, color: "#fff" }}>
                           {isWinner ? "WINNER" : "#1"}
@@ -12029,7 +12029,7 @@ export default function App() {
                       } : undefined}
                     >
                       {/* Outfit image */}
-                      <img src={outfit.image_url} alt="Outfit photo" style={{ width: "100%", height: "65%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; }} />
+                      <img src={outfit.image_url} alt="Outfit photo" width={400} height={500} loading="lazy" style={{ width: "100%", height: "65%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; }} />
 
                       {/* Swipe labels */}
                       {isActive && swipeDir === "wear" && (
@@ -12244,7 +12244,7 @@ export default function App() {
                   <div key={h.id} style={{ borderRadius: 14, overflow: "hidden", background: "var(--bg-card)", border: "1px solid var(--border)" }}>
                     {h.outfit?.image_url && (
                       <div style={{ position: "relative", width: "100%", aspectRatio: "3/4", overflow: "hidden" }}>
-                        <img src={h.outfit.image_url} alt="Outfit photo" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <img src={h.outfit.image_url} alt="Outfit photo" width={150} height={200} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         <div style={{ position: "absolute", top: 8, right: 8, padding: "3px 10px", borderRadius: 100, fontSize: 10, fontWeight: 700, background: h.verdict === "wear" ? "rgba(76,175,80,.85)" : "rgba(255,82,82,.85)", color: "#fff", backdropFilter: "blur(4px)" }}>
                           {h.verdict === "wear" ? "Wear" : "Pass"}
                         </div>
