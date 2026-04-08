@@ -6176,6 +6176,8 @@ export default function App() {
         const res = await API.saveItem(scanId, item);
         setSaved(s => [...s, res]);
         lsCache.clear("attair_saved_cache");
+        // Refetch full saved list in background to guarantee consistency
+        API.getSaved().then(d => { const items = d.items || []; setSaved(items); lsCache.set("attair_saved_cache", items); }).catch(() => {});
         refreshStatus();
         refreshLooks();
         track("item_saved", { item_name: item.name }, scanId, "scan");
@@ -6231,6 +6233,8 @@ export default function App() {
         const res = await API.saveItem(sid, item);
         setSaved(s => [...s, res]);
         lsCache.clear("attair_saved_cache");
+        // Refetch full saved list in background to guarantee consistency
+        API.getSaved().then(d => { const items = d.items || []; setSaved(items); lsCache.set("attair_saved_cache", items); }).catch(() => {});
         refreshStatus();
         refreshLooks();
         track("item_saved", { item_name: item.name }, sid, "scan");
@@ -10786,9 +10790,9 @@ export default function App() {
                 {/* Shop drawer — slides up when Shop button tapped */}
                 {items.length > 0 && (
                   <div className="reel-items"
-                    onTouchStart={(e) => { reelShopDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
-                    onTouchMove={(e) => { const dy = e.touches[0].clientY - reelShopDragRef.current.startY; reelShopDragRef.current.currentY = e.touches[0].clientY; if (dy > 0) setReelShopSheetY(dy); }}
-                    onTouchEnd={(e) => { const dy = reelShopDragRef.current.currentY - reelShopDragRef.current.startY; reelShopDragRef.current.dragging = false; if (dy > 100) { setReelShopSheetY(window.innerHeight); const el = e.currentTarget; setTimeout(() => { el.classList.remove("open"); setReelShopSheetY(0); }, 300); } else { setReelShopSheetY(0); } }}
+                    onTouchStart={(e) => { e.stopPropagation(); reelShopDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
+                    onTouchMove={(e) => { e.stopPropagation(); e.preventDefault(); const dy = e.touches[0].clientY - reelShopDragRef.current.startY; reelShopDragRef.current.currentY = e.touches[0].clientY; if (dy > 0) setReelShopSheetY(dy); }}
+                    onTouchEnd={(e) => { e.stopPropagation(); const dy = reelShopDragRef.current.currentY - reelShopDragRef.current.startY; reelShopDragRef.current.dragging = false; if (dy > 100) { setReelShopSheetY(window.innerHeight); const el = e.currentTarget; setTimeout(() => { el.classList.remove("open"); setReelShopSheetY(0); }, 300); } else { setReelShopSheetY(0); } }}
                     style={reelShopSheetY > 0 ? { transform: `translateY(${reelShopSheetY}px)`, transition: reelShopDragRef.current.dragging ? 'none' : undefined } : undefined}>
                     <div className="reel-items-handle" onClick={(e) => { e.stopPropagation(); e.currentTarget.closest(".reel-items").classList.remove("open"); }} />
                     <div className="reel-items-title">{t("shop_this_look")}</div>
