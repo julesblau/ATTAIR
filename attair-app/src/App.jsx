@@ -882,7 +882,7 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
     scan_limit: { title: `You've used all ${userStatus?.scans_limit || 12} free scans this month`, sub: "Go Pro for unlimited scans, zero ads, and price drop alerts.", cta: "Unlock Unlimited Scans" },
     ad_fatigue: { title: "Tired of ads?", sub: "Pro members get a completely ad-free experience plus unlimited scans.", cta: "Remove Ads Forever" },
     history_expiring: { title: "Your scan history expires soon", sub: "Free accounts only keep 7 days. Pro keeps everything forever.", cta: "Keep My History" },
-    save_limit: { title: "You've saved 20 items", sub: "Unlock unlimited saves, price drop alerts, and an ad-free experience.", cta: "Save Unlimited Items" },
+    save_limit: { title: `You've hit the ${userStatus?.saved_limit || 20}-item save limit`, sub: "Unlock unlimited saves, price drop alerts, and an ad-free experience.", cta: "Save Unlimited Items" },
     price_drop: { title: "A saved item dropped 30%", sub: "Pro users get instant price drop alerts. Never miss a deal.", cta: "Get Price Alerts" },
     general: { title: "Unlock the full experience", sub: "Unlimited scans, zero ads, price alerts, and more.", cta: "Go Pro" },
   };
@@ -916,9 +916,6 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
         </div>
         <button className="cta" onClick={handleCta} disabled={loadingPlan} style={{ opacity: loadingPlan ? 0.7 : 1 }}>
           {loadingPlan ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(12,12,14,.3)", borderTopColor: "#0C0C0E", borderRadius: "50%", animation: "spin .7s linear infinite" }} />Processing...</span> : m.cta}
-        </button>
-        <button className="modal-later" onClick={() => onStartTrial && onStartTrial()} style={{ color: "var(--accent)", fontSize: 12, marginTop: -4 }}>
-          Or start a 7-day free trial →
         </button>
         <button className="modal-later" onClick={onClose}>Maybe later</button>
         {userStatus?.tier === "free" && !userStatus?.trial_ends_at && (
@@ -5289,7 +5286,7 @@ export default function App() {
       }
     } catch (err) {
       console.error("Checkout error:", err);
-      alert("Could not start checkout. Please try again.");
+      showToast("Could not start checkout. Please try again.", "error");
     } finally {
       setUpgradeLoading(false);
       setUpgradeModal(null);
@@ -9347,7 +9344,8 @@ export default function App() {
                     setFollowListLoading(true);
                     try {
                       const data = await API.getFollowers(authUserId);
-                      setFollowListData(data.followers || data || []);
+                      const list = data.followers || data;
+                      setFollowListData(Array.isArray(list) ? list : []);
                     } catch { setFollowListData([]); }
                     setFollowListLoading(false);
                   }}>
@@ -9360,7 +9358,8 @@ export default function App() {
                     setFollowListLoading(true);
                     try {
                       const data = await API.getFollowing(authUserId);
-                      setFollowListData(data.following || data || []);
+                      const list = data.following || data;
+                      setFollowListData(Array.isArray(list) ? list : []);
                     } catch { setFollowListData([]); }
                     setFollowListLoading(false);
                   }}>
@@ -9944,7 +9943,7 @@ export default function App() {
                       <div style={{ display: "flex", justifyContent: "center", padding: 40 }}>
                         <div className="ld-dots"><div className="ld-dot" /><div className="ld-dot" /><div className="ld-dot" /></div>
                       </div>
-                    ) : followListData.length === 0 ? (
+                    ) : !Array.isArray(followListData) || followListData.length === 0 ? (
                       <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-tertiary)", fontSize: 14 }}>
                         {followListOpen === "followers" ? t("no_followers_yet") : t("no_following_yet")}
                       </div>
@@ -10568,7 +10567,7 @@ export default function App() {
 
         {/* ─── PWA Install Banner ── */}
         {showInstallBanner && (
-          <div style={{ padding: "10px 16px", background: "linear-gradient(135deg, rgba(201,169,110,.12) 0%, rgba(201,169,110,.06) 100%)", borderTop: "1px solid rgba(201,169,110,.2)", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ padding: "10px 16px", marginBottom: 60, background: "linear-gradient(135deg, rgba(201,169,110,.12) 0%, rgba(201,169,110,.06) 100%)", borderTop: "1px solid rgba(201,169,110,.2)", display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Add ATTAIRE to Home Screen</div>
               <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Get the full app experience</div>
@@ -11856,8 +11855,8 @@ export default function App() {
       {hangerFullscreen && (
         <div className="hanger-overlay" style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-app, #0C0C0E)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
           {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))" }}>
-            <button onClick={() => setHangerFullscreen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: 4 }}>&#x2715;</button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))", position: "relative", zIndex: 10 }}>
+            <button onClick={() => setHangerFullscreen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: "8px 12px", minWidth: 44, minHeight: 44 }}>&#x2715;</button>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("hanger_check")}</span>
               {hangerStreak?.current_streak > 0 && <span style={{ fontSize: 13, color: "#FFB74D" }}>&#128293; {hangerStreak.current_streak}</span>}

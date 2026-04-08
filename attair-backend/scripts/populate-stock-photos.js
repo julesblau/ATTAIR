@@ -68,7 +68,7 @@ const STOCK_PHOTOS = {
     u("photo-1516826957135-700dedea698c"),  // vintage male style
     u("photo-1506794778202-cad84cf45f1d"),  // retro menswear
     u("photo-1548883354-94bcfe321cbb"),  // vintage jacket
-    u("photo-1493106819501-66d381c466f3"),  // retro casual
+    u("photo-1507003211169-0a1dd7228f2d"),  // retro casual
     u("photo-1517941823-815bea90d291"),  // classic vintage
     u("photo-1533808510650-6b0e2e8e9f41"),  // thrift store vibes
     u("photo-1580657018950-c7f7d6a6d990"),  // 70s inspired
@@ -171,7 +171,7 @@ const STOCK_PHOTOS = {
     u("photo-1580657018950-c7f7d6a6d990"),  // alternative style
     u("photo-1506794778202-cad84cf45f1d"),  // bold look
     u("photo-1571945153237-4929e783af4a"),  // punk inspired
-    u("photo-1493106819501-66d381c466f3"),  // dark aesthetic
+    u("photo-1507003211169-0a1dd7228f2d"),  // dark aesthetic
     u("photo-1517941823-815bea90d291"),  // leather jacket
   ],
   edgy_f: [
