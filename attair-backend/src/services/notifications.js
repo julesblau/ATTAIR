@@ -201,6 +201,15 @@ export function getVapidPublicKey() {
  */
 const pendingNudges = new Map();
 
+// Cap pendingNudges to prevent unbounded growth
+setInterval(() => {
+  if (pendingNudges.size > 500) {
+    const toDelete = pendingNudges.size - 500;
+    const iter = pendingNudges.keys();
+    for (let i = 0; i < toDelete; i++) pendingNudges.delete(iter.next().value);
+  }
+}, 60 * 60 * 1000);
+
 /** Nudge delay range in ms: 10–15 minutes */
 const NUDGE_MIN_MS = 10 * 60 * 1000;
 const NUDGE_MAX_MS = 15 * 60 * 1000;

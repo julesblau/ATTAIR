@@ -88,7 +88,7 @@ router.post("/social/follow/:userId", requireAuth, async (req, res) => {
           "New Follower",
           `${name} started following you`,
           { url: `/profile/${req.userId}` }
-        ).catch(() => {});
+        ).catch(err => console.warn('[Notif]', err.message));
       });
 
     return res.json({ following: true });

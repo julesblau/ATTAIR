@@ -325,7 +325,7 @@ router.post("/weekly-notify", async (req, res) => {
           "New Style Twins discovered",
           `${twinCount} new style twin${twinCount === 1 ? "" : "s"} discovered. See who shares your taste!`,
           { url: "/discover?tab=twins" }
-        ).catch(() => {});
+        ).catch(err => console.warn('[Notif]', err.message));
         notified++;
       }
     }

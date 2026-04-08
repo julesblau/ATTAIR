@@ -10,6 +10,16 @@ const GUEST_EXTENDED_LIMIT = 3;  // per week
 const GUEST_FAST_LIMIT = 12;     // per month
 const guestSearchCounters = new Map(); // ip → { ext: { count, weekStart }, fast: { count, month } }
 
+// Evict stale entries hourly to prevent unbounded growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of guestSearchCounters) {
+    const weekStale = entry.ext && (now - entry.ext.weekStart > 8 * 24 * 60 * 60 * 1000);
+    const monthStale = entry.fast && (new Date().getUTCMonth() !== entry.fast.month);
+    if (weekStale && monthStale) guestSearchCounters.delete(ip);
+  }
+}, 60 * 60 * 1000);
+
 function getISOWeekStart(d) {
   const date = new Date(d);
   const day = date.getUTCDay();

@@ -12,6 +12,15 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 // In-memory cache: userId → { generatedAt, lastScanId, payload }
 const dnaCache = new Map();
 
+// Cap dnaCache to prevent unbounded growth
+setInterval(() => {
+  if (dnaCache.size > 500) {
+    const toDelete = dnaCache.size - 500;
+    const iter = dnaCache.keys();
+    for (let i = 0; i < toDelete; i++) dnaCache.delete(iter.next().value);
+  }
+}, 60 * 60 * 1000);
+
 // 5 requests per hour per user (keyed by userId via req.userId after auth)
 const styleDnaLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,

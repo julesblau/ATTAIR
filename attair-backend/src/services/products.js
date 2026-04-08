@@ -1319,6 +1319,16 @@ function getSynonyms(subcategory) {
  * phrase appears at word boundaries.
  */
 const _wbCache = new Map();
+
+// Cap regex cache to prevent unbounded growth
+setInterval(() => {
+  if (_wbCache.size > 2000) {
+    const toDelete = _wbCache.size - 2000;
+    const iter = _wbCache.keys();
+    for (let i = 0; i < toDelete; i++) _wbCache.delete(iter.next().value);
+  }
+}, 60 * 60 * 1000);
+
 function wordMatch(text, term) {
   if (!term || term.length < 2) return false;
   let re = _wbCache.get(term);

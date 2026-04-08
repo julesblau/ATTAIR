@@ -168,6 +168,14 @@ export async function incrementScanCount(userId) {
 // ═══════════════════════════════════════════════════════════════
 const guestScans = new Map(); // ip → { count, date }
 
+// Evict stale entries hourly to prevent unbounded growth
+setInterval(() => {
+  const today = new Date().toISOString().slice(0, 10);
+  for (const [ip, entry] of guestScans) {
+    if (entry.date !== today) guestScans.delete(ip);
+  }
+}, 60 * 60 * 1000);
+
 export function guestRateLimit(req, res, next) {
   const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || "unknown";
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD

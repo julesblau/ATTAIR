@@ -848,7 +848,7 @@ const MiniCard = ({ tier, data, scanId, itemIndex, onSave, isSavedItem }) => {
         style={{ padding: 12, background: "var(--bg-card)", border: `1px solid ${data.is_identified_brand ? "var(--accent-border)" : "var(--border)"}`, borderRadius: 12, textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", gap: 6, transition: "all 0.2s", minWidth: 0 }}>
         {data.image_url && (
           <div style={{ width: "100%", aspectRatio: "1", borderRadius: 8, overflow: "hidden", background: "var(--bg-input)", marginBottom: 2 }}>
-            <img src={data.image_url} alt={data.product_name || "Product image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+            <img src={data.image_url} alt={data.product_name || "Product image"} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
           </div>
         )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -6275,7 +6275,7 @@ export default function App() {
           onContinue={(picks, gender) => {
             setPrefs(p => ({ ...p, gender }));
             if (authed) {
-              API.updateProfile({ style_interests: picks, gender_pref: gender }).catch(() => {});
+              API.updateProfile({ style_interests: picks, gender_pref: gender }).then(() => { lsCache.clear("attair_styledna_cache"); }).catch(() => {});
             }
             trans(() => setScreen("app"));
           }}
@@ -6684,6 +6684,7 @@ export default function App() {
               try {
                 await API.updateProfile({ style_interests: selectedInterests });
                 lsCache.clear("attair_profile_cache");
+                lsCache.clear("attair_styledna_cache");
               } catch {}
               setShowInterestPicker(false);
               localStorage.setItem("attair_interests_picked", "1");
@@ -7066,7 +7067,7 @@ export default function App() {
                   <div style={{ position: "relative", width: "100%", height: 140, overflow: "hidden" }}>
                     {/* Stack preview: show up to 3 overlapping images */}
                     {hangerOutfits.slice(0, 3).map((o, i) => (
-                      <img key={o.id} src={o.image_url} alt="Outfit photo" style={{
+                      <img key={o.id} src={o.image_url} alt="Outfit photo" loading="lazy" style={{
                         position: "absolute", top: i * 3, left: i * 6,
                         width: `calc(100% - ${i * 12}px)`, height: `calc(100% - ${i * 6}px)`,
                         objectFit: "cover", zIndex: 3 - i, opacity: 1 - i * 0.15,
@@ -7152,7 +7153,7 @@ export default function App() {
                     {ootwData.cover_image ? (
                       <>
                         <div className="skeleton-pulse" style={{ position: "absolute", inset: 0, borderRadius: "inherit" }} />
-                        <img src={ootwData.cover_image} alt="This Week's Look" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.55)" }} onLoad={e => { const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) s.style.display = 'none'; }} onError={e => { e.target.style.display = "none"; const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) { s.className = ''; s.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-input);font-size:32px;opacity:0.3'; s.textContent = '\uD83D\uDC54'; } }} />
+                        <img src={ootwData.cover_image} alt="This Week's Look" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.55)" }} onLoad={e => { const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) s.style.display = 'none'; }} onError={e => { e.target.style.display = "none"; const s = e.target.parentElement?.querySelector('.skeleton-pulse'); if (s) { s.className = ''; s.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-input);font-size:32px;opacity:0.3'; s.textContent = '\uD83D\uDC54'; } }} />
                       </>
                     ) : (
                       <div className="skeleton-pulse" style={{ width: "100%", height: "100%" }} />
@@ -7863,7 +7864,7 @@ export default function App() {
             <div className="ld-wrap" style={{ position: "relative", minHeight: "70vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
               {/* Background photo — blurred and darkened */}
               <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 0 }}>
-                <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "blur(12px) brightness(0.3)", transform: "scale(1.1)" }} />
+                <img src={img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "blur(12px) brightness(0.3)", transform: "scale(1.1)" }} />
                 <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
               </div>
               {/* Centered content panel — fixed width to prevent layout shift */}
@@ -7879,7 +7880,7 @@ export default function App() {
                   <div className="identify-particle" />
                   <div className="identify-particle" />
                   <div className="identify-particle" />
-                  <img src="/logo-dark.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" />
+                  <img src="/logo-dark.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
                 </div>
 
                 {/* Animated status text */}
@@ -7910,7 +7911,7 @@ export default function App() {
           {/* ─── Error (enhanced) ──────────────────────── */}
           {tab === "scan" && error && phase === "idle" && (
             <div className="animate-slide-up" style={{ padding: "0 20px 80px" }}>
-              {img && <img src={img} style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)",borderRadius:16,marginBottom:16}} alt="" />}
+              {img && <img src={img} loading="lazy" style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)",borderRadius:16,marginBottom:16}} alt="" />}
               <div className="scan-error-state">
                 <div className="scan-error-icon">
                   {error.includes("internet") || error.includes("server") ? "📡" : error.includes("scan") && error.includes("limit") ? "🔒" : "🔍"}
@@ -7932,7 +7933,7 @@ export default function App() {
           {/* ─── Empty identification (0 items found) ──── */}
           {tab === "scan" && results && results.items.length === 0 && phase === "picking" && (
             <div className="animate-slide-up" style={{ padding: "0 20px 80px" }}>
-              {img && <img src={img} style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)",borderRadius:16,marginBottom:16}} alt="" />}
+              {img && <img src={img} loading="lazy" style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)",borderRadius:16,marginBottom:16}} alt="" />}
               <div className="scan-error-state">
                 <div className="scan-error-icon">👀</div>
                 <div className="scan-error-title">{t("scan_err_no_clothing")}</div>
@@ -8310,7 +8311,7 @@ export default function App() {
 
               {/* Blurred photo background */}
               <div className="search-takeover-bg">
-                <img src={img} alt="Scanned outfit" />
+                <img src={img} alt="Scanned outfit" loading="lazy" />
               </div>
 
               {/* Content */}
@@ -8326,7 +8327,7 @@ export default function App() {
                   <div className="identify-particle" />
                   <div className="identify-particle" />
                   <div className="identify-particle" />
-                  <img src="/logo-dark.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" />
+                  <img src="/logo-dark.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
                 </div>
 
                 {/* Cycling status text */}
@@ -9521,7 +9522,7 @@ export default function App() {
               <div className="profile-v2-row">
                 <div className="profile-v2-avatar" aria-label="Profile avatar" onClick={() => avatarInputRef.current?.click()} style={{ cursor: "pointer", position: "relative" }}>
                   {authAvatarUrl ? (
-                    <img src={authAvatarUrl} alt="Profile" width={32} height={32} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} onError={() => setAuthAvatarUrl(null)} />
+                    <img src={authAvatarUrl} alt="Profile" width={32} height={32} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} onError={() => setAuthAvatarUrl(null)} />
                   ) : (
                     (authName || authEmail || "U")[0].toUpperCase()
                   )}
@@ -9743,7 +9744,7 @@ export default function App() {
                 return (
                   <div className="scan-overlay" role="dialog" aria-label="Scan details" aria-modal="true">
                     <button className="scan-overlay-close" onClick={() => setProfileScanOverlay(null)} aria-label="Close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                    {hsImg && <img className="scan-overlay-img" src={hsImg} alt="Scan" />}
+                    {hsImg && <img className="scan-overlay-img" src={hsImg} alt="Scan" loading="lazy" />}
                     <div className="scan-overlay-body">
                       <div className="scan-overlay-meta">
                         <span className="scan-overlay-tag">{hsItems.length} item{hsItems.length !== 1 ? "s" : ""}</span>
@@ -9969,6 +9970,7 @@ export default function App() {
                               try {
                                 await API.updateProfile({ budget_min: budgetMin, budget_max: budgetMax });
                                 lsCache.clear("attair_profile_cache");
+                                lsCache.clear("attair_styledna_cache");
                                 setSettingsBudgetDirty(false);
                                 setSettingsBudgetExpanded(false);
                                 budgetModalOrigRef.current = { min: budgetMin, max: budgetMax };
@@ -10694,7 +10696,7 @@ export default function App() {
             return (
               <div key={scan.id || idx} className="reel-slide">
                 {/* Background image — fills entire viewport */}
-                {scan.image_url && <img className="reel-bg" src={scan.image_url} alt="" />}
+                {scan.image_url && <img className="reel-bg" src={scan.image_url} alt="" loading="lazy" />}
 
                 {/* Gradient overlays for text readability */}
                 <div className="reel-grad-top" />
@@ -10940,7 +10942,7 @@ export default function App() {
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-secondary, #0C0C0E)", display: "flex", flexDirection: "column", overflow: "auto" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
-            <><img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" /></>
+            <><img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img logo-img--dark" loading="lazy" /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" loading="lazy" /></>
             <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
           </div>
 
@@ -10966,7 +10968,7 @@ export default function App() {
                 {/* Outfit image full-bleed */}
                 {ps.image_url && (
                   <div style={{ position: "relative", width: "100%", maxHeight: "55vh", overflow: "hidden" }}>
-                    <img src={ps.image_url} alt="Outfit" style={{ width: "100%", objectFit: "cover", display: "block" }} />
+                    <img src={ps.image_url} alt="Outfit" loading="lazy" style={{ width: "100%", objectFit: "cover", display: "block" }} />
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, background: "linear-gradient(transparent, var(--bg-secondary, #0C0C0E))" }} />
                   </div>
                 )}
@@ -11105,7 +11107,7 @@ export default function App() {
                 setPrefs(prev => ({ ...prev, budget_min: prefSheetBudgetMin, budget_max: prefSheetBudgetMax, size_prefs: { ...prev.size_prefs, fit: prefSheetFit } }));
                 // Persist to backend if authed
                 if (authed) {
-                  API.updateProfile({ budget_min: prefSheetBudgetMin, budget_max: prefSheetBudgetMax }).catch(() => showToast("Couldn't save budget", "error"));
+                  API.updateProfile({ budget_min: prefSheetBudgetMin, budget_max: prefSheetBudgetMax }).then(() => { lsCache.clear("attair_styledna_cache"); }).catch(() => showToast("Couldn't save budget", "error"));
                 }
                 setShowPrefSheet(false);
                 // Show style fingerprint card briefly
