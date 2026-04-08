@@ -6174,7 +6174,7 @@ export default function App() {
       }
       try {
         const res = await API.saveItem(scanId, item);
-        setSaved(s => [...s, { id: res.id, item_data: item, created_at: new Date().toISOString() }]);
+        setSaved(s => [...s, res]);
         lsCache.clear("attair_saved_cache");
         refreshStatus();
         refreshLooks();
@@ -6229,7 +6229,7 @@ export default function App() {
       }
       try {
         const res = await API.saveItem(sid, item);
-        setSaved(s => [...s, { id: res.id, item_data: item, scan_id: sid, created_at: new Date().toISOString() }]);
+        setSaved(s => [...s, res]);
         lsCache.clear("attair_saved_cache");
         refreshStatus();
         refreshLooks();

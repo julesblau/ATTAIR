@@ -409,6 +409,7 @@ Only return the JSON, no other text.`,
         alt_search: null,
         brand_confidence: "low", // prevent brand query from overriding refinement
         _refined: true,
+        _scan_item_index: mod.item_index,
       };
     });
 

@@ -2201,7 +2201,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       // Pick one more mid-tier product near the same price range
       const midCompanions = pricedRetail
         .filter(s => !usedUrls.has(getUrl(s)) && s.price != null &&
-          Math.abs(s.price - (original.price || itemTierBounds.min)) / Math.max(original.price || 1, 1) < 0.35)
+          Math.abs(s.price - (original.price || itemTierBounds.min)) / Math.max(original.price || 1, 1) < 0.5)
         .sort((a, b) => b.score - a.score);
       tiers.mid.push(...pickTopN(midCompanions.slice(0, 15), 5, "mid"));
 
@@ -2240,7 +2240,10 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
 
       // Fill empty tiers by expanding price range — always priced only, never unpriced
       if (!tiers.budget.length) tiers.budget.push(...pickTopN(pricedRetail.sort((a, b) => a.price - b.price), 6, "budget"));
-      if (!tiers.mid.length) tiers.mid.push(...pickTopN(pricedRetail.sort((a, b) => b.score - a.score), 6, "mid"));
+      if (!tiers.mid.length) {
+        const midFallback = pricedRetail.filter(s => s.price >= itemTierBounds.min && s.price <= itemTierBounds.max * 1.5).sort((a, b) => b.score - a.score);
+        tiers.mid.push(...pickTopN(midFallback.length ? midFallback : pricedRetail.sort((a, b) => b.score - a.score), 6, "mid"));
+      }
       if (!tiers.premium.length) tiers.premium.push(...pickTopN(pricedRetail.sort((a, b) => b.price - a.price), 6, "premium"));
     }
 
@@ -2274,7 +2277,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       const demoted = [];
       tiers.mid = tiers.mid.filter(p => {
         const pNum = parseFloat((p.price || "0").toString().replace(/[^0-9.]/g, ""));
-        if (pNum > 0 && pNum < budgetMedian * 0.7) { demoted.push(p); return false; }
+        if (pNum > 0 && pNum <= budgetMedian) { demoted.push(p); return false; }
         return true;
       });
       if (demoted.length) {

@@ -524,12 +524,12 @@ router.post("/saved", requireAuth, async (req, res) => {
     const { data: saved, error } = await supabase
       .from("saved_items")
       .insert({ user_id: req.userId, scan_id: scan_id || null, item_data, selected_tier: selected_tier || null, tier_product: tier_product || null })
-      .select("id")
+      .select("*")
       .single();
 
     if (error) throw error;
 
-    return res.json({ id: saved.id, message: "Saved" });
+    return res.json(saved);
   } catch (err) {
     console.error("Save error:", err.message);
     return res.status(500).json({ error: "Failed to save item" });
