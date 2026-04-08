@@ -4793,6 +4793,13 @@ export default function App() {
   const [followingSet, setFollowingSet] = useState(new Set()); // user ids we follow
   const userSearchTimerRef = useRef(null);
   const feedSentinelRef = useRef(null);
+  const feedDoubleTapRef = useRef({ lastTap: 0, timer: null });
+  const feedSwipeRef = useRef(null);
+  const [feedShopScan, setFeedShopScan] = useState(null);
+  const [feedShopItems, setFeedShopItems] = useState([]);
+  const [feedShopLoading, setFeedShopLoading] = useState(false);
+  const reelShopDragRef = useRef({ startY: 0, currentY: 0, dragging: false });
+  const [reelShopSheetY, setReelShopSheetY] = useState(0);
   const [searchSubTab, setSearchSubTab] = useState(() => {
     if (Auth.getToken()) {
       const p = new URLSearchParams(window.location.search);
@@ -7319,8 +7326,49 @@ export default function App() {
                             </div>
                           </div>
                         )}
-                        <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { setReelScans(null); const realIdx = feedScans.indexOf(scan); setFeedDetailScan(scan); setFeedDetailIdx(realIdx >= 0 ? realIdx : idx); }}>
-                          <div style={{ position: "relative" }} onDoubleClick={(e) => { e.stopPropagation(); if (!isSaved) { const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); } /* brief heart flash */ const heart = document.createElement("div"); heart.innerHTML = "\u2764\uFE0F"; Object.assign(heart.style, { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) scale(0)", fontSize: "64px", pointerEvents: "none", zIndex: 10, transition: "transform .3s ease, opacity .3s ease", opacity: "1" }); e.currentTarget.appendChild(heart); requestAnimationFrame(() => { heart.style.transform = "translate(-50%,-50%) scale(1)"; }); setTimeout(() => { heart.style.opacity = "0"; heart.style.transform = "translate(-50%,-50%) scale(1.4)"; }, 600); setTimeout(() => heart.remove(), 1000); }}>
+                        <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { if (feedDoubleTapRef.current.timer) return; feedDoubleTapRef.current.timer = setTimeout(() => { feedDoubleTapRef.current.timer = null; setReelScans(null); const realIdx = feedScans.indexOf(scan); setFeedDetailScan(scan); setFeedDetailIdx(realIdx >= 0 ? realIdx : idx); }, 250); }}>
+                          <div style={{ position: "relative" }}
+                            onDoubleClick={(e) => { e.stopPropagation(); if (!isSaved) { const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); } const heart = document.createElement("div"); heart.innerHTML = "\u2764\uFE0F"; Object.assign(heart.style, { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) scale(0)", fontSize: "64px", pointerEvents: "none", zIndex: 10, transition: "transform .3s ease, opacity .3s ease", opacity: "1" }); e.currentTarget.appendChild(heart); requestAnimationFrame(() => { heart.style.transform = "translate(-50%,-50%) scale(1)"; }); setTimeout(() => { heart.style.opacity = "0"; heart.style.transform = "translate(-50%,-50%) scale(1.4)"; }, 600); setTimeout(() => heart.remove(), 1000); }}
+                            onTouchStart={(e) => { feedSwipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
+                            onTouchEnd={(e) => {
+                              // Check for horizontal swipe
+                              if (feedSwipeRef.current) {
+                                const dx = e.changedTouches[0].clientX - feedSwipeRef.current.x;
+                                const dy = Math.abs(e.changedTouches[0].clientY - feedSwipeRef.current.y);
+                                feedSwipeRef.current = null;
+                                if (dx > 80 && dy < 50) {
+                                  if (feedDoubleTapRef.current.timer) { clearTimeout(feedDoubleTapRef.current.timer); feedDoubleTapRef.current.timer = null; }
+                                  setFeedShopScan(scan);
+                                  if (scan.items && scan.items.length > 0) {
+                                    setFeedShopItems(scan.items);
+                                  } else {
+                                    setFeedShopLoading(true);
+                                    authFetch(`${API_BASE}/api/user/scan/${scan.id}`).then(r => r.json()).then(data => {
+                                      setFeedShopItems(data.items || []);
+                                    }).catch(() => setFeedShopItems([])).finally(() => setFeedShopLoading(false));
+                                  }
+                                  return;
+                                }
+                              }
+                              // Double-tap detection
+                              const now = Date.now();
+                              const dt = now - feedDoubleTapRef.current.lastTap;
+                              feedDoubleTapRef.current.lastTap = now;
+                              if (dt < 300 && dt > 0) {
+                                if (feedDoubleTapRef.current.timer) { clearTimeout(feedDoubleTapRef.current.timer); feedDoubleTapRef.current.timer = null; }
+                                if (!isSaved) {
+                                  const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url };
+                                  quickSaveItem(itemData, scan.id);
+                                }
+                                const heart = document.createElement("div");
+                                heart.innerHTML = "\u2764\uFE0F";
+                                Object.assign(heart.style, { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) scale(0)", fontSize: "64px", pointerEvents: "none", zIndex: 10, transition: "transform .3s ease, opacity .3s ease", opacity: "1" });
+                                e.currentTarget.appendChild(heart);
+                                requestAnimationFrame(() => { heart.style.transform = "translate(-50%,-50%) scale(1)"; });
+                                setTimeout(() => { heart.style.opacity = "0"; heart.style.transform = "translate(-50%,-50%) scale(1.4)"; }, 600);
+                                setTimeout(() => heart.remove(), 1000);
+                              }
+                            }}>
                             {scan.image_url
                               ? <>
                                   <div className="skeleton-pulse" style={{ position: "absolute", inset: 0, borderRadius: "inherit" }} />
@@ -10737,7 +10785,11 @@ export default function App() {
 
                 {/* Shop drawer — slides up when Shop button tapped */}
                 {items.length > 0 && (
-                  <div className="reel-items">
+                  <div className="reel-items"
+                    onTouchStart={(e) => { reelShopDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
+                    onTouchMove={(e) => { const dy = e.touches[0].clientY - reelShopDragRef.current.startY; reelShopDragRef.current.currentY = e.touches[0].clientY; if (dy > 0) setReelShopSheetY(dy); }}
+                    onTouchEnd={(e) => { const dy = reelShopDragRef.current.currentY - reelShopDragRef.current.startY; reelShopDragRef.current.dragging = false; if (dy > 100) { setReelShopSheetY(window.innerHeight); const el = e.currentTarget; setTimeout(() => { el.classList.remove("open"); setReelShopSheetY(0); }, 300); } else { setReelShopSheetY(0); } }}
+                    style={reelShopSheetY > 0 ? { transform: `translateY(${reelShopSheetY}px)`, transition: reelShopDragRef.current.dragging ? 'none' : undefined } : undefined}>
                     <div className="reel-items-handle" onClick={(e) => { e.stopPropagation(); e.currentTarget.closest(".reel-items").classList.remove("open"); }} />
                     <div className="reel-items-title">{t("shop_this_look")}</div>
                     <div className="reel-items-list">
@@ -12454,6 +12506,34 @@ export default function App() {
                   </div>
                 )}
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ FEED SHOP OVERLAY (swipe right on feed card) ═══════ */}
+      {feedShopScan && (
+        <div className="overlay-backdrop" onClick={() => { setFeedShopScan(null); setFeedShopItems([]); }} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,.5)" }}>
+          <div className="reel-items open" onClick={(e) => e.stopPropagation()} style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 1201, transform: "translateY(0)" }}>
+            <div className="reel-items-handle" onClick={() => { setFeedShopScan(null); setFeedShopItems([]); }} />
+            <div className="reel-items-title">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              Shop this look
+            </div>
+            {feedShopLoading ? (
+              <div style={{ display: "flex", justifyContent: "center", padding: 20 }}><div className="spinner" style={{ width: 24, height: 24 }} /></div>
+            ) : feedShopItems.length > 0 ? (
+              <div className="reel-items-list">
+                {feedShopItems.map((item, i) => (
+                  <button key={i} className="reel-item-chip" onClick={(e) => { e.stopPropagation(); window.open(`https://www.google.com/search?tbm=shop&q=${encodeURIComponent([item.name, item.brand !== "Unidentified" && item.brand, item.category].filter(Boolean).join(" "))}`, "_blank"); }}>
+                    <div className="reel-item-name">{item.name || item.category || "Item"}</div>
+                    <div className="reel-item-sub">{[item.brand !== "Unidentified" && item.brand, item.price_range].filter(Boolean).join(" \u00B7 ")}</div>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="reel-item-arrow"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div style={{ padding: "20px 0", textAlign: "center", color: "var(--text-tertiary)", fontSize: 13 }}>No items found for this outfit</div>
             )}
           </div>
         </div>
