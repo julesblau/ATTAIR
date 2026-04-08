@@ -450,11 +450,11 @@ const API = {
         const { data, ts } = JSON.parse(raw);
         if (Date.now() - ts < TTL) return data;
       }
-    } catch {}
+    } catch { /* intentionally empty */ }
     // Dedupe in-flight request
     if (API._statsFlight) return API._statsFlight;
     API._statsFlight = fetch(`${API_BASE}/api/stats`).then(r => r.json()).then(data => {
-      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch {}
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); } catch { /* intentionally empty */ }
       API._statsFlight = null;
       return data;
     }).catch(err => { API._statsFlight = null; throw err; });
@@ -1048,60 +1048,22 @@ const STRINGS = {
     private_profile: "Private",
     followers_only: "Followers Only",
     loading: "Loading...",
-    saving: "Saving...",
-    cancel: "Cancel",
     confirm: "Confirm",
     done: "Done",
     save_btn: "Save",
-    not_set: "Not set",
-    appearance: "Appearance",
-    dark: "Dark",
-    light: "Light",
-    budget_range: "Budget Range",
-    budget_save_error: "Failed to save. Please try again.",
-    budget_min_label: "MIN",
-    budget_max_label: "MAX",
-    budget_tier_under50: "$ Under $50",
-    budget_tier_mid: "$$ $50–150",
-    budget_tier_high: "$$$ $150–500",
-    budget_tier_premium: "$$$$ $500+",
-    size_preferences: "Size Preferences",
-    subscription: "Subscription",
-    free: "Free",
-    notifications: "Notifications",
-    enable_push: "Enable Push Notifications",
-    push_enabled: "Push notifications are enabled",
     followup_reminders: "Follow-up reminders",
     followup_desc: "Nudge me if I forget to check my results",
-    style_twins_notif: "Style Twins",
-    style_twins_desc: "Weekly \"new style twins discovered\" alerts",
-    refer_friend: "Refer a friend",
-    refer_desc: "Share your code. Both of you get $5 credit.",
-    size_prefs_title: "Size Preferences",
     size_prefs_sub: "Set your sizes for better product recommendations.",
-    men: "Men",
-    women: "Women",
-    tops: "Tops",
-    bottoms_waist: "Bottoms (Waist)",
-    bottoms_length: "Bottoms (Length)",
     shoes_label: "Shoes",
-    dresses: "Dresses",
-    save_sizes: "Save Sizes",
     change_language_confirm: "Change language?",
     change_language_desc: "Your app language will be updated.",
     scans_label: "Scans",
-    edit_profile: "Edit Profile",
     style_dna: "Style DNA",
     hanger_test: "Hanger Check",
     tell_style: "Tell people about your style...",
     no_followers: "No followers yet",
     no_following: "Not following anyone yet",
-    my_scans: "My Scans",
-    wardrobe: "My Wardrobe",
     all: "All",
-    my_picks: "My Picks",
-    search_scans: "Search scans...",
-    no_scans_yet: "No scans yet",
     no_match_search: "No scans match your search",
     scan_first: "Scan your first outfit to build your style library",
     try_different: "Try different keywords",
@@ -1113,8 +1075,6 @@ const STRINGS = {
     type_to_search: "Type a name to search",
     view_results: "View Full Results",
     shop: "Shop",
-    search_google: "Search Google Shopping",
-    no_match: "No exact match found",
     original: "ORIGINAL",
     resale: "RESALE",
     take_photo: "Take a photo or upload an outfit",
@@ -1134,7 +1094,6 @@ const STRINGS = {
     phone_optional: "Phone number (optional)",
     get_started: "Get started",
     maybe_later: "Maybe later",
-    upgrade_to_pro: "Upgrade to Pro",
     go_pro: "Go Pro",
     appearance: "Appearance",
     dark: "Dark",
@@ -1311,53 +1270,22 @@ const STRINGS = {
     private_profile: "Privado",
     followers_only: "Solo seguidores",
     loading: "Cargando...",
-    saving: "Guardando...",
-    cancel: "Cancelar",
     confirm: "Confirmar",
     done: "Listo",
     save_btn: "Guardar",
-    not_set: "No configurado",
-    appearance: "Apariencia",
-    dark: "Oscuro",
-    light: "Claro",
-    budget_range: "Rango de presupuesto",
-    size_preferences: "Preferencias de talla",
-    subscription: "Suscripción",
-    free: "Gratis",
-    notifications: "Notificaciones",
-    enable_push: "Activar notificaciones push",
-    push_enabled: "Notificaciones push activadas",
     followup_reminders: "Recordatorios de seguimiento",
     followup_desc: "Avisarme si olvido revisar mis resultados",
-    style_twins_notif: "Gemelos de estilo",
-    style_twins_desc: "Alertas semanales de nuevos gemelos de estilo",
-    refer_friend: "Invita a un amigo",
-    refer_desc: "Comparte tu código. Ambos obtienen $5 de crédito.",
-    size_prefs_title: "Preferencias de talla",
     size_prefs_sub: "Configura tus tallas para mejores recomendaciones.",
-    men: "Hombre",
-    women: "Mujer",
-    tops: "Parte superior",
-    bottoms_waist: "Parte inferior (Cintura)",
-    bottoms_length: "Parte inferior (Largo)",
     shoes_label: "Zapatos",
-    dresses: "Vestidos",
-    save_sizes: "Guardar tallas",
     change_language_confirm: "¿Cambiar idioma?",
     change_language_desc: "El idioma de la app se actualizará.",
     scans_label: "Escaneos",
-    edit_profile: "Editar perfil",
     style_dna: "ADN de estilo",
     hanger_test: "Prueba de percha",
     tell_style: "Cuéntale a la gente sobre tu estilo...",
     no_followers: "Sin seguidores aún",
     no_following: "No sigues a nadie aún",
-    my_scans: "Mis escaneos",
-    wardrobe: "Armario",
     all: "Todo",
-    my_picks: "Mis favoritos",
-    search_scans: "Buscar escaneos...",
-    no_scans_yet: "Sin escaneos aún",
     no_match_search: "No hay escaneos que coincidan",
     scan_first: "Escanea tu primer outfit para crear tu biblioteca de estilo",
     try_different: "Intenta con diferentes palabras",
@@ -1369,8 +1297,6 @@ const STRINGS = {
     type_to_search: "Escribe un nombre para buscar",
     view_results: "Ver resultados completos",
     shop: "Comprar",
-    search_google: "Buscar en Google Shopping",
-    no_match: "No se encontró coincidencia exacta",
     original: "ORIGINAL",
     resale: "REVENTA",
     take_photo: "Toma una foto o sube un outfit",
@@ -1390,7 +1316,6 @@ const STRINGS = {
     phone_optional: "Teléfono (opcional)",
     get_started: "Comenzar",
     maybe_later: "Quizás después",
-    upgrade_to_pro: "Mejorar a Pro",
     go_pro: "Ir a Pro",
     appearance: "Apariencia",
     dark: "Oscuro",
@@ -1566,53 +1491,22 @@ const STRINGS = {
     private_profile: "Privé",
     followers_only: "Abonnés uniquement",
     loading: "Chargement...",
-    saving: "Sauvegarde...",
-    cancel: "Annuler",
     confirm: "Confirmer",
     done: "Terminé",
     save_btn: "Enregistrer",
-    not_set: "Non défini",
-    appearance: "Apparence",
-    dark: "Sombre",
-    light: "Clair",
-    budget_range: "Gamme de budget",
-    size_preferences: "Préférences de taille",
-    subscription: "Abonnement",
-    free: "Gratuit",
-    notifications: "Notifications",
-    enable_push: "Activer les notifications push",
-    push_enabled: "Notifications push activées",
     followup_reminders: "Rappels de suivi",
     followup_desc: "Me rappeler si j'oublie de vérifier mes résultats",
-    style_twins_notif: "Jumeaux de style",
-    style_twins_desc: "Alertes hebdomadaires de nouveaux jumeaux de style",
-    refer_friend: "Parrainez un ami",
-    refer_desc: "Partagez votre code. Vous obtenez chacun 5$ de crédit.",
-    size_prefs_title: "Préférences de taille",
     size_prefs_sub: "Définissez vos tailles pour de meilleures recommandations.",
-    men: "Homme",
-    women: "Femme",
-    tops: "Hauts",
-    bottoms_waist: "Bas (Taille)",
-    bottoms_length: "Bas (Longueur)",
     shoes_label: "Chaussures",
-    dresses: "Robes",
-    save_sizes: "Enregistrer les tailles",
     change_language_confirm: "Changer la langue ?",
     change_language_desc: "La langue de l'application sera mise à jour.",
     scans_label: "Scans",
-    edit_profile: "Modifier le profil",
     style_dna: "ADN de style",
     hanger_test: "Test du cintre",
     tell_style: "Parlez de votre style...",
     no_followers: "Pas encore d'abonnés",
     no_following: "Vous ne suivez personne encore",
-    my_scans: "Mes scans",
-    wardrobe: "Garde-robe",
     all: "Tout",
-    my_picks: "Mes choix",
-    search_scans: "Rechercher des scans...",
-    no_scans_yet: "Aucun scan encore",
     no_match_search: "Aucun scan ne correspond à votre recherche",
     scan_first: "Scannez votre première tenue pour créer votre bibliothèque de style",
     try_different: "Essayez des mots-clés différents",
@@ -1624,8 +1518,6 @@ const STRINGS = {
     type_to_search: "Tapez un nom pour rechercher",
     view_results: "Voir tous les résultats",
     shop: "Acheter",
-    search_google: "Rechercher sur Google Shopping",
-    no_match: "Aucune correspondance exacte",
     original: "ORIGINAL",
     resale: "REVENTE",
     take_photo: "Prenez une photo ou téléchargez une tenue",
@@ -1645,7 +1537,6 @@ const STRINGS = {
     phone_optional: "Téléphone (optionnel)",
     get_started: "Commencer",
     maybe_later: "Peut-être plus tard",
-    upgrade_to_pro: "Passer à Pro",
     go_pro: "Passer Pro",
     appearance: "Apparence",
     dark: "Sombre",
@@ -1821,53 +1712,22 @@ const STRINGS = {
     private_profile: "Privat",
     followers_only: "Nur Follower",
     loading: "Laden...",
-    saving: "Speichern...",
-    cancel: "Abbrechen",
     confirm: "Bestätigen",
     done: "Fertig",
     save_btn: "Speichern",
-    not_set: "Nicht eingestellt",
-    appearance: "Erscheinungsbild",
-    dark: "Dunkel",
-    light: "Hell",
-    budget_range: "Budgetbereich",
-    size_preferences: "Größeneinstellungen",
-    subscription: "Abonnement",
-    free: "Kostenlos",
-    notifications: "Benachrichtigungen",
-    enable_push: "Push-Benachrichtigungen aktivieren",
-    push_enabled: "Push-Benachrichtigungen aktiviert",
     followup_reminders: "Follow-up-Erinnerungen",
     followup_desc: "Erinnere mich, wenn ich vergesse, meine Ergebnisse zu prüfen",
-    style_twins_notif: "Style-Zwillinge",
-    style_twins_desc: "Wöchentliche Alerts zu neuen Style-Zwillingen",
-    refer_friend: "Freund empfehlen",
-    refer_desc: "Teile deinen Code. Ihr bekommt beide 5$ Guthaben.",
-    size_prefs_title: "Größeneinstellungen",
     size_prefs_sub: "Lege deine Größen für bessere Empfehlungen fest.",
-    men: "Herren",
-    women: "Damen",
-    tops: "Oberteile",
-    bottoms_waist: "Unterteile (Taille)",
-    bottoms_length: "Unterteile (Länge)",
     shoes_label: "Schuhe",
-    dresses: "Kleider",
-    save_sizes: "Größen speichern",
     change_language_confirm: "Sprache ändern?",
     change_language_desc: "Die App-Sprache wird aktualisiert.",
     scans_label: "Scans",
-    edit_profile: "Profil bearbeiten",
     style_dna: "Stil-DNA",
     hanger_test: "Kleiderbügel-Test",
     tell_style: "Erzähle anderen von deinem Stil...",
     no_followers: "Noch keine Follower",
     no_following: "Du folgst niemandem",
-    my_scans: "Meine Scans",
-    wardrobe: "Garderobe",
     all: "Alle",
-    my_picks: "Meine Auswahl",
-    search_scans: "Scans durchsuchen...",
-    no_scans_yet: "Noch keine Scans",
     no_match_search: "Keine Scans stimmen überein",
     scan_first: "Scanne dein erstes Outfit, um deine Stil-Bibliothek aufzubauen",
     try_different: "Versuche andere Suchbegriffe",
@@ -1879,8 +1739,6 @@ const STRINGS = {
     type_to_search: "Namen eingeben zum Suchen",
     view_results: "Alle Ergebnisse anzeigen",
     shop: "Kaufen",
-    search_google: "Bei Google Shopping suchen",
-    no_match: "Kein genaues Ergebnis gefunden",
     original: "ORIGINAL",
     resale: "GEBRAUCHT",
     take_photo: "Mach ein Foto oder lade ein Outfit hoch",
@@ -1900,7 +1758,6 @@ const STRINGS = {
     phone_optional: "Telefon (optional)",
     get_started: "Los geht's",
     maybe_later: "Vielleicht später",
-    upgrade_to_pro: "Auf Pro upgraden",
     go_pro: "Pro werden",
     appearance: "Erscheinungsbild",
     dark: "Dunkel",
@@ -2076,53 +1933,22 @@ const STRINGS = {
     private_profile: "私密",
     followers_only: "仅粉丝可见",
     loading: "加载中...",
-    saving: "保存中...",
-    cancel: "取消",
     confirm: "确认",
     done: "完成",
     save_btn: "保存",
-    not_set: "未设置",
-    appearance: "外观",
-    dark: "深色",
-    light: "浅色",
-    budget_range: "预算范围",
-    size_preferences: "尺码偏好",
-    subscription: "订阅",
-    free: "免费",
-    notifications: "通知",
-    enable_push: "启用推送通知",
-    push_enabled: "推送通知已启用",
     followup_reminders: "后续提醒",
     followup_desc: "提醒我查看我的结果",
-    style_twins_notif: "时尚双胞胎",
-    style_twins_desc: "每周\"发现新时尚双胞胎\"提醒",
-    refer_friend: "推荐好友",
-    refer_desc: "分享你的代码，双方各获得5美元。",
-    size_prefs_title: "尺码偏好",
     size_prefs_sub: "设置你的尺码以获得更好的推荐。",
-    men: "男性",
-    women: "女性",
-    tops: "上衣",
-    bottoms_waist: "下装 (腰围)",
-    bottoms_length: "下装 (长度)",
     shoes_label: "鞋子",
-    dresses: "连衣裙",
-    save_sizes: "保存尺码",
     change_language_confirm: "更换语言？",
     change_language_desc: "应用程序语言将被更新。",
     scans_label: "扫描",
-    edit_profile: "编辑资料",
     style_dna: "风格DNA",
     hanger_test: "衣架测试",
     tell_style: "告诉大家你的穿搭风格...",
     no_followers: "还没有粉丝",
     no_following: "还没有关注任何人",
-    my_scans: "我的扫描",
-    wardrobe: "衣橱",
     all: "全部",
-    my_picks: "我的精选",
-    search_scans: "搜索扫描...",
-    no_scans_yet: "暂无扫描",
     no_match_search: "没有匹配的扫描",
     scan_first: "扫描你的第一个穿搭来建立风格库",
     try_different: "尝试不同的关键词",
@@ -2134,8 +1960,6 @@ const STRINGS = {
     type_to_search: "输入名字搜索",
     view_results: "查看完整结果",
     shop: "购买",
-    search_google: "在Google Shopping搜索",
-    no_match: "未找到精确匹配",
     original: "正品",
     resale: "二手",
     take_photo: "拍照或上传穿搭",
@@ -2155,7 +1979,6 @@ const STRINGS = {
     phone_optional: "手机号（可选）",
     get_started: "开始使用",
     maybe_later: "以后再说",
-    upgrade_to_pro: "升级到Pro",
     go_pro: "升级 Pro",
     appearance: "外观",
     dark: "深色",
@@ -2331,53 +2154,22 @@ const STRINGS = {
     private_profile: "非公開",
     followers_only: "フォロワーのみ",
     loading: "読み込み中...",
-    saving: "保存中...",
-    cancel: "キャンセル",
     confirm: "確認",
     done: "完了",
     save_btn: "保存",
-    not_set: "未設定",
-    appearance: "表示",
-    dark: "ダーク",
-    light: "ライト",
-    budget_range: "予算範囲",
-    size_preferences: "サイズ設定",
-    subscription: "サブスクリプション",
-    free: "無料",
-    notifications: "通知",
-    enable_push: "プッシュ通知を有効にする",
-    push_enabled: "プッシュ通知が有効です",
     followup_reminders: "フォローアップリマインダー",
     followup_desc: "結果の確認を忘れた場合にリマインド",
-    style_twins_notif: "スタイルツイン",
-    style_twins_desc: "毎週「新しいスタイルツイン発見」アラート",
-    refer_friend: "友達を紹介",
-    refer_desc: "コードを共有。2人とも$5のクレジットをゲット。",
-    size_prefs_title: "サイズ設定",
     size_prefs_sub: "より良いおすすめのためにサイズを設定してください。",
-    men: "メンズ",
-    women: "レディース",
-    tops: "トップス",
-    bottoms_waist: "ボトムス (ウエスト)",
-    bottoms_length: "ボトムス (丈)",
     shoes_label: "シューズ",
-    dresses: "ドレス",
-    save_sizes: "サイズを保存",
     change_language_confirm: "言語を変更しますか？",
     change_language_desc: "アプリの言語が更新されます。",
     scans_label: "スキャン",
-    edit_profile: "プロフィール編集",
     style_dna: "スタイルDNA",
     hanger_test: "ハンガーテスト",
     tell_style: "あなたのスタイルを教えてください...",
     no_followers: "まだフォロワーがいません",
     no_following: "まだ誰もフォローしていません",
-    my_scans: "マイスキャン",
-    wardrobe: "ワードローブ",
     all: "すべて",
-    my_picks: "マイピック",
-    search_scans: "スキャンを検索...",
-    no_scans_yet: "スキャンはまだありません",
     no_match_search: "検索に一致するスキャンがありません",
     scan_first: "最初のコーデをスキャンしてスタイルライブラリを構築",
     try_different: "別のキーワードを試してください",
@@ -2389,8 +2181,6 @@ const STRINGS = {
     type_to_search: "名前を入力して検索",
     view_results: "すべての結果を見る",
     shop: "購入",
-    search_google: "Google Shoppingで検索",
-    no_match: "完全一致なし",
     original: "オリジナル",
     resale: "リセール",
     take_photo: "写真を撮るか、コーデをアップロード",
@@ -2410,7 +2200,6 @@ const STRINGS = {
     phone_optional: "電話番号（任意）",
     get_started: "はじめる",
     maybe_later: "後で",
-    upgrade_to_pro: "Proにアップグレード",
     go_pro: "Proにする",
     appearance: "外観",
     dark: "ダーク",
@@ -2586,53 +2375,22 @@ const STRINGS = {
     private_profile: "비공개",
     followers_only: "팔로워만",
     loading: "로딩 중...",
-    saving: "저장 중...",
-    cancel: "취소",
     confirm: "확인",
     done: "완료",
     save_btn: "저장",
-    not_set: "설정 안 됨",
-    appearance: "외관",
-    dark: "다크",
-    light: "라이트",
-    budget_range: "예산 범위",
-    size_preferences: "사이즈 설정",
-    subscription: "구독",
-    free: "무료",
-    notifications: "알림",
-    enable_push: "푸시 알림 활성화",
-    push_enabled: "푸시 알림이 활성화되었습니다",
     followup_reminders: "후속 알림",
     followup_desc: "결과 확인을 잊으면 알려주세요",
-    style_twins_notif: "스타일 트윈",
-    style_twins_desc: "주간 '새로운 스타일 트윈 발견' 알림",
-    refer_friend: "친구 추천",
-    refer_desc: "코드를 공유하세요. 둘 다 $5 크레딧을 받습니다.",
-    size_prefs_title: "사이즈 설정",
     size_prefs_sub: "더 나은 추천을 위해 사이즈를 설정하세요.",
-    men: "남성",
-    women: "여성",
-    tops: "상의",
-    bottoms_waist: "하의 (허리)",
-    bottoms_length: "하의 (길이)",
     shoes_label: "신발",
-    dresses: "드레스",
-    save_sizes: "사이즈 저장",
     change_language_confirm: "언어를 변경하시겠습니까?",
     change_language_desc: "앱 언어가 업데이트됩니다.",
     scans_label: "스캔",
-    edit_profile: "프로필 편집",
     style_dna: "스타일 DNA",
     hanger_test: "옷걸이 테스트",
     tell_style: "당신의 스타일을 알려주세요...",
     no_followers: "아직 팔로워가 없습니다",
     no_following: "아직 아무도 팔로우하지 않았습니다",
-    my_scans: "내 스캔",
-    wardrobe: "옷장",
     all: "전체",
-    my_picks: "내 선택",
-    search_scans: "스캔 검색...",
-    no_scans_yet: "아직 스캔이 없습니다",
     no_match_search: "검색과 일치하는 스캔이 없습니다",
     scan_first: "첫 번째 아웃핏을 스캔하여 스타일 라이브러리를 만드세요",
     try_different: "다른 키워드를 시도해 보세요",
@@ -2644,8 +2402,6 @@ const STRINGS = {
     type_to_search: "이름을 입력하여 검색",
     view_results: "전체 결과 보기",
     shop: "구매",
-    search_google: "Google Shopping에서 검색",
-    no_match: "정확한 일치 항목 없음",
     original: "정품",
     resale: "중고",
     take_photo: "사진을 찍거나 아웃핏을 업로드하세요",
@@ -2665,7 +2421,6 @@ const STRINGS = {
     phone_optional: "전화번호 (선택)",
     get_started: "시작하기",
     maybe_later: "나중에",
-    upgrade_to_pro: "Pro로 업그레이드",
     go_pro: "Pro로 업그레이드",
     appearance: "외관",
     dark: "다크",
@@ -2841,53 +2596,22 @@ const STRINGS = {
     private_profile: "Privado",
     followers_only: "Apenas seguidores",
     loading: "Carregando...",
-    saving: "Salvando...",
-    cancel: "Cancelar",
     confirm: "Confirmar",
     done: "Pronto",
     save_btn: "Salvar",
-    not_set: "Não definido",
-    appearance: "Aparência",
-    dark: "Escuro",
-    light: "Claro",
-    budget_range: "Faixa de orçamento",
-    size_preferences: "Preferências de tamanho",
-    subscription: "Assinatura",
-    free: "Grátis",
-    notifications: "Notificações",
-    enable_push: "Ativar notificações push",
-    push_enabled: "Notificações push ativadas",
     followup_reminders: "Lembretes de acompanhamento",
     followup_desc: "Me lembrar se eu esquecer de verificar meus resultados",
-    style_twins_notif: "Gêmeos de estilo",
-    style_twins_desc: "Alertas semanais de novos gêmeos de estilo",
-    refer_friend: "Indicar um amigo",
-    refer_desc: "Compartilhe seu código. Ambos ganham $5 de crédito.",
-    size_prefs_title: "Preferências de tamanho",
     size_prefs_sub: "Defina seus tamanhos para melhores recomendações.",
-    men: "Masculino",
-    women: "Feminino",
-    tops: "Blusas",
-    bottoms_waist: "Calças (Cintura)",
-    bottoms_length: "Calças (Comprimento)",
     shoes_label: "Calçados",
-    dresses: "Vestidos",
-    save_sizes: "Salvar tamanhos",
     change_language_confirm: "Mudar idioma?",
     change_language_desc: "O idioma do app será atualizado.",
     scans_label: "Scans",
-    edit_profile: "Editar perfil",
     style_dna: "DNA de estilo",
     hanger_test: "Teste do cabide",
     tell_style: "Conte às pessoas sobre seu estilo...",
     no_followers: "Nenhum seguidor ainda",
     no_following: "Não segue ninguém ainda",
-    my_scans: "Meus scans",
-    wardrobe: "Guarda-roupa",
     all: "Todos",
-    my_picks: "Minhas escolhas",
-    search_scans: "Pesquisar scans...",
-    no_scans_yet: "Nenhum scan ainda",
     no_match_search: "Nenhum scan corresponde à sua pesquisa",
     scan_first: "Escaneie seu primeiro look para criar sua biblioteca de estilo",
     try_different: "Tente palavras-chave diferentes",
@@ -2899,8 +2623,6 @@ const STRINGS = {
     type_to_search: "Digite um nome para pesquisar",
     view_results: "Ver todos os resultados",
     shop: "Comprar",
-    search_google: "Pesquisar no Google Shopping",
-    no_match: "Nenhuma correspondência exata",
     original: "ORIGINAL",
     resale: "REVENDA",
     take_photo: "Tire uma foto ou envie um look",
@@ -2920,7 +2642,6 @@ const STRINGS = {
     phone_optional: "Telefone (opcional)",
     get_started: "Começar",
     maybe_later: "Talvez depois",
-    upgrade_to_pro: "Atualizar para Pro",
     go_pro: "Ir Pro",
     appearance: "Aparência",
     dark: "Escuro",
@@ -4281,10 +4002,10 @@ export default function App() {
       } catch { return null; }
     },
     set(key, data) {
-      try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
+      try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch { /* ignore */ }
     },
     clear(key) {
-      try { localStorage.removeItem(key); } catch {}
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
     }
   };
 
@@ -4432,7 +4153,7 @@ export default function App() {
   useEffect(() => {
     return () => {
       if (reelResult?.url) {
-        try { URL.revokeObjectURL(reelResult.url); } catch {}
+        try { URL.revokeObjectURL(reelResult.url); } catch { /* ignore */ }
       }
     };
   }, [reelResult]);
@@ -4570,7 +4291,7 @@ export default function App() {
         // Set index to first unvoted outfit
         const firstUnvoted = (data.outfits || []).findIndex(o => !data.user_votes?.[o.id]);
         setHangerCurrentIndex(firstUnvoted >= 0 ? firstUnvoted : (data.outfits?.length || 0));
-      } catch {}
+      } catch { /* ignore */ }
       setHangerLoading(false);
     })();
   }, [authed, screen, tab]);
@@ -4682,7 +4403,7 @@ export default function App() {
       if (data.taste_profile_updated && data.taste_profile) {
         setHangerTasteProfile(data.taste_profile);
       }
-    } catch {}
+    } catch { /* ignore */ }
     setTimeout(() => setHangerVoting(false), 1200);
   }, [hangerOutfits, hangerCurrentIndex, hangerVoting, hangerVotes]);
 
@@ -5338,7 +5059,7 @@ export default function App() {
               const status = await API.getUserStatus();
               setUserStatus(status);
               if (status?.tier === "pro") { upgraded = true; break; }
-            } catch {}
+            } catch { /* ignore */ }
           }
           setUpgradeSuccess(true);
           setTimeout(() => setUpgradeSuccess(false), 5000);
@@ -5379,7 +5100,7 @@ export default function App() {
             if (Date.now() - cached.ts < FEED_CACHE_TTL) return;
           }
         }
-      } catch {}
+      } catch { /* ignore */ }
     }
 
     setFeedLoading(true);
@@ -5396,7 +5117,7 @@ export default function App() {
           localStorage.setItem(`${FEED_CACHE_KEY}_${feedTab}`, JSON.stringify({
             scans, has_more: data.has_more || false, ts: Date.now(),
           }));
-        } catch {}
+        } catch { /* ignore */ }
       }
     } catch (err) {
       console.error("[ATTAIR] Feed load error:", err);
@@ -5644,7 +5365,7 @@ export default function App() {
 
   // ─── Public scan deep link — /scan/:scanId ──────────────────
   useEffect(() => {
-    const match = window.location.pathname.match(/^\/scan\/([a-zA-Z0-9\-]+)$/);
+    const match = window.location.pathname.match(/^\/scan\/([a-zA-Z0-9-]+)$/);
     if (match) {
       const deepScanId = match[1];
       setPublicScanView({ scanId: deepScanId, data: null, loading: true, error: null });
@@ -5682,14 +5403,14 @@ export default function App() {
         try {
           const status = await API.getUserStatus();
           setUserStatus(status);
-        } catch {}
+        } catch { /* ignore */ }
         try {
           const profile = await authFetch(`${API_BASE}/api/user/profile`).then(r => r.json());
           if (profile.avatar_url) setAuthAvatarUrl(profile.avatar_url);
           if (profile.gender_pref) setPrefs(p => ({ ...p, gender: profile.gender_pref }));
           if (profile.budget_min != null) setBudgetMin(profile.budget_min);
           if (profile.budget_max != null) setBudgetMax(profile.budget_max);
-        } catch {}
+        } catch { /* ignore */ }
       }
       setAuthed(true);
       setScreen("app");
@@ -5707,7 +5428,7 @@ export default function App() {
               ...(storedGender && { gender_pref: storedGender }),
             }).catch(() => {});
           }
-        } catch {}
+        } catch { /* ignore */ }
       }
       // If the user came from the paywall with a plan selected, trigger checkout now
       const pendingPlan = sessionStorage.getItem("attair_pending_plan");
@@ -6696,7 +6417,7 @@ export default function App() {
                 await API.updateProfile({ style_interests: selectedInterests });
                 lsCache.clear("attair_profile_cache");
                 lsCache.clear("attair_styledna_cache");
-              } catch {}
+              } catch { /* ignore */ }
               setShowInterestPicker(false);
               localStorage.setItem("attair_interests_picked", "1");
               track("interests_picked", { interests: selectedInterests });
@@ -6784,7 +6505,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "center", gap: 32, marginBottom: 24 }}>
               <div style={{ textAlign: "center" }}>
                 <div className="style-twin-avatar-sm" style={{ margin: "0 auto 8px", width: 48, height: 48 }}>
-                  <span style={{ fontSize: 16 }}>{(user?.display_name || "You").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}</span>
+                  <span style={{ fontSize: 16 }}>{(authName || "You").split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase()}</span>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>You</div>
                 {styleTwinsMyArchetype && <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 500, marginTop: 2 }}>{styleTwinsMyArchetype}</div>}
@@ -7043,7 +6764,7 @@ export default function App() {
                     try {
                       const d = await API.getChallenge(active.id);
                       setActiveChallengeDetail(d.data);
-                    } catch {}
+                    } catch { /* ignore */ }
                     setChallengeLoading(false);
                   }} style={{ margin: "4px 12px 8px", padding: "14px 16px", background: "linear-gradient(135deg, rgba(201,169,110,.08), rgba(199,125,255,.06))", border: "1px solid rgba(201,169,110,.15)", borderRadius: 14, cursor: "pointer" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
@@ -7641,7 +7362,7 @@ export default function App() {
                       <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 280, margin: "0 auto 20px" }}>
                         Create an account and scan outfits to discover people who dress just like you.
                       </p>
-                      <button className="btn-primary" onClick={() => { setShowAuth(true); }} style={{ padding: "12px 32px", borderRadius: 12, fontSize: 14, fontWeight: 600 }}>
+                      <button className="btn-primary" onClick={() => { setSignupPrompt("social"); }} style={{ padding: "12px 32px", borderRadius: 12, fontSize: 14, fontWeight: 600 }}>
                         Sign In
                       </button>
                     </div>
@@ -9182,6 +8903,7 @@ export default function App() {
                 {/* Saved items grid (no Complete the Look here — moved to results page) */}
 
                 {/* Complete the Look removed — lives on results page now */}
+                {/* eslint-disable-next-line no-constant-binary-expression */}
                 {false && (() => {
                   // Use backend looks data, fallback to client-side grouping
                   const looksData = looks.length > 0 ? looks : (() => {
@@ -9272,7 +8994,7 @@ export default function App() {
                             try {
                               const detail = await API.getLookDetail(look.scan_id);
                               setLookDetail(detail);
-                            } catch {}
+                            } catch { /* ignore */ }
                             setLookDetailLoading(false);
                           }
                         };
@@ -9291,7 +9013,7 @@ export default function App() {
                               });
                               track("buy_all_clicked", { scan_id: look.scan_id, count: data.links.length, total_price: data.total_price });
                             }
-                          } catch {}
+                          } catch { /* ignore */ }
                           setBuyAllLoading(null);
                         };
 
@@ -9725,7 +9447,7 @@ export default function App() {
                       if (d.taste_profile) setHangerTasteProfile(d.taste_profile);
                       const firstUnvoted = (d.outfits || []).findIndex(o => !d.user_votes?.[o.id]);
                       setHangerCurrentIndex(firstUnvoted >= 0 ? firstUnvoted : (d.outfits?.length || 0));
-                    } catch {}
+                    } catch { /* ignore */ }
                     setHangerLoading(false);
                   }
                 }} style={{
@@ -9821,6 +9543,7 @@ export default function App() {
                           const tierObj = tierData?.tiers || {};
                           const allTierProducts = [...(tierObj.mid || []), ...(tierObj.budget || []), ...(tierObj.premium || [])];
                           const bestProduct = allTierProducts.find(p => p.url && p.is_product_page !== false);
+                          // eslint-disable-next-line no-misleading-character-class
                           const cleanName = (it.name || "").replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}]/gu, "").trim();
                           return (
                           <div key={idx} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)" }}>
@@ -10193,7 +9916,7 @@ export default function App() {
                           lsCache.clear("attair_profile_cache");
                           setSizePrefs(newSizePrefs);
                           setSizePrefsModalOpen(false);
-                        } catch {}
+                        } catch { /* ignore */ }
                         setSizePrefsSaving(false);
                       }}
                     >{sizePrefsSaving ? t("saving") : t("save_sizes")}</button>
@@ -11436,7 +11159,7 @@ export default function App() {
                           a.download = "style-dna.png";
                           a.click();
                         }
-                      } catch {}
+                      } catch { /* ignore */ }
                       setStyleDnaShareLoading(false);
                     }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
@@ -11797,7 +11520,7 @@ export default function App() {
                   setShareLinkCopied(true);
                   setTimeout(() => setShareLinkCopied(false), 2000);
                   track("share_link", { method: "clipboard" }, scanId, "scan");
-                } catch {}
+                } catch { /* ignore */ }
               }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
                 <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--bg-input)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -11810,9 +11533,9 @@ export default function App() {
                 const shareUrl = `${API_BASE}/share/${scanId}`;
                 const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
                 if (navigator.share) {
-                  try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch {}
+                  try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch { /* ignore */ }
                 } else {
-                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch {}
+                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch { /* ignore */ }
                 }
                 setShowShareSheet(false);
               }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
@@ -11826,9 +11549,9 @@ export default function App() {
               <button onClick={async () => {
                 const shareUrl = `${API_BASE}/share/${scanId}`;
                 if (navigator.share) {
-                  try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "instagram" }, scanId, "scan"); } catch {}
+                  try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "instagram" }, scanId, "scan"); } catch { /* ignore */ }
                 } else {
-                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch {}
+                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch { /* ignore */ }
                 }
                 setShowShareSheet(false);
               }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
@@ -11842,9 +11565,9 @@ export default function App() {
               <button onClick={async () => {
                 const shareUrl = `${API_BASE}/share/${scanId}`;
                 if (navigator.share) {
-                  try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "tiktok" }, scanId, "scan"); } catch {}
+                  try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "tiktok" }, scanId, "scan"); } catch { /* ignore */ }
                 } else {
-                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch {}
+                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch { /* ignore */ }
                 }
                 setShowShareSheet(false);
               }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
@@ -11861,9 +11584,9 @@ export default function App() {
               <button onClick={async () => {
                 const shareUrl = `${API_BASE}/share/${scanId}`;
                 if (navigator.share) {
-                  try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "snapchat" }, scanId, "scan"); } catch {}
+                  try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "snapchat" }, scanId, "scan"); } catch { /* ignore */ }
                 } else {
-                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch {}
+                  try { await navigator.clipboard.writeText(shareUrl); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); } catch { /* ignore */ }
                 }
                 setShowShareSheet(false);
               }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer" }}>
@@ -11889,7 +11612,7 @@ export default function App() {
                   const blob = await res.blob();
                   const file = new File([blob], "attair-outfit.png", { type: "image/png" });
                   if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                    try { await navigator.share({ title: "My ATTAIR Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch {}
+                    try { await navigator.share({ title: "My ATTAIR Outfit", files: [file] }); track("share_card", { method: "native" }, scanId, "scan"); } catch { /* ignore */ }
                   } else {
                     const a = document.createElement("a");
                     a.href = cardDataUrl;
@@ -12131,7 +11854,7 @@ export default function App() {
       )}
       {/* ═══ Hanger Check Fullscreen Overlay ═══ */}
       {hangerFullscreen && (
-        <div className="hanger-overlay" style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-app, #0C0C0E)", display: "flex", flexDirection: "column", minHeight: "100vh", minHeight: "100dvh" }}>
+        <div className="hanger-overlay" style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-app, #0C0C0E)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))" }}>
             <button onClick={() => setHangerFullscreen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: 4 }}>&#x2715;</button>
