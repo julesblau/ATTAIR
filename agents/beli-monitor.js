@@ -1,0 +1,205 @@
+/**
+ * Beli Reservation Monitor
+ *
+ * Polls the Beli API for new shared reservations and pushes notifications
+ * to Jules's phone via Ntfy.
+ *
+ * Endpoints discovered via JS bundle analysis:
+ *   POST https://backoffice-service-t57o3dxfca-nn.a.run.app/api/token/
+ *     body: { email, password } → { access, refresh }
+ *   GET  https://backoffice-service-t57o3dxfca-nn.a.run.app/api/reservation-posting/
+ *     header: Authorization: Bearer {access}
+ *     → paginated list of available reservations
+ *   POST https://backoffice-service-t57o3dxfca-nn.a.run.app/api/token/refresh/
+ *     body: { refresh } → { access }
+ *
+ * Required env vars:
+ *   BELI_EMAIL         — Beli account email
+ *   BELI_PASSWORD      — Beli account password
+ *   NTFY_TOPIC         — Ntfy topic name (e.g. jules-beli-reservations)
+ *   NTFY_URL           — Ntfy server URL (default: https://ntfy.sh)
+ *   POLL_INTERVAL_MS   — How often to poll in ms (default: 60000 = 1 minute)
+ */
+
+import 'dotenv/config';
+
+const API_BASE = 'https://backoffice-service-t57o3dxfca-nn.a.run.app/api';
+const NTFY_URL = process.env.NTFY_URL || 'https://ntfy.sh';
+const NTFY_TOPIC = process.env.NTFY_TOPIC;
+const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '60000', 10);
+const BELI_EMAIL = process.env.BELI_EMAIL;
+const BELI_PASSWORD = process.env.BELI_PASSWORD;
+
+if (!BELI_EMAIL || !BELI_PASSWORD) {
+  console.error('ERROR: BELI_EMAIL and BELI_PASSWORD are required');
+  process.exit(1);
+}
+if (!NTFY_TOPIC) {
+  console.error('ERROR: NTFY_TOPIC is required');
+  process.exit(1);
+}
+
+// --- Auth state ---
+let accessToken = null;
+let refreshToken = null;
+let tokenExpiry = 0; // epoch ms when access token expires
+
+// JWT payload decoder (no signature verification needed — we trust our own server)
+function decodeJwtExpiry(token) {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+    return payload.exp * 1000; // convert to ms
+  } catch {
+    return Date.now() + 4 * 60 * 1000; // fallback: treat as expiring in 4 min
+  }
+}
+
+async function login() {
+  console.log('[auth] Logging in...');
+  const res = await fetch(`${API_BASE}/token/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: BELI_EMAIL, password: BELI_PASSWORD }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Login failed ${res.status}: ${body}`);
+  }
+  const data = await res.json();
+  accessToken = data.access;
+  refreshToken = data.refresh;
+  tokenExpiry = decodeJwtExpiry(accessToken);
+  console.log(`[auth] Logged in, token expires at ${new Date(tokenExpiry).toISOString()}`);
+}
+
+async function refreshAccessToken() {
+  console.log('[auth] Refreshing token...');
+  const res = await fetch(`${API_BASE}/token/refresh/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh: refreshToken }),
+  });
+  if (!res.ok) {
+    console.warn('[auth] Refresh failed, re-logging in...');
+    await login();
+    return;
+  }
+  const data = await res.json();
+  accessToken = data.access;
+  if (data.refresh) refreshToken = data.refresh; // SimpleJWT may rotate refresh token
+  tokenExpiry = decodeJwtExpiry(accessToken);
+  console.log(`[auth] Token refreshed, expires at ${new Date(tokenExpiry).toISOString()}`);
+}
+
+async function ensureAuth() {
+  if (!accessToken || !refreshToken) {
+    await login();
+    return;
+  }
+  // Refresh 2 minutes before expiry
+  if (Date.now() >= tokenExpiry - 2 * 60 * 1000) {
+    await refreshAccessToken();
+  }
+}
+
+// --- Reservation polling ---
+async function fetchReservationPostings() {
+  const res = await fetch(`${API_BASE}/reservation-posting/`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  if (res.status === 401) {
+    // Token expired unexpectedly — force re-auth and retry once
+    await login();
+    return fetchReservationPostings();
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`reservation-posting fetch failed ${res.status}: ${body}`);
+  }
+  const data = await res.json();
+  // DRF paginated response: { count, next, previous, results: [...] }
+  // Non-paginated: just an array
+  const all = Array.isArray(data) ? data : (data.results ?? []);
+  // Only show unclaimed reservations
+  return all.filter(r => r.status === 'AVAILABLE');
+}
+
+// --- Ntfy notification ---
+async function sendNtfy(reservation) {
+  // Actual field names from API:
+  // reservation.business.name, reservation.reservation_date, reservation.reservation_time,
+  // reservation.num_persons, reservation.table_type, reservation.user.username, reservation.id
+  const restaurant = reservation.business?.name ?? 'Unknown restaurant';
+  const date = reservation.reservation_date ?? '';  // "Tue, Apr 7, 2026"
+  const time = reservation.reservation_time ?? '';  // "5:00 PM"
+  const partySize = reservation.num_persons ?? '';
+  const tableType = reservation.table_type ? ` (${reservation.table_type})` : '';
+  const poster = reservation.user?.username ?? '';
+  const id = reservation.id;
+
+  const dateTimeStr = [date, time].filter(Boolean).join(' at ');
+  const partySizeStr = partySize ? ` · ${partySize} people${tableType}` : '';
+  const posterStr = poster ? ` — @${poster}` : '';
+
+  const title = `🍽️ ${restaurant}`;
+  const body = `${dateTimeStr}${partySizeStr}${posterStr}`;
+  const claimUrl = `https://app.beliapp.com/claim-reservation/${id}`;
+
+  console.log(`[ntfy] Sending notification: #${id} ${restaurant} ${dateTimeStr}`);
+
+  const res = await fetch(`${NTFY_URL}/${NTFY_TOPIC}`, {
+    method: 'POST',
+    headers: {
+      Title: title,
+      Priority: 'urgent',
+      Tags: 'fork_and_knife,calendar',
+      Click: claimUrl,
+      Actions: `view, Claim Now, ${claimUrl}`,
+    },
+    body,
+  });
+
+  if (!res.ok) {
+    console.error(`[ntfy] Failed to send notification: ${res.status} ${await res.text()}`);
+  }
+}
+
+// --- Main poll loop ---
+const seenIds = new Set();
+let firstRun = true;
+
+async function poll() {
+  try {
+    await ensureAuth();
+    const postings = await fetchReservationPostings();
+
+    console.log(`[poll] ${postings.length} reservation posting(s) found`);
+
+    // On first run: seed seenIds without notifying (avoid spam on startup)
+    if (firstRun) {
+      for (const r of postings) seenIds.add(r.id);
+      console.log(`[poll] Seeded ${seenIds.size} existing reservations (no notifications sent)`);
+      firstRun = false;
+
+        return;
+    }
+
+    // Subsequent runs: notify on new ones
+    for (const reservation of postings) {
+      if (!seenIds.has(reservation.id)) {
+        seenIds.add(reservation.id);
+        await sendNtfy(reservation);
+      }
+    }
+  } catch (err) {
+    console.error('[poll] Error:', err.message);
+  }
+}
+
+// --- Startup ---
+console.log(`[beli-monitor] Starting. Poll interval: ${POLL_INTERVAL_MS / 1000}s. Ntfy: ${NTFY_URL}/${NTFY_TOPIC}`);
+poll();
+setInterval(poll, POLL_INTERVAL_MS);

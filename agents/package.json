@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node discord-bot.js",
     "bot": "node discord-bot.js",
+    "beli-monitor": "node beli-monitor.js",
     "test": "vitest run"
   },
   "dependencies": {
