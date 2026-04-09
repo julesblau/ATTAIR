@@ -174,9 +174,10 @@ const JULES_TIER = 5; // Jules's Beli reservation sharing priority level
 // Matching is fuzzy/case-insensitive substring.
 const VIP_RESTAURANTS = [
   '4 charles',
-  'the corner store',
+  'corner store', // matches "The Corner Store", "Corner Store" etc.
   'oresh',
   'the 86',
+  '86 nyc',       // fallback if Beli drops "The"
 ];
 
 function isVip(r) {
