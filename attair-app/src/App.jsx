@@ -5973,7 +5973,7 @@ export default function App() {
 
   const brandConfLabel = (c) => ({ confirmed: { t: "Confirmed", c: "#C9A96E" }, high: { t: "High confidence", c: "rgba(201,169,110,0.7)" }, moderate: { t: "Moderate", c: "rgba(255,255,255,0.4)" }, low: { t: "Estimated", c: "rgba(255,255,255,0.25)" } }[c] || { t: "Unknown", c: "rgba(255,255,255,0.2)" });
 
-  const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); lsCache.clear("attair_history_cache"); lsCache.clear("attair_saved_cache"); lsCache.clear("attair_wishlists_cache"); lsCache.clear("attair_styledna_cache"); lsCache.clear("attair_profile_cache"); setAuthed(false); setAuthEmail(""); setAuthName(""); setAuthAvatarUrl(null); setUserStatus(null); setScreen("onboarding"); setObIdx(0); };
+  const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); lsCache.clear("attair_history_cache"); lsCache.clear("attair_saved_cache"); lsCache.clear("attair_wishlists_cache"); lsCache.clear("attair_styledna_cache"); lsCache.clear("attair_profile_cache"); setAuthed(false); setAuthEmail(""); setAuthName(""); setAuthAvatarUrl(null); setUserStatus(null); setProfileBio(""); setProfileStats(null); setProfileStatsLoaded(false); setScreen("onboarding"); setObIdx(0); };
 
   const step = OB_STEPS[obIdx];
   const prog = ((obIdx + 1) / OB_STEPS.length) * 100;

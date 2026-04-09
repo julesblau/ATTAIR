@@ -120,6 +120,25 @@
 | 26 | [CONSOLE] | Feed | Two additional broken Unsplash images: `photo-1480429370612` and `photo-1558618666-fcd25c85e` (404) — in DB data, not code | Medium | Open |
 | 27 | [VISUAL] | Feed | Orion E. card shows 👔 emoji instead of image (same broken-image pattern as Liam C.) | Medium | Open |
 
+## Loop 3 Findings (deep edge case testing)
+
+| # | Type | Screen | Description | Severity | Status |
+|---|------|--------|-------------|----------|--------|
+| 28 | [BUG] | Session | Expired session shows feed with 34 console errors (all 401s) — no auto-redirect to login, app sits broken | High | Open |
+| 29 | [BUG] | Guest Profile | After sign out → enter guest mode, profile shows previous user's bio ("Fashion lover testing...") — stale state leak | Medium | **FIXED** |
+| 30 | [UX] | Guest Upgrade | "Skip — start free" on guest paywall redirects to login form instead of back to guest experience | Medium | Open |
+| 31 | [UX] | Guest → Style Picker | "Skip for now" on style picker lands on Profile tab instead of Feed tab — confusing for new users | Low | Open |
+| 32 | [UX] | Login Form | After failed login → successful login, password field retains stale value from previous session | Low | Open |
+
+### Loop 3 Passing Tests
+- Login with wrong credentials: shows inline "Invalid login credentials" error, preserves form
+- Sign out flow: Settings → Sign out → lands on landing page cleanly
+- Guest mode: correct 0/3 scan limit (vs 12 for free tier)
+- Guest paywall: "Go Pro" from feed ad → full-page upgrade, plan selection works
+- Rapid tab switching: Feed → Discover → Scan → Wardrobe → Profile — no crashes
+- File chooser cancel: handled gracefully, returns to scan idle
+- Guest scan tab: shows correct UI with Take Photo / Choose from Gallery
+
 ## Loop 2 Verified Fixes
 
 All 9 fixes from Loop 1 confirmed working:
@@ -138,13 +157,13 @@ All 9 fixes from Loop 1 confirmed working:
 ---
 
 ## Summary
-- **Total issues found: 27** (22 from Loop 1 + 5 from Loop 2)
+- **Total issues found: 32** (22 Loop 1 + 5 Loop 2 + 5 Loop 3)
 - Critical: 4 (Style Twins DB migration, Anthropic API key, Followers crash x2)
-- High: 5 (PWA banner z-index x2, Hanger close z-index, upgrade modal z-index in reel, reel "Maybe later" z-index)
-- Medium: 9 (broken social links x3, Unsplash 404 x4, rate limiting, Stripe error UX)
-- Low: 6 (password form warning, interest count label, empty suggestions, scan error detail, duplicate trial CTA, duplicate feed entry)
-- **Issues fixed in code: 12** (9 from Loop 1 + 3 from Loop 2)
-- **Console errors observed: 17+** (across Unsplash 404s, API 500s, checkout failures, rate limiting)
+- High: 6 (PWA banner z-index x2, Hanger close z-index, upgrade modal z-index in reel, reel "Maybe later" z-index, expired session no redirect)
+- Medium: 11 (broken social links x3, Unsplash 404 x4, rate limiting, Stripe error UX, stale bio leak, guest "Skip" redirect)
+- Low: 8 (password form warning, interest count label, empty suggestions, scan error detail, duplicate trial CTA, duplicate feed entry, guest lands on profile, stale password)
+- **Issues fixed in code: 13** (9 Loop 1 + 3 Loop 2 + 1 Loop 3)
+- **Console errors observed: 34+** (worst case: expired session floods 34 401 errors)
 
 ## Root Causes (Backend Logs)
 
