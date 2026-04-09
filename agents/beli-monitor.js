@@ -248,12 +248,12 @@ async function sendNtfy(reservation) {
   const partySizeStr = partySize ? ` | ${partySize} people${tableType}` : '';
   const posterStr = poster ? ` | @${poster}` : '';
 
+  // Beli has no working deep links to specific reservations — reservation routes are inside
+  // the authenticated Ionic shell and not registered as top-level routes. Universal links
+  // always land on the app home. Link to beliapp.co to open the app, then go to Sharing tab.
   const title = `[Beli] ${restaurant}`;
-  const body = `${dateTimeStr}${partySizeStr}${posterStr}`;
-  // beliapp.co has universal links configured (L7SV8JJH3W.beliapp) — any path opens in the
-  // native app. app.beliapp.com has empty universal links config, always opens Safari.
-  // /claim-reservation/{id} is confirmed in the app bundle (navigateToClaimReservation).
-  const claimUrl = `https://beliapp.co/claim-reservation/${id}`;
+  const body = `${dateTimeStr}${partySizeStr}${posterStr} | Sharing tab`;
+  const appUrl = 'https://beliapp.co';
 
   console.log(`[ntfy] Sending notification: #${id} ${restaurant} ${dateTimeStr}`);
 
@@ -263,8 +263,8 @@ async function sendNtfy(reservation) {
       Title: title,
       Priority: 'urgent',
       Tags: 'fork_and_knife,calendar',
-      Click: claimUrl,
-      Actions: `view, Open in Beli, ${claimUrl}`,
+      Click: appUrl,
+      Actions: `view, Open Beli, ${appUrl}`,
     },
     body,
   });
