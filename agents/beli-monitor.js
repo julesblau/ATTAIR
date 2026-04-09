@@ -102,6 +102,69 @@ async function ensureAuth() {
   }
 }
 
+// --- Eligibility filter ---
+// Parse time from display strings (e.g. "5:00 PM") — already in ET/NYC local time
+function parseDisplayTime(timeStr) {
+  const m = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return null;
+  let h = parseInt(m[1]), min = parseInt(m[2]);
+  if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+  if (m[3].toUpperCase() === 'AM' && h === 12) h = 0;
+  return { h, min };
+}
+
+// Current ET date/time components
+function nowET() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: 'numeric', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const get = type => parseInt(parts.find(p => p.type === type).value);
+  return { year: get('year'), month: get('month') - 1, day: get('day'), h: get('hour'), min: get('minute') };
+}
+
+function isEligible(r) {
+  // 1. NYC only
+  const city = r.business?.city ?? '';
+  if (!city.toLowerCase().includes('new york')) return false;
+
+  // reservation_date: "Tue, Apr 7, 2026" | reservation_time: "5:00 PM" (both in ET/NYC)
+  const dateStr = r.reservation_date ?? '';
+  const timeStr = r.reservation_time ?? '';
+  if (!dateStr || !timeStr) return false;
+
+  const time = parseDisplayTime(timeStr);
+  if (!time) return false;
+
+  // Parse calendar date from "Tue, Apr 7, 2026" → strip weekday
+  const datePart = dateStr.replace(/^\w+,\s*/, ''); // "Apr 7, 2026"
+  const resDate = new Date(`${datePart} 00:00:00 UTC`); // just for Y/M/D
+  const resYear = resDate.getUTCFullYear();
+  const resMonth = resDate.getUTCMonth();
+  const resDay = resDate.getUTCDate();
+
+  // 2. Future only — compare in ET
+  const now = nowET();
+  const nowDate = new Date(Date.UTC(now.year, now.month, now.day));
+  const resDateOnly = new Date(Date.UTC(resYear, resMonth, resDay));
+  if (resDateOnly < nowDate) return false;
+  if (resDateOnly.getTime() === nowDate.getTime()) {
+    if (time.h < now.h || (time.h === now.h && time.min <= now.min)) return false;
+  }
+
+  // 3. Weekday time window: Mon–Fri must be 18:00–21:30 ET
+  const weekdayMatch = dateStr.match(/^(\w+),/);
+  const weekday = weekdayMatch ? weekdayMatch[1] : '';
+  const isWeekend = weekday === 'Sat' || weekday === 'Sun';
+  if (!isWeekend) {
+    const mins = time.h * 60 + time.min;
+    if (mins < 18 * 60 || mins > 21 * 60 + 30) return false; // outside 6:00–9:30 PM ET
+  }
+
+  return true;
+}
+
 // --- Reservation polling ---
 async function fetchReservationPostings() {
   const res = await fetch(`${API_BASE}/reservation-posting/`, {
@@ -124,7 +187,7 @@ async function fetchReservationPostings() {
   // Non-paginated: just an array
   const all = Array.isArray(data) ? data : (data.results ?? []);
   // Only show unclaimed reservations (status is "POSTED" while available, "CLAIMED" after)
-  return all.filter(r => r.status === 'POSTED');
+  return all.filter(r => r.status === 'POSTED').filter(isEligible);
 }
 
 // --- Ntfy notification ---
@@ -144,7 +207,7 @@ async function sendNtfy(reservation) {
   const partySizeStr = partySize ? ` · ${partySize} people${tableType}` : '';
   const posterStr = poster ? ` — @${poster}` : '';
 
-  const title = `🍽️ ${restaurant}`;
+  const title = `[Beli] ${restaurant}`;
   const body = `${dateTimeStr}${partySizeStr}${posterStr}`;
   const claimUrl = `https://app.beliapp.com/claim-reservation/${id}`;
 
