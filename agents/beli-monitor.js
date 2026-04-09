@@ -169,9 +169,27 @@ function nowET() {
 
 const JULES_TIER = 5; // Jules's Beli reservation sharing priority level
 
+// VIP restaurants — bypass ALL filters (time, day, city, party size).
+// Any POSTED reservation at these spots within Jules's tier notifies immediately.
+// Matching is fuzzy/case-insensitive substring.
+const VIP_RESTAURANTS = [
+  '4 charles',
+  'the corner store',
+  'oresh',
+  'the 86',
+];
+
+function isVip(r) {
+  const name = (r.business?.name ?? '').toLowerCase();
+  return VIP_RESTAURANTS.some(v => name.includes(v));
+}
+
 function isEligible(r) {
   // 0. Tier filter — only show reservations Jules can see in-app (priority_level <= his tier)
   if ((r.priority_level ?? 0) > JULES_TIER) return false;
+
+  // VIP bypass — skip all remaining filters for must-try restaurants
+  if (isVip(r)) return true;
 
   // 1. NYC only
   const city = r.business?.city ?? '';
