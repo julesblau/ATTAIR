@@ -175,16 +175,58 @@ const JULES_TIER = 5; // Jules's Beli reservation sharing priority level
 const VIP_RESTAURANTS = [
   '4 charles',       // "4 Charles Prime Rib"
   'corner store',    // "The Corner Store"
-  'or\'esh',        // "Or'esh" (official spelling with apostrophe)
+  "or'esh",          // "Or'esh" (official spelling with apostrophe)
   'oresh',           // fallback without apostrophe
   'eighty six',      // "The Eighty Six" (official name)
   'the 86',          // common shorthand
   '86 bedford',      // location-based variant
 ];
 
-function isVip(r) {
+// Watchlist restaurants — follow normal time/day/city filters.
+// Bot ONLY notifies on these (plus VIPs above). Random restaurants are ignored.
+const WATCHLIST_RESTAURANTS = [
+  'ambassadors clubhouse', // Ambassadors Clubhouse
+  'ambassador',            // fallback
+  'bungalow',
+  'minetta',               // Minetta Tavern
+  'au cheval',
+  'cavallini',             // I Cavallini
+  "lord's",               // Lord's
+  'lords',                 // fallback without apostrophe
+  "ha's snack",           // Ha's Snack Bar
+  'has snack',             // fallback
+  'jeju',                  // Jeju Noodle Bar
+  'una pizza',             // Una Pizza Napoletana
+  'theodora',
+  'gramercy tavern',       // The Tavern at Gramercy Tavern
+  'four horsemen',         // The Four Horsemen
+  'aska',
+  'monkey bar',
+  'torrisi',
+  'sailor',
+  'swoony',                // Swoony's
+  'thai diner',
+  'adda',
+  'semma',
+  'jungsik',
+  'quique',                // Quique Crudo
+  'don angie',
+  'chez fifi',
+  'tatiana',
+  'toscano',               // Da Toscano
+  'san sabino',
+  'polo bar',              // The Polo Bar
+  'sip & guzzle',
+  'sip&guzzle',
+  'guzzle',
+  'rezdora',               // Rezdôra (with/without accent)
+  'rezdôra',
+  'atomix',
+];
+
+function matchesRestaurantList(r, list) {
   const name = (r.business?.name ?? '').toLowerCase();
-  return VIP_RESTAURANTS.some(v => name.includes(v));
+  return list.some(v => name.includes(v));
 }
 
 function isEligible(r) {
@@ -192,7 +234,10 @@ function isEligible(r) {
   if ((r.priority_level ?? 0) > JULES_TIER) return false;
 
   // VIP bypass — skip all remaining filters for must-try restaurants
-  if (isVip(r)) return true;
+  if (matchesRestaurantList(r, VIP_RESTAURANTS)) return true;
+
+  // Watchlist gate — ignore restaurants not on the watchlist
+  if (!matchesRestaurantList(r, WATCHLIST_RESTAURANTS)) return false;
 
   // 1. NYC only
   const city = r.business?.city ?? '';
