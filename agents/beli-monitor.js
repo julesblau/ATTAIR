@@ -202,6 +202,7 @@ async function sendNtfy(reservation) {
   const partySize = reservation.num_persons ?? '';
   const tableType = reservation.table_type ? ` (${reservation.table_type})` : '';
   const poster = reservation.user?.username ?? '';
+  const id = reservation.id;
 
   const dateTimeStr = [date, time].filter(Boolean).join(' at ');
   const partySizeStr = partySize ? ` · ${partySize} people${tableType}` : '';
