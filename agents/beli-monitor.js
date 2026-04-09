@@ -193,7 +193,8 @@ async function fetchReservationPostings() {
 // --- Ntfy notification ---
 async function sendNtfy(reservation) {
   // Actual field names from API:
-  // reservation.business.name, reservation.reservation_date, reservation.reservation_time,
+  // reservation.business.name, reservation.business.quick_link,
+  // reservation.reservation_date, reservation.reservation_time,
   // reservation.num_persons, reservation.table_type, reservation.user.username, reservation.id
   const restaurant = reservation.business?.name ?? 'Unknown restaurant';
   const date = reservation.reservation_date ?? '';  // "Tue, Apr 7, 2026"
@@ -201,7 +202,6 @@ async function sendNtfy(reservation) {
   const partySize = reservation.num_persons ?? '';
   const tableType = reservation.table_type ? ` (${reservation.table_type})` : '';
   const poster = reservation.user?.username ?? '';
-  const id = reservation.id;
 
   const dateTimeStr = [date, time].filter(Boolean).join(' at ');
   const partySizeStr = partySize ? ` · ${partySize} people${tableType}` : '';
@@ -209,7 +209,10 @@ async function sendNtfy(reservation) {
 
   const title = `[Beli] ${restaurant}`;
   const body = `${dateTimeStr}${partySizeStr}${posterStr}`;
-  const claimUrl = `https://app.beliapp.com/claim-reservation/${id}`;
+  // business.quick_link (e.g. https://beliapp.co/cD1IZngNNEb) opens the restaurant in-app.
+  // No per-reservation claim URL exists in the API — fall back to reservation sharing tab.
+  const sharingTab = 'https://app.beliapp.com/reservation-sharing';
+  const claimUrl = reservation.business?.quick_link ?? sharingTab;
 
   console.log(`[ntfy] Sending notification: #${id} ${restaurant} ${dateTimeStr}`);
 
