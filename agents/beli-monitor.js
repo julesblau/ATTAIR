@@ -159,7 +159,7 @@ function isEligible(r) {
   const isWeekend = weekday === 'Sat' || weekday === 'Sun';
   if (!isWeekend) {
     const mins = time.h * 60 + time.min;
-    if (mins < 18 * 60 || mins > 21 * 60 + 30) return false; // outside 6:00–9:30 PM ET
+    if (mins < 18 * 60 || mins > 22 * 60) return false; // outside 6:00–10:00 PM ET
   }
 
   return true;
