@@ -14,11 +14,13 @@
  *     body: { refresh } → { access }
  *
  * Required env vars:
- *   BELI_EMAIL         — Beli account email
- *   BELI_PASSWORD      — Beli account password
- *   NTFY_TOPIC         — Ntfy topic name (e.g. jules-beli-reservations)
- *   NTFY_URL           — Ntfy server URL (default: https://ntfy.sh)
- *   POLL_INTERVAL_MS   — How often to poll in ms (default: 60000 = 1 minute)
+ *   BELI_EMAIL             — Beli account email
+ *   BELI_PASSWORD          — Beli account password
+ *   NTFY_TOPIC             — Ntfy topic name (e.g. jules-beli-reservations)
+ *   NTFY_URL               — Ntfy server URL (default: https://ntfy.sh)
+ *   POLL_INTERVAL_MS       — How often to poll in ms (default: 60000 = 1 minute)
+ *   SUPABASE_URL           — Supabase project URL
+ *   SUPABASE_SERVICE_ROLE_KEY — Supabase service role key (for beli_seen_ids table)
  */
 
 import 'dotenv/config';
@@ -29,6 +31,8 @@ const NTFY_TOPIC = process.env.NTFY_TOPIC;
 const POLL_INTERVAL_MS = parseInt(process.env.POLL_INTERVAL_MS || '60000', 10);
 const BELI_EMAIL = process.env.BELI_EMAIL;
 const BELI_PASSWORD = process.env.BELI_PASSWORD;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!BELI_EMAIL || !BELI_PASSWORD) {
   console.error('ERROR: BELI_EMAIL and BELI_PASSWORD are required');
@@ -37,6 +41,45 @@ if (!BELI_EMAIL || !BELI_PASSWORD) {
 if (!NTFY_TOPIC) {
   console.error('ERROR: NTFY_TOPIC is required');
   process.exit(1);
+}
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('ERROR: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
+  process.exit(1);
+}
+
+// --- Supabase seen-IDs persistence ---
+// Table: beli_seen_ids (id integer PRIMARY KEY, seen_at timestamptz DEFAULT now())
+
+function sbFetch(path, opts = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+    ...opts,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+      ...(opts.headers ?? {}),
+    },
+  });
+}
+
+async function loadSeenIds() {
+  const res = await sbFetch('/beli_seen_ids?select=id');
+  if (!res.ok) throw new Error(`Supabase load failed ${res.status}: ${await res.text()}`);
+  const rows = await res.json();
+  return new Set(rows.map(r => r.id));
+}
+
+async function markSeen(id) {
+  const res = await sbFetch('/beli_seen_ids', {
+    method: 'POST',
+    headers: { Prefer: 'return=minimal,resolution=ignore-duplicates' },
+    body: JSON.stringify({ id }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`[db] Failed to persist seen ID ${id}: ${body}`);
+  }
 }
 
 // --- Auth state ---
@@ -137,7 +180,7 @@ function isEligible(r) {
   const time = parseDisplayTime(timeStr);
   if (!time) return false;
 
-  // Parse calendar date from "Tue, Apr 7, 2026" → strip weekday
+  // Parse calendar date from "Tue, Apr 7, 2026" -> strip weekday
   const datePart = dateStr.replace(/^\w+,\s*/, ''); // "Apr 7, 2026"
   const resDate = new Date(`${datePart} 00:00:00 UTC`); // just for Y/M/D
   const resYear = resDate.getUTCFullYear();
@@ -153,13 +196,13 @@ function isEligible(r) {
     if (time.h < now.h || (time.h === now.h && time.min <= now.min)) return false;
   }
 
-  // 3. Weekday time window: Mon–Fri must be 18:00–21:30 ET
+  // 3. Weekday time window: Mon-Fri must be 18:00-22:00 ET
   const weekdayMatch = dateStr.match(/^(\w+),/);
   const weekday = weekdayMatch ? weekdayMatch[1] : '';
   const isWeekend = weekday === 'Sat' || weekday === 'Sun';
   if (!isWeekend) {
     const mins = time.h * 60 + time.min;
-    if (mins < 18 * 60 || mins > 22 * 60) return false; // outside 6:00–10:00 PM ET
+    if (mins < 18 * 60 || mins > 22 * 60) return false; // outside 6:00-10:00 PM ET
   }
 
   return true;
@@ -192,10 +235,6 @@ async function fetchReservationPostings() {
 
 // --- Ntfy notification ---
 async function sendNtfy(reservation) {
-  // Actual field names from API:
-  // reservation.business.name, reservation.business.quick_link,
-  // reservation.reservation_date, reservation.reservation_time,
-  // reservation.num_persons, reservation.table_type, reservation.user.username, reservation.id
   const restaurant = reservation.business?.name ?? 'Unknown restaurant';
   const date = reservation.reservation_date ?? '';  // "Tue, Apr 7, 2026"
   const time = reservation.reservation_time ?? '';  // "5:00 PM"
@@ -205,15 +244,15 @@ async function sendNtfy(reservation) {
   const id = reservation.id;
 
   const dateTimeStr = [date, time].filter(Boolean).join(' at ');
-  const partySizeStr = partySize ? ` · ${partySize} people${tableType}` : '';
-  const posterStr = poster ? ` — @${poster}` : '';
+  // Use ASCII-safe separators — ntfy treats multi-byte chars in body as binary (file attachment)
+  const partySizeStr = partySize ? ` | ${partySize} people${tableType}` : '';
+  const posterStr = poster ? ` | @${poster}` : '';
 
   const title = `[Beli] ${restaurant}`;
   const body = `${dateTimeStr}${partySizeStr}${posterStr}`;
-  // business.quick_link (e.g. https://beliapp.co/cD1IZngNNEb) opens the restaurant in-app.
-  // No per-reservation claim URL exists in the API — fall back to reservation sharing tab.
-  const sharingTab = 'https://app.beliapp.com/reservation-sharing';
-  const claimUrl = reservation.business?.quick_link ?? sharingTab;
+  // business.quick_link opens the restaurant directly in the Beli app.
+  // No per-reservation claim URL exists in the API.
+  const claimUrl = reservation.business?.quick_link ?? 'https://app.beliapp.com/reservation-sharing';
 
   console.log(`[ntfy] Sending notification: #${id} ${restaurant} ${dateTimeStr}`);
 
@@ -224,7 +263,7 @@ async function sendNtfy(reservation) {
       Priority: 'urgent',
       Tags: 'fork_and_knife,calendar',
       Click: claimUrl,
-      Actions: `view, Claim Now, ${claimUrl}`,
+      Actions: `view, Open in Beli, ${claimUrl}`,
     },
     body,
   });
@@ -235,10 +274,8 @@ async function sendNtfy(reservation) {
 }
 
 // --- Main poll loop ---
+// seenIds is loaded from Supabase on startup — persists across redeploys
 const seenIds = new Set();
-let firstRun = true;
-// On startup, seed reservations posted before this time (± 5 min buffer for redeploy gaps)
-const START_TIME = new Date(Date.now() - 5 * 60 * 1000);
 
 async function poll() {
   try {
@@ -247,27 +284,10 @@ async function poll() {
 
     console.log(`[poll] ${postings.length} reservation posting(s) found`);
 
-    if (firstRun) {
-      // Seed reservations that pre-date this process start (suppress startup spam).
-      // Anything posted within the last 5 min gets notified — catches reservations
-      // that appeared while the bot was down between deploys.
-      let seeded = 0, notified = 0;
-      for (const r of postings) {
-        const postedAt = new Date(r.created_dt);
-        if (postedAt < START_TIME) {
-          seenIds.add(r.id);
-          seeded++;
-        }
-        // recent ones fall through to the notify loop below
-      }
-      console.log(`[poll] Seeded ${seeded} pre-existing reservations (no notifications sent)`);
-      firstRun = false;
-    }
-
-    // Notify on any unseen reservations (first-run recent ones + all subsequent runs)
     for (const reservation of postings) {
       if (!seenIds.has(reservation.id)) {
         seenIds.add(reservation.id);
+        await markSeen(reservation.id);
         await sendNtfy(reservation);
       }
     }
@@ -278,5 +298,14 @@ async function poll() {
 
 // --- Startup ---
 console.log(`[beli-monitor] Starting. Poll interval: ${POLL_INTERVAL_MS / 1000}s. Ntfy: ${NTFY_URL}/${NTFY_TOPIC}`);
-poll();
-setInterval(poll, POLL_INTERVAL_MS);
+console.log('[db] Loading seen IDs from Supabase...');
+loadSeenIds().then(ids => {
+  ids.forEach(id => seenIds.add(id));
+  console.log(`[db] Loaded ${seenIds.size} previously seen IDs`);
+  poll();
+  setInterval(poll, POLL_INTERVAL_MS);
+}).catch(err => {
+  console.error('[db] Failed to load seen IDs:', err.message);
+  console.error('[db] Aborting — cannot start without persistence (risk of duplicate notifications)');
+  process.exit(1);
+});
