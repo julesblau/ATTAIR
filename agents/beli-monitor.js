@@ -173,11 +173,13 @@ const JULES_TIER = 5; // Jules's Beli reservation sharing priority level
 // Any POSTED reservation at these spots within Jules's tier notifies immediately.
 // Matching is fuzzy/case-insensitive substring.
 const VIP_RESTAURANTS = [
-  '4 charles',
-  'corner store', // matches "The Corner Store", "Corner Store" etc.
-  'oresh',
-  'the 86',
-  '86 nyc',       // fallback if Beli drops "The"
+  '4 charles',       // "4 Charles Prime Rib"
+  'corner store',    // "The Corner Store"
+  'or\'esh',        // "Or'esh" (official spelling with apostrophe)
+  'oresh',           // fallback without apostrophe
+  'eighty six',      // "The Eighty Six" (official name)
+  'the 86',          // common shorthand
+  '86 bedford',      // location-based variant
 ];
 
 function isVip(r) {
