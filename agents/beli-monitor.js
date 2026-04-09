@@ -250,9 +250,10 @@ async function sendNtfy(reservation) {
 
   const title = `[Beli] ${restaurant}`;
   const body = `${dateTimeStr}${partySizeStr}${posterStr}`;
-  // business.quick_link opens the restaurant directly in the Beli app.
-  // No per-reservation claim URL exists in the API.
-  const claimUrl = reservation.business?.quick_link ?? 'https://app.beliapp.com/reservation-sharing';
+  // beliapp.co has universal links configured (L7SV8JJH3W.beliapp) — any path opens in the
+  // native app. app.beliapp.com has empty universal links config, always opens Safari.
+  // /claim-reservation/{id} is confirmed in the app bundle (navigateToClaimReservation).
+  const claimUrl = `https://beliapp.co/claim-reservation/${id}`;
 
   console.log(`[ntfy] Sending notification: #${id} ${restaurant} ${dateTimeStr}`);
 
