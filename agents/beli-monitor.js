@@ -237,6 +237,8 @@ async function sendNtfy(reservation) {
 // --- Main poll loop ---
 const seenIds = new Set();
 let firstRun = true;
+// On startup, seed reservations posted before this time (± 5 min buffer for redeploy gaps)
+const START_TIME = new Date(Date.now() - 5 * 60 * 1000);
 
 async function poll() {
   try {
@@ -245,16 +247,24 @@ async function poll() {
 
     console.log(`[poll] ${postings.length} reservation posting(s) found`);
 
-    // On first run: seed seenIds without notifying (avoid spam on startup)
     if (firstRun) {
-      for (const r of postings) seenIds.add(r.id);
-      console.log(`[poll] Seeded ${seenIds.size} existing reservations (no notifications sent)`);
+      // Seed reservations that pre-date this process start (suppress startup spam).
+      // Anything posted within the last 5 min gets notified — catches reservations
+      // that appeared while the bot was down between deploys.
+      let seeded = 0, notified = 0;
+      for (const r of postings) {
+        const postedAt = new Date(r.created_dt);
+        if (postedAt < START_TIME) {
+          seenIds.add(r.id);
+          seeded++;
+        }
+        // recent ones fall through to the notify loop below
+      }
+      console.log(`[poll] Seeded ${seeded} pre-existing reservations (no notifications sent)`);
       firstRun = false;
-
-        return;
     }
 
-    // Subsequent runs: notify on new ones
+    // Notify on any unseen reservations (first-run recent ones + all subsequent runs)
     for (const reservation of postings) {
       if (!seenIds.has(reservation.id)) {
         seenIds.add(reservation.id);
