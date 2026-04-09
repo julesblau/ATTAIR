@@ -196,11 +196,11 @@ function isEligible(r) {
     if (time.h < now.h || (time.h === now.h && time.min <= now.min)) return false;
   }
 
-  // 3. Weekday time window: Mon-Fri must be 18:00-22:00 ET
+  // 3. Time window: Mon-Thu must be 18:00-22:00 ET; Fri/Sat/Sun unrestricted
   const weekdayMatch = dateStr.match(/^(\w+),/);
   const weekday = weekdayMatch ? weekdayMatch[1] : '';
-  const isWeekend = weekday === 'Sat' || weekday === 'Sun';
-  if (!isWeekend) {
+  const isWeekendOrFri = weekday === 'Fri' || weekday === 'Sat' || weekday === 'Sun';
+  if (!isWeekendOrFri) {
     const mins = time.h * 60 + time.min;
     if (mins < 18 * 60 || mins > 22 * 60) return false; // outside 6:00-10:00 PM ET
   }
