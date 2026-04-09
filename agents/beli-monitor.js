@@ -167,7 +167,12 @@ function nowET() {
   return { year: get('year'), month: get('month') - 1, day: get('day'), h: get('hour'), min: get('minute') };
 }
 
+const JULES_TIER = 5; // Jules's Beli reservation sharing priority level
+
 function isEligible(r) {
+  // 0. Tier filter — only show reservations Jules can see in-app (priority_level <= his tier)
+  if ((r.priority_level ?? 0) > JULES_TIER) return false;
+
   // 1. NYC only
   const city = r.business?.city ?? '';
   if (!city.toLowerCase().includes('new york')) return false;
