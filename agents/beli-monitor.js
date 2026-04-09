@@ -123,8 +123,8 @@ async function fetchReservationPostings() {
   // DRF paginated response: { count, next, previous, results: [...] }
   // Non-paginated: just an array
   const all = Array.isArray(data) ? data : (data.results ?? []);
-  // Only show unclaimed reservations
-  return all.filter(r => r.status === 'AVAILABLE');
+  // Only show unclaimed reservations (status is "POSTED" while available, "CLAIMED" after)
+  return all.filter(r => r.status === 'POSTED');
 }
 
 // --- Ntfy notification ---
