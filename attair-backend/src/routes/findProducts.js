@@ -451,24 +451,22 @@ router.post("/refine", requireAuth, async (req, res) => {
 Items currently identified:
 ${itemList}
 
-Focused item: [${activeIdx}] ${items[activeIdx].name}
-
 User wants: "${refinement.trim().slice(0, 500)}"
 
-Build a modified_search_query optimized for Google Shopping (max 80 chars). Rules:
+CRITICAL RULE: If the user's request is GENERAL (e.g. "show me in red", "cheaper options", "more casual"), apply the modification to ALL items. Return a modification entry for EVERY item. If the user mentions a SPECIFIC item (e.g. "show the jeans in black", "find Nike shoes"), only modify that specific item.
+
+Build a modified_search_query for each affected item, optimized for Google Shopping (max 80 chars). Rules:
 - Start with "${gender === "female" ? "women's" : "men's"}"
 - Include the item type (e.g. hoodie, jeans, boots)
 - Apply the user's refinement (color, style, brand, size, etc.)
 - Keep the brand if the user didn't ask to change it and brand is known
 - Use product search terms, NOT adjectives (no "stylish", "elegant", "beautiful")
-- If user asks for a specific brand, include it
-
-Also return keep_brand: true if the original brand should be preserved in search.
 
 Response format (JSON only, no markdown):
 {
   "modifications": [
-    { "item_index": 0, "modified_search_query": "women's black oversized cropped hoodie", "keep_brand": false, "explanation": "Changed to black oversized per user request" }
+    { "item_index": 0, "modified_search_query": "men's red wool blazer", "keep_brand": false, "explanation": "Changed color to red" },
+    { "item_index": 1, "modified_search_query": "men's red cotton shirt", "keep_brand": false, "explanation": "Changed color to red" }
   ]
 }`,
         },
