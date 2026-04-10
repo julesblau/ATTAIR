@@ -2513,19 +2513,18 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
         ...result.tiers.premium,
       ].filter(p => p.is_product_page !== false);
 
-      const domains = new Set();
+      // Use retailer/brand names for diversity check (not URL domains, which are
+      // all google.com for Shopping results before vendor URL resolution)
+      const retailers = new Set();
       let pricedCount = 0;
       for (const p of allProducts) {
-        try {
-          const domain = new URL(p.url || "").hostname.replace(/^www\./, "");
-          domains.add(domain);
-        } catch {}
+        if (p.brand) retailers.add(p.brand.toLowerCase().replace(/[^a-z]/g, ""));
         if (p.price && p.price !== "N/A") pricedCount++;
       }
 
-      if (domains.size >= MIN_DOMAINS && pricedCount >= MIN_PRICED) return;
+      if (retailers.size >= MIN_DOMAINS && pricedCount >= MIN_PRICED) return;
 
-      console.log(`[Diversity] "${item.name}": ${domains.size} domains, ${pricedCount} priced — below threshold, running supplementary search`);
+      console.log(`[Diversity] "${item.name}": ${retailers.size} retailers, ${pricedCount} priced — below threshold, running supplementary search`);
 
       // Broadened fallback: gender + category (widest possible query)
       const g = (gender === "female") ? "women's" : "men's";
@@ -2571,8 +2570,8 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     for (const result of output) {
       for (const tierKey of ["budget", "mid", "premium"]) {
         const products = result.tiers?.[tierKey] || [];
-        // Resolve top 2 per tier (the ones users actually see/click)
-        for (const p of products.slice(0, 2)) {
+        // Resolve top 1 per tier (the one users see first and are most likely to click)
+        for (const p of products.slice(0, 1)) {
           if (p._immersive_token && p.url?.includes("google.com")) {
             productsToResolve.push(p);
           }
