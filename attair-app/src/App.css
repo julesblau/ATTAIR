@@ -2218,7 +2218,7 @@
 .app[data-theme='light'] .logo-img--light{display:block}
 .hdr .logo-img--dark{display:none}
 .hdr .logo-img--light{display:block}
-.app[data-theme='light'] .hdr .logo-img--dark{display:block}
+.app[data-theme='light'] .hdr .logo-img--dark{display:block;mix-blend-mode:screen}
 .app[data-theme='light'] .hdr .logo-img--light{display:none}
 .pro{font-size:9px;font-weight:800;letter-spacing:1.5px;color:var(--accent);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
 .free-badge{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-tertiary);background:var(--accent-bg);padding:3px 8px;border-radius:4px;cursor:pointer;min-height:28px;display:inline-flex;align-items:center}
