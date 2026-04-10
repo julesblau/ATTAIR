@@ -341,34 +341,40 @@ router.post("/refine", requireAuth, async (req, res) => {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const itemList = items
-      .map((item, i) => `[${i}] ${item.name} - ${item.brand || "unknown"} - ${item.color || ""} ${item.material || ""} - ${item.price_range || ""}`)
+      .map((item, i) => `[${i}] ${item.name} | brand: ${item.brand || "unknown"} | color: ${item.color || "?"} | material: ${item.material || "?"} | category: ${item.category || "?"} | subcategory: ${item.subcategory || "?"} | search_query: ${item.search_query || item.name}`)
       .join("\n");
 
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5",
-      max_tokens: 300,
+      max_tokens: 400,
       messages: [
         {
           role: "user",
-          content: `You are a shopping assistant. The user is viewing identified clothing items from a scan.
+          content: `You are a Google Shopping search expert. The user scanned an outfit and wants to refine the product search.
 
-Items:
+Items currently identified:
 ${itemList}
 
-The user is currently focused on item [${activeIdx}]: ${items[activeIdx].name}
+Focused item: [${activeIdx}] ${items[activeIdx].name}
 
-User's refinement request: "${refinement.trim().slice(0, 500)}"
+User wants: "${refinement.trim().slice(0, 500)}"
 
-Return a JSON object with modifications to apply. For each item that needs to change, include it in the array. If the user's request is vague (e.g., "find in red"), apply it only to the focused item. If specific (e.g., "red jacket and brown shoes"), apply to the referenced items.
+Build a modified_search_query optimized for Google Shopping (max 80 chars). Rules:
+- Start with "${gender === "female" ? "women's" : "men's"}"
+- Include the item type (e.g. hoodie, jeans, boots)
+- Apply the user's refinement (color, style, brand, size, etc.)
+- Keep the brand if the user didn't ask to change it and brand is known
+- Use product search terms, NOT adjectives (no "stylish", "elegant", "beautiful")
+- If user asks for a specific brand, include it
 
-Response format:
+Also return keep_brand: true if the original brand should be preserved in search.
+
+Response format (JSON only, no markdown):
 {
   "modifications": [
-    { "item_index": 0, "modified_search_query": "red wool blazer", "explanation": "Changed color from navy to red" }
+    { "item_index": 0, "modified_search_query": "women's black oversized cropped hoodie", "keep_brand": false, "explanation": "Changed to black oversized per user request" }
   ]
-}
-
-Only return the JSON, no other text.`,
+}`,
         },
       ],
     });
@@ -404,10 +410,11 @@ Only return the JSON, no other text.`,
       const original = items[mod.item_index] || items[activeIdx];
       return {
         ...original,
-        name: mod.modified_search_query,
+        // Keep original name — only replace the search query
         search_query: mod.modified_search_query,
         alt_search: null,
-        brand_confidence: "low", // prevent brand query from overriding refinement
+        // Preserve brand confidence if user didn't change brand
+        brand_confidence: mod.keep_brand ? (original.brand_confidence || "moderate") : "low",
         _refined: true,
         _scan_item_index: mod.item_index,
       };
