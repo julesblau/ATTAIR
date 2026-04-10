@@ -246,10 +246,26 @@ router.post("/", requireAuth, async (req, res) => {
             return map;
           })
           .catch(() => null),
+        supabase.from("user_brand_affinities").select("brand, affinity_score, total_exposures").eq("user_id", req.userId)
+          .then(r => {
+            if (!r.data || r.data.length === 0) return null;
+            const map = {};
+            for (const row of r.data) map[row.brand.toLowerCase()] = row;
+            return map;
+          })
+          .catch(() => null),
+        supabase.from("user_attribute_affinities").select("attribute_type, attribute_value, affinity_score, interaction_count").eq("user_id", req.userId)
+          .then(r => {
+            if (!r.data || r.data.length === 0) return null;
+            const map = {};
+            for (const row of r.data) map[`${row.attribute_type}:${row.attribute_value}`] = row.affinity_score;
+            return map;
+          })
+          .catch(() => null),
       );
     }
 
-    const [profileResult, scanResult, prefProfile = null, styleDnaResult = null, priceProfiles = null] = await Promise.all(basePromises);
+    const [profileResult, scanResult, prefProfile = null, styleDnaResult = null, priceProfiles = null, brandAffinities = null, attrAffinities = null] = await Promise.all(basePromises);
     const profile = profileResult.data;
     const imageUrl = scanResult.data?.image_url || null;
 
@@ -270,8 +286,10 @@ router.post("/", requireAuth, async (req, res) => {
       }
     }
 
-    // Attach price profiles to preference profile so products.js can use them
-    const enrichedPrefProfile = isDeepSearch && prefProfile ? { ...prefProfile, _priceProfiles: priceProfiles } : null;
+    // Attach all personalization data to preference profile so products.js can use them
+    const enrichedPrefProfile = isDeepSearch && prefProfile
+      ? { ...prefProfile, _priceProfiles: priceProfiles, _brandAffinities: brandAffinities, _attrAffinities: attrAffinities }
+      : null;
 
     const results = await findProductsForItems(
       items,

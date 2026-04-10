@@ -277,6 +277,114 @@ export async function updatePriceProfiles(userId) {
 }
 
 /**
+ * Update per-attribute affinity scores (color, style, material, fit, category).
+ * Called after each verdict. Each attribute the user interacted with gets
+ * its affinity score nudged toward positive or negative.
+ */
+export async function updateAttributeAffinities(userId) {
+  const SIGNAL_WEIGHTS = { positive: 0.15, neutral: 0.03, negative: -0.10 };
+
+  const { data: signals } = await supabase
+    .from("preference_signals")
+    .select("signal, category, subcategory, color, material, style_keywords, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (!signals || signals.length === 0) return;
+
+  // Accumulate weighted affinity deltas per attribute
+  const affinities = {}; // key: "type:value" → { score, count }
+  for (const s of signals) {
+    const w = signalWeight(s.created_at);
+    const delta = (SIGNAL_WEIGHTS[s.signal] || 0) * w;
+    if (delta === 0) continue;
+
+    const attrs = [];
+    if (s.color) attrs.push(["color", s.color.toLowerCase()]);
+    if (s.category) attrs.push(["category", s.category.toLowerCase()]);
+    if (s.subcategory) attrs.push(["subcategory", s.subcategory.toLowerCase()]);
+    if (s.material) attrs.push(["material", s.material.toLowerCase()]);
+    const kws = Array.isArray(s.style_keywords) ? s.style_keywords : [];
+    for (const kw of kws) attrs.push(["style", kw.toLowerCase()]);
+
+    for (const [type, value] of attrs) {
+      const key = `${type}:${value}`;
+      if (!affinities[key]) affinities[key] = { type, value, score: 0, count: 0 };
+      affinities[key].score += delta;
+      affinities[key].count += w;
+    }
+  }
+
+  // Upsert all affinities (batch)
+  const rows = Object.values(affinities)
+    .filter(a => a.count >= 1) // need at least ~1 weighted signal
+    .map(a => ({
+      user_id: userId,
+      attribute_type: a.type,
+      attribute_value: a.value,
+      affinity_score: Math.round(Math.max(-1, Math.min(1, a.score / a.count)) * 1000) / 1000,
+      interaction_count: Math.round(a.count),
+      last_updated: new Date().toISOString(),
+    }));
+
+  if (rows.length === 0) return;
+
+  // Batch upsert in chunks of 50
+  for (let i = 0; i < rows.length; i += 50) {
+    const chunk = rows.slice(i, i + 50);
+    await supabase.from("user_attribute_affinities")
+      .upsert(chunk, { onConflict: "user_id,attribute_type,attribute_value" })
+      .catch(err => console.error("[AttrAffinity] upsert error:", err.message));
+  }
+}
+
+/**
+ * Update brand affinity scores using Bayesian smoothing.
+ * Called after each verdict to build continuous brand preference scores.
+ */
+export async function updateBrandAffinities(userId) {
+  const { data: signals } = await supabase
+    .from("preference_signals")
+    .select("brand, signal, created_at")
+    .eq("user_id", userId)
+    .not("brand", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (!signals || signals.length === 0) return;
+
+  // Aggregate by brand with recency weighting
+  const brands = {};
+  for (const s of signals) {
+    if (!s.brand) continue;
+    const w = signalWeight(s.created_at);
+    if (!brands[s.brand]) brands[s.brand] = { positive: 0, negative: 0, total: 0 };
+    brands[s.brand].total += w;
+    if (s.signal === "positive") brands[s.brand].positive += w;
+    else if (s.signal === "negative") brands[s.brand].negative += w;
+  }
+
+  // Compute Bayesian affinity score and upsert
+  const ALPHA = 2; // Laplace smoothing prior
+  for (const [brand, counts] of Object.entries(brands)) {
+    const smoothedPos = (counts.positive + ALPHA) / (counts.total + 2 * ALPHA);
+    const smoothedNeg = (counts.negative + ALPHA) / (counts.total + 2 * ALPHA);
+    const affinity = smoothedPos - smoothedNeg * 0.5; // penalize negatives less
+
+    await supabase.from("user_brand_affinities").upsert({
+      user_id: userId,
+      brand,
+      positive_signals: Math.round(counts.positive),
+      negative_signals: Math.round(counts.negative),
+      total_exposures: Math.round(counts.total),
+      affinity_score: Math.round(affinity * 1000) / 1000, // 3 decimal places
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,brand" }).catch(() => {});
+  }
+}
+
+/**
  * Get the user's preference profile (cached or compute fresh).
  */
 export async function getPreferenceProfile(userId) {

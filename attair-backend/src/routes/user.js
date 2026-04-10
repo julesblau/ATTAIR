@@ -2,7 +2,7 @@ import { Router } from "express";
 import { randomBytes } from "crypto";
 import { requireAuth } from "../middleware/auth.js";
 import supabase from "../lib/supabase.js";
-import { recordSignal, computePreferenceProfile, getPreferenceProfile, updatePriceProfiles } from "../services/preferences.js";
+import { recordSignal, computePreferenceProfile, getPreferenceProfile, updatePriceProfiles, updateBrandAffinities, updateAttributeAffinities } from "../services/preferences.js";
 
 import { FREE_SCAN_LIMIT, FREE_SAVE_LIMIT, FREE_HISTORY_DAYS, FREE_EXTENDED_SEARCH_LIMIT, FREE_FAST_SEARCH_LIMIT } from "../config/limits.js";
 
@@ -648,9 +648,11 @@ router.patch("/scan/:scanId/verdict", requireAuth, async (req, res) => {
       Promise.all(data.items.map((item, idx) =>
         recordSignal(req.userId, scanId, idx, verdict, item).catch(() => {})
       )).then(() => {
-        // Recompute preference profile + price sweet spots after enough signals
+        // Recompute all personalization data after verdict signals
         computePreferenceProfile(req.userId).catch(() => {});
         updatePriceProfiles(req.userId).catch(() => {});
+        updateBrandAffinities(req.userId).catch(() => {});
+        updateAttributeAffinities(req.userId).catch(() => {});
       });
     }
 

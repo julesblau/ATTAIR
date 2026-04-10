@@ -2032,13 +2032,29 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           const title = (product.title || "").toLowerCase();
           const source = (product.source || "").toLowerCase();
 
-          // Liked brands get a strong boost — user explicitly liked this brand
-          if (preferenceProfile.liked_brands?.some(b => wordMatch(title, b.toLowerCase()) || wordMatch(source, b.toLowerCase()))) {
-            score += 30;
+          // ── Brand affinity (Bayesian continuous scoring) ──────
+          // If we have learned brand affinities, use continuous scores.
+          // Falls back to binary liked/avoided lists when affinities unavailable.
+          let brandScored = false;
+          if (preferenceProfile._brandAffinities) {
+            // Check product title and source against brand affinity map
+            for (const [brandKey, aff] of Object.entries(preferenceProfile._brandAffinities)) {
+              if (aff.total_exposures >= 2 && (wordMatch(title, brandKey) || wordMatch(source, brandKey))) {
+                // Continuous boost: range roughly -20 to +40 based on affinity score
+                score += Math.round(aff.affinity_score * 40);
+                brandScored = true;
+                break;
+              }
+            }
           }
-          // Avoided brands get a heavy penalty — user explicitly rejected this brand
-          if (preferenceProfile.avoided_brands?.some(b => wordMatch(title, b.toLowerCase()) || wordMatch(source, b.toLowerCase()))) {
-            score -= 35;
+          if (!brandScored) {
+            // Fallback: binary liked/avoided lists
+            if (preferenceProfile.liked_brands?.some(b => wordMatch(title, b.toLowerCase()) || wordMatch(source, b.toLowerCase()))) {
+              score += 30;
+            }
+            if (preferenceProfile.avoided_brands?.some(b => wordMatch(title, b.toLowerCase()) || wordMatch(source, b.toLowerCase()))) {
+              score -= 35;
+            }
           }
           // Preferred colors get a boost
           if (preferenceProfile.color_preferences?.positive?.some(c => wordMatch(title, c))) {
@@ -2059,6 +2075,31 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           // Style keyword matches — stronger boost for style alignment
           const kwMatches = (preferenceProfile.style_keywords || []).filter(kw => wordMatch(title, kw.toLowerCase())).length;
           if (kwMatches > 0) score += Math.min(kwMatches * 5, 20);
+
+          // ── Attribute affinity scoring ──────────────────────────
+          // Score the product against the user's learned attribute preferences.
+          // Checks color, material, style keywords, and category of the ITEM being
+          // searched for against the user's affinity map.
+          if (preferenceProfile._attrAffinities) {
+            const aa = preferenceProfile._attrAffinities;
+            const attrChecks = [];
+            const itemColor = (item.color || "").toLowerCase();
+            const itemMaterial = (item.material || "").toLowerCase();
+            const itemCat = (item.category || "").toLowerCase();
+            const itemSub = (item.subcategory || "").toLowerCase();
+            if (itemColor && aa[`color:${itemColor}`] != null) attrChecks.push(aa[`color:${itemColor}`]);
+            if (itemMaterial && aa[`material:${itemMaterial}`] != null) attrChecks.push(aa[`material:${itemMaterial}`]);
+            if (itemCat && aa[`category:${itemCat}`] != null) attrChecks.push(aa[`category:${itemCat}`]);
+            if (itemSub && aa[`subcategory:${itemSub}`] != null) attrChecks.push(aa[`subcategory:${itemSub}`]);
+            for (const kw of styleKws) {
+              const kwLower = (kw || "").toLowerCase();
+              if (kwLower && aa[`style:${kwLower}`] != null) attrChecks.push(aa[`style:${kwLower}`]);
+            }
+            if (attrChecks.length > 0) {
+              const avgAffinity = attrChecks.reduce((sum, v) => sum + v, 0) / attrChecks.length;
+              score += Math.round(avgAffinity * 25); // range: roughly -25 to +25
+            }
+          }
 
           // ── Gaussian price sweet spot scoring ──────────────────
           // If we have learned per-category price preferences, apply a
@@ -2168,37 +2209,81 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       return formatted;
     }
 
-    // Pick up to `n` products from candidates, deduped by URL.
-    // Applies retailer diversity: first product from a retailer gets full score,
-    // subsequent products from the same retailer are deprioritized to ensure
-    // users see results from multiple stores.
+    // Pick up to `n` products using Maximal Marginal Relevance (MMR).
+    // Balances relevance with diversity across retailer, brand, and price band.
+    // λ=0.7 means 70% relevance, 30% diversity.
+    // Exploration slots at positions 3 and 6 inject discovery items.
     function pickTopN(candidates, n, tier) {
-      const results = [];
-      const retailerCount = {};
-      // Re-sort candidates with retailer diversity penalty applied
-      const diversified = candidates
+      const available = candidates
         .filter(s => !usedUrls.has(getUrl(s)))
         .map(s => {
           const source = (s.product.source || "").toLowerCase().replace(/[^a-z]/g, "");
-          return { ...s, _source: source };
+          const titleLower = (s.product.title || "").toLowerCase();
+          const productBrand = source.split(/\s+/)[0] || "unknown";
+          const priceBand = s.price != null ? (s.price < itemTierBounds.min ? "budget" : s.price > itemTierBounds.max ? "premium" : "mid") : "unknown";
+          return { ...s, _source: source, _brand: productBrand, _priceBand: priceBand };
         });
-      // Greedy selection: always pick highest effective score, incrementing retailer count
-      for (const s of diversified) {
-        if (results.length >= n) break;
-        const count = retailerCount[s._source] || 0;
-        // First from a retailer: no penalty. Second: -15%. Third+: -30%.
-        const diversityFactor = count === 0 ? 1 : count === 1 ? 0.85 : 0.7;
-        const effectiveScore = s.score * diversityFactor;
-        // Only skip if there's a meaningful penalty AND we haven't exhausted unique retailers
-        if (count >= 2 && results.length < n - 1 && diversified.some(ds => !usedUrls.has(getUrl(ds)) && (retailerCount[ds._source] || 0) === 0)) {
-          continue; // Try to find an unseen retailer first
+
+      if (available.length === 0) return [];
+
+      const LAMBDA = 0.7; // relevance vs diversity balance
+      const selected = [];
+      const maxScore = Math.max(...available.map(s => s.score), 1);
+
+      // Always pick the highest-scored item first
+      const first = available[0];
+      selected.push(first);
+      const isBrandFirst = hasBrand && (
+        (first.product.title || "").toLowerCase().includes(brandLower) ||
+        (first.product.source || "").toLowerCase().includes(brandLower)
+      );
+      const results = [formatAndTrack(first, tier, isBrandFirst)];
+
+      // MMR selection for remaining slots
+      while (results.length < n && available.length > selected.length) {
+        let bestIdx = -1;
+        let bestMMR = -Infinity;
+
+        for (let j = 0; j < available.length; j++) {
+          const candidate = available[j];
+          if (selected.includes(candidate)) continue;
+
+          // Relevance: normalized score
+          const relevance = candidate.score / maxScore;
+
+          // Diversity: max similarity to any already-selected item
+          let maxSim = 0;
+          for (const sel of selected) {
+            let sim = 0;
+            if (candidate._source === sel._source) sim += 0.5;  // same retailer
+            if (candidate._brand === sel._brand) sim += 0.3;    // same brand
+            if (candidate._priceBand === sel._priceBand) sim += 0.2; // same price band
+            maxSim = Math.max(maxSim, sim);
+          }
+
+          const mmrScore = LAMBDA * relevance - (1 - LAMBDA) * maxSim;
+          if (mmrScore > bestMMR) {
+            bestMMR = mmrScore;
+            bestIdx = j;
+          }
         }
-        retailerCount[s._source] = count + 1;
-        const isBrand = hasBrand && (
-          (s.product.title || "").toLowerCase().includes(brandLower) ||
-          (s.product.source || "").toLowerCase().includes(brandLower)
+
+        if (bestIdx < 0) break;
+        const pick = available[bestIdx];
+        selected.push(pick);
+        const isBrandPick = hasBrand && (
+          (pick.product.title || "").toLowerCase().includes(brandLower) ||
+          (pick.product.source || "").toLowerCase().includes(brandLower)
         );
-        results.push(formatAndTrack(s, tier, isBrand));
+        const formatted = formatAndTrack(pick, tier, isBrandPick);
+
+        // Mark exploration slots (positions 3 and 6) — items from unseen brands/retailers
+        const isNewBrand = !selected.slice(0, -1).some(s => s._brand === pick._brand);
+        if ((results.length === 2 || results.length === 5) && isNewBrand) {
+          formatted.isExploration = true;
+        }
+
+        results.push(formatted);
       }
       return results;
     }
