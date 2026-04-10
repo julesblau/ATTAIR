@@ -222,6 +222,7 @@ const WATCHLIST_RESTAURANTS = [
   'rezdora',               // Rezdôra (with/without accent)
   'rezdôra',
   'atomix',
+  'red hook tavern',
 ];
 
 function matchesRestaurantList(r, list) {
