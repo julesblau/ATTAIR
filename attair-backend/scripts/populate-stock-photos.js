@@ -48,7 +48,7 @@ const STOCK_PHOTOS = {
     u("photo-1507003211169-0a1dd7228f2d"),  // clean menswear
     u("photo-1519085360753-af0119f7cbe7"),  // minimal male outfit
     u("photo-1617137968427-85924c800a22"),  // neutral tones man
-    u("photo-1480429370612-2cd423e2e17b"),  // simple clean look
+    u("photo-1534030347209-467a5b0ad3e6"),  // simple clean look
     u("photo-1594938298603-c8148c4dae35"),  // minimal style
     u("photo-1611312449408-fcece27cdbb7"),  // monochrome male
     u("photo-1521572163474-6864f9cf17ab"),  // clean basics
@@ -78,7 +78,7 @@ const STOCK_PHOTOS = {
     u("photo-1509319117193-57bab727e09d"),  // vintage woman fashion
     u("photo-1504439904031-93ded9f93e4e"),  // retro dress
     u("photo-1490481651871-ab68de25d43d"),  // vintage style woman
-    u("photo-1558618666-fcd25c85f82e"),  // thrift finds
+    u("photo-1529139574466-a303027c1d8b"),  // thrift finds
     u("photo-1508427953056-b00b8d78ebf5"),  // retro look
     u("photo-1502716119720-b23a1e3b4c31"),  // vintage outfit
     u("photo-1544005313-94ddf0286df2"),  // classic vintage woman
@@ -148,7 +148,7 @@ const STOCK_PHOTOS = {
     u("photo-1552374196-1ab2a1c593e8"),  // casual male
     u("photo-1600185365483-26d7a4cc7519"),  // relaxed outfit
     u("photo-1523398002811-999ca8dec234"),  // everyday style
-    u("photo-1480429370612-2cd423e2e17b"),  // casual basics
+    u("photo-1534030347209-467a5b0ad3e6"),  // casual basics
     u("photo-1564564321837-a57b7070ac4f"),  // t-shirt jeans
     u("photo-1594938298603-c8148c4dae35"),  // easy casual
     u("photo-1472842459217-4b3b8e55af02"),  // laid back
@@ -176,7 +176,7 @@ const STOCK_PHOTOS = {
   ],
   edgy_f: [
     u("photo-1509319117193-57bab727e09d"),  // edgy woman
-    u("photo-1558618666-fcd25c85f82e"),  // dark woman fashion
+    u("photo-1529139574466-a303027c1d8b"),  // dark woman fashion
     u("photo-1544005313-94ddf0286df2"),  // grunge woman
     u("photo-1520367445093-50dc08a59d9d"),  // alternative woman
     u("photo-1581044777550-4cfa60707998"),  // bold woman
@@ -191,7 +191,7 @@ const STOCK_PHOTOS = {
     u("photo-1594938298603-c8148c4dae35"),  // k-fashion male
     u("photo-1617137968427-85924c800a22"),  // layered korean
     u("photo-1521572163474-6864f9cf17ab"),  // clean cut
-    u("photo-1480429370612-2cd423e2e17b"),  // soft boy aesthetic
+    u("photo-1534030347209-467a5b0ad3e6"),  // soft boy aesthetic
     u("photo-1472842459217-4b3b8e55af02"),  // korean casual
   ],
   korean_f: [

@@ -5976,7 +5976,7 @@ export default function App() {
 
   const brandConfLabel = (c) => ({ confirmed: { t: "Confirmed", c: "#C9A96E" }, high: { t: "High confidence", c: "rgba(201,169,110,0.7)" }, moderate: { t: "Moderate", c: "rgba(255,255,255,0.4)" }, low: { t: "Estimated", c: "rgba(255,255,255,0.25)" } }[c] || { t: "Unknown", c: "rgba(255,255,255,0.2)" });
 
-  const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); lsCache.clear("attair_history_cache"); lsCache.clear("attair_saved_cache"); lsCache.clear("attair_wishlists_cache"); lsCache.clear("attair_styledna_cache"); lsCache.clear("attair_profile_cache"); setAuthed(false); setAuthEmail(""); setAuthName(""); setAuthAvatarUrl(null); setUserStatus(null); setProfileBio(""); setProfileStats(null); setProfileStatsLoaded(false); setScreen("onboarding"); setObIdx(0); };
+  const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); lsCache.clear("attair_history_cache"); lsCache.clear("attair_saved_cache"); lsCache.clear("attair_wishlists_cache"); lsCache.clear("attair_styledna_cache"); lsCache.clear("attair_profile_cache"); setAuthed(false); setAuthEmail(""); setAuthName(""); setAuthPass(""); setAuthAvatarUrl(null); setUserStatus(null); setProfileBio(""); setProfileStats(null); setProfileStatsLoaded(false); setScreen("onboarding"); setObIdx(0); };
 
   // Register global session-expired handler so any authFetch 401 triggers logout
   useEffect(() => { setSessionExpiredHandler(() => handleLogout()); }, []);
@@ -6077,6 +6077,7 @@ export default function App() {
 
           {authErr && <div className="auth-err">{authErr}</div>}
 
+          <form onSubmit={e => { e.preventDefault(); if (authEmail && authPass.length >= 6) handleAuth(); }}>
           {/* Name + phone (signup only) */}
           {authScreen === "signup" && (<>
             <input type="text" placeholder="Full name" value={authName} onChange={e => setAuthName(e.target.value)} autoComplete="name" />
@@ -6085,15 +6086,16 @@ export default function App() {
 
           <input type="email" placeholder="Email address" value={authEmail} onChange={e => setAuthEmail(e.target.value)} autoComplete="email" />
           <div style={{ position: "relative" }}>
-            <input type={showPass ? "text" : "password"} placeholder="Password" value={authPass} onChange={e => setAuthPass(e.target.value)} onKeyDown={e => e.key === "Enter" && authEmail && authPass.length >= 6 && handleAuth()} autoComplete={authScreen === "signup" ? "new-password" : "current-password"} style={{ paddingRight: 48 }} />
-            <button onClick={() => setShowPass(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 12, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px", minHeight: 44, minWidth: 44 }}>{showPass ? "Hide" : "Show"}</button>
+            <input type={showPass ? "text" : "password"} placeholder="Password" value={authPass} onChange={e => setAuthPass(e.target.value)} autoComplete={authScreen === "signup" ? "new-password" : "current-password"} style={{ paddingRight: 48 }} />
+            <button type="button" onClick={() => setShowPass(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 12, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px", minHeight: 44, minWidth: 44 }}>{showPass ? "Hide" : "Show"}</button>
           </div>
           {authScreen === "signup" && authPass.length > 0 && authPass.length < 6 && (
             <div style={{ fontSize: 11, color: "rgba(255,150,100,.5)", marginTop: -4, marginBottom: 4 }}>Password must be at least 6 characters</div>
           )}
-          <button className="cta" style={{ marginTop: 8, opacity: (!authEmail || authPass.length < 6) ? 0.4 : 1 }} onClick={handleAuth} disabled={authLoading || !authEmail || authPass.length < 6}>
+          <button type="submit" className="cta" style={{ marginTop: 8, opacity: (!authEmail || authPass.length < 6) ? 0.4 : 1 }} disabled={authLoading || !authEmail || authPass.length < 6}>
             {authLoading ? "Loading..." : authScreen === "signup" ? "Create Account" : "Log In"}
           </button>
+          </form>
           <button className="auth-toggle" onClick={() => { setAuthScreen(authScreen === "login" ? "signup" : "login"); setAuthErr(null); setShowPass(false); }}>
             {authScreen === "login" ? "Don't have an account? Sign up" : "Already have an account? Log in"}
           </button>
@@ -6425,7 +6427,7 @@ export default function App() {
               localStorage.setItem("attair_interests_picked", "1");
               track("interests_picked", { interests: selectedInterests });
             }}>
-              {selectedInterests.length === 0 ? "Skip for now" : `Save ${selectedInterests.length} interest${selectedInterests.length !== 1 ? "s" : ""}`}
+              {selectedInterests.length === 0 ? "Skip for now" : `Save ${selectedInterests.length} pick${selectedInterests.length !== 1 ? "s" : ""}`}
             </button>
           </div>
         </div>
