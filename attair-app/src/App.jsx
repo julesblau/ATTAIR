@@ -5919,8 +5919,8 @@ export default function App() {
     const currentScanId = scanId || "x";
     const currentRefineCount = refineCountMap[currentScanId] || 0;
 
-    // Free tier: limit 1 refine per scan
-    if (isFree && currentRefineCount >= 1) {
+    // Free tier: limit 3 refines per scan (was 1 — too aggressive, felt broken)
+    if (isFree && currentRefineCount >= 3) {
       setUpgradeModal("refine_limit");
       return;
     }
