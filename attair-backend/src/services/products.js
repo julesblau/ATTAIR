@@ -140,7 +140,7 @@ const KNOCKOFF_TITLE_KEYWORDS = [
  * Uses three signals: URL domain, source name, and title keywords.
  */
 function classifyMarket(product) {
-  const link = (product.link || product.product_link || product.url || "").toLowerCase();
+  const link = (product.product_link || product.link || product.url || "").toLowerCase();
   const source = (product.source || "").toLowerCase();
   const title = (product.title || "").toLowerCase();
 
@@ -365,7 +365,7 @@ const PRODUCT_URL_PATTERNS = [
  * Market preference filtering is separate.
  */
 function isVendorPage(product) {
-  const link = (product.link || product.product_link || product.url || "").toLowerCase();
+  const link = (product.product_link || product.link || product.url || "").toLowerCase();
   if (!link) return false;
 
   // 1. Hard reject: known non-vendor domains
@@ -558,7 +558,7 @@ function logSearchTelemetry(tel, searchMode, itemCount) {
 function getCacheTTLForResults(results) {
   if (!results || results.length === 0) return CACHE_TTL_TEXT;
   // Check the first result's domain to determine retailer tier
-  const link = results[0]?.link || results[0]?.product_link || "";
+  const link = results[0]?.product_link || results[0]?.link || "";
   try {
     const domain = new URL(link).hostname.replace(/^www\./, "");
     if (FAST_FASHION_DOMAINS.has(domain)) return CACHE_TTL_FAST_FASHION;
@@ -1345,7 +1345,7 @@ function wordMatch(text, term) {
 function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = null, hangerTaste = null) {
   const title = (product.title || "").toLowerCase();
   const source = (product.source || "").toLowerCase();
-  const link = product.link || product.product_link || product.url || "";
+  const link = product.product_link || product.link || product.url || "";
   const price = extractPrice(product.price) || extractPrice(product.extracted_price);
 
   // Must point to a genuine vendor/shopping page.
@@ -1621,7 +1621,7 @@ function formatProduct(product, isOriginalBrand) {
     product_name: product.title || "Unknown",
     brand: product.source || "Unknown",
     price: price != null ? `$${price.toFixed(2)}` : "Price on site",
-    url: product.link || product.product_link || product.url || "",
+    url: product.product_link || product.link || product.url || "",
     image_url: product.thumbnail || product.image || "",
     is_product_page: true,
     is_identified_brand: isOriginalBrand,
@@ -1953,9 +1953,9 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       }
       const extResults = await extendedTextSearch(item, gender, getItemTierBounds(item));
       if (extResults.length > 0) {
-        const existingUrls = new Set(itemPools[i].text.map(r => r.link || r.product_link || ""));
+        const existingUrls = new Set(itemPools[i].text.map(r => r.product_link || r.link || ""));
         const newResults = extResults.filter(r => {
-          const url = r.link || r.product_link || "";
+          const url = r.product_link || r.link || "";
           return url && !existingUrls.has(url);
         });
         itemPools[i].text.push(...newResults);
@@ -1985,11 +1985,11 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     const allProducts = [];
 
     for (const r of pool.lens) {
-      const url = r.link || r.product_link || r.url || "";
+      const url = r.product_link || r.link || r.url || "";
       if (url && !seen.has(url)) { seen.add(url); allProducts.push({ product: r, isLens: true }); }
     }
     for (const r of pool.text) {
-      const url = r.link || r.product_link || "";
+      const url = r.product_link || r.link || "";
       if (url && !seen.has(url)) { seen.add(url); allProducts.push({ product: r, isLens: false }); }
     }
 
@@ -2024,7 +2024,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
         // This only applies to text results (isLens === false) and only when
         // the item has zero Lens matches.
         if (!isLens && !hasLensMatchesForItem && score > 0) {
-          const link = product.link || product.product_link || product.url || "";
+          const link = product.product_link || product.link || product.url || "";
           const isTrusted = TRUSTED_RETAILER_DOMAINS.has(
             link.replace(/^https?:\/\/(?:www\.)?/, "").split("/")[0]
           );
@@ -2222,7 +2222,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
     }
 
     const usedUrls = new Set();
-    function getUrl(s) { return s.product.link || s.product.product_link || s.product.url || ""; }
+    function getUrl(s) { return s.product.product_link || s.product.link || s.product.url || ""; }
 
     function formatAndTrack(s, tier, isBrandMatch) {
       usedUrls.add(getUrl(s));
@@ -2536,7 +2536,7 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       const existingUrls = new Set(allProducts.map(p => p.url).filter(Boolean));
       const newProducts = suppResults
         .filter(r => {
-          const url = r.link || r.product_link || r.url || "";
+          const url = r.product_link || r.link || r.url || "";
           return url && !existingUrls.has(url);
         })
         .slice(0, 6);
