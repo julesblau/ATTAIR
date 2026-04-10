@@ -4110,17 +4110,27 @@ export default function App() {
   // ─── PWA install prompt ──────────────────────────────────
   const [installPrompt, setInstallPrompt] = useState(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   useEffect(() => {
+    // Android/Chrome: native install prompt
     const handler = (e) => { e.preventDefault(); setInstallPrompt(e); setShowInstallBanner(true); };
     window.addEventListener("beforeinstallprompt", handler);
+    // iOS Safari: show custom banner since beforeinstallprompt never fires
+    if (isIOS && !isStandalone && !localStorage.getItem("attair_ios_banner_dismissed")) {
+      setShowInstallBanner(true);
+    }
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
   const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    await installPrompt.userChoice;
-    setInstallPrompt(null);
+    if (installPrompt) {
+      installPrompt.prompt();
+      await installPrompt.userChoice;
+      setInstallPrompt(null);
+    }
+    // iOS: dismissing the banner is the only action (they use Share → Add to Home Screen)
     setShowInstallBanner(false);
+    if (isIOS) localStorage.setItem("attair_ios_banner_dismissed", "1");
   };
 
   // ─── Push Notifications ──────────────────────────────────
@@ -10688,10 +10698,10 @@ export default function App() {
           <div style={{ padding: "10px 16px", marginBottom: 60, background: "linear-gradient(135deg, rgba(201,169,110,.12) 0%, rgba(201,169,110,.06) 100%)", borderTop: "1px solid rgba(201,169,110,.2)", display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Add ATTAIRE to Home Screen</div>
-              <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>Get the full app experience</div>
+              <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{isIOS ? "Tap Share ↗ then \"Add to Home Screen\"" : "Get the full app experience"}</div>
             </div>
-            <button onClick={handleInstall} style={{ padding: "6px 16px", background: "var(--accent)", border: "none", borderRadius: 100, fontSize: 11, fontWeight: 700, color: "#0C0C0E", cursor: "pointer" }}>Install</button>
-            <button onClick={() => setShowInstallBanner(false)} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: 4 }}>&times;</button>
+            {!isIOS && <button onClick={handleInstall} style={{ padding: "6px 16px", background: "var(--accent)", border: "none", borderRadius: 100, fontSize: 11, fontWeight: 700, color: "#0C0C0E", cursor: "pointer" }}>Install</button>}
+            <button onClick={() => { setShowInstallBanner(false); if (isIOS) localStorage.setItem("attair_ios_banner_dismissed", "1"); }} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: 4 }}>&times;</button>
           </div>
         )}
 
