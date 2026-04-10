@@ -266,6 +266,16 @@ router.post("/", requireAuth, async (req, res) => {
     }
 
     const [profileResult, scanResult, prefProfile = null, styleDnaResult = null, priceProfiles = null, brandAffinities = null, attrAffinities = null] = await Promise.all(basePromises);
+
+    // Load affiliate partners separately — non-critical, must never break search
+    let affiliatePartners = null;
+    try {
+      const { data: partners } = await supabase.from("affiliate_partners").select("domain, partner_name, affiliate_tag, commission_rate, link_template, priority").eq("is_active", true);
+      if (partners && partners.length > 0) {
+        affiliatePartners = new Map();
+        for (const p of partners) affiliatePartners.set(p.domain, p);
+      }
+    } catch {} // silent — affiliate loading must never fail the search
     const profile = profileResult.data;
     const imageUrl = scanResult.data?.image_url || null;
 
@@ -287,9 +297,10 @@ router.post("/", requireAuth, async (req, res) => {
     }
 
     // Attach all personalization data to preference profile so products.js can use them
+    // Affiliate partners are included in both fast and deep mode (monetization is always on)
     const enrichedPrefProfile = isDeepSearch && prefProfile
-      ? { ...prefProfile, _priceProfiles: priceProfiles, _brandAffinities: brandAffinities, _attrAffinities: attrAffinities }
-      : null;
+      ? { ...prefProfile, _priceProfiles: priceProfiles, _brandAffinities: brandAffinities, _attrAffinities: attrAffinities, _affiliatePartners: affiliatePartners }
+      : (affiliatePartners ? { _affiliatePartners: affiliatePartners } : null);
 
     const results = await findProductsForItems(
       items,
@@ -309,6 +320,32 @@ router.post("/", requireAuth, async (req, res) => {
     // Deep search only: apply Style Match scores for richer personalization
     if (isDeepSearch) {
       applyStyleMatchScores(results, styleDnaResult, prefProfile);
+    }
+
+    // ── Affiliate link rewriting ──────────────────────────────
+    // Rewrite product URLs for affiliate partners. This happens post-search
+    // so it doesn't affect scoring or caching, only the final output URLs.
+    if (affiliatePartners && affiliatePartners.size > 0) {
+      for (const result of results) {
+        if (!result.tiers) continue;
+        for (const tierKey of ["budget", "mid", "premium", "resale"]) {
+          const products = result.tiers[tierKey];
+          if (!Array.isArray(products)) continue;
+          for (const product of products) {
+            if (!product.url) continue;
+            try {
+              const domain = new URL(product.url).hostname.replace(/^www\./, "");
+              const partner = affiliatePartners.get(domain);
+              if (partner && partner.link_template) {
+                product.url = partner.link_template
+                  .replace("{url}", encodeURIComponent(product.url))
+                  .replace("{tag}", partner.affiliate_tag || "");
+                product.is_affiliate = true;
+              }
+            } catch {} // invalid URL — skip silently
+          }
+        }
+      }
     }
 
     // Increment search counter (non-blocking — don't fail the response)

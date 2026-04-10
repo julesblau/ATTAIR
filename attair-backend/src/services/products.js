@@ -2115,6 +2115,21 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
             }
           }
 
+          // ── Affiliate partner boost ────────────────────────────
+          // Subtle scoring nudge for products from affiliate partners.
+          // Capped at +25 total — never overrides relevance, just breaks ties.
+          if (preferenceProfile._affiliatePartners) {
+            try {
+              const prodDomain = new URL(link).hostname.replace(/^www\./, "");
+              const partner = preferenceProfile._affiliatePartners.get(prodDomain);
+              if (partner) {
+                const commissionBoost = Math.round(8 + (partner.commission_rate || 0) * 70);
+                const priorityBoost = Math.min((partner.priority || 0) * 2, 10);
+                score += Math.min(commissionBoost + priorityBoost, 25); // hard cap at +25
+              }
+            } catch {} // invalid URL
+          }
+
           // Rejected product fingerprint check — if user said "Not for me"
           // to a product with a similar fingerprint, penalize it hard
           if (preferenceProfile._rejected_fingerprints?.size > 0) {
