@@ -1096,7 +1096,7 @@ function buildShoppingQueries(item, gender) {
  *                                 Baked into the cache key via makeTextCacheKey so
  *                                 different notes never collide on the same cache entry.
  */
-async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null) {
+async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occasion = null, searchNotes = null, customOccasionModifiers = null, maxQueries = 2) {
   const g = gender === "female" ? "women's" : "men's";
   // Normalise: guard against non-string values, collapse whitespace.
   const notes = typeof searchNotes === "string" ? searchNotes.trim() : "";
@@ -1206,11 +1206,10 @@ async function textSearchForItem(item, gender, tierBounds, sizePrefs = {}, occas
     queries.push(fullDesc);
   }
 
-  // Run up to 2 unique queries concurrently.
-  // We prioritise the first 2 as they are most specific (brand + search_query).
-  // Capped at 2 to control SerpAPI costs — the broadest fallback is still included
-  // so results are guaranteed even if specific queries miss.
-  const uniqueQueries = [...new Set(queries.filter(Boolean))].slice(0, 2);
+  // Run up to maxQueries unique queries concurrently.
+  // We prioritise the first N as they are most specific (brand + search_query).
+  // Fast mode uses 1 query (cost control), extended uses 2 for deeper coverage.
+  const uniqueQueries = [...new Set(queries.filter(Boolean))].slice(0, maxQueries);
   console.log(`[TextFallback] "${item.name}" → ${uniqueQueries.map(q => `"${q}"`).join(" | ")} budget=$${tierBounds.min}-$${tierBounds.max}${notes ? ` notes="${notes}"` : ""}`);
 
   // Pass both floor and ceiling to Google Shopping when user has a custom budget.
@@ -1358,6 +1357,13 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
   // Lens results without a price are still accepted if they passed isVendorPage —
   // the vendor check above already ensures they're from a legitimate shop.
   if (!isFromLens && price === null) return -1;
+
+  // Price outlier cap: reject products absurdly beyond the user's budget.
+  // A $150,000 item when budget max is $200 is data noise, not a real result.
+  if (price !== null && tierBounds) {
+    const maxReasonable = Math.max(tierBounds.max * 10, 2000); // 10x budget or $2000 floor
+    if (price > maxReasonable) return -1;
+  }
 
   let score = 0;
 
@@ -1891,10 +1897,11 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
 
   if (searchMode === "fast") {
     // ── FAST MODE: Lens + all text queries fire simultaneously ──
+    // Fast mode: 1 SerpAPI query per item (vs 2 in extended) for speed
     const startTime = Date.now();
     const lensPromise = googleLensSearch(imageUrl);
     const textPromises = items.map(async (item, i) => {
-      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers);
+      const textResults = await textSearchForItem(item, gender, getItemTierBounds(item), getItemSizePrefs(item), occasion, searchNotes, customOccasionModifiers, 1);
       itemPools[i].text = textResults;
       itemPools[i].textQueryCount = Math.min(2, 1 + (item.brand && item.brand !== "Unidentified" ? 1 : 0));
     });

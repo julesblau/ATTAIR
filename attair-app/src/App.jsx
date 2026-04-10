@@ -758,7 +758,10 @@ function trackBeacon(eventType, data = {}) {
 // ═══════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════
-function resizeImage(dataUrl, maxDim = 1024) {
+function resizeImage(dataUrl, maxDim = 768) {
+  // 768px max — sufficient for AI clothing identification while keeping
+  // base64 payload small (~40-60KB vs ~100KB+ at 1024px). Haiku processes
+  // smaller images faster with no quality loss for garment detection.
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -766,7 +769,7 @@ function resizeImage(dataUrl, maxDim = 1024) {
       if (w > maxDim || h > maxDim) { const r = Math.min(maxDim/w, maxDim/h); w = Math.round(w*r); h = Math.round(h*r); }
       const c = document.createElement("canvas"); c.width = w; c.height = h;
       c.getContext("2d").drawImage(img, 0, 0, w, h);
-      const du = c.toDataURL("image/jpeg", 0.82);
+      const du = c.toDataURL("image/jpeg", 0.80);
       resolve({ dataUrl: du, base64: du.split(",")[1], mime: "image/jpeg" });
     };
     img.onerror = () => resolve({ dataUrl, base64: dataUrl.split(",")[1], mime: "image/jpeg" });
@@ -8780,7 +8783,7 @@ export default function App() {
                                       )}
                                       {/* Dupe Alert pill — reserved for affiliate items only (TODO: re-enable for affiliates) */}
                                       <a href={href} target="_blank" rel="noopener noreferrer"
-                                        onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, is_fallback: isFallback, is_dupe: !!dupeInfo }, scanId, "scan")}
+                                        onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, product_name: (p.product_name || "").slice(0, 80), category: item.category, is_fallback: isFallback, is_affiliate: !!p.is_affiliate, is_exploration: !!p.isExploration }, scanId, "scan")}
                                         style={{ display: "flex", flexDirection: "column", flex: 1, textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
                                         <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                           {p.image_url && <img src={p.image_url} alt={p.product_name || "Product image"} className="product-card-img" width={150} height={150} loading="lazy" onError={e => { e.target.style.display = "none"; }} />}
