@@ -4342,6 +4342,9 @@ export default function App() {
   const scansLeft = userStatus?.scans_remaining_today ?? 12;
   const scansLimit = userStatus?.scans_limit ?? 12;
   const showAds = userStatus?.show_ads ?? true;
+  // Grace period: no ads/upsells for first 3 scans. Let users experience the magic first.
+  const scansUsed = scansLimit - scansLeft;
+  const inGracePeriod = isFree && scansUsed < 3;
   const deepSearchesLeft = userStatus?.extended_searches_remaining ?? 3;
   const fastSearchesLeft = userStatus?.fast_searches_remaining ?? 12;
 
@@ -5105,10 +5108,11 @@ export default function App() {
       if (isNative || ("Notification" in window && Notification.permission === "granted")) {
         subscribeToPush().then(ok => setPushEnabled(ok)).catch(() => {});
       } else if (!isNative && "Notification" in window && Notification.permission === "default") {
-        // Show prompt after a short delay (not on first visit)
+        // Show prompt only after user has done 2+ scans (earn trust first)
         const prompted = localStorage.getItem("attair_notif_prompted");
-        if (!prompted) {
-          setTimeout(() => setShowNotifPrompt(true), 8000);
+        const scansDone = scansLimit - scansLeft;
+        if (!prompted && scansDone >= 2) {
+          setTimeout(() => setShowNotifPrompt(true), 5000);
         }
       }
 
@@ -5159,7 +5163,7 @@ export default function App() {
       const picked = localStorage.getItem("attair_interests_picked");
       // Don't show if already dismissed OR if user already has style interests from profile
       if (!picked && !(userStatus?.style_interests?.length > 0)) {
-        setTimeout(() => setShowInterestPicker(true), 1500);
+        setTimeout(() => setShowInterestPicker(true), 3000); // 3s delay — less jarring on first login
       }
     }
   }, [authed, screen]);
@@ -5726,13 +5730,11 @@ export default function App() {
         refreshStatus();
       }
 
-      // Show interstitial ad for free users (skip on first-ever scan — don't be hostile)
-      if (!isGuest && showAds && scansLeft < 2) {
+      // Show interstitial ad for free users — skip during grace period (first 3 scans)
+      if (!isGuest && showAds && scansLeft < 2 && !inGracePeriod) {
         setShowInterstitial(true);
       }
-      if (!isGuest && showAds && scansLeft <= 1) {
-        setTimeout(() => setUpgradeModal("ad_fatigue"), 800);
-      }
+      // Removed: ad_fatigue upgrade trigger — showing an upgrade modal because we showed an ad is hostile
     } catch (err) {
       setPhase("idle");
       if (isGuest && (err.message.includes("Guest scan limit") || err.message.includes("sign up") || err.message.includes("Sign up"))) {
@@ -5842,10 +5844,8 @@ export default function App() {
       }, 1200);
     }
 
-    // Guest post-scan signup nudge — show after 2nd scan with a compelling message
-    if (isGuest && guestScans >= 2) {
-      setTimeout(() => setSignupPrompt("post_scan"), 2000);
-    }
+    // Removed: post_scan signup popup after 2nd guest scan — too aggressive.
+    // Guest conversion happens naturally at the 3-scan limit.
 
     // Refresh history + saved so those tabs are up to date (authed only)
     if (!isGuest) {
@@ -5928,8 +5928,8 @@ export default function App() {
     setRefineLoading(true);
     setRefineText("");
 
-    // Show interstitial ad for free users before refine
-    if (isFree && showAds) {
+    // Show interstitial ad for free users before refine — only after 3+ refines, not during grace period
+    if (isFree && showAds && !inGracePeriod && currentRefineCount >= 2) {
       setRefineInterstitial(true);
       await new Promise(resolve => setTimeout(resolve, 3000));
       setRefineInterstitial(false);
@@ -7152,7 +7152,8 @@ export default function App() {
                     const isSaved = saved.some(s => s.scan_id === scan.id);
                     const isTrending = (scan.save_count || 0) >= 3;
                     const trendingRank = null;
-                    const showAd = userStatus?.tier !== "pro" && userStatus?.tier !== "trial" && idx > 0 && idx % 5 === 0;
+                    // Show sponsored cards every 10 cards (was 5). Skip entirely during grace period.
+                    const showAd = !inGracePeriod && userStatus?.tier !== "pro" && userStatus?.tier !== "trial" && idx > 0 && idx % 10 === 0;
                     return (
                       <Fragment key={scan.id || idx}>
                         {showAd && (
@@ -7786,8 +7787,8 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* Free user ad slot during loading */}
-                {isFree && (() => {
+                {/* Free user ad slot during loading — skip during grace period */}
+                {isFree && !inGracePeriod && (() => {
                   const spot = RETAILER_SPOTLIGHTS[loadMsgIdx % RETAILER_SPOTLIGHTS.length];
                   return (
                     <a href={spot.url} target="_blank" rel="noopener noreferrer" onClick={() => track("identify_ad_clicked", { retailer: spot.name })} style={{ width: "100%", padding: "14px 16px", background: spot.gradient, border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, textDecoration: "none", display: "flex", alignItems: "center", gap: 12, transition: "opacity .3s" }}>
@@ -8274,8 +8275,8 @@ export default function App() {
                   ))}
                 </div>
 
-                {/* ATTAIRE promo for free users during search */}
-                {(isFree || isGuest) && (
+                {/* ATTAIRE promo for free users during search — skip during grace period */}
+                {(isFree || isGuest) && !inGracePeriod && (
                   <div style={{ marginTop: 24, padding: "20px 24px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.15)", borderRadius: 16, textAlign: "center", maxWidth: 320 }}>
                     <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.5, color: "var(--accent)", marginBottom: 8, textTransform: "uppercase" }}>ATTAIRE Pro</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>Unlock unlimited scans</div>
@@ -10733,7 +10734,7 @@ export default function App() {
               <span className="tab-badge" />
             )}
           </button>
-          <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("social"); return; } track("tab_switched", { tab: "profile" }); setTab("profile"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Profile">
+          <button className={`tab${tab==="profile"?" on":""}`} onClick={() => { if (isGuest) { showToast("Sign up to access your profile", "info"); return; } track("tab_switched", { tab: "profile" }); setTab("profile"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Profile">
             <svg viewBox="0 0 24 24" fill={tab==="profile"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="8" r="4" /><path d="M20 21c0-3.87-3.58-7-8-7s-8 3.13-8 7"/></svg>
             <span className="tab-l">{t("tab_profile")}</span>
           </button>
