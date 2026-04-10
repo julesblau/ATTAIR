@@ -2376,7 +2376,7 @@
    var(--*) tokens that auto-switch via [data-theme='light'] in index.css.
    Kept as a fallback for inline styles in JSX that still use hardcoded rgba values. */
 .app[data-theme='light']{background:#F6F4F0;color:#1A1816}
-.app[data-theme='light'] .hdr{background:rgba(20,18,16,.95);border-bottom-color:rgba(255,255,255,.08);--hdr-icon:#FAFAFA}
+.app[data-theme='light'] .hdr{background:#000000;border-bottom-color:rgba(255,255,255,.08);--hdr-icon:#FAFAFA}
 .app[data-theme='light'] .hdr .pro{color:var(--accent);background:rgba(201,169,110,.15)}
 .app[data-theme='light'] .hdr .free-badge{color:rgba(255,255,255,.5);background:rgba(255,255,255,.08)}
 .app[data-theme='light'] .logo{color:#1A1816}
