@@ -28,6 +28,7 @@ import challengesRouter from "./routes/challenges.js";
 import dupesRouter from "./routes/dupes.js";
 import hangerTestRouter from "./routes/hangerTest.js";
 import looksRouter from "./routes/looks.js";
+import { startContentModeration } from "./jobs/contentModeration.js";
 import styleTwinsRouter from "./routes/styleTwins.js";
 import ootwRouter from "./routes/ootw.js";
 import { startNudgeProcessor } from "./services/notifications.js";
@@ -409,6 +410,9 @@ const server = app.listen(PORT, "0.0.0.0", () => {
     setInterval(runWeeklyReports, 24 * 60 * 60 * 1000);
   }, 120_000);
   console.log("  📅 Weekly Style Report cron scheduled (Sundays)");
+
+  // ─── Content moderation ─────────────────────────────────
+  startContentModeration();
 });
 
 // Graceful shutdown

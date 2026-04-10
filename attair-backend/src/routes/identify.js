@@ -117,6 +117,20 @@ router.post("/", requireAuth, scanRateLimit, async (req, res) => {
     // 2. Call Claude (runs in parallel with upload)
     const raw = await identifyClothing(cleanImage, mimeType, prefs, priority_region_base64);
 
+    // 2b. Content safety check — Haiku flags unsafe content in the same call (zero extra latency)
+    if (raw.unsafe) {
+      console.warn(`[Safety] Image flagged as unsafe by user ${req.userId}: ${raw.reason}`);
+      // Roll back scan counter
+      if (req.scanAlreadyIncremented) {
+        supabase.from("profiles").update({ scans_today: Math.max(0, (req.profile.scans_today || 1) - 1) }).eq("id", req.userId).then(() => {}).catch(() => {});
+      }
+      return res.status(422).json({
+        error: "Image not suitable for scanning",
+        reason: "This image doesn't appear to contain appropriate fashion content. Please upload a photo of an outfit.",
+        unsafe: true,
+      });
+    }
+
     // 3. Dedup & sort
     let items = dedup(raw.items || []);
     items.sort((a, b) => (a.position_y || 0.5) - (b.position_y || 0.5));

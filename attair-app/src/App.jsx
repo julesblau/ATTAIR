@@ -5660,7 +5660,9 @@ export default function App() {
         setSignupPrompt("scan_limit");
         return;
       }
-      if (err.message.includes("scan limit") || err.message.includes("12/12") || err.message.includes("3/3")) {
+      if (err.message.includes("not suitable") || err.message.includes("appropriate fashion")) {
+        setError("This image doesn't contain appropriate fashion content. Please upload a photo of an outfit.");
+      } else if (err.message.includes("scan limit") || err.message.includes("12/12") || err.message.includes("3/3")) {
         setUpgradeModal("scan_limit");
         setError(`You've used all ${scansLimit} free scans this month.`);
       } else if (err.message.includes("Session expired")) {

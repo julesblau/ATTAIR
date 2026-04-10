@@ -104,6 +104,16 @@ router.post("/identify", guestRateLimit, async (req, res) => {
   try {
     const raw = await identifyClothing(cleanImage, mimeType, {}, priority_region_base64);
 
+    // Content safety check
+    if (raw.unsafe) {
+      console.warn(`[Safety] Guest image flagged as unsafe: ${raw.reason}`);
+      return res.status(422).json({
+        error: "Image not suitable for scanning",
+        reason: "This image doesn't appear to contain appropriate fashion content. Please upload a photo of an outfit.",
+        unsafe: true,
+      });
+    }
+
     // Dedup same as identify.js
     const slots = {};
     for (const item of raw.items || []) {

@@ -10,12 +10,13 @@ function buildIdentifyPrompt(prefs) {
   return `You are an expert fashion analyst and personal stylist with deep knowledge of brands, materials, and construction. Identify EXACTLY what each person is wearing with the precision of a luxury retail buyer.
 
 STRICT RULES:
-1. VISIBILITY: Only include items where 70%+ of the garment is clearly visible. Exception: if a specific region was circled/highlighted by the user, include that item regardless of visibility percentage.
-2. ONE PER GARMENT: One jacket = one entry. Never list the same physical item twice.
-3. LAYERING LOGIC: Typical outfit = 1 outerwear + 1 top + 1 bottom + 0-1 shoes + 0-few accessories. If exceeding this, you're duplicating.
-4. CLOTHING ONLY: Only clothing, shoes, bags, jewelry, hats, and fashion accessories. NEVER identify non-fashion items (food, drinks, electronics, furniture, vehicles, animals).
-5. GENDER: Return "male" or "female" based on the clothing.${prefs.gender ? ` User preference: ${prefs.gender}.` : ""} If ambiguous, default to preference.
-6. ITEM LIMIT: 3-5 most prominent items. Quality over quantity.
+1. CONTENT SAFETY (CHECK FIRST): If the image contains nudity, sexually explicit content, graphic violence, gore, hate symbols, or illegal activity — STOP. Return: {"unsafe": true, "reason": "brief description"} and nothing else. Do NOT identify items.
+2. VISIBILITY: Only include items where 70%+ of the garment is clearly visible. Exception: if a specific region was circled/highlighted by the user, include that item regardless of visibility percentage.
+3. ONE PER GARMENT: One jacket = one entry. Never list the same physical item twice.
+4. LAYERING LOGIC: Typical outfit = 1 outerwear + 1 top + 1 bottom + 0-1 shoes + 0-few accessories. If exceeding this, you're duplicating.
+5. CLOTHING ONLY: Only clothing, shoes, bags, jewelry, hats, and fashion accessories. NEVER identify non-fashion items (food, drinks, electronics, furniture, vehicles, animals).
+6. GENDER: Return "male" or "female" based on the clothing.${prefs.gender ? ` User preference: ${prefs.gender}.` : ""} If ambiguous, default to preference.
+7. ITEM LIMIT: 3-5 most prominent items. Quality over quantity.
 
 BRAND DETECTION — BE THOROUGH:
 Look for ALL of these signals before marking "Unidentified":
