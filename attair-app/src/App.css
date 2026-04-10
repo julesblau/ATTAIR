@@ -1398,7 +1398,7 @@
 .ob-opt{padding:18px 22px;background:var(--accent-bg);border:1px solid var(--border);border-radius:14px;cursor:pointer;transition:background .2s,border-color .2s,color .2s;font-size:15px;font-weight:500;color:var(--text-secondary);min-height:44px}
 .ob-opt:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12)}
 .ob-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-.ob-chip{padding:9px 16px;background:var(--accent-bg);border:1px solid var(--border);border-radius:100px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-secondary);transition:background .2s,border-color .2s,color .2s;-webkit-tap-highlight-color:transparent;min-height:36px}
+.ob-chip{padding:12px 18px;background:var(--accent-bg);border:1px solid var(--border);border-radius:100px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-secondary);transition:background .2s,border-color .2s,color .2s;-webkit-tap-highlight-color:transparent;min-height:44px}
 .ob-chip.on{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
 .ob-skip{background:none;border:none;color:var(--text-tertiary);font-size:13px;cursor:pointer;font-family:var(--font-sans);padding:10px 0;margin-top:4px;text-align:center;width:100%;min-height:44px}
 .ob-stats{display:flex;gap:32px;margin-bottom:36px}
@@ -2357,7 +2357,7 @@
 .modal-later{background:none;border:none;color:var(--text-tertiary);font-family:var(--font-sans);font-size:12px;cursor:pointer;width:100%;text-align:center;padding:10px;margin-top:6px;min-height:44px}
 
 .view-toggle{display:flex;gap:0;background:var(--accent-bg);border-radius:10px;padding:3px;margin-bottom:16px}
-.view-tab{flex:1;padding:8px 0;border-radius:8px;border:none;font-family:var(--font-sans);font-size:12px;font-weight:600;cursor:pointer;transition:background .2s,color .2s,border-color .2s,opacity .2s}
+.view-tab{flex:1;padding:12px 0;border-radius:8px;border:none;font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;transition:background .2s,color .2s,border-color .2s,opacity .2s;min-height:44px}
 .view-tab.on{background:var(--accent-bg);color:var(--accent)}
 .view-tab.off{background:transparent;color:var(--text-tertiary)}
 .refine-chat{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
@@ -2675,7 +2675,7 @@
 .profile-stat-lbl{font-size:11px;color:var(--text-tertiary);margin-top:1px}
 .interest-chip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:100px;border:1px solid var(--border);background:var(--accent-bg);color:var(--text-secondary);font-family:var(--font-sans);font-size:12px;font-weight:600;cursor:pointer;transition:background .2s,color .2s,border-color .2s,opacity .2s;min-height:44px;-webkit-tap-highlight-color:transparent}
 .interest-chip.on{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
-.scan-vis-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;border:1px solid var(--border);background:var(--accent-bg);color:var(--text-secondary);font-family:var(--font-sans);font-size:10px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s;-webkit-tap-highlight-color:transparent;min-height:32px}
+.scan-vis-chip{display:inline-flex;align-items:center;gap:4px;padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:var(--accent-bg);color:var(--text-secondary);font-family:var(--font-sans);font-size:12px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s;-webkit-tap-highlight-color:transparent;min-height:36px}
 .scan-vis-chip.active{background:var(--accent-bg);border-color:var(--accent-border);color:var(--accent)}
 
 /* ─── Profile Redesign (TikTok/IG style) ────────── */
@@ -2849,9 +2849,9 @@
 .feed-card-trending{background:linear-gradient(135deg,rgba(201,169,110,.85),rgba(180,140,80,.85));color:#fff;font-size:9px;letter-spacing:.3px;text-transform:uppercase}
 .feed-card-rank{position:absolute;top:8px;left:8px;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#C9A96E,#B08C50);color:#fff;font-size:12px;font-weight:800;font-family:var(--font-sans);display:flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 2px 8px rgba(0,0,0,.4);letter-spacing:-.3px}
 .feed-card-items-pill{font-size:9px;font-weight:500;color:rgba(255,255,255,.85);background:rgba(0,0,0,.45)}
-.feed-card-heart{width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
+.feed-card-heart{width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.25);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;transition:transform .15s}
 .feed-card-heart:active{transform:scale(0.9)}
-.feed-card-heart svg{width:16px;height:16px}
+.feed-card-heart svg{width:20px;height:20px}
 
 /* ─── Outfit of the Week (OOTW) ─── */
 .ootw-card{
@@ -2950,7 +2950,7 @@
 .reel-grad-bot{position:absolute;bottom:0;left:0;right:0;height:280px;background:linear-gradient(to top,rgba(0,0,0,.7),transparent);pointer-events:none}
 /* Right action bar */
 .reel-actions{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0) + 120px);display:flex;flex-direction:column;align-items:center;gap:20px;z-index:2}
-.reel-action{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:0;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))}
+.reel-action{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5));min-width:44px;min-height:44px;-webkit-tap-highlight-color:transparent}
 .reel-action-label{font-size:10px;color:#fff;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.6)}
 /* Bottom info */
 .reel-bottom{position:absolute;bottom:calc(env(safe-area-inset-bottom,0) + 16px);left:16px;right:72px;z-index:2}
@@ -4646,6 +4646,18 @@
 .app[data-theme='light'] .refine-interstitial { background: rgba(255,255,255,.95); }
 
 /* ─── Global focus-visible ───────────────────────────────── */
+/* ── Mobile thumb-friendly touch targets ─── */
+@media (pointer: coarse) {
+  button, [role="button"], a[href], input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  input[type="text"], input[type="email"], input[type="password"], input[type="tel"], input[type="search"], textarea {
+    font-size: 16px; /* prevents iOS zoom on focus */
+    padding: 12px 14px;
+  }
+}
+
 button:focus-visible,
 [role="button"]:focus-visible,
 a:focus-visible,
