@@ -1526,33 +1526,33 @@ function scoreProduct(product, item, isFromLens, sizePrefs = {}, tierBounds = nu
     };
     const combined = (title + " " + source).toLowerCase();
 
-    // Style breakdown match
+    // Style breakdown match — strong signal from user's voting history
     const styleBreakdown = hangerTaste.style_breakdown || [];
     for (let i = 0; i < Math.min(styleBreakdown.length, 4); i++) {
       const { style, pct } = styleBreakdown[i];
       const keywords = TASTE_KEYWORDS[style] || [style];
       if (keywords.some(kw => combined.includes(kw))) {
-        if (i === 0 && pct >= 25) score += 12;
-        else if (i === 0) score += 8;
-        else if (i <= 2) score += 5;
-        else score += 3;
+        if (i === 0 && pct >= 25) score += 20;
+        else if (i === 0) score += 14;
+        else if (i <= 2) score += 8;
+        else score += 4;
         break;
       }
     }
 
-    // Favorite vibes boost (cap +12)
+    // Favorite vibes boost (cap +18)
     let vibeBoost = 0;
     for (const vibe of (hangerTaste.favorite_vibes || [])) {
-      if (vibe.length > 2 && combined.includes(vibe.toLowerCase())) vibeBoost += 4;
+      if (vibe.length > 2 && combined.includes(vibe.toLowerCase())) vibeBoost += 6;
     }
-    score += Math.min(vibeBoost, 12);
+    score += Math.min(vibeBoost, 18);
 
-    // Avoid vibes penalty (cap -15)
+    // Avoid vibes penalty (cap -24)
     let vibePenalty = 0;
     for (const vibe of (hangerTaste.avoid_vibes || [])) {
-      if (vibe.length > 2 && combined.includes(vibe.toLowerCase())) vibePenalty += 5;
+      if (vibe.length > 2 && combined.includes(vibe.toLowerCase())) vibePenalty += 8;
     }
-    score -= Math.min(vibePenalty, 15);
+    score -= Math.min(vibePenalty, 24);
   }
 
   // Price proximity — budget is the primary driver of result relevance.
@@ -2032,40 +2032,40 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           const title = (product.title || "").toLowerCase();
           const source = (product.source || "").toLowerCase();
 
-          // Liked brands get a boost
+          // Liked brands get a strong boost — user explicitly liked this brand
           if (preferenceProfile.liked_brands?.some(b => wordMatch(title, b.toLowerCase()) || wordMatch(source, b.toLowerCase()))) {
-            score += 15;
+            score += 30;
           }
-          // Avoided brands get a penalty
+          // Avoided brands get a heavy penalty — user explicitly rejected this brand
           if (preferenceProfile.avoided_brands?.some(b => wordMatch(title, b.toLowerCase()) || wordMatch(source, b.toLowerCase()))) {
-            score -= 20;
+            score -= 35;
           }
           // Preferred colors get a boost
           if (preferenceProfile.color_preferences?.positive?.some(c => wordMatch(title, c))) {
-            score += 5;
+            score += 12;
           }
           // Negative colors get a penalty
           if (preferenceProfile.color_preferences?.negative?.some(c => wordMatch(title, c))) {
-            score -= 8;
+            score -= 15;
           }
           // Preferred categories get a boost
           if (preferenceProfile.preferred_categories?.some(c => wordMatch(title, c) || (item.category || "").toLowerCase() === c)) {
-            score += 8;
+            score += 18;
           }
           // Avoided categories get a penalty
           if (preferenceProfile.avoided_categories?.some(c => wordMatch(title, c) || (item.category || "").toLowerCase() === c)) {
-            score -= 12;
+            score -= 25;
           }
-          // Style keyword matches get a small boost
+          // Style keyword matches — stronger boost for style alignment
           const kwMatches = (preferenceProfile.style_keywords || []).filter(kw => wordMatch(title, kw.toLowerCase())).length;
-          if (kwMatches > 0) score += Math.min(kwMatches * 3, 10);
+          if (kwMatches > 0) score += Math.min(kwMatches * 5, 20);
 
           // Rejected product fingerprint check — if user said "Not for me"
-          // to a product with a similar fingerprint, penalize it
+          // to a product with a similar fingerprint, penalize it hard
           if (preferenceProfile._rejected_fingerprints?.size > 0) {
             const fp = productFingerprint(product);
             if (preferenceProfile._rejected_fingerprints.has(fp)) {
-              score -= 15;
+              score -= 30;
             }
           }
         }

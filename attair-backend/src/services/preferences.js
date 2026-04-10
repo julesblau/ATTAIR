@@ -17,6 +17,15 @@ const SIGNAL_MAP = {
   not_for_me: "negative",
 };
 
+// Recency decay: recent signals matter more than old ones.
+// 90-day half-life — a signal from 90 days ago counts as 0.5, 180 days as 0.25.
+const HALF_LIFE_DAYS = 90;
+function signalWeight(signalDate) {
+  if (!signalDate) return 1;
+  const daysSince = (Date.now() - new Date(signalDate).getTime()) / 86400000;
+  return Math.pow(0.5, daysSince / HALF_LIFE_DAYS);
+}
+
 /**
  * Record a preference signal for an item in a scan.
  *
@@ -92,77 +101,84 @@ export async function computePreferenceProfile(userId) {
   const positive = signals.filter(s => s.signal === "positive");
   const negative = signals.filter(s => s.signal === "negative");
 
-  // Brand analysis
+  // Brand analysis (weighted by recency)
   const brandCounts = { positive: {}, negative: {} };
   for (const s of positive) {
-    if (s.brand) brandCounts.positive[s.brand] = (brandCounts.positive[s.brand] || 0) + 1;
+    const w = signalWeight(s.created_at);
+    if (s.brand) brandCounts.positive[s.brand] = (brandCounts.positive[s.brand] || 0) + w;
   }
   for (const s of negative) {
-    if (s.brand) brandCounts.negative[s.brand] = (brandCounts.negative[s.brand] || 0) + 1;
+    const w = signalWeight(s.created_at);
+    if (s.brand) brandCounts.negative[s.brand] = (brandCounts.negative[s.brand] || 0) + w;
   }
 
   const likedBrands = Object.entries(brandCounts.positive)
-    .filter(([_, count]) => count >= 2)
+    .filter(([_, count]) => count >= 1.5) // ~2 recent signals or 3+ older ones
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([brand]) => brand);
 
   const avoidedBrands = Object.entries(brandCounts.negative)
-    .filter(([_, count]) => count >= 2)
+    .filter(([_, count]) => count >= 1.5)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
     .map(([brand]) => brand);
 
-  // Category analysis
+  // Category analysis (weighted by recency)
   const catCounts = { positive: {}, negative: {} };
   for (const s of positive) {
-    if (s.category) catCounts.positive[s.category] = (catCounts.positive[s.category] || 0) + 1;
+    const w = signalWeight(s.created_at);
+    if (s.category) catCounts.positive[s.category] = (catCounts.positive[s.category] || 0) + w;
   }
   for (const s of negative) {
-    if (s.category) catCounts.negative[s.category] = (catCounts.negative[s.category] || 0) + 1;
+    const w = signalWeight(s.created_at);
+    if (s.category) catCounts.negative[s.category] = (catCounts.negative[s.category] || 0) + w;
   }
 
   const preferredCategories = Object.entries(catCounts.positive)
-    .filter(([_, count]) => count >= 2)
+    .filter(([_, count]) => count >= 1.5)
     .sort((a, b) => b[1] - a[1])
     .map(([cat]) => cat);
 
   const avoidedCategories = Object.entries(catCounts.negative)
-    .filter(([_, count]) => count >= 3)
+    .filter(([_, count]) => count >= 2.0) // higher bar for avoidance to prevent over-filtering
     .sort((a, b) => b[1] - a[1])
     .map(([cat]) => cat);
 
-  // Color analysis
+  // Color analysis (weighted by recency)
   const colorCounts = { positive: {}, negative: {} };
   for (const s of positive) {
-    if (s.color) colorCounts.positive[s.color] = (colorCounts.positive[s.color] || 0) + 1;
+    const w = signalWeight(s.created_at);
+    if (s.color) colorCounts.positive[s.color] = (colorCounts.positive[s.color] || 0) + w;
   }
   for (const s of negative) {
-    if (s.color) colorCounts.negative[s.color] = (colorCounts.negative[s.color] || 0) + 1;
+    const w = signalWeight(s.created_at);
+    if (s.color) colorCounts.negative[s.color] = (colorCounts.negative[s.color] || 0) + w;
   }
 
   const positiveColors = Object.entries(colorCounts.positive)
-    .filter(([_, count]) => count >= 2)
+    .filter(([_, count]) => count >= 1.5)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([color]) => color);
 
   const negativeColors = Object.entries(colorCounts.negative)
-    .filter(([_, count]) => count >= 3)
+    .filter(([_, count]) => count >= 2.0)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([color]) => color);
 
-  // Style keyword aggregation
+  // Style keyword aggregation (weighted by recency)
   const kwCounts = {};
   for (const s of positive) {
+    const w = signalWeight(s.created_at);
     const kws = Array.isArray(s.style_keywords) ? s.style_keywords : [];
     for (const kw of kws) {
-      kwCounts[kw] = (kwCounts[kw] || 0) + 1;
+      kwCounts[kw] = (kwCounts[kw] || 0) + w;
     }
   }
   const topKeywords = Object.entries(kwCounts)
-    .filter(([_, count]) => count >= 2)
+    .filter(([_, count]) => count >= 1.5)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
     .map(([kw]) => kw);
