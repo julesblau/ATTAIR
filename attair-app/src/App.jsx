@@ -4467,6 +4467,9 @@ export default function App() {
   // ─── Identification preview ───────────────────────────────
   const [identPreview, setIdentPreview] = useState(null); // array of identified items | null
 
+  // ─── Pre-warm: start identify call when image loads (before user taps Scan) ──
+  const preWarmRef = useRef(null); // { base64Hash, promise, result, error }
+
   // ─── Re-search indicator ──────────────────────────────────
   const [isResearch, setIsResearch] = useState(false); // true when re-running a search (not first run)
 
@@ -5518,6 +5521,17 @@ export default function App() {
     setCropMode(false);
     setCrop(undefined);
     setCompletedCrop(undefined);
+
+    // Pre-warm: start identify call immediately while user is previewing/cropping.
+    // When they tap "Scan This", the result may already be ready.
+    if (r.base64 && !isGuest && canScan()) {
+      const hash = r.base64.slice(0, 50); // lightweight hash — same image = same prefix
+      const prefs = { gender: gender === "female" ? "female" : "male" };
+      const promise = API.identifyClothing(r.base64, r.mime || "image/jpeg", prefs)
+        .then(result => { if (preWarmRef.current?.base64Hash === hash) preWarmRef.current.result = result; return result; })
+        .catch(err => { if (preWarmRef.current?.base64Hash === hash) preWarmRef.current.error = err; });
+      preWarmRef.current = { base64Hash: hash, promise, result: null, error: null };
+    }
   };
 
   const retakeCrop = () => {
@@ -5526,6 +5540,7 @@ export default function App() {
     setCircleSearchActive(false);
     setPriorityRegionBase64(null);
     setCircleConfirmed(false);
+    preWarmRef.current = null; // invalidate pre-warm on retake
     if (fileRef.current) fileRef.current.value = "";
     if (galleryRef.current) galleryRef.current.value = "";
   };
@@ -5584,10 +5599,23 @@ export default function App() {
     track("scan_started", {}, null, "scan");
 
     // Phase 1: Identify (backend handles Claude + dedup + rate limit + image storage)
+    // Use pre-warmed result if available (started when image was loaded, before user tapped Scan)
     try {
-      const raw = isGuest
-        ? await API.guestIdentify(base64, mime, priorityRegionBase64)
-        : await API.identifyClothing(base64, mime, prefs, priorityRegionBase64);
+      let raw;
+      const hash = base64.slice(0, 50);
+      const pw = preWarmRef.current;
+      if (!isGuest && !priorityRegionBase64 && pw && pw.base64Hash === hash && !pw.error) {
+        // Pre-warm hit — either already resolved or await the in-flight promise
+        raw = pw.result || await pw.promise;
+        preWarmRef.current = null;
+        if (!raw) throw new Error("Pre-warm returned empty");
+      } else {
+        // No pre-warm available (guest, cropped, circle-search, or different image)
+        preWarmRef.current = null;
+        raw = isGuest
+          ? await API.guestIdentify(base64, mime, priorityRegionBase64)
+          : await API.identifyClothing(base64, mime, prefs, priorityRegionBase64);
+      }
       // Sort priority items first
       if (raw.items) {
         raw.items = [...raw.items].sort((a, b) => (b.priority ? 1 : 0) - (a.priority ? 1 : 0));
@@ -8044,8 +8072,9 @@ export default function App() {
                     opacity: (isFree && fastSearchesLeft <= 0) ? 0.45 : 1,
                   }}
                 >
-                  <div>⚡ Fast Search</div>
-                  {isFree && <div style={{ fontSize: 10, fontWeight: 400, opacity: .7, marginTop: 2 }}>{fastSearchesLeft > 0 ? `${fastSearchesLeft} left this month` : "Limit reached"}</div>}
+                  <div style={{ fontSize: 13 }}>⚡ Fast Search</div>
+                  <div style={{ fontSize: 9, fontWeight: 400, opacity: .6, marginTop: 2, letterSpacing: 0.3 }}>Instant results</div>
+                  {isFree && <div style={{ fontSize: 9, fontWeight: 400, opacity: .5, marginTop: 1 }}>{fastSearchesLeft > 0 ? `${fastSearchesLeft} left this month` : "Limit reached"}</div>}
                 </button>
                 <button
                   onClick={() => { if (isFree && deepSearchesLeft <= 0) { setUpgradeModal("search_limit"); return; } setSearchMode("extended"); }}
@@ -8057,12 +8086,13 @@ export default function App() {
                     opacity: (isFree && deepSearchesLeft <= 0) ? 0.45 : 1,
                   }}
                 >
-                  <div>🔍 Deep Search</div>
-                  {isFree && <div style={{ fontSize: 10, fontWeight: 400, opacity: .7, marginTop: 2 }}>{deepSearchesLeft > 0 ? `${deepSearchesLeft} left this week` : "Limit reached"}</div>}
+                  <div style={{ fontSize: 13 }}>✦ Deep Search</div>
+                  <div style={{ fontSize: 9, fontWeight: 400, opacity: .6, marginTop: 2, letterSpacing: 0.3 }}>AI-curated for you</div>
+                  {isFree && <div style={{ fontSize: 9, fontWeight: 400, opacity: .5, marginTop: 1 }}>{deepSearchesLeft > 0 ? `${deepSearchesLeft} left this week` : "Limit reached"}</div>}
                 </button>
               </div>
               <div style={{ fontSize: 11, color: "var(--text-tertiary)", textAlign: "center", marginBottom: 8 }}>
-                {searchMode === "fast" ? "Quick results in ~5 seconds" : "AI-ranked results, deeper matching (~15-20s)"}
+                {searchMode === "fast" ? "Quick results from 50+ retailers" : "AI-ranked picks personalized to your style"}
               </div>
 
               {/* Search CTA */}
