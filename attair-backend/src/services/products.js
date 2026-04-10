@@ -1626,6 +1626,7 @@ function formatProduct(product, isOriginalBrand) {
     is_product_page: true,
     is_identified_brand: isOriginalBrand,
     is_resale: classifyMarket(product) === "resale",
+    _immersive_token: product.immersive_product_page_token || null, // for vendor URL resolution
     why: "",
   };
 }
@@ -2559,6 +2560,67 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
       console.log(`[Diversity] "${item.name}": injected ${Math.min(3, newProducts.length)} supplementary results into ${targetTier} tier`);
     });
     await Promise.all(diversityPromises);
+  }
+
+  // ── Step 5c (extended mode only): Resolve direct vendor URLs ──
+  // For top products in each tier, call SerpAPI immersive product API
+  // to get the actual vendor URL (instead of Google redirect).
+  // Only resolves products that have an immersive_product_page_token.
+  if (searchMode === "extended") {
+    const productsToResolve = [];
+    for (const result of output) {
+      for (const tierKey of ["budget", "mid", "premium"]) {
+        const products = result.tiers?.[tierKey] || [];
+        // Resolve top 2 per tier (the ones users actually see/click)
+        for (const p of products.slice(0, 2)) {
+          if (p._immersive_token && p.url?.includes("google.com")) {
+            productsToResolve.push(p);
+          }
+        }
+      }
+    }
+
+    if (productsToResolve.length > 0) {
+      console.log(`[VendorURL] Resolving ${productsToResolve.length} direct vendor URLs...`);
+      const resolvePromises = productsToResolve.map(async (p) => {
+        await serpAcquire();
+        try {
+          const params = new URLSearchParams({
+            engine: "google_immersive_product",
+            page_token: p._immersive_token,
+            api_key: process.env.SERPAPI_KEY,
+          });
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          const res = await fetch(`${SERPAPI_URL}?${params}`, { signal: controller.signal });
+          clearTimeout(timeout);
+          if (!res.ok) return;
+          const data = await res.json();
+          const stores = data.product_results?.stores || [];
+          // Use the first store with a non-Google direct link
+          const directStore = stores.find(s => s.link && !s.link.includes("google.com"));
+          if (directStore) {
+            p.url = directStore.link;
+            p._vendor_resolved = true;
+            if (_tel) _tel.serpApiCalls++;
+          }
+        } catch {} // silent — vendor resolution must never fail the search
+        finally { serpRelease(); }
+      });
+      await Promise.all(resolvePromises);
+      const resolved = productsToResolve.filter(p => p._vendor_resolved).length;
+      console.log(`[VendorURL] Resolved ${resolved}/${productsToResolve.length} to direct vendor URLs`);
+    }
+  }
+
+  // Clean up internal fields before returning
+  for (const result of output) {
+    for (const tierKey of ["budget", "mid", "premium", "resale"]) {
+      for (const p of (result.tiers?.[tierKey] || [])) {
+        delete p._immersive_token;
+        delete p._vendor_resolved;
+      }
+    }
   }
 
   // ── Step 6: Style Match Score ─────────────────────────────
