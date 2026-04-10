@@ -8266,7 +8266,7 @@ export default function App() {
                             track("verdict_set", { verdict: newVerdict }, scanId, "scan");
                             if (newVerdict === "would_wear" && results?.items) {
                               results.items.forEach((item, idx) => {
-                                if (pickedItems.has(idx) && item.tiers) {
+                                if (pickedItems.has(idx) && Array.isArray(item.tiers)) {
                                   const bestTier = item.tiers.find(t => t.products?.length > 0);
                                   if (bestTier) {
                                     API.saveItem(scanId, item, bestTier.tier, bestTier.products[0]).catch(() => {});
