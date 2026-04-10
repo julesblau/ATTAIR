@@ -78,8 +78,10 @@ function decodeJwt(token) {
 
 /**
  * Fetch wrapper that auto-retries on 401 by refreshing the token once.
- * If refresh fails, clears auth and throws "Session expired".
+ * If refresh fails, clears auth, triggers session-expired callback, and throws.
  */
+let _onSessionExpired = null;
+function setSessionExpiredHandler(fn) { _onSessionExpired = fn; }
 async function authFetch(url, options = {}) {
   const res = await fetch(url, { ...options, headers: Auth.headers() });
   if (res.status === 401 && Auth.getRefresh()) {
@@ -90,6 +92,7 @@ async function authFetch(url, options = {}) {
       return retry;
     } catch {
       Auth.clear();
+      if (_onSessionExpired) _onSessionExpired();
       throw new Error("Session expired — please log in again");
     }
   }
@@ -5975,6 +5978,9 @@ export default function App() {
 
   const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); lsCache.clear("attair_history_cache"); lsCache.clear("attair_saved_cache"); lsCache.clear("attair_wishlists_cache"); lsCache.clear("attair_styledna_cache"); lsCache.clear("attair_profile_cache"); setAuthed(false); setAuthEmail(""); setAuthName(""); setAuthAvatarUrl(null); setUserStatus(null); setProfileBio(""); setProfileStats(null); setProfileStatsLoaded(false); setScreen("onboarding"); setObIdx(0); };
 
+  // Register global session-expired handler so any authFetch 401 triggers logout
+  useEffect(() => { setSessionExpiredHandler(() => handleLogout()); }, []);
+
   const step = OB_STEPS[obIdx];
   const prog = ((obIdx + 1) / OB_STEPS.length) * 100;
 
@@ -6015,7 +6021,7 @@ export default function App() {
       {/* ─── PAYWALL ─────────────────────────────────────── */}
       {screen === "paywall" && (
         <div className={`pw ${fade}`}>
-          <button className="pw-skip" onClick={() => trans(() => setScreen(authed ? "app" : "auth"))}>{authed ? "Maybe later" : "Skip — start free"}</button>
+          <button className="pw-skip" onClick={() => trans(() => setScreen("app"))}>{authed ? "Maybe later" : "Skip — start free"}</button>
           <div className="pw-badge">✦ LIMITED OFFER</div>
           <h1 className="pw-t">Unlock unlimited<br />outfit scans</h1>
           <p className="pw-st">Unlimited scans, zero ads, and priority results. Three price options for every item.</p>
