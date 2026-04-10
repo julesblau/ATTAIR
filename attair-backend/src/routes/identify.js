@@ -166,6 +166,12 @@ router.post("/", requireAuth, scanRateLimit, async (req, res) => {
     // SECURITY: Do not forward err.message to the client — it can contain Anthropic API error
     // bodies, internal paths, or DB details. Log server-side only.
     console.error("Identify error:", err.message);
+
+    // Roll back the scan counter if it was already incremented by the rate-limit middleware
+    if (req.scanAlreadyIncremented) {
+      supabase.from("profiles").update({ scans_today: Math.max(0, (req.profile.scans_today || 1) - 1) }).eq("id", req.userId).then(() => {}).catch(() => {});
+    }
+
     return res.status(500).json({ error: "Identification failed" });
   }
 });
