@@ -9979,6 +9979,21 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Add to Home Screen — only show when not already installed */}
+                  {!isStandalone && (
+                    <div className="settings-sheet-item card-press" style={{ cursor: "pointer", marginTop: 8 }} onClick={() => {
+                      if (installPrompt) { handleInstall(); }
+                      else if (isIOS) { showToast("Tap the Share button ↗ in Safari, then \"Add to Home Screen\"", "info"); }
+                      else { showToast("Open in Chrome and use menu → \"Add to Home Screen\"", "info"); }
+                    }} role="button">
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Add to Home Screen</div>
+                        <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>{isIOS ? "Tap Share ↗ → Add to Home Screen" : "Install as an app on your device"}</div>
+                      </div>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+                    </div>
+                  )}
+
                   {/* Sign out */}
                   <div className="settings-sheet-item danger" style={{ marginTop: 8 }} onClick={() => { setProfileSettingsOpen(false); handleLogout(); }} role="button" aria-label="Sign out">{t("log_out")}</div>
                   </div>
@@ -10693,17 +10708,7 @@ export default function App() {
           );
         })()}
 
-        {/* ─── PWA Install Banner ── */}
-        {showInstallBanner && (
-          <div style={{ padding: "10px 16px", marginBottom: 60, background: "linear-gradient(135deg, rgba(201,169,110,.12) 0%, rgba(201,169,110,.06) 100%)", borderTop: "1px solid rgba(201,169,110,.2)", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Add ATTAIRE to Home Screen</div>
-              <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{isIOS ? "Tap Share ↗ then \"Add to Home Screen\"" : "Get the full app experience"}</div>
-            </div>
-            {!isIOS && <button onClick={handleInstall} style={{ padding: "6px 16px", background: "var(--accent)", border: "none", borderRadius: 100, fontSize: 11, fontWeight: 700, color: "#0C0C0E", cursor: "pointer" }}>Install</button>}
-            <button onClick={() => { setShowInstallBanner(false); if (isIOS) localStorage.setItem("attair_ios_banner_dismissed", "1"); }} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 16, cursor: "pointer", padding: 4 }}>&times;</button>
-          </div>
-        )}
+        {/* PWA Install Banner removed — install option lives in Settings */}
 
         {/* ─── Tab bar (5 tabs: Feed, Discover, Scan, Saved, Profile) ── */}
         <div className="tb">
