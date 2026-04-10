@@ -6730,7 +6730,7 @@ export default function App() {
       {/* ─── MAIN APP ────────────────────────────────────── */}
       {screen === "app" && (<>
         <div className="hdr">
-          <><img src="/logo.png" alt="ATTAIRE" className="logo-img logo-img--dark" /><img src="/logo.png" alt="ATTAIRE" className="logo-img logo-img--light" /></>
+          <><img src="/logo.png" alt="ATTAIRE" className="logo-img logo-img--dark" /><img src="/logo-transparent.png" alt="ATTAIRE" className="logo-img logo-img--light" /></>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {authed && !isGuest && (
               <button onClick={async () => { setShowNotifPanel(p => !p); if (!showNotifPanel) { const data = await API.getNotifications(); setNotifications(data.notifications || []); const uids = (data.notifications || []).filter(n => !n.read_at).map(n => n.id); if (uids.length > 0) API.markNotifsRead(uids).then(() => setNotifCount(0)).catch(() => {}); } }} style={{ position: "relative", background: "none", border: "none", padding: "4px 6px", cursor: "pointer", display: "flex", alignItems: "center" }} aria-label="Notifications">
@@ -7759,7 +7759,7 @@ export default function App() {
                   <div className="identify-particle" />
                   <div className="identify-particle" />
                   <div className="identify-particle" />
-                  <img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
+                  <img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-transparent.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
                 </div>
 
                 {/* Animated status text */}
@@ -8208,7 +8208,7 @@ export default function App() {
                   <div className="identify-particle" />
                   <div className="identify-particle" />
                   <div className="identify-particle" />
-                  <img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
+                  <img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-transparent.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
                 </div>
 
                 {/* Cycling status text */}
@@ -10831,7 +10831,7 @@ export default function App() {
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-secondary, #0C0C0E)", display: "flex", flexDirection: "column", overflow: "auto" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
-            <><img src="/logo.png" alt="ATTAIRE" className="logo-img logo-img--dark" loading="lazy" /><img src="/logo.png" alt="ATTAIRE" className="logo-img logo-img--light" loading="lazy" /></>
+            <><img src="/logo.png" alt="ATTAIRE" className="logo-img logo-img--dark" loading="lazy" /><img src="/logo-transparent.png" alt="ATTAIRE" className="logo-img logo-img--light" loading="lazy" /></>
             <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
           </div>
 
