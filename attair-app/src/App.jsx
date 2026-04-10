@@ -6012,9 +6012,9 @@ export default function App() {
             if (authed) {
               API.updateProfile({ style_interests: picks, gender_pref: gender }).then(() => { lsCache.clear("attair_styledna_cache"); }).catch(() => {});
             }
-            trans(() => setScreen("app"));
+            trans(() => { setTab("home"); setScreen("app"); });
           }}
-          onSkip={() => trans(() => setScreen("app"))}
+          onSkip={() => trans(() => { setTab("home"); setScreen("app"); })}
         />
       )}
 
