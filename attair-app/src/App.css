@@ -935,6 +935,7 @@
   filter: drop-shadow(0 0 12px rgba(201,169,110,.4));
   animation: identifyLogoFloat 4s ease-in-out infinite;
 }
+.identify-logo-img--dark{mix-blend-mode:lighten}
 .identify-logo-img--light{display:none}
 .app[data-theme='light'] .identify-logo-img--dark{display:none}
 .app[data-theme='light'] .identify-logo-img--light{display:block;position:relative;z-index:1;height:38px;width:auto;filter:drop-shadow(0 0 12px rgba(201,169,110,.4));animation:identifyLogoFloat 4s ease-in-out infinite}
@@ -2211,7 +2212,7 @@
 .hdr svg{stroke:var(--hdr-icon,#1A1816)}
 .logo{font-family:'Instrument Serif';font-size:22px;color:var(--text-primary);font-style:italic;letter-spacing:0.04em}.logo span{color:var(--accent)}
 .logo-img{height:28px;width:auto;display:block;border-radius:2px;padding:0}
-.logo-img--dark{display:block}
+.logo-img--dark{display:block;mix-blend-mode:lighten}
 .logo-img--light{display:none}
 .app[data-theme='light'] .logo-img--dark{display:none}
 .app[data-theme='light'] .logo-img--light{display:block}

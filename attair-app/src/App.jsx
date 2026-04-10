@@ -2779,15 +2779,78 @@ const OB_STEPS = [
 ];
 
 // Demo data for TikTok-speed onboarding animation
-const OB_DEMO_ITEMS = [
-  { emoji: "👕", name: "Cotton Crewneck Tee", color: "White", price: "$28" },
-  { emoji: "👖", name: "Slim Straight Jeans", color: "Indigo", price: "$65" },
-  { emoji: "👟", name: "Leather Sneakers", color: "White", price: "$95" },
-];
-const OB_DEMO_RESULTS = [
-  { tier: "budget", store: "H&M", price: "$19", name: "Basic Cotton Tee" },
-  { tier: "mid", store: "Everlane", price: "$35", name: "Premium Weight Tee" },
-  { tier: "premium", store: "APC", price: "$95", name: "Petit New Standard" },
+// 5 real outfits that cycle through the landing page demo
+const OB_DEMO_OUTFITS = [
+  {
+    image: "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=400&h=700&fit=crop&crop=center",
+    alt: "Business casual: navy blazer, white shirt, chinos",
+    items: [
+      { emoji: "🧥", name: "Tailored Navy Blazer" },
+      { emoji: "👔", name: "White Poplin Shirt" },
+      { emoji: "👖", name: "Tan Chinos" },
+    ],
+    results: [
+      { tier: "budget", store: "Zara", price: "$89", name: "Wool Blend Blazer" },
+      { tier: "mid", store: "J.Crew", price: "$198", name: "Ludlow Slim Blazer" },
+      { tier: "premium", store: "Reiss", price: "$470", name: "Promise Wool Blazer" },
+    ],
+  },
+  {
+    image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=700&fit=crop&crop=center",
+    alt: "Street style: cropped hoodie, high-waist jeans",
+    items: [
+      { emoji: "👚", name: "Cropped Hoodie" },
+      { emoji: "👖", name: "High-Rise Straight Jeans" },
+      { emoji: "👟", name: "Chunky Sneakers" },
+    ],
+    results: [
+      { tier: "budget", store: "H&M", price: "$35", name: "Cropped Sweatshirt" },
+      { tier: "mid", store: "Levi's", price: "$98", name: "Ribcage Jeans" },
+      { tier: "premium", store: "Axel Arigato", price: "$250", name: "Marathon Runner" },
+    ],
+  },
+  {
+    image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=700&fit=crop&crop=center",
+    alt: "Elegant: silk blouse, tailored trousers, heels",
+    items: [
+      { emoji: "👗", name: "Silk Button Blouse" },
+      { emoji: "👖", name: "Wide Leg Trousers" },
+      { emoji: "👜", name: "Leather Tote Bag" },
+    ],
+    results: [
+      { tier: "budget", store: "Mango", price: "$59", name: "Satin Blouse" },
+      { tier: "mid", store: "Vince", price: "$245", name: "Silk Button-Down" },
+      { tier: "premium", store: "The Row", price: "$890", name: "Silk Popover" },
+    ],
+  },
+  {
+    image: "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=700&fit=crop&crop=center",
+    alt: "Smart casual: camel blazer, white tee, light jeans",
+    items: [
+      { emoji: "🧥", name: "Camel Oversized Blazer" },
+      { emoji: "👕", name: "White Crew Neck Tee" },
+      { emoji: "👟", name: "Retro High-Top Sneakers" },
+    ],
+    results: [
+      { tier: "budget", store: "ASOS", price: "$45", name: "Oversized Blazer" },
+      { tier: "mid", store: "COS", price: "$175", name: "Wool Blend Blazer" },
+      { tier: "premium", store: "Theory", price: "$395", name: "Clinton Blazer" },
+    ],
+  },
+  {
+    image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=400&h=700&fit=crop&crop=center",
+    alt: "Boho: flowing dress, statement accessories",
+    items: [
+      { emoji: "👗", name: "Floral Maxi Dress" },
+      { emoji: "🧣", name: "Woven Belt" },
+      { emoji: "👡", name: "Leather Sandals" },
+    ],
+    results: [
+      { tier: "budget", store: "Free People", price: "$68", name: "Floral Midi" },
+      { tier: "mid", store: "Reformation", price: "$218", name: "Juliette Dress" },
+      { tier: "premium", store: "Zimmermann", price: "$695", name: "Linen Dress" },
+    ],
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -2816,10 +2879,14 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
   const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
   const [demoPhase, setDemoPhase] = useState(0); // 0=photo, 1=scanning, 2=items, 3=results, 4=fade-out
   const [cycleKey, setCycleKey] = useState(0);
+  const [demoOutfitIdx, setDemoOutfitIdx] = useState(0); // cycles through OB_DEMO_OUTFITS
+  const demoOutfit = OB_DEMO_OUTFITS[demoOutfitIdx % OB_DEMO_OUTFITS.length];
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
     API.getStats().then(setStats).catch(() => {});
+    // Preload all demo outfit images for smooth transitions
+    OB_DEMO_OUTFITS.forEach(o => { const img = new Image(); img.src = o.image; });
   }, []);
 
   useEffect(() => {
@@ -2828,6 +2895,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
       setDemoPhase(p => {
         if (p >= 4) {
           setCycleKey(k => k + 1);
+          setDemoOutfitIdx(i => (i + 1) % OB_DEMO_OUTFITS.length); // next outfit
           return 0;
         }
         return p + 1;
@@ -2839,7 +2907,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
   return (
     <div className={`ob ob-demo ${fade}`}>
       {/* Logo pinned to top */}
-      <img src="/logo-dark.svg" alt="ATTAIRE" style={{ display: "block", margin: "0 auto", paddingTop: 16, width: "60%", maxWidth: 220, height: "auto" }} />
+      <img src="/logo.png" alt="ATTAIRE" style={{ display: "block", margin: "0 auto", paddingTop: 16, width: "60%", maxWidth: 220, height: "auto", mixBlendMode: "lighten" }} />
       <h2 style={{ textAlign: "center", margin: "12px 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: 1.5, color: "#FAFAFA" }}>
         {(() => { const tl = _t("ob_tagline"); const parts = tl.split(". "); if (parts.length >= 2) { const last = parts.pop(); return <>{parts.join(". ")}. <span style={{ color: "#C9A96E" }}>{last}</span></>; } return tl; })()}
       </h2>
@@ -2850,9 +2918,9 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
           {/* Phase 0-1: Outfit photo with gradient */}
           <div className="ob-demo-photo" style={{ opacity: 1 }}>
             <img
-              src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=400&h=700&fit=crop&crop=center"
-              alt="Outfit: white tee, jeans, sneakers"
-              style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, borderRadius: "inherit" }}
+              src={demoOutfit.image}
+              alt={demoOutfit.alt}
+              style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, borderRadius: "inherit", transition: "opacity 0.4s ease" }}
             />
 
             {/* Phase 1: Scanning laser line */}
@@ -2860,9 +2928,9 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
 
             {/* Phase 2: Item labels pop in */}
             <div className="ob-demo-items">
-              {OB_DEMO_ITEMS.map((item, i) => (
+              {demoOutfit.items.map((item, i) => (
                 <div
-                  key={i}
+                  key={`${demoOutfitIdx}-${i}`}
                   className={`ob-demo-item-tag ${demoPhase >= 2 && demoPhase < 4 ? "visible" : ""}`}
                   style={{ transitionDelay: `${i * 150}ms`, top: `${18 + i * 28}%` }}
                 >
@@ -2880,9 +2948,9 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
               <span className="ob-demo-results-dot" />
               Products found
             </div>
-            {OB_DEMO_RESULTS.map((r, i) => (
+            {demoOutfit.results.map((r, i) => (
               <div
-                key={i}
+                key={`${demoOutfitIdx}-r${i}`}
                 className={`ob-demo-result-card ${demoPhase >= 3 && demoPhase < 4 ? "visible" : ""}`}
                 style={{ transitionDelay: `${i * 120}ms` }}
               >
@@ -6662,7 +6730,7 @@ export default function App() {
       {/* ─── MAIN APP ────────────────────────────────────── */}
       {screen === "app" && (<>
         <div className="hdr">
-          <><img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" /></>
+          <><img src="/logo.png" alt="ATTAIRE" className="logo-img logo-img--dark" /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" /></>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             {authed && !isGuest && (
               <button onClick={async () => { setShowNotifPanel(p => !p); if (!showNotifPanel) { const data = await API.getNotifications(); setNotifications(data.notifications || []); const uids = (data.notifications || []).filter(n => !n.read_at).map(n => n.id); if (uids.length > 0) API.markNotifsRead(uids).then(() => setNotifCount(0)).catch(() => {}); } }} style={{ position: "relative", background: "none", border: "none", padding: "4px 6px", cursor: "pointer", display: "flex", alignItems: "center" }} aria-label="Notifications">
@@ -7691,7 +7759,7 @@ export default function App() {
                   <div className="identify-particle" />
                   <div className="identify-particle" />
                   <div className="identify-particle" />
-                  <img src="/logo-dark.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
+                  <img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
                 </div>
 
                 {/* Animated status text */}
@@ -8140,7 +8208,7 @@ export default function App() {
                   <div className="identify-particle" />
                   <div className="identify-particle" />
                   <div className="identify-particle" />
-                  <img src="/logo-dark.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
+                  <img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-light.svg" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
                 </div>
 
                 {/* Cycling status text */}
@@ -10763,7 +10831,7 @@ export default function App() {
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-secondary, #0C0C0E)", display: "flex", flexDirection: "column", overflow: "auto" }}>
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
-            <><img src="/logo-dark.svg" alt="ATTAIRE" className="logo-img logo-img--dark" loading="lazy" /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" loading="lazy" /></>
+            <><img src="/logo.png" alt="ATTAIRE" className="logo-img logo-img--dark" loading="lazy" /><img src="/logo-light.svg" alt="ATTAIRE" className="logo-img logo-img--light" loading="lazy" /></>
             <button onClick={() => { setPublicScanView(null); window.history.replaceState(null, "", "/"); }} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 20, cursor: "pointer", padding: 8, minWidth: 44, minHeight: 44 }}>&times;</button>
           </div>
 
