@@ -5147,7 +5147,8 @@ export default function App() {
   useEffect(() => {
     if (authed && screen === "app") {
       const picked = localStorage.getItem("attair_interests_picked");
-      if (!picked) {
+      // Don't show if already dismissed OR if user already has style interests from profile
+      if (!picked && !(userStatus?.style_interests?.length > 0)) {
         setTimeout(() => setShowInterestPicker(true), 1500);
       }
     }
@@ -7776,13 +7777,19 @@ export default function App() {
                 </div>
 
                 {/* Free user ad slot during loading */}
-                {isFree && (
-                  <div onClick={() => setUpgradeModal("identifying_ad")} style={{ width: "100%", padding: "12px 16px", background: "linear-gradient(135deg, rgba(201,169,110,.08), rgba(201,169,110,.02))", border: "1px solid rgba(201,169,110,.15)", borderRadius: 12, cursor: "pointer", textAlign: "center" }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: "rgba(201,169,110,.4)", textTransform: "uppercase", marginBottom: 4 }}>Sponsored</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>Skip the wait — Go Pro</div>
-                    <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>Unlimited scans &middot; Priority results</div>
-                  </div>
-                )}
+                {isFree && (() => {
+                  const spot = RETAILER_SPOTLIGHTS[loadMsgIdx % RETAILER_SPOTLIGHTS.length];
+                  return (
+                    <a href={spot.url} target="_blank" rel="noopener noreferrer" onClick={() => track("identify_ad_clicked", { retailer: spot.name })} style={{ width: "100%", padding: "14px 16px", background: spot.gradient, border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, textDecoration: "none", display: "flex", alignItems: "center", gap: 12, transition: "opacity .3s" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(255,255,255,.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: spot.accent, flexShrink: 0 }}>{spot.name[0]}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{spot.name}</div>
+                        <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", marginTop: 1 }}>{spot.tagline}</div>
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: spot.accent, flexShrink: 0 }}>Shop</div>
+                    </a>
+                  );
+                })()}
               </div>
             </div>
           )}
