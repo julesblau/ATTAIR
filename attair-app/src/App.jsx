@@ -5919,8 +5919,8 @@ export default function App() {
     const currentScanId = scanId || "x";
     const currentRefineCount = refineCountMap[currentScanId] || 0;
 
-    // Free tier: limit 3 refines per scan (was 1 — too aggressive, felt broken)
-    if (isFree && currentRefineCount >= 3) {
+    // Free tier: limit 1 refine per scan
+    if (isFree && currentRefineCount >= 1) {
       setUpgradeModal("refine_limit");
       return;
     }
@@ -5936,8 +5936,13 @@ export default function App() {
     }
 
     try {
+      // activeItemIdx is an index into the PICKED items list, not results.items.
+      // Convert to the actual results.items index for the API.
+      const pickedList = results.items.map((it, idx) => ({ it, idx })).filter(({ idx }) => pickedItems.has(idx));
+      const actualItemIdx = pickedList[Math.min(activeItemIdx, pickedList.length - 1)]?.idx ?? 0;
+
       const res = await API.refineSearch(
-        results.items, activeItemIdx, text, results.gender, currentScanId, searchMode
+        results.items, actualItemIdx, text, results.gender, currentScanId, searchMode
       );
       // Update affected items' tiers
       if (res.updated_items) {
@@ -9028,9 +9033,8 @@ export default function App() {
 
                 {/* Saved items grid (no Complete the Look here — moved to results page) */}
 
-                {/* Complete the Look removed — lives on results page now */}
-                {/* eslint-disable-next-line no-constant-binary-expression */}
-                {false && (() => {
+                {/* Saved items / Complete the Look */}
+                {(() => {
                   // Use backend looks data, fallback to client-side grouping
                   const looksData = looks.length > 0 ? looks : (() => {
                     const outfitMap = new Map();

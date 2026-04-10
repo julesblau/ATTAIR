@@ -374,7 +374,7 @@ router.post("/", requireAuth, async (req, res) => {
 });
 
 // ─── Refine search ─────────────────────────────────────────
-const FREE_REFINE_LIMIT = 3; // per scan for free/expired tier (was 1 — too aggressive)
+const FREE_REFINE_LIMIT = 1; // per scan for free/expired tier
 
 /**
  * POST /api/find-products/refine
