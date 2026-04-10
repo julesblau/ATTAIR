@@ -2060,6 +2060,20 @@ export async function findProductsForItems(items, gender, budgetMin, budgetMax, 
           const kwMatches = (preferenceProfile.style_keywords || []).filter(kw => wordMatch(title, kw.toLowerCase())).length;
           if (kwMatches > 0) score += Math.min(kwMatches * 5, 20);
 
+          // ── Gaussian price sweet spot scoring ──────────────────
+          // If we have learned per-category price preferences, apply a
+          // Gaussian bonus that peaks at the user's sweet spot price.
+          // This supplements (doesn't replace) the base price proximity scoring.
+          if (preferenceProfile._priceProfiles && price !== null) {
+            const cat = (item.category || "").toLowerCase();
+            const pp = preferenceProfile._priceProfiles[cat];
+            if (pp && pp.sample_count >= 3) {
+              const z = (price - pp.sweet_spot) / pp.std_dev;
+              const gaussianBonus = Math.exp(-0.5 * z * z) * 20; // peak +20 at sweet spot
+              score += Math.round(gaussianBonus);
+            }
+          }
+
           // Rejected product fingerprint check — if user said "Not for me"
           // to a product with a similar fingerprint, penalize it hard
           if (preferenceProfile._rejected_fingerprints?.size > 0) {

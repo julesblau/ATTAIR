@@ -217,6 +217,66 @@ export async function computePreferenceProfile(userId) {
 }
 
 /**
+ * Compute per-category price sweet spots from positive signals.
+ * Updates user_price_profiles table with Gaussian parameters.
+ */
+export async function updatePriceProfiles(userId) {
+  // Fetch positive signals that have a price_range
+  const { data: signals } = await supabase
+    .from("preference_signals")
+    .select("category, price_range, created_at")
+    .eq("user_id", userId)
+    .eq("signal", "positive")
+    .not("price_range", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (!signals || signals.length < 3) return;
+
+  // Group prices by category
+  const byCategory = {};
+  for (const s of signals) {
+    if (!s.category || !s.price_range) continue;
+    // Extract numeric price from price_range (e.g. "$50-$100" → midpoint 75)
+    const nums = s.price_range.match(/\d+/g);
+    if (!nums || nums.length === 0) continue;
+    const price = nums.length >= 2
+      ? (parseFloat(nums[0]) + parseFloat(nums[1])) / 2
+      : parseFloat(nums[0]);
+    if (isNaN(price) || price <= 0) continue;
+
+    const w = signalWeight(s.created_at);
+    if (!byCategory[s.category]) byCategory[s.category] = [];
+    byCategory[s.category].push({ price, weight: w });
+  }
+
+  // Compute Gaussian parameters per category
+  for (const [category, entries] of Object.entries(byCategory)) {
+    if (entries.length < 2) continue;
+
+    const totalWeight = entries.reduce((sum, e) => sum + e.weight, 0);
+    const weightedMean = entries.reduce((sum, e) => sum + e.price * e.weight, 0) / totalWeight;
+
+    const weightedVariance = entries.reduce((sum, e) =>
+      sum + e.weight * Math.pow(e.price - weightedMean, 2), 0) / totalWeight;
+    const stdDev = Math.max(Math.sqrt(weightedVariance), 10); // floor to prevent over-narrowing
+
+    const prices = entries.map(e => e.price).sort((a, b) => a - b);
+    const hardMax = prices[Math.floor(prices.length * 0.95)] || prices[prices.length - 1];
+
+    await supabase.from("user_price_profiles").upsert({
+      user_id: userId,
+      category,
+      sweet_spot: Math.round(weightedMean * 100) / 100,
+      std_dev: Math.round(stdDev * 100) / 100,
+      hard_max: Math.round(hardMax * 100) / 100,
+      sample_count: entries.length,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,category" }).catch(() => {});
+  }
+}
+
+/**
  * Get the user's preference profile (cached or compute fresh).
  */
 export async function getPreferenceProfile(userId) {
