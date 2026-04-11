@@ -3165,7 +3165,7 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
             {selected.length > 0 ? `Continue with ${selected.length} picks` : "Continue"}
           </button>
         ) : (
-          <button className="ob-inspo-skip" onClick={() => { localStorage.setItem("attair_inspirations", "[]"); onSkip(); }}>
+          <button className="ob-inspo-skip" onClick={() => { localStorage.setItem("attair_inspirations", "[]"); if (shopFor) localStorage.setItem("attair_ob_gender", shopFor === "women" ? "female" : shopFor === "men" ? "male" : "both"); onSkip(); }}>
             {_t("ob_skip")}
           </button>
         )}
