@@ -138,6 +138,37 @@ const LAST = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const uuid = () => crypto.randomUUID();
 
+// Brand → domain mapping for constructing direct vendor links
+const BRAND_DOMAINS = {
+  adanola: "adanola.com", skims: "skims.com", lululemon: "lululemon.com", vuori: "vuori.com",
+  "alo yoga": "aloyoga.com", gymshark: "gymshark.com", zara: "zara.com", aritzia: "aritzia.com",
+  "princess polly": "princesspolly.com", "white fox": "whitefoxboutique.com", "oh polly": "ohpolly.com",
+  "free people": "freepeople.com", revolve: "revolve.com", cos: "cos.com",
+  "banana republic": "bananarepublic.com", "massimo dutti": "massimodutti.com",
+  abercrombie: "abercrombie.com", "marine layer": "marinelayer.com", faherty: "faherty.com",
+  reformation: "thereformation.com", allsaints: "allsaints.com", reiss: "reiss.com",
+  sandro: "sandro-paris.com", maje: "maje.com", nike: "nike.com", adidas: "adidas.com",
+  "new balance": "newbalance.com", salomon: "salomon.com", nordstrom: "nordstrom.com",
+  gucci: "gucci.com", "louis vuitton": "louisvuitton.com", prada: "prada.com", dior: "dior.com",
+  balenciaga: "balenciaga.com", "bottega veneta": "bottegaveneta.com",
+  "saint laurent": "ysl.com", burberry: "burberry.com", valentino: "valentino.com",
+  versace: "versace.com", givenchy: "givenchy.com", celine: "celine.com", loewe: "loewe.com",
+  fendi: "fendi.com", "alexander mcqueen": "alexandermcqueen.com",
+  "acne studios": "acnestudios.com", "ami paris": "amiparis.com", "isabel marant": "isabelmarant.com",
+  jacquemus: "jacquemus.com", "the row": "therow.com", toteme: "toteme.com", ganni: "ganni.com",
+  staud: "staud.clothing", agolde: "agolde.com", "citizens of humanity": "citizensofhumanity.com",
+  paige: "paige.com", "mother denim": "motherdenim.com", frame: "frame-store.com",
+  "dr. martens": "drmartens.com", birkenstock: "birkenstock.com", ugg: "ugg.com",
+  converse: "converse.com", vans: "vans.com", "on running": "on-running.com", hoka: "hoka.com",
+  "stuart weitzman": "stuartweitzman.com", "jimmy choo": "jimmychoo.com",
+  "golden goose": "goldengoose.com", theory: "theory.com", vince: "vince.com",
+  "rag & bone": "rag-bone.com", "club monaco": "clubmonaco.com", "j.crew": "jcrew.com",
+  madewell: "madewell.com", anthropologie: "anthropologie.com", "urban outfitters": "urbanoutfitters.com",
+  "h&m": "hm.com", uniqlo: "uniqlo.com", everlane: "everlane.com", pangaia: "pangaia.com",
+  coach: "coach.com", "kate spade": "katespade.com", "michael kors": "michaelkors.com",
+  "tory burch": "toryburch.com", "ray-ban": "ray-ban.com",
+};
+
 // Category detection from query/title
 function detectCategory(text) {
   const t = text.toLowerCase();
@@ -257,8 +288,15 @@ async function run() {
       const scans = [];
       for (let pi = 0; pi < productsToProcess.length; pi++) {
         const product = productsToProcess[pi];
-        const vendorUrl = vendorUrls[pi];
-        if (!vendorUrl) continue; // skip products without a real vendor link
+        // Use resolved vendor URL, or construct from source domain, or use product_link as last resort
+        let vendorUrl = vendorUrls[pi];
+        if (!vendorUrl && product.source) {
+          // Construct a search URL on the retailer's own site
+          const sourceDomain = BRAND_DOMAINS[product.source.toLowerCase()] || BRAND_DOMAINS[brand.toLowerCase()];
+          if (sourceDomain) vendorUrl = `https://${sourceDomain}`;
+        }
+        if (!vendorUrl) vendorUrl = product.product_link; // Google redirect fallback
+        if (!vendorUrl) continue;
 
         const account = pick(matchingAccounts.length > 0 ? matchingAccounts : allAccounts);
         const price = product.extracted_price || product.price;
