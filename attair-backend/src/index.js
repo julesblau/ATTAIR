@@ -162,36 +162,36 @@ app.use("/api", socialRouter);
 // ─── Public stats (no auth — used by onboarding) ──────────
 import supabase from "./lib/supabase.js";
 
-// Cache stats for 5 minutes to avoid hammering DB
-let statsCache = { data: null, ts: 0 };
+// Cache scan count for 5 min, but shuffle recent scans fresh each time
+let statsScanCount = { count: 0, ts: 0 };
 app.get("/api/stats", async (req, res) => {
   try {
-    if (statsCache.data && Date.now() - statsCache.ts < 5 * 60 * 1000) {
-      return res.json(statsCache.data);
+    // Cache just the scan count (expensive query)
+    if (!statsScanCount.count || Date.now() - statsScanCount.ts > 5 * 60 * 1000) {
+      const { count } = await supabase.from("scans").select("*", { count: "exact", head: true });
+      statsScanCount = { count: count || 0, ts: Date.now() };
     }
-    const { count: scanCount } = await supabase
-      .from("scans")
-      .select("*", { count: "exact", head: true });
 
-    // Grab 6 recent public scans with images for the carousel
+    // Grab 40 recent public scans, shuffle, return 20 — fresh every visit
     const { data: recentScans } = await supabase
       .from("scans")
       .select("id, image_url, summary, items, created_at")
       .eq("visibility", "public")
       .not("image_url", "is", null)
       .order("created_at", { ascending: false })
-      .limit(6);
+      .limit(40);
+
+    const pool = (recentScans || []).sort(() => Math.random() - 0.5).slice(0, 20);
 
     const result = {
-      total_scans: (scanCount || 0) + 500, // seed number so it doesn't look empty at launch
-      recent_scans: (recentScans || []).map(s => ({
+      total_scans: statsScanCount.count + 500,
+      recent_scans: pool.map(s => ({
         id: s.id,
         image_url: s.image_url,
         summary: s.summary,
         item_count: Array.isArray(s.items) ? s.items.length : 0,
       })),
     };
-    statsCache = { data: result, ts: Date.now() };
     res.json(result);
   } catch (err) {
     console.error("[STATS]", err.message);

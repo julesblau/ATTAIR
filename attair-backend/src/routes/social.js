@@ -728,9 +728,8 @@ router.get("/feed", requireAuth, async (req, res) => {
     } else if (tab === "following") {
       return res.json({ scans: [], page, has_more: false });
     } else {
-      // For You — fetch a larger pool, score with full personalization, add randomness
-      // Pull 4x the page size so we have room to score + shuffle
-      const poolSize = Math.min(200, (offset + limit) * 4);
+      // For You — fetch page from DB, score with full personalization
+      // Fetch extra so we can score + re-sort within the page window
       let fyQuery = supabase
         .from("scans")
         .select("id, user_id, image_url, summary, items, created_at, visibility")
@@ -740,7 +739,7 @@ router.get("/feed", requireAuth, async (req, res) => {
       if (genderPref) {
         fyQuery = fyQuery.or(`detected_gender.eq.${genderPref},detected_gender.is.null`);
       }
-      query = fyQuery.order("created_at", { ascending: false }).range(0, poolSize - 1);
+      query = fyQuery.order("created_at", { ascending: false }).range(offset, offset + limit + 9);
     }
 
     const { data: scans, error } = await query;
@@ -767,12 +766,11 @@ router.get("/feed", requireAuth, async (req, res) => {
 
       const enriched = scans.map(s => {
         const items = Array.isArray(s.items) ? s.items : [];
-        // Full personalized score (recency + prefs + brands + price + style + attrs)
-        // Plus random jitter (±8) so the feed looks different on every load
         const personScore = isForYou && personCtx
           ? personalizedFeedScore(items, personCtx)
           : 0;
-        const jitter = isForYou ? (Math.random() * 16 - 8) : 0; // ±8 random
+        // Light jitter (±5) to shuffle within a page without breaking pagination
+        const jitter = isForYou ? (Math.random() * 10 - 5) : 0;
         return {
           id: s.id,
           image_url: s.image_url,
@@ -795,10 +793,11 @@ router.get("/feed", requireAuth, async (req, res) => {
       // Remove internal score from response
       enriched.forEach(s => delete s._score);
 
-      // Page into the scored results
-      const paged = isForYou ? enriched.slice(offset, offset + limit) : enriched;
+      // Return page-sized result, has_more if we got extra rows
+      const paged = enriched.slice(0, limit);
+      const hasMore = scans.length > limit;
 
-      return res.json({ scans: paged, page, has_more: isForYou ? enriched.length > offset + limit : scans.length === limit });
+      return res.json({ scans: paged, page, has_more: hasMore });
     }
 
     return res.json({ scans: [], page, has_more: false });
