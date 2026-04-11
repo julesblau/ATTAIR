@@ -61,6 +61,73 @@ const BRAND_QUERIES = [
 
   // Nordstrom (multi-brand retailer)
   { brand: "Nordstrom", queries: ["Nordstrom women's dress", "Nordstrom men's blazer", "Nordstrom women's shoes", "Nordstrom men's sneakers"] },
+
+  // ═══ DESIGNER — Luxury ═══
+  { brand: "Gucci", queries: ["Gucci women's bag", "Gucci men's sneakers", "Gucci women's dress", "Gucci men's loafers", "Gucci belt", "Gucci women's sunglasses"] },
+  { brand: "Louis Vuitton", queries: ["Louis Vuitton bag", "Louis Vuitton sneakers", "Louis Vuitton wallet", "Louis Vuitton belt"] },
+  { brand: "Prada", queries: ["Prada women's bag", "Prada men's shoes", "Prada sunglasses", "Prada women's dress", "Prada men's jacket"] },
+  { brand: "Dior", queries: ["Dior bag", "Dior sneakers", "Dior women's dress", "Dior sunglasses", "Dior men's jacket"] },
+  { brand: "Balenciaga", queries: ["Balenciaga sneakers", "Balenciaga hoodie", "Balenciaga bag", "Balenciaga t-shirt", "Balenciaga track shoes"] },
+  { brand: "Bottega Veneta", queries: ["Bottega Veneta bag", "Bottega Veneta shoes", "Bottega Veneta wallet", "Bottega Veneta boots"] },
+  { brand: "Saint Laurent", queries: ["Saint Laurent bag", "Saint Laurent boots", "Saint Laurent leather jacket", "Saint Laurent dress"] },
+  { brand: "Burberry", queries: ["Burberry trench coat", "Burberry scarf", "Burberry bag", "Burberry sneakers", "Burberry shirt"] },
+  { brand: "Valentino", queries: ["Valentino Rockstud heels", "Valentino bag", "Valentino sneakers", "Valentino dress"] },
+  { brand: "Versace", queries: ["Versace men's shirt", "Versace women's dress", "Versace sneakers", "Versace sunglasses"] },
+  { brand: "Givenchy", queries: ["Givenchy sneakers", "Givenchy bag", "Givenchy t-shirt", "Givenchy hoodie"] },
+  { brand: "Celine", queries: ["Celine bag", "Celine sunglasses", "Celine boots", "Celine wallet"] },
+  { brand: "Loewe", queries: ["Loewe bag", "Loewe sneakers", "Loewe wallet", "Loewe sweater"] },
+  { brand: "Fendi", queries: ["Fendi bag", "Fendi sneakers", "Fendi belt", "Fendi dress"] },
+  { brand: "Alexander McQueen", queries: ["Alexander McQueen sneakers", "Alexander McQueen dress", "Alexander McQueen bag", "Alexander McQueen scarf"] },
+
+  // ═══ DESIGNER — Contemporary ═══
+  { brand: "Acne Studios", queries: ["Acne Studios scarf", "Acne Studios jeans", "Acne Studios hoodie", "Acne Studios boots", "Acne Studios sweater"] },
+  { brand: "AMI Paris", queries: ["AMI Paris sweater", "AMI Paris t-shirt", "AMI Paris hoodie", "AMI Paris jacket"] },
+  { brand: "Isabel Marant", queries: ["Isabel Marant boots", "Isabel Marant dress", "Isabel Marant sneakers", "Isabel Marant jacket"] },
+  { brand: "Jacquemus", queries: ["Jacquemus bag", "Jacquemus dress", "Jacquemus shirt", "Jacquemus heels"] },
+  { brand: "The Row", queries: ["The Row bag", "The Row shoes", "The Row coat", "The Row sweater"] },
+  { brand: "Toteme", queries: ["Toteme coat", "Toteme jeans", "Toteme scarf", "Toteme blazer"] },
+  { brand: "Ganni", queries: ["Ganni dress", "Ganni boots", "Ganni top", "Ganni jeans"] },
+  { brand: "Staud", queries: ["Staud bag", "Staud dress", "Staud top", "Staud shoes"] },
+
+  // ═══ PREMIUM DENIM ═══
+  { brand: "AGOLDE", queries: ["AGOLDE jeans women's", "AGOLDE shorts", "AGOLDE denim jacket", "AGOLDE straight leg jeans"] },
+  { brand: "Citizens of Humanity", queries: ["Citizens of Humanity jeans", "Citizens of Humanity wide leg", "Citizens of Humanity shorts"] },
+  { brand: "PAIGE", queries: ["PAIGE jeans men's", "PAIGE jeans women's", "PAIGE denim jacket", "PAIGE shorts"] },
+  { brand: "Mother Denim", queries: ["Mother Denim jeans women's", "Mother Denim shorts", "Mother Denim flare jeans"] },
+  { brand: "Frame", queries: ["Frame jeans women's", "Frame jeans men's", "Frame denim shirt", "Frame Le High straight"] },
+
+  // ═══ MORE SHOES ═══
+  { brand: "Dr. Martens", queries: ["Dr Martens boots", "Dr Martens 1460 boots", "Dr Martens platform", "Dr Martens sandals"] },
+  { brand: "Birkenstock", queries: ["Birkenstock Boston clogs", "Birkenstock Arizona sandals", "Birkenstock women's", "Birkenstock men's"] },
+  { brand: "UGG", queries: ["UGG boots women's", "UGG slippers", "UGG Ultra Mini", "UGG Tasman"] },
+  { brand: "Converse", queries: ["Converse Chuck 70", "Converse Run Star Hike", "Converse platform", "Converse high top"] },
+  { brand: "Vans", queries: ["Vans Old Skool", "Vans Sk8-Hi", "Vans slip on", "Vans Knu Skool"] },
+  { brand: "On Running", queries: ["On Cloud running shoes", "On Cloudmonster", "On Cloudnova", "On Roger shoes"] },
+  { brand: "HOKA", queries: ["HOKA Bondi running shoes", "HOKA Clifton", "HOKA Speedgoat trail", "HOKA women's"] },
+  { brand: "Stuart Weitzman", queries: ["Stuart Weitzman boots", "Stuart Weitzman heels", "Stuart Weitzman sandals", "Stuart Weitzman flats"] },
+  { brand: "Jimmy Choo", queries: ["Jimmy Choo heels", "Jimmy Choo boots", "Jimmy Choo sneakers", "Jimmy Choo bag"] },
+  { brand: "Golden Goose", queries: ["Golden Goose sneakers", "Golden Goose Super-Star", "Golden Goose women's", "Golden Goose men's"] },
+
+  // ═══ MORE FASHION ═══
+  { brand: "Theory", queries: ["Theory blazer women's", "Theory pants men's", "Theory dress", "Theory coat"] },
+  { brand: "Vince", queries: ["Vince sweater", "Vince t-shirt men's", "Vince coat women's", "Vince pants"] },
+  { brand: "Rag & Bone", queries: ["Rag Bone jeans", "Rag Bone boots", "Rag Bone jacket", "Rag Bone t-shirt"] },
+  { brand: "Club Monaco", queries: ["Club Monaco dress", "Club Monaco blazer", "Club Monaco shirt men's", "Club Monaco sweater"] },
+  { brand: "J.Crew", queries: ["J Crew blazer", "J Crew chinos men's", "J Crew dress women's", "J Crew sweater"] },
+  { brand: "Madewell", queries: ["Madewell jeans", "Madewell tote bag", "Madewell dress", "Madewell sandals"] },
+  { brand: "Anthropologie", queries: ["Anthropologie dress", "Anthropologie blouse", "Anthropologie furniture", "Anthropologie jewelry"] },
+  { brand: "Urban Outfitters", queries: ["Urban Outfitters dress", "Urban Outfitters jeans", "Urban Outfitters top", "Urban Outfitters shoes"] },
+  { brand: "H&M", queries: ["H&M women's dress", "H&M men's shirt", "H&M blazer", "H&M jeans"] },
+  { brand: "Uniqlo", queries: ["Uniqlo men's t-shirt", "Uniqlo women's dress", "Uniqlo jeans", "Uniqlo jacket"] },
+  { brand: "Everlane", queries: ["Everlane jeans", "Everlane t-shirt", "Everlane shoes", "Everlane bag"] },
+  { brand: "Pangaia", queries: ["Pangaia hoodie", "Pangaia tracksuit", "Pangaia t-shirt", "Pangaia shorts"] },
+
+  // ═══ BAGS & ACCESSORIES ═══
+  { brand: "Coach", queries: ["Coach bag", "Coach wallet", "Coach crossbody", "Coach tote bag"] },
+  { brand: "Kate Spade", queries: ["Kate Spade bag", "Kate Spade wallet", "Kate Spade crossbody", "Kate Spade tote"] },
+  { brand: "Michael Kors", queries: ["Michael Kors bag", "Michael Kors watch", "Michael Kors wallet", "Michael Kors crossbody"] },
+  { brand: "Tory Burch", queries: ["Tory Burch bag", "Tory Burch sandals", "Tory Burch wallet", "Tory Burch flats"] },
+  { brand: "Ray-Ban", queries: ["Ray-Ban Wayfarer", "Ray-Ban Aviator", "Ray-Ban sunglasses", "Ray-Ban Clubmaster"] },
 ];
 
 // ─── Name pools ────────────────────────────────────────────────
@@ -129,17 +196,8 @@ async function run() {
   let totalProducts = 0;
   let totalApiCalls = 0;
 
-  // First, delete old seed scans to avoid dupes
-  console.log("Clearing old seeded scans...");
-  const aiIds = allAccounts.map(a => a.id);
-  if (aiIds.length > 0) {
-    // Delete in batches
-    for (let i = 0; i < aiIds.length; i += 20) {
-      const batch = aiIds.slice(i, i + 20);
-      await supabase.from("scans").delete().in("user_id", batch);
-    }
-    console.log("Cleared old scans.\n");
-  }
+  // Skip deletion — append to existing feed content
+  console.log("Appending to existing feed (not clearing)...\n");
 
   for (const brandConfig of BRAND_QUERIES) {
     const { brand, queries } = brandConfig;
