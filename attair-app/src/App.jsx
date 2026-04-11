@@ -9724,6 +9724,17 @@ export default function App() {
                     <button className="scan-overlay-close" onClick={() => setProfileScanOverlay(null)} aria-label="Close"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                     {hsImg && <img className="scan-overlay-img" src={hsImg} alt="Scan" loading="lazy" />}
                     <div className="scan-overlay-body">
+                      {/* Like + Save actions */}
+                      <div style={{ display: "flex", gap: 12, padding: "8px 0 12px" }}>
+                        <button onClick={() => toggleLike(hs.id)} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px solid var(--border)", borderRadius: 100, padding: "8px 16px", cursor: "pointer", minHeight: 44 }}>
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill={likedScans.has(hs.id) ? "#ff4466" : "none"} stroke={likedScans.has(hs.id) ? "#ff4466" : "var(--text-secondary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: likedScans.has(hs.id) ? "#ff4466" : "var(--text-secondary)" }}>{likedScans.has(hs.id) ? "Liked" : "Like"}</span>
+                        </button>
+                        <button onClick={() => { const itemData = { name: hs.summary || "Scanned outfit", category: "outfit", image_url: hs.image_url }; quickSaveItem(itemData, hs.id); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px solid var(--border)", borderRadius: 100, padding: "8px 16px", cursor: "pointer", minHeight: 44 }}>
+                          <svg viewBox="0 0 24 24" width="18" height="18" fill={saved.some(s => s.scan_id === hs.id) ? "var(--accent)" : "none"} stroke={saved.some(s => s.scan_id === hs.id) ? "var(--accent)" : "var(--text-secondary)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: saved.some(s => s.scan_id === hs.id) ? "var(--accent)" : "var(--text-secondary)" }}>{saved.some(s => s.scan_id === hs.id) ? "Saved" : "Save"}</span>
+                        </button>
+                      </div>
                       <div className="scan-overlay-meta">
                         <span className="scan-overlay-tag">{hsItems.length} item{hsItems.length !== 1 ? "s" : ""}</span>
                         <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{relativeDate(hs.created_at)}</span>
