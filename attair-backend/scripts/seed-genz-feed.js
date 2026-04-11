@@ -176,6 +176,97 @@ const OUTFITS = [
     { name: "High Waist Airlift Legging", brand: "Alo Yoga", brand_confidence: "confirmed", category: "bottom", subcategory: "leggings", color: "espresso", material: "Airlift fabric", fit: "fitted", search_query: "women's Alo Yoga Airlift legging espresso", style_keywords: ["yoga", "luxe", "performance"], price_range: "$108 - $128" },
     { name: "Oversized Sherpa Half Zip", brand: "Alo Yoga", brand_confidence: "high", category: "outerwear", subcategory: "pullover", color: "ivory", material: "sherpa fleece", fit: "oversized", search_query: "women's Alo Yoga sherpa half zip ivory", style_keywords: ["cozy", "luxe", "apres"], price_range: "$188 - $228" },
   ]},
+
+  // ═══ MORE MALE — SNEAKERHEAD / STREETWEAR ═══
+  { g: "male", summary: "Sneakerhead fit with premium kicks and minimalist layers", items: [
+    { name: "Oversized Washed Tee", brand: "Zara", brand_confidence: "moderate", category: "top", subcategory: "t-shirt", color: "washed black", material: "cotton jersey", fit: "oversized", search_query: "men's Zara oversized washed tee black", style_keywords: ["streetwear", "oversized", "minimal"], price_range: "$20 - $30" },
+    { name: "Relaxed Cargo Pants", brand: "Zara", brand_confidence: "moderate", category: "bottom", subcategory: "cargo pants", color: "khaki", material: "cotton twill", fit: "relaxed", search_query: "men's Zara relaxed cargo pants khaki", style_keywords: ["utility", "streetwear", "relaxed"], price_range: "$40 - $55" },
+    { name: "Air Jordan 4 Retro", brand: "Nike", brand_confidence: "confirmed", category: "shoes", subcategory: "sneakers", color: "white cement", material: "leather suede", fit: "regular", search_query: "men's Nike Air Jordan 4 Retro white cement", style_keywords: ["sneakerhead", "iconic", "hype"], price_range: "$200 - $220" },
+  ]},
+  { g: "male", summary: "Minimalist earth tones with premium denim and suede boots", items: [
+    { name: "Merino Crew Sweater", brand: "COS", brand_confidence: "high", category: "top", subcategory: "sweater", color: "camel", material: "merino wool", fit: "regular", search_query: "men's COS merino wool crew sweater camel", style_keywords: ["minimalist", "quality", "scandi"], price_range: "$69 - $99" },
+    { name: "Slim Tapered Jeans", brand: "Zara", brand_confidence: "moderate", category: "bottom", subcategory: "jeans", color: "dark indigo", material: "stretch selvedge denim", fit: "slim", search_query: "men's Zara slim tapered jeans dark indigo", style_keywords: ["minimal", "classic", "fitted"], price_range: "$40 - $55" },
+    { name: "Suede Chelsea Boots", brand: "Massimo Dutti", brand_confidence: "high", category: "shoes", subcategory: "boots", color: "tan suede", material: "suede leather", fit: "regular", search_query: "men's Massimo Dutti suede Chelsea boots tan", style_keywords: ["smart casual", "refined", "versatile"], price_range: "$120 - $180" },
+  ]},
+  { g: "male", summary: "Tech bro essentials with quarter-zip and joggers", items: [
+    { name: "Better Sweater Quarter Zip", brand: "Faherty", brand_confidence: "high", category: "outerwear", subcategory: "pullover", color: "charcoal heather", material: "organic cotton fleece", fit: "regular", search_query: "men's Faherty quarter zip pullover charcoal", style_keywords: ["casual", "sustainable", "cozy"], price_range: "$128 - $158" },
+    { name: "Sunday Performance Jogger", brand: "Vuori", brand_confidence: "high", category: "bottom", subcategory: "joggers", color: "black", material: "DreamKnit", fit: "slim", search_query: "men's Vuori Sunday Performance jogger black", style_keywords: ["athleisure", "WFH", "comfort"], price_range: "$84 - $98" },
+    { name: "990v6 Running Shoes", brand: "New Balance", brand_confidence: "confirmed", category: "shoes", subcategory: "sneakers", color: "grey", material: "suede mesh ENCAP", fit: "regular", search_query: "men's New Balance 990v6 grey sneakers", style_keywords: ["dad shoe", "heritage", "quality"], price_range: "$200 - $220" },
+  ]},
+  { g: "male", summary: "Summer resort with linen shirt and espadrilles", items: [
+    { name: "100% Linen Band Collar Shirt", brand: "Banana Republic", brand_confidence: "high", category: "top", subcategory: "shirt", color: "white", material: "100% linen", fit: "regular", search_query: "men's Banana Republic linen band collar shirt white", style_keywords: ["resort", "summer", "clean"], price_range: "$70 - $90" },
+    { name: "Linen Drawstring Pants", brand: "Banana Republic", brand_confidence: "high", category: "bottom", subcategory: "trousers", color: "natural", material: "linen", fit: "relaxed", search_query: "men's Banana Republic linen drawstring pants natural", style_keywords: ["resort", "relaxed", "summer"], price_range: "$80 - $100" },
+    { name: "Suede Espadrilles", brand: "Massimo Dutti", brand_confidence: "moderate", category: "shoes", subcategory: "espadrilles", color: "navy", material: "suede jute", fit: "regular", search_query: "men's Massimo Dutti suede espadrilles navy", style_keywords: ["summer", "mediterranean", "relaxed"], price_range: "$80 - $110" },
+  ]},
+  { g: "male", summary: "Gorpcore hiker fit with technical layers", items: [
+    { name: "Windbreaker Shell Jacket", brand: "Salomon", brand_confidence: "high", category: "outerwear", subcategory: "jacket", color: "olive black", material: "nylon ripstop", fit: "regular", search_query: "men's Salomon Bonatti windbreaker jacket olive", style_keywords: ["gorpcore", "trail", "technical"], price_range: "$160 - $200" },
+    { name: "Hiking Cargo Shorts", brand: "Vuori", brand_confidence: "moderate", category: "bottom", subcategory: "shorts", color: "dark earth", material: "ripstop nylon", fit: "regular", search_query: "men's Vuori Trail short dark earth", style_keywords: ["outdoor", "technical", "hiking"], price_range: "$68 - $82" },
+    { name: "X Ultra 4 GTX Hiking Shoes", brand: "Salomon", brand_confidence: "confirmed", category: "shoes", subcategory: "hiking shoes", color: "pewter black", material: "Gore-Tex mesh", fit: "regular", search_query: "men's Salomon X Ultra 4 GTX hiking shoes", style_keywords: ["hiking", "waterproof", "trail"], price_range: "$140 - $170" },
+  ]},
+  { g: "male", summary: "Classic Americana with premium basics and white sneakers", items: [
+    { name: "Heavyweight Pocket Tee", brand: "Marine Layer", brand_confidence: "high", category: "top", subcategory: "t-shirt", color: "faded navy", material: "signature soft cotton", fit: "regular", search_query: "men's Marine Layer signature crew tee navy", style_keywords: ["americana", "soft", "quality"], price_range: "$42 - $52" },
+    { name: "Slim Straight Chinos", brand: "Banana Republic", brand_confidence: "high", category: "bottom", subcategory: "chinos", color: "dark khaki", material: "stretch cotton twill", fit: "slim", search_query: "men's Banana Republic slim straight chinos khaki", style_keywords: ["classic", "versatile", "clean"], price_range: "$70 - $90" },
+    { name: "Court Classic Sneakers", brand: "Adidas", brand_confidence: "confirmed", category: "shoes", subcategory: "sneakers", color: "white gum", material: "leather gum sole", fit: "regular", search_query: "men's Adidas Stan Smith white gum sneakers", style_keywords: ["classic", "clean", "timeless"], price_range: "$90 - $100" },
+  ]},
+  { g: "male", summary: "Date night sharp casual with knit polo and loafers", items: [
+    { name: "Textured Knit Polo", brand: "Reiss", brand_confidence: "high", category: "top", subcategory: "polo", color: "sage", material: "cotton knit", fit: "slim", search_query: "men's Reiss textured knit polo sage", style_keywords: ["smart casual", "date night", "refined"], price_range: "$130 - $170" },
+    { name: "Tailored Slim Trousers", brand: "Massimo Dutti", brand_confidence: "high", category: "bottom", subcategory: "trousers", color: "navy", material: "cotton blend", fit: "slim", search_query: "men's Massimo Dutti slim tailored trousers navy", style_keywords: ["tailored", "smart", "classic"], price_range: "$80 - $110" },
+    { name: "Leather Penny Loafers", brand: "Banana Republic", brand_confidence: "moderate", category: "shoes", subcategory: "loafers", color: "dark brown", material: "leather", fit: "regular", search_query: "men's leather penny loafers dark brown", style_keywords: ["classic", "preppy", "refined"], price_range: "$100 - $150" },
+  ]},
+
+  // ═══ MORE FEMALE — DIVERSE STYLES ═══
+  { g: "female", summary: "Coastal grandmother aesthetic with linen and woven accessories", items: [
+    { name: "Oversized Linen Button Down", brand: "Faherty", brand_confidence: "high", category: "top", subcategory: "shirt", color: "white", material: "organic linen", fit: "oversized", search_query: "women's Faherty oversized linen shirt white", style_keywords: ["coastal", "effortless", "sustainable"], price_range: "$118 - $148" },
+    { name: "Wide Leg Linen Pants", brand: "Aritzia", brand_confidence: "high", category: "bottom", subcategory: "wide leg pants", color: "flax", material: "linen blend", fit: "relaxed", search_query: "women's Aritzia wide leg linen pants flax", style_keywords: ["coastal", "relaxed", "summer"], price_range: "$88 - $118" },
+    { name: "Woven Slide Sandals", brand: "Zara", brand_confidence: "moderate", category: "shoes", subcategory: "sandals", color: "natural", material: "woven leather", fit: "regular", search_query: "women's Zara woven leather slide sandals natural", style_keywords: ["summer", "artisan", "minimal"], price_range: "$50 - $70" },
+  ]},
+  { g: "female", summary: "Old money tennis club look with pleated skirt and polo", items: [
+    { name: "Cable Knit Polo Sweater", brand: "Banana Republic", brand_confidence: "high", category: "top", subcategory: "polo", color: "cream", material: "cotton cable knit", fit: "regular", search_query: "women's Banana Republic cable knit polo cream", style_keywords: ["old money", "preppy", "classic"], price_range: "$70 - $90" },
+    { name: "Pleated Tennis Skirt", brand: "Aritzia", brand_confidence: "high", category: "bottom", subcategory: "skirt", color: "white", material: "woven cotton", fit: "regular", search_query: "women's Aritzia pleated tennis skirt white", style_keywords: ["preppy", "sporty", "classic"], price_range: "$58 - $78" },
+    { name: "Classic Leather Sneakers", brand: "Adidas", brand_confidence: "confirmed", category: "shoes", subcategory: "sneakers", color: "white green", material: "leather", fit: "regular", search_query: "women's Adidas Stan Smith white green", style_keywords: ["classic", "tennis", "clean"], price_range: "$90 - $100" },
+  ]},
+  { g: "female", summary: "Brunch-ready with midi dress and chunky sandals", items: [
+    { name: "Smocked Floral Midi Dress", brand: "Free People", brand_confidence: "high", category: "dress", subcategory: "midi dress", color: "sage floral", material: "cotton voile", fit: "relaxed", search_query: "women's Free People smocked floral midi dress sage", style_keywords: ["boho", "feminine", "brunch"], price_range: "$128 - $168" },
+    { name: "Chunky Platform Sandals", brand: "Free People", brand_confidence: "moderate", category: "shoes", subcategory: "sandals", color: "tan", material: "leather wood", fit: "regular", search_query: "women's Free People chunky platform sandals tan", style_keywords: ["boho", "platform", "summer"], price_range: "$138 - $178" },
+    { name: "Straw Tote Bag", brand: "Zara", brand_confidence: "moderate", category: "bag", subcategory: "tote", color: "natural", material: "woven straw", fit: "standard", search_query: "women's Zara straw tote bag natural", style_keywords: ["summer", "beach", "casual"], price_range: "$35 - $50" },
+  ]},
+  { g: "female", summary: "Office to happy hour with blazer dress and mules", items: [
+    { name: "Belted Blazer Dress", brand: "Aritzia", brand_confidence: "high", category: "dress", subcategory: "blazer dress", color: "black", material: "crepe", fit: "tailored", search_query: "women's Aritzia Babaton blazer dress black", style_keywords: ["workwear", "power dressing", "versatile"], price_range: "$168 - $228" },
+    { name: "Pointed Mule Heels", brand: "Zara", brand_confidence: "moderate", category: "shoes", subcategory: "mules", color: "nude", material: "faux leather", fit: "regular", search_query: "women's Zara pointed mule heels nude", style_keywords: ["elegant", "office", "transitional"], price_range: "$50 - $70" },
+    { name: "Structured Shoulder Bag", brand: "COS", brand_confidence: "high", category: "bag", subcategory: "shoulder bag", color: "black", material: "leather", fit: "standard", search_query: "women's COS structured leather shoulder bag black", style_keywords: ["minimal", "workwear", "structured"], price_range: "$120 - $180" },
+  ]},
+  { g: "female", summary: "Gym shark pump cover outfit with oversized tank and shorts", items: [
+    { name: "Oversized Training Tank", brand: "Gymshark", brand_confidence: "confirmed", category: "top", subcategory: "tank top", color: "light grey", material: "cotton blend", fit: "oversized", search_query: "women's Gymshark oversized training tank grey", style_keywords: ["gym", "pump cover", "oversized"], price_range: "$25 - $35" },
+    { name: "Vital Cycling Shorts", brand: "Gymshark", brand_confidence: "confirmed", category: "bottom", subcategory: "shorts", color: "black", material: "nylon spandex", fit: "fitted", search_query: "women's Gymshark Vital cycling shorts black", style_keywords: ["gym", "fitted", "performance"], price_range: "$28 - $38" },
+    { name: "Running Shoes", brand: "Nike", brand_confidence: "confirmed", category: "shoes", subcategory: "sneakers", color: "black white", material: "Flyknit mesh", fit: "regular", search_query: "women's Nike Free Run 5.0 black white", style_keywords: ["running", "training", "lightweight"], price_range: "$100 - $120" },
+  ]},
+  { g: "female", summary: "Skims everything shower outfit with matching loungewear", items: [
+    { name: "Soft Lounge Long Sleeve", brand: "Skims", brand_confidence: "confirmed", category: "top", subcategory: "long sleeve", color: "sienna", material: "modal blend", fit: "fitted", search_query: "women's Skims Soft Lounge long sleeve sienna", style_keywords: ["loungewear", "cozy", "basics"], price_range: "$58 - $68" },
+    { name: "Soft Lounge Pants", brand: "Skims", brand_confidence: "confirmed", category: "bottom", subcategory: "lounge pants", color: "sienna", material: "modal blend", fit: "relaxed", search_query: "women's Skims Soft Lounge pants sienna", style_keywords: ["loungewear", "matching set", "cozy"], price_range: "$68 - $78" },
+    { name: "Fuzzy Slides", brand: "Skims", brand_confidence: "high", category: "shoes", subcategory: "slides", color: "bone", material: "faux shearling", fit: "regular", search_query: "women's Skims fuzzy slides bone", style_keywords: ["cozy", "loungewear", "home"], price_range: "$48 - $58" },
+  ]},
+  { g: "female", summary: "Night out bodysuit and leather pants with strappy heels", items: [
+    { name: "One Shoulder Bodysuit", brand: "Revolve", brand_confidence: "moderate", category: "top", subcategory: "bodysuit", color: "black", material: "stretch jersey", fit: "fitted", search_query: "women's one shoulder bodysuit black going out", style_keywords: ["going out", "sexy", "sleek"], price_range: "$40 - $65" },
+    { name: "Faux Leather Straight Pants", brand: "Zara", brand_confidence: "moderate", category: "bottom", subcategory: "pants", color: "black", material: "faux leather", fit: "straight", search_query: "women's Zara faux leather straight pants black", style_keywords: ["edgy", "night out", "statement"], price_range: "$50 - $70" },
+    { name: "Strappy Heeled Sandals", brand: "Princess Polly", brand_confidence: "high", category: "shoes", subcategory: "heels", color: "black", material: "faux leather", fit: "regular", search_query: "women's Princess Polly strappy heeled sandals black", style_keywords: ["night out", "sexy", "strappy"], price_range: "$45 - $60" },
+  ]},
+
+  // ═══ SHOE-FOCUSED OUTFITS ═══
+  { g: "male", summary: "Clean sneaker showcase with minimal fit to let the shoes talk", items: [
+    { name: "Basic Crew Tee", brand: "COS", brand_confidence: "moderate", category: "top", subcategory: "t-shirt", color: "white", material: "organic cotton", fit: "regular", search_query: "men's COS basic crew tee white", style_keywords: ["minimal", "basics", "clean"], price_range: "$25 - $39" },
+    { name: "Straight Leg Chinos", brand: "Banana Republic", brand_confidence: "moderate", category: "bottom", subcategory: "chinos", color: "stone", material: "stretch cotton", fit: "straight", search_query: "men's Banana Republic straight chinos stone", style_keywords: ["classic", "clean", "versatile"], price_range: "$60 - $80" },
+    { name: "Samba OG Sneakers", brand: "Adidas", brand_confidence: "confirmed", category: "shoes", subcategory: "sneakers", color: "white black gum", material: "leather suede", fit: "regular", search_query: "men's Adidas Samba OG white black gum", style_keywords: ["iconic", "trending", "terrace"], price_range: "$100 - $110" },
+  ]},
+  { g: "female", summary: "Ballet flat moment with cropped trousers and knit", items: [
+    { name: "Cashmere Crew Neck", brand: "COS", brand_confidence: "high", category: "top", subcategory: "sweater", color: "oatmeal", material: "cashmere", fit: "regular", search_query: "women's COS cashmere crew sweater oatmeal", style_keywords: ["quiet luxury", "soft", "timeless"], price_range: "$135 - $190" },
+    { name: "Cropped Tailored Trousers", brand: "Aritzia", brand_confidence: "high", category: "bottom", subcategory: "trousers", color: "charcoal", material: "wool blend", fit: "tailored", search_query: "women's Aritzia cropped tailored trousers charcoal", style_keywords: ["polished", "workwear", "modern"], price_range: "$110 - $148" },
+    { name: "Leather Ballet Flats", brand: "Zara", brand_confidence: "moderate", category: "shoes", subcategory: "ballet flats", color: "burgundy", material: "soft leather", fit: "regular", search_query: "women's Zara leather ballet flats burgundy", style_keywords: ["ballet", "trending", "elegant"], price_range: "$40 - $60" },
+  ]},
+  { g: "male", summary: "Hiking trail look that works for the city too", items: [
+    { name: "Merino Wool Base Layer", brand: "Marine Layer", brand_confidence: "moderate", category: "top", subcategory: "long sleeve", color: "charcoal", material: "merino wool blend", fit: "regular", search_query: "men's Marine Layer merino wool long sleeve charcoal", style_keywords: ["outdoor", "layering", "performance"], price_range: "$68 - $88" },
+    { name: "Stretch Hiking Pants", brand: "Vuori", brand_confidence: "moderate", category: "bottom", subcategory: "pants", color: "dark grey", material: "nylon stretch", fit: "slim", search_query: "men's Vuori Meta pant dark grey", style_keywords: ["outdoor", "technical", "versatile"], price_range: "$98 - $118" },
+    { name: "XA Pro 3D V9 Trail Runners", brand: "Salomon", brand_confidence: "confirmed", category: "shoes", subcategory: "trail shoes", color: "black magnet", material: "mesh Contagrip", fit: "regular", search_query: "men's Salomon XA Pro 3D V9 black trail shoes", style_keywords: ["trail", "gorpcore", "technical"], price_range: "$130 - $150" },
+  ]},
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────
