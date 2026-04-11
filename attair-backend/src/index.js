@@ -172,16 +172,20 @@ app.get("/api/stats", async (req, res) => {
       statsScanCount = { count: count || 0, ts: Date.now() };
     }
 
-    // Grab 40 recent public scans with user info, shuffle, return 20
-    const { data: recentScans } = await supabase
-      .from("scans")
-      .select("id, user_id, image_url, summary, items, created_at")
-      .eq("visibility", "public")
-      .not("image_url", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(40);
+    // Grab male + female scans separately so guest feed is balanced
+    const [{ data: maleScans }, { data: femaleScans }] = await Promise.all([
+      supabase.from("scans").select("id, user_id, image_url, summary, items, created_at")
+        .eq("visibility", "public").eq("detected_gender", "male")
+        .not("image_url", "is", null).order("created_at", { ascending: false }).limit(20),
+      supabase.from("scans").select("id, user_id, image_url, summary, items, created_at")
+        .eq("visibility", "public").eq("detected_gender", "female")
+        .not("image_url", "is", null).order("created_at", { ascending: false }).limit(20),
+    ]);
 
-    const pool = (recentScans || []).sort(() => Math.random() - 0.5).slice(0, 20);
+    // 10 male + 10 female, shuffled together
+    const mPool = (maleScans || []).sort(() => Math.random() - 0.5).slice(0, 10);
+    const fPool = (femaleScans || []).sort(() => Math.random() - 0.5).slice(0, 10);
+    const pool = [...mPool, ...fPool].sort(() => Math.random() - 0.5);
 
     // Fetch display names for the scans
     const userIds = [...new Set(pool.map(s => s.user_id).filter(Boolean))];
