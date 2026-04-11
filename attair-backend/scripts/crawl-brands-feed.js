@@ -216,7 +216,7 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
 // Resolve direct vendor URL from immersive product API
 async function resolveVendorUrl(token) {
-  if (!token) return null;
+  if (!token) return { url: null, image: null };
   try {
     const params = new URLSearchParams({
       engine: "google_immersive_product",
@@ -224,12 +224,15 @@ async function resolveVendorUrl(token) {
       api_key: SERPAPI_KEY,
     });
     const res = await fetch(`${SERPAPI_URL}?${params}`);
-    if (!res.ok) return null;
+    if (!res.ok) return { url: null, image: null };
     const data = await res.json();
     const stores = data.product_results?.stores || [];
     const direct = stores.find(s => s.link && !s.link.includes("google.com"));
-    return direct?.link || null;
-  } catch { return null; }
+    // Get high-res image
+    const images = data.product_results?.images || [];
+    const hiResImage = images[0] || null;
+    return { url: direct?.link || null, image: hiResImage };
+  } catch { return { url: null, image: null }; }
 }
 
 // ─── Main ──────────────────────────────────────────────────────
@@ -288,15 +291,23 @@ async function run() {
       const scans = [];
       for (let pi = 0; pi < productsToProcess.length; pi++) {
         const product = productsToProcess[pi];
-        // Use resolved vendor URL, or construct from source domain, or use product_link as last resort
-        let vendorUrl = vendorUrls[pi];
+        // Use resolved vendor URL, or construct from source domain — never use Google redirects
+        let vendorUrl = vendorUrls[pi]?.url;
         if (!vendorUrl && product.source) {
-          // Construct a search URL on the retailer's own site
-          const sourceDomain = BRAND_DOMAINS[product.source.toLowerCase()] || BRAND_DOMAINS[brand.toLowerCase()];
-          if (sourceDomain) vendorUrl = `https://${sourceDomain}`;
+          const sourceLower = product.source.toLowerCase();
+          const sourceDomain = BRAND_DOMAINS[sourceLower] || BRAND_DOMAINS[brand.toLowerCase()];
+          if (sourceDomain) {
+            // Try to construct a product search URL on the retailer's site
+            const searchTerm = encodeURIComponent(product.title.slice(0, 60));
+            vendorUrl = `https://${sourceDomain}/search?q=${searchTerm}`;
+          }
         }
-        if (!vendorUrl) vendorUrl = product.product_link; // Google redirect fallback
-        if (!vendorUrl) continue;
+        if (!vendorUrl) {
+          // Last resort: use brand domain homepage (better than Google redirect)
+          const brandDomain = BRAND_DOMAINS[brand.toLowerCase()];
+          if (brandDomain) vendorUrl = `https://${brandDomain}`;
+          else continue; // Skip if we can't even find the brand domain
+        }
 
         const account = pick(matchingAccounts.length > 0 ? matchingAccounts : allAccounts);
         const price = product.extracted_price || product.price;
@@ -327,7 +338,7 @@ async function run() {
         scans.push({
           id: uuid(),
           user_id: account.id,
-          image_url: product.thumbnail,
+          image_url: vendorUrls[pi]?.image || product.thumbnail,
           image_thumbnail: product.thumbnail,
           detected_gender: gender,
           summary: product.title.slice(0, 120),

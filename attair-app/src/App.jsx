@@ -7209,7 +7209,9 @@ export default function App() {
                     scan.user?.display_name,
                     ...items.map(it => [it.name, it.brand, it.category, ...(it.tags || [])].join(" "))
                   ].join(" ").toLowerCase();
-                  return haystack.includes(fq);
+                  const words = fq.split(/\s+/).filter(Boolean);
+                  const haystackWords = haystack.split(/\s+/);
+                  return words.every(w => haystackWords.some(hw => hw.startsWith(w) || w.startsWith(hw)));
                 }) : feedScans;
                 return (
                 <div className="feed-list">

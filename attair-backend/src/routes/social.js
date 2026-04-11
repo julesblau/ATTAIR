@@ -15,38 +15,213 @@ function recencyScore(createdAt) {
   return 5;
 }
 
-function tasteFeedScore(scanItems, hangerTaste) {
-  if (!hangerTaste?.style_breakdown?.length || !scanItems?.length) return 0;
-  const tasteMap = {};
-  (hangerTaste.style_breakdown || []).forEach(s => { tasteMap[s.style] = s.pct; });
-
-  // Extract style keywords from scan items
-  const scanTags = scanItems.flatMap(item => {
-    const tags = [];
-    if (item.category) tags.push(item.category.toLowerCase());
-    if (item.subcategory) tags.push(item.subcategory.toLowerCase());
-    if (item.fit) tags.push(item.fit.toLowerCase());
-    return tags;
-  });
-
-  // Simple keyword matching against taste buckets
-  const TASTE_KEYWORDS = {
-    streetwear: ["streetwear", "urban", "oversized", "hoodie", "sneaker", "graphic"],
-    minimalist: ["minimal", "clean", "simple", "neutral"],
-    classic: ["classic", "preppy", "tailored", "blazer", "oxford"],
-    bold: ["bold", "statement", "bright", "pattern", "colorful"],
-    athleisure: ["athletic", "sporty", "gym", "activewear"],
-    vintage: ["vintage", "retro", "thrift"],
-  };
-
+/**
+ * Full personalized feed scoring — uses preferences, style DNA, brand affinities,
+ * attribute affinities, and price profiles to rank feed items for this specific user.
+ *
+ * @param {Array} scanItems - items array from a feed scan
+ * @param {object} ctx - personalization context (all user data)
+ * @returns {number} personalization score (0-80)
+ */
+function personalizedFeedScore(scanItems, ctx) {
+  if (!scanItems?.length) return 0;
   let score = 0;
-  for (const [style, keywords] of Object.entries(TASTE_KEYWORDS)) {
-    const matches = scanTags.filter(t => keywords.some(k => t.includes(k))).length;
-    if (matches > 0 && tasteMap[style]) {
-      score += (tasteMap[style] / 100) * matches * 10;
+
+  // ── 1. Brand affinity (up to ±20) ────────────────────────
+  if (ctx.brandAffinities && Object.keys(ctx.brandAffinities).length > 0) {
+    let brandScore = 0;
+    let brandMatches = 0;
+    for (const item of scanItems) {
+      const brand = (item.brand || "").toLowerCase();
+      if (!brand) continue;
+      // Check exact match or partial match
+      for (const [affinBrand, aff] of Object.entries(ctx.brandAffinities)) {
+        if (brand.includes(affinBrand.toLowerCase()) || affinBrand.toLowerCase().includes(brand)) {
+          brandScore += aff.affinity_score * 25; // range ~-20 to +20
+          brandMatches++;
+          break;
+        }
+      }
     }
+    if (brandMatches > 0) score += Math.max(-20, Math.min(20, brandScore / brandMatches));
+  } else if (ctx.prefProfile) {
+    // Fallback to preference profile brand lists
+    for (const item of scanItems) {
+      const brand = (item.brand || "").toLowerCase();
+      if (!brand) continue;
+      if (ctx.prefProfile.liked_brands?.some(b => brand.includes(b.toLowerCase()))) score += 15;
+      if (ctx.prefProfile.avoided_brands?.some(b => brand.includes(b.toLowerCase()))) score -= 12;
+    }
+    score = Math.max(-20, Math.min(20, score));
   }
-  return Math.min(score, 30); // cap at 30 bonus points
+
+  // ── 2. Category preference (up to ±15) ───────────────────
+  if (ctx.prefProfile) {
+    let catScore = 0;
+    for (const item of scanItems) {
+      const cat = (item.category || "").toLowerCase();
+      if (!cat) continue;
+      if (ctx.prefProfile.preferred_categories?.includes(cat)) catScore += 12;
+      if (ctx.prefProfile.avoided_categories?.includes(cat)) catScore -= 10;
+    }
+    score += Math.max(-15, Math.min(15, catScore));
+  }
+
+  // ── 3. Style DNA match (up to +20) ───────────────────────
+  if (ctx.styleDna?.style_breakdown?.length) {
+    const tasteMap = {};
+    ctx.styleDna.style_breakdown.forEach(s => { tasteMap[s.style?.toLowerCase()] = s.pct; });
+
+    const TASTE_KEYWORDS = {
+      streetwear: ["streetwear", "urban", "oversized", "hoodie", "sneaker", "graphic", "cargo"],
+      minimalist: ["minimal", "clean", "simple", "neutral", "basic", "understated"],
+      classic: ["classic", "preppy", "tailored", "blazer", "oxford", "polo", "chino"],
+      bold: ["bold", "statement", "bright", "pattern", "colorful", "print"],
+      athleisure: ["athletic", "sporty", "gym", "activewear", "legging", "jogger", "track"],
+      vintage: ["vintage", "retro", "thrift", "90s", "y2k"],
+      elegant: ["elegant", "formal", "dress", "silk", "satin", "gown"],
+      casual: ["casual", "relaxed", "lounge", "comfort", "everyday"],
+    };
+
+    const scanTags = scanItems.flatMap(it => {
+      const tags = [];
+      if (it.category) tags.push(it.category.toLowerCase());
+      if (it.subcategory) tags.push(it.subcategory.toLowerCase());
+      if (it.fit) tags.push(it.fit.toLowerCase());
+      (it.style_keywords || []).forEach(k => tags.push(k.toLowerCase()));
+      return tags;
+    });
+
+    let styleScore = 0;
+    for (const [style, keywords] of Object.entries(TASTE_KEYWORDS)) {
+      const matches = scanTags.filter(t => keywords.some(k => t.includes(k))).length;
+      if (matches > 0 && tasteMap[style]) {
+        styleScore += (tasteMap[style] / 100) * matches * 8;
+      }
+    }
+    score += Math.min(styleScore, 20);
+  }
+
+  // ── 4. Color preference (up to ±8) ───────────────────────
+  if (ctx.prefProfile?.color_preferences) {
+    const posColors = ctx.prefProfile.color_preferences.positive || [];
+    const negColors = ctx.prefProfile.color_preferences.negative || [];
+    let colorScore = 0;
+    for (const item of scanItems) {
+      const color = (item.color || "").toLowerCase();
+      if (!color) continue;
+      if (posColors.some(c => color.includes(c))) colorScore += 6;
+      if (negColors.some(c => color.includes(c))) colorScore -= 5;
+    }
+    score += Math.max(-8, Math.min(8, colorScore));
+  }
+
+  // ── 5. Price fit (up to ±12) ─────────────────────────────
+  if (ctx.priceProfiles && Object.keys(ctx.priceProfiles).length > 0) {
+    let priceScore = 0;
+    let priceMatches = 0;
+    for (const item of scanItems) {
+      const cat = (item.category || "").toLowerCase();
+      const priceStr = item.price || item.price_range || "";
+      const nums = String(priceStr).match(/\d+/g);
+      if (!nums || !cat) continue;
+      const price = nums.length >= 2
+        ? (parseFloat(nums[0]) + parseFloat(nums[1])) / 2
+        : parseFloat(nums[0]);
+      if (isNaN(price) || price <= 0) continue;
+
+      const pp = ctx.priceProfiles[cat];
+      if (pp && pp.sweet_spot > 0 && pp.std_dev > 0) {
+        const z = (price - pp.sweet_spot) / pp.std_dev;
+        priceScore += Math.exp(-0.5 * z * z) * 12; // Gaussian: peak +12 at sweet spot
+        priceMatches++;
+      }
+    }
+    if (priceMatches > 0) score += Math.min(12, priceScore / priceMatches);
+  }
+
+  // ── 6. Attribute affinities (up to +10) ──────────────────
+  if (ctx.attrAffinities && Object.keys(ctx.attrAffinities).length > 0) {
+    let attrScore = 0;
+    let attrCount = 0;
+    for (const item of scanItems) {
+      const attrs = [item.color, item.material, item.category, item.subcategory, ...(item.style_keywords || [])].filter(Boolean);
+      for (const attr of attrs) {
+        const key = attr.toLowerCase();
+        if (ctx.attrAffinities[key] !== undefined) {
+          attrScore += ctx.attrAffinities[key];
+          attrCount++;
+        }
+      }
+    }
+    if (attrCount > 0) score += Math.max(-5, Math.min(10, (attrScore / attrCount) * 20));
+  }
+
+  // ── 7. Style keyword match from preferences (up to +5) ──
+  if (ctx.prefProfile?.style_keywords?.length) {
+    const userKws = ctx.prefProfile.style_keywords.map(k => k.toLowerCase());
+    const scanKws = scanItems.flatMap(it => (it.style_keywords || []).map(k => k.toLowerCase()));
+    const matches = scanKws.filter(k => userKws.some(uk => k.includes(uk) || uk.includes(k))).length;
+    score += Math.min(matches * 3, 5);
+  }
+
+  return Math.max(0, Math.min(80, score));
+}
+
+/**
+ * Load all personalization data for a user in parallel.
+ * Returns a context object for personalizedFeedScore().
+ */
+async function loadPersonalizationContext(userId) {
+  const [
+    { data: profile },
+    { data: brandRows },
+    { data: priceRows },
+    { data: attrRows },
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("hanger_taste_cache, preference_profile, style_interests")
+      .eq("id", userId)
+      .maybeSingle(),
+    supabase
+      .from("user_brand_affinities")
+      .select("brand, affinity_score, positive_signals, negative_signals")
+      .eq("user_id", userId)
+      .order("affinity_score", { ascending: false })
+      .limit(50),
+    supabase
+      .from("user_price_profiles")
+      .select("category, sweet_spot, std_dev, hard_max")
+      .eq("user_id", userId),
+    supabase
+      .from("user_attribute_affinities")
+      .select("attribute_value, affinity_score")
+      .eq("user_id", userId)
+      .order("interaction_count", { ascending: false })
+      .limit(100),
+  ]);
+
+  // Build brand affinity map
+  const brandAffinities = {};
+  (brandRows || []).forEach(r => { brandAffinities[r.brand] = r; });
+
+  // Build price profile map by category
+  const priceProfiles = {};
+  (priceRows || []).forEach(r => { priceProfiles[r.category] = r; });
+
+  // Build attribute affinity map
+  const attrAffinities = {};
+  (attrRows || []).forEach(r => { attrAffinities[r.attribute_value] = r.affinity_score; });
+
+  return {
+    styleDna: profile?.hanger_taste_cache || null,
+    prefProfile: profile?.preference_profile || null,
+    styleInterests: profile?.style_interests || [],
+    brandAffinities,
+    priceProfiles,
+    attrAffinities,
+  };
 }
 
 // Scans support 'followers' visibility; saved_items and collections only public/private
@@ -464,16 +639,27 @@ router.get("/feed", requireAuth, async (req, res) => {
   const tab = req.query.tab || "foryou";
 
   try {
+    // Load user's gender + full personalization context in parallel
+    const [{ data: userPref }, personCtx] = await Promise.all([
+      supabase.from("profiles").select("gender_pref").eq("id", req.userId).maybeSingle(),
+      (tab === "foryou" || tab === "trending") ? loadPersonalizationContext(req.userId) : Promise.resolve(null),
+    ]);
+    const genderPref = userPref?.gender_pref; // "male", "female", or null
+
     // ─── Trending tab: fetch a larger pool, score & sort ────
     if (tab === "trending") {
       // Grab up to 200 recent public scans (pool for scoring)
       const poolSize = Math.min(200, offset + limit + 80);
-      const { data: pool, error: poolErr } = await supabase
+      let trendingQuery = supabase
         .from("scans")
         .select("id, user_id, image_url, summary, items, created_at, visibility")
         .eq("visibility", "public")
         .neq("user_id", req.userId)
-        .not("image_url", "is", null)
+        .not("image_url", "is", null);
+      if (genderPref) {
+        trendingQuery = trendingQuery.or(`detected_gender.eq.${genderPref},detected_gender.is.null`);
+      }
+      const { data: pool, error: poolErr } = await trendingQuery
         .order("created_at", { ascending: false })
         .range(0, poolSize - 1);
       if (poolErr) throw poolErr;
@@ -499,18 +685,23 @@ router.get("/feed", requireAuth, async (req, res) => {
         if (row.scan_id) saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
       });
 
-      // Score and sort
-      const scored = pool.map(s => ({
-        id: s.id,
-        image_url: s.image_url,
-        summary: s.summary,
-        items: Array.isArray(s.items) ? s.items : [],
-        item_count: Array.isArray(s.items) ? s.items.length : 0,
-        created_at: s.created_at,
-        save_count: saveCountMap[s.id] || 0,
-        trending_score: trendingScore(saveCountMap[s.id] || 0, s.created_at),
-        user: profileMap[s.user_id] || { display_name: "Anonymous" },
-      }));
+      // Score: trending weight + light personalization nudge (20% of personal score)
+      const scored = pool.map(s => {
+        const items = Array.isArray(s.items) ? s.items : [];
+        const tScore = trendingScore(saveCountMap[s.id] || 0, s.created_at);
+        const pScore = personCtx ? personalizedFeedScore(items, personCtx) * 0.2 : 0;
+        return {
+          id: s.id,
+          image_url: s.image_url,
+          summary: s.summary,
+          items,
+          item_count: items.length,
+          created_at: s.created_at,
+          save_count: saveCountMap[s.id] || 0,
+          trending_score: tScore + pScore,
+          user: profileMap[s.user_id] || { display_name: "Anonymous" },
+        };
+      });
       scored.sort((a, b) => b.trending_score - a.trending_score);
 
       const paged = scored.slice(offset, offset + limit);
@@ -537,14 +728,19 @@ router.get("/feed", requireAuth, async (req, res) => {
     } else if (tab === "following") {
       return res.json({ scans: [], page, has_more: false });
     } else {
-      // For You — all public scans except own, scored by recency + taste
-      query = supabase
+      // For You — fetch a larger pool, score with full personalization, add randomness
+      // Pull 4x the page size so we have room to score + shuffle
+      const poolSize = Math.min(200, (offset + limit) * 4);
+      let fyQuery = supabase
         .from("scans")
         .select("id, user_id, image_url, summary, items, created_at, visibility")
         .eq("visibility", "public")
         .neq("user_id", req.userId)
-        .order("created_at", { ascending: false })
-        .range(offset, offset + limit - 1);
+        .not("image_url", "is", null);
+      if (genderPref) {
+        fyQuery = fyQuery.or(`detected_gender.eq.${genderPref},detected_gender.is.null`);
+      }
+      query = fyQuery.order("created_at", { ascending: false }).range(0, poolSize - 1);
     }
 
     const { data: scans, error } = await query;
@@ -567,39 +763,42 @@ router.get("/feed", requireAuth, async (req, res) => {
         if (row.scan_id) saveCountMap[row.scan_id] = (saveCountMap[row.scan_id] || 0) + 1;
       });
 
-      // Fetch user's taste cache for personalization (For You tab only)
-      let hangerTaste = null;
-      if (tab !== "following") {
-        const { data: userProfile } = await supabase
-          .from("profiles")
-          .select("hanger_taste_cache")
-          .eq("id", req.userId)
-          .maybeSingle();
-        hangerTaste = userProfile?.hanger_taste_cache;
-      }
+      const isForYou = tab !== "following";
 
-      const enriched = scans.map(s => ({
-        id: s.id,
-        image_url: s.image_url,
-        summary: s.summary,
-        items: Array.isArray(s.items) ? s.items : [],
-        item_count: Array.isArray(s.items) ? s.items.length : 0,
-        created_at: s.created_at,
-        save_count: saveCountMap[s.id] || 0,
-        user: profileMap[s.user_id] || { display_name: "Anonymous" },
-        _score: tab !== "following"
-          ? recencyScore(s.created_at) + tasteFeedScore(s.items, hangerTaste)
-          : 0,
-      }));
+      const enriched = scans.map(s => {
+        const items = Array.isArray(s.items) ? s.items : [];
+        // Full personalized score (recency + prefs + brands + price + style + attrs)
+        // Plus random jitter (±8) so the feed looks different on every load
+        const personScore = isForYou && personCtx
+          ? personalizedFeedScore(items, personCtx)
+          : 0;
+        const jitter = isForYou ? (Math.random() * 16 - 8) : 0; // ±8 random
+        return {
+          id: s.id,
+          image_url: s.image_url,
+          summary: s.summary,
+          items,
+          item_count: items.length,
+          created_at: s.created_at,
+          save_count: saveCountMap[s.id] || 0,
+          user: profileMap[s.user_id] || { display_name: "Anonymous" },
+          _score: isForYou
+            ? recencyScore(s.created_at) + personScore + jitter
+            : 0,
+        };
+      });
 
-      // Sort by personalized score for For You tab (taste + recency)
-      if (tab !== "following") {
+      // Sort by personalized score for For You tab
+      if (isForYou) {
         enriched.sort((a, b) => b._score - a._score);
       }
       // Remove internal score from response
       enriched.forEach(s => delete s._score);
 
-      return res.json({ scans: enriched, page, has_more: scans.length === limit });
+      // Page into the scored results
+      const paged = isForYou ? enriched.slice(offset, offset + limit) : enriched;
+
+      return res.json({ scans: paged, page, has_more: isForYou ? enriched.length > offset + limit : scans.length === limit });
     }
 
     return res.json({ scans: [], page, has_more: false });
