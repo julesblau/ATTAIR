@@ -426,6 +426,12 @@ const API = {
     const res = await authFetch(`${API_BASE}/api/feed?page=${page}&limit=20&tab=${feedTab}`);
     return res.json();
   },
+  async getPublicFeed(page = 1, gender = null) {
+    const params = new URLSearchParams({ page, limit: 20 });
+    if (gender) params.set("gender", gender);
+    const res = await fetch(`${API_BASE}/api/feed/public?${params}`);
+    return res.json();
+  },
   async getOOTW() {
     const res = await authFetch(`${API_BASE}/api/ootw/current`);
     return res.json();
@@ -5259,7 +5265,14 @@ export default function App() {
 
     setFeedLoading(true);
     try {
-      const data = await API.getFeed(page, feedTab);
+      let data;
+      if (authed) {
+        data = await API.getFeed(page, feedTab);
+      } else {
+        // Guest: use public feed with gender from onboarding
+        const obGender = localStorage.getItem("attair_ob_gender") || null;
+        data = await API.getPublicFeed(page, obGender);
+      }
       const scans = data.scans || [];
       setFeedScans(prev => append ? [...prev, ...scans] : scans);
       setFeedHasMore(data.has_more || false);
@@ -5278,10 +5291,10 @@ export default function App() {
     } finally {
       setFeedLoading(false);
     }
-  }, [feedLoading, feedTab]);
+  }, [feedLoading, feedTab, authed]);
 
   useEffect(() => {
-    if (authed && screen === "app" && (tab === "home" || (tab === "scan" && phase === "idle" && !img))) {
+    if (screen === "app" && (tab === "home" || (tab === "scan" && phase === "idle" && !img))) {
       loadFeed(1, false);
       // Load challenges for the home feed (once)
       if (challenges.length === 0) {

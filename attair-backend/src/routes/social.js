@@ -807,6 +807,68 @@ router.get("/feed", requireAuth, async (req, res) => {
   }
 });
 
+// ─── GET /api/feed/public — Guest feed with infinite scroll ──
+// No auth required. Supports ?page=N&limit=20&gender=male|female
+router.get("/feed/public", async (req, res) => {
+  const page = Math.min(Math.max(1, parseInt(req.query.page) || 1), 1000);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+  const gender = req.query.gender; // "male", "female", or omitted
+
+  try {
+    let query = supabase
+      .from("scans")
+      .select("id, user_id, image_url, summary, items, created_at")
+      .eq("visibility", "public")
+      .not("image_url", "is", null);
+
+    if (gender && (gender === "male" || gender === "female")) {
+      query = query.or(`detected_gender.eq.${gender},detected_gender.is.null`);
+    }
+
+    // Fetch limit+1 to know if there's more
+    const { data: scans, error } = await query
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit);
+
+    if (error) throw error;
+
+    if (scans && scans.length > 0) {
+      const hasMore = scans.length > limit;
+      const paged = scans.slice(0, limit);
+
+      // Get user display names
+      const userIds = [...new Set(paged.map(s => s.user_id).filter(Boolean))];
+      const profileMap = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, display_name")
+          .in("id", userIds);
+        (profiles || []).forEach(p => { profileMap[p.id] = p.display_name; });
+      }
+
+      const result = paged.map(s => ({
+        id: s.id,
+        image_url: s.image_url,
+        summary: s.summary,
+        items: Array.isArray(s.items) ? s.items : [],
+        item_count: Array.isArray(s.items) ? s.items.length : 0,
+        created_at: s.created_at,
+        save_count: 0,
+        user: { display_name: profileMap[s.user_id] || "Style Scout" },
+      }));
+
+      return res.json({ scans: result, page, has_more: hasMore });
+    }
+
+    return res.json({ scans: [], page, has_more: false });
+  } catch (err) {
+    console.error("Public feed error:", err.message);
+    return res.status(500).json({ error: "Failed to load feed" });
+  }
+});
+
 // ─── GET /api/users/search ───────────────────────────────────
 // Search users by display_name (min 2 chars, max 100 chars).
 router.get("/users/search", requireAuth, async (req, res) => {
