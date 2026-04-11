@@ -183,6 +183,24 @@ async function searchProducts(query) {
 // Wait helper
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
+// Resolve direct vendor URL from immersive product API
+async function resolveVendorUrl(token) {
+  if (!token) return null;
+  try {
+    const params = new URLSearchParams({
+      engine: "google_immersive_product",
+      page_token: token,
+      api_key: SERPAPI_KEY,
+    });
+    const res = await fetch(`${SERPAPI_URL}?${params}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const stores = data.product_results?.stores || [];
+    const direct = stores.find(s => s.link && !s.link.includes("google.com"));
+    return direct?.link || null;
+  } catch { return null; }
+}
+
 // ─── Main ──────────────────────────────────────────────────────
 async function run() {
   console.log(`\nCrawling ${BRAND_QUERIES.length} brands × ~4 queries each...\n`);
@@ -196,8 +214,16 @@ async function run() {
   let totalProducts = 0;
   let totalApiCalls = 0;
 
-  // Skip deletion — append to existing feed content
-  console.log("Appending to existing feed (not clearing)...\n");
+  // Clear old seeded scans (replace with vendor-link versions)
+  console.log("Clearing old seeded scans...");
+  const aiIds = allAccounts.map(a => a.id);
+  if (aiIds.length > 0) {
+    for (let i = 0; i < aiIds.length; i += 20) {
+      const batch = aiIds.slice(i, i + 20);
+      await supabase.from("scans").delete().in("user_id", batch);
+    }
+    console.log("Cleared old scans.\n");
+  }
 
   for (const brandConfig of BRAND_QUERIES) {
     const { brand, queries } = brandConfig;
@@ -216,9 +242,24 @@ async function run() {
         (gender === "male" && a.gender_pref === "male")
       );
 
-      // Create 1 scan per product (each product = its own outfit card in the feed)
+      // Create 1 scan per product — resolve vendor URLs in parallel batches
+      const productsToProcess = products.slice(0, 10); // 10 per query to manage API calls
+
+      // Resolve vendor URLs in parallel (batch of 5 at a time)
+      const vendorUrls = [];
+      for (let b = 0; b < productsToProcess.length; b += 5) {
+        const batch = productsToProcess.slice(b, b + 5);
+        const urls = await Promise.all(batch.map(p => resolveVendorUrl(p.immersive_product_page_token)));
+        vendorUrls.push(...urls);
+        totalApiCalls += batch.length;
+      }
+
       const scans = [];
-      for (const product of products.slice(0, 15)) { // max 15 per query
+      for (let pi = 0; pi < productsToProcess.length; pi++) {
+        const product = productsToProcess[pi];
+        const vendorUrl = vendorUrls[pi];
+        if (!vendorUrl) continue; // skip products without a real vendor link
+
         const account = pick(matchingAccounts.length > 0 ? matchingAccounts : allAccounts);
         const price = product.extracted_price || product.price;
         const priceNum = typeof price === "number" ? price : parseFloat(String(price).replace(/[^0-9.]/g, "")) || null;
@@ -241,6 +282,8 @@ async function run() {
           identification_confidence: 75,
           alt_search: query,
           construction_details: "",
+          url: vendorUrl, // DIRECT vendor link
+          price: priceNum ? `$${priceNum.toFixed(2)}` : null,
         };
 
         scans.push({
