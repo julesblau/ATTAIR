@@ -172,16 +172,27 @@ app.get("/api/stats", async (req, res) => {
       statsScanCount = { count: count || 0, ts: Date.now() };
     }
 
-    // Grab 40 recent public scans, shuffle, return 20 — fresh every visit
+    // Grab 40 recent public scans with user info, shuffle, return 20
     const { data: recentScans } = await supabase
       .from("scans")
-      .select("id, image_url, summary, items, created_at")
+      .select("id, user_id, image_url, summary, items, created_at")
       .eq("visibility", "public")
       .not("image_url", "is", null)
       .order("created_at", { ascending: false })
       .limit(40);
 
     const pool = (recentScans || []).sort(() => Math.random() - 0.5).slice(0, 20);
+
+    // Fetch display names for the scans
+    const userIds = [...new Set(pool.map(s => s.user_id).filter(Boolean))];
+    const profileMap = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", userIds);
+      (profiles || []).forEach(p => { profileMap[p.id] = p.display_name; });
+    }
 
     const result = {
       total_scans: statsScanCount.count + 500,
@@ -190,6 +201,7 @@ app.get("/api/stats", async (req, res) => {
         image_url: s.image_url,
         summary: s.summary,
         item_count: Array.isArray(s.items) ? s.items.length : 0,
+        user_name: profileMap[s.user_id] || null,
       })),
     };
     res.json(result);

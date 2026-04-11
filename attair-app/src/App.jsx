@@ -3206,9 +3206,9 @@ function FeaturedScansEmpty({ onScan, onDiscover }) {
                 />
                 <div className="feed-card-overlay">
                   <div className="feed-card-user">
-                    <div className="feed-card-avatar" style={{ background: "var(--accent)" }}>✦</div>
+                    <div className="feed-card-avatar" style={{ background: "var(--accent)" }}>{(scan.user_name || "A")[0]}</div>
                     <div className="feed-card-info">
-                      <div className="feed-card-name">ATTAIRE</div>
+                      <div className="feed-card-name">{scan.user_name || "ATTAIRE"}</div>
                       <div className="feed-card-summary">{scan.summary || `${scan.item_count} items found`}</div>
                     </div>
                   </div>
