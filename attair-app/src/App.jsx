@@ -9787,11 +9787,11 @@ export default function App() {
                     <div style={{ width: 36, height: 4, background: "var(--text-tertiary)", borderRadius: 9999, marginBottom: 12 }} />
                   </div>
                   <div style={{ padding: "0 20px", overflowY: "auto", flex: 1, paddingBottom: 40 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{t("settings")}</div>
-                    <button onClick={() => setProfileSettingsOpen(false)} aria-label="Close settings" style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", borderRadius: "50%", color: "var(--text-secondary)" }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                    <button onClick={() => setProfileSettingsOpen(false)} aria-label="Close settings" style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", borderRadius: "50%", color: "var(--text-primary)", marginLeft: -8 }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                     </button>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{t("settings")}</div>
                   </div>
 
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>{t("settings_appearance")}</div>
@@ -10698,6 +10698,12 @@ export default function App() {
 
                 {/* Right action bar (like TikTok/Reels) */}
                 <div className="reel-actions">
+                  {/* Like (heart) */}
+                  <button className="reel-action" onClick={(e) => { e.stopPropagation(); toggleLike(scan.id); }}>
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill={likedScans.has(scan.id) ? "#ff4466" : "none"} stroke={likedScans.has(scan.id) ? "#ff4466" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    <span className="reel-action-label"></span>
+                  </button>
+                  {/* Save to wardrobe (bookmark) */}
                   <button className="reel-action" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: u.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
                     <svg viewBox="0 0 24 24" width="26" height="26" fill={isSaved ? "#C9A96E" : "none"} stroke={isSaved ? "#C9A96E" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                     <span className="reel-action-label">{scan.save_count || ""}</span>
