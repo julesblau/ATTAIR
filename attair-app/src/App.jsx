@@ -4223,6 +4223,14 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [saved, setSaved] = useState([]);
+  const [likedScans, setLikedScans] = useState(new Set()); // scan IDs the user has liked (hearts)
+  const toggleLike = (scanId) => {
+    setLikedScans(prev => {
+      const next = new Set(prev);
+      if (next.has(scanId)) { next.delete(scanId); } else { next.add(scanId); track("scan_liked", { scan_id: scanId }); }
+      return next;
+    });
+  };
   const [fade, setFade] = useState("fi");
   const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "saved" | "picks"
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); // scan id awaiting inline delete confirm
@@ -7233,7 +7241,7 @@ export default function App() {
                         )}
                         <div className="feed-card card-enter" style={{ animationDelay: `${idx * 0.06}s` }} onClick={() => { if (feedDoubleTapRef.current.timer) return; feedDoubleTapRef.current.timer = setTimeout(() => { feedDoubleTapRef.current.timer = null; setReelScans(null); const realIdx = feedScans.indexOf(scan); setFeedDetailScan(scan); setFeedDetailIdx(realIdx >= 0 ? realIdx : idx); }, 250); }}>
                           <div style={{ position: "relative" }}
-                            onDoubleClick={(e) => { e.stopPropagation(); if (!isSaved) { const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); } const heart = document.createElement("div"); heart.innerHTML = "\u2764\uFE0F"; Object.assign(heart.style, { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) scale(0)", fontSize: "64px", pointerEvents: "none", zIndex: 10, transition: "transform .3s ease, opacity .3s ease", opacity: "1" }); e.currentTarget.appendChild(heart); requestAnimationFrame(() => { heart.style.transform = "translate(-50%,-50%) scale(1)"; }); setTimeout(() => { heart.style.opacity = "0"; heart.style.transform = "translate(-50%,-50%) scale(1.4)"; }, 600); setTimeout(() => heart.remove(), 1000); }}
+                            onDoubleClick={(e) => { e.stopPropagation(); toggleLike(scan.id); const heart = document.createElement("div"); heart.innerHTML = "\u2764\uFE0F"; Object.assign(heart.style, { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%) scale(0)", fontSize: "64px", pointerEvents: "none", zIndex: 10, transition: "transform .3s ease, opacity .3s ease", opacity: "1" }); e.currentTarget.appendChild(heart); requestAnimationFrame(() => { heart.style.transform = "translate(-50%,-50%) scale(1)"; }); setTimeout(() => { heart.style.opacity = "0"; heart.style.transform = "translate(-50%,-50%) scale(1.4)"; }, 600); setTimeout(() => heart.remove(), 1000); }}
                             onTouchStart={(e) => { feedSwipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }}
                             onTouchEnd={(e) => {
                               // Check for horizontal swipe
@@ -7313,9 +7321,16 @@ export default function App() {
                                   {scan.summary && <div className="feed-card-summary">{scan.summary}</div>}
                                 </div>
                               </div>
-                              <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
-                                <svg viewBox="0 0 24 24" width="22" height="22" fill={isSaved ? "var(--accent)" : "none"} stroke={isSaved ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                              </button>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                                {/* Like (heart) */}
+                                <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); toggleLike(scan.id); }}>
+                                  <svg viewBox="0 0 24 24" width="22" height="22" fill={likedScans.has(scan.id) ? "#ff4466" : "none"} stroke={likedScans.has(scan.id) ? "#ff4466" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                </button>
+                                {/* Save to wardrobe (bookmark) */}
+                                <button className="feed-card-heart" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: scan.user?.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
+                                  <svg viewBox="0 0 24 24" width="22" height="22" fill={isSaved ? "var(--accent)" : "none"} stroke={isSaved ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -11708,7 +11723,7 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 20 }}>
               {/* Copy Link */}
               <button onClick={async () => {
-                const shareUrl = `${API_BASE}/share/${scanId}`;
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
                 try {
                   await navigator.clipboard.writeText(shareUrl);
                   setShareLinkCopied(true);
@@ -11724,7 +11739,7 @@ export default function App() {
 
               {/* Text / Native Share */}
               <button onClick={async () => {
-                const shareUrl = `${API_BASE}/share/${scanId}`;
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
                 const shareData = { title: "ATTAIR - Check out this outfit", text: results?.summary || "Check out this outfit I scanned on ATTAIR!", url: shareUrl };
                 if (navigator.share) {
                   try { await navigator.share(shareData); track("share_link", { method: "native" }, scanId, "scan"); } catch { /* ignore */ }
@@ -11741,7 +11756,7 @@ export default function App() {
 
               {/* Instagram */}
               <button onClick={async () => {
-                const shareUrl = `${API_BASE}/share/${scanId}`;
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
                 if (navigator.share) {
                   try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "instagram" }, scanId, "scan"); } catch { /* ignore */ }
                 } else {
@@ -11757,7 +11772,7 @@ export default function App() {
 
               {/* TikTok */}
               <button onClick={async () => {
-                const shareUrl = `${API_BASE}/share/${scanId}`;
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
                 if (navigator.share) {
                   try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "tiktok" }, scanId, "scan"); } catch { /* ignore */ }
                 } else {
@@ -11776,7 +11791,7 @@ export default function App() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
               {/* Snapchat */}
               <button onClick={async () => {
-                const shareUrl = `${API_BASE}/share/${scanId}`;
+                const shareUrl = `${window.location.origin}/scan/${scanId}`;
                 if (navigator.share) {
                   try { await navigator.share({ title: "Check out this look on ATTAIR", url: shareUrl }); track("share_link", { method: "snapchat" }, scanId, "scan"); } catch { /* ignore */ }
                 } else {
