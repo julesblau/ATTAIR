@@ -2857,18 +2857,18 @@ const OB_DEMO_OUTFITS = [
 // INSPIRATION DATA — Gender-adaptive celebrity/influencer grid
 // ═══════════════════════════════════════════════════════════════
 const STYLE_AESTHETICS = [
-  { name: "Minimalist", desc: "Clean lines, neutrals, less is more" },
-  { name: "Streetwear", desc: "Urban edge, sneakers, graphic pieces" },
-  { name: "Old Money", desc: "Classic, preppy, timeless polish" },
-  { name: "Quiet Luxury", desc: "Understated, quality over logos" },
-  { name: "Y2K", desc: "Early 2000s revival, bold & playful" },
-  { name: "Coastal", desc: "Breezy, natural, effortless" },
-  { name: "Avant-Garde", desc: "Experimental, editorial, boundary-pushing" },
-  { name: "Athleisure", desc: "Sport meets street, performance comfort" },
-  { name: "Vintage", desc: "Retro finds, thrift treasures" },
-  { name: "Dark Academia", desc: "Scholarly, moody, layered" },
-  { name: "Gorpcore", desc: "Outdoor tech meets everyday wear" },
-  { name: "Cottagecore", desc: "Romantic, pastoral, soft textures" },
+  { name: "Minimalist", desc: "Clean lines, neutrals, less is more", img: "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=400&h=600&fit=crop" },
+  { name: "Streetwear", desc: "Urban edge, sneakers, graphic pieces", img: "https://images.unsplash.com/photo-1523398002811-999ca8dec234?w=400&h=600&fit=crop" },
+  { name: "Old Money", desc: "Classic, preppy, timeless polish", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop" },
+  { name: "Quiet Luxury", desc: "Understated, quality over logos", img: "https://images.unsplash.com/photo-1550639525-c97d455acf70?w=400&h=600&fit=crop" },
+  { name: "Y2K", desc: "Early 2000s revival, bold & playful", img: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?w=400&h=600&fit=crop" },
+  { name: "Coastal", desc: "Breezy, natural, effortless", img: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=400&h=600&fit=crop" },
+  { name: "Avant-Garde", desc: "Experimental, editorial, boundary-pushing", img: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=600&fit=crop" },
+  { name: "Athleisure", desc: "Sport meets street, performance comfort", img: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=600&fit=crop" },
+  { name: "Vintage", desc: "Retro finds, thrift treasures", img: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=600&fit=crop" },
+  { name: "Dark Academia", desc: "Scholarly, moody, layered", img: "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=600&fit=crop" },
+  { name: "Gorpcore", desc: "Outdoor tech meets everyday wear", img: "https://images.unsplash.com/photo-1534030347209-467a5b0ad3e6?w=400&h=600&fit=crop" },
+  { name: "Cottagecore", desc: "Romantic, pastoral, soft textures", img: "https://images.unsplash.com/photo-1518577915332-c2a19f149a75?w=400&h=600&fit=crop" },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -3038,11 +3038,22 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
   const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
   const [shopFor, setShopFor] = useState(null); // "women" | "men" | "both"
   const [selected, setSelected] = useState([]);
+  const [cardIdx, setCardIdx] = useState(0);
+  const [swipeDir, setSwipeDir] = useState(null); // "left" | "right" | null
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchDelta, setTouchDelta] = useState(0);
 
-  const toggle = (name) => {
-    setSelected(prev =>
-      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
-    );
+  const current = STYLE_AESTHETICS[cardIdx];
+  const isDone = cardIdx >= STYLE_AESTHETICS.length;
+
+  const handleSwipe = (liked) => {
+    setSwipeDir(liked ? "right" : "left");
+    if (liked) setSelected(prev => [...prev, current.name]);
+    setTimeout(() => {
+      setSwipeDir(null);
+      setTouchDelta(0);
+      setCardIdx(i => i + 1);
+    }, 250);
   };
 
   const handleContinue = () => {
@@ -3051,61 +3062,107 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
     onContinue(selected, shopFor === "women" ? "female" : shopFor === "men" ? "male" : null);
   };
 
+  // Preload next image
+  useEffect(() => {
+    if (cardIdx < STYLE_AESTHETICS.length - 1) {
+      const img = new Image();
+      img.src = STYLE_AESTHETICS[cardIdx + 1].img;
+    }
+  }, [cardIdx]);
+
   return (
     <div className={`ob ob-inspo ${fade}`}>
-      <div className="ob-inspo-header">
-        <h1 className="ob-inspo-title">{_t("ob_style_vibe")}</h1>
-        <p className="ob-inspo-sub">{_t("ob_pick_aesthetics")}</p>
-      </div>
+      {/* Gender picker (only before swiping starts) */}
+      {cardIdx === 0 && !shopFor && (
+        <div style={{ padding: "20px 0", textAlign: "center" }}>
+          <h1 className="ob-inspo-title" style={{ marginBottom: 8 }}>{_t("ob_style_vibe")}</h1>
+          <p className="ob-inspo-sub" style={{ marginBottom: 20 }}>First, what do you shop for?</p>
+          <div className="ob-inspo-gender">
+            {[{ key: "women", label: "Women's" }, { key: "men", label: "Men's" }, { key: "both", label: "Both" }].map(({ key, label }) => (
+              <button key={key} className={`ob-inspo-gender-btn ${shopFor === key ? "active" : ""}`} onClick={() => setShopFor(key)}>{label}</button>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* Shopping preference */}
-      <div className="ob-inspo-gender">
-        {[{ key: "women", label: "Women's" }, { key: "men", label: "Men's" }, { key: "both", label: "Both" }].map(({ key, label }) => (
-          <button
-            key={key}
-            className={`ob-inspo-gender-btn ${shopFor === key ? "active" : ""}`}
-            onClick={() => setShopFor(key)}
+      {/* Swipe cards */}
+      {(shopFor || cardIdx > 0) && !isDone && current && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 20px", position: "relative", overflow: "hidden" }}>
+          {/* Progress */}
+          <div style={{ display: "flex", gap: 3, marginBottom: 16, width: "100%", maxWidth: 320 }}>
+            {STYLE_AESTHETICS.map((_, i) => (
+              <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < cardIdx ? "var(--accent)" : i === cardIdx ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.1)", transition: "background .3s" }} />
+            ))}
+          </div>
+
+          {/* Card */}
+          <div
+            style={{
+              width: "100%", maxWidth: 320, aspectRatio: "3/4", borderRadius: 20, overflow: "hidden",
+              position: "relative", boxShadow: "0 8px 32px rgba(0,0,0,.3)",
+              transform: swipeDir ? `translateX(${swipeDir === "right" ? 120 : -120}%) rotate(${swipeDir === "right" ? 12 : -12}deg)` : `translateX(${touchDelta}px) rotate(${touchDelta * 0.05}deg)`,
+              opacity: swipeDir ? 0 : 1,
+              transition: swipeDir ? "transform .25s ease, opacity .25s ease" : "none",
+            }}
+            onTouchStart={e => setTouchStart(e.touches[0].clientX)}
+            onTouchMove={e => { if (touchStart != null) setTouchDelta(e.touches[0].clientX - touchStart); }}
+            onTouchEnd={() => {
+              if (Math.abs(touchDelta) > 80) handleSwipe(touchDelta > 0);
+              else { setTouchDelta(0); setTouchStart(null); }
+            }}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            <img src={current.img} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} loading="eager" />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(0,0,0,.8))" }} />
+            {/* Swipe indicator overlays */}
+            {touchDelta > 40 && <div style={{ position: "absolute", top: 20, left: 20, padding: "8px 18px", border: "3px solid #4CAF50", borderRadius: 8, color: "#4CAF50", fontSize: 20, fontWeight: 800, transform: "rotate(-12deg)" }}>LOVE</div>}
+            {touchDelta < -40 && <div style={{ position: "absolute", top: 20, right: 20, padding: "8px 18px", border: "3px solid #f44336", borderRadius: 8, color: "#f44336", fontSize: 20, fontWeight: 800, transform: "rotate(12deg)" }}>PASS</div>}
+            {/* Label */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 20px" }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", fontFamily: "'Instrument Serif', serif" }}>{current.name}</div>
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,.7)", marginTop: 4 }}>{current.desc}</div>
+            </div>
+          </div>
 
-      {/* Aesthetics grid */}
-      <div className="ob-inspo-grid">
-        {STYLE_AESTHETICS.map((aesthetic) => {
-          const on = selected.includes(aesthetic.name);
-          return (
-            <button
-              key={aesthetic.name}
-              className={`ob-inspo-card ${on ? "selected" : ""}`}
-              onClick={() => toggle(aesthetic.name)}
-            >
-              <div className="ob-inspo-card-name">{aesthetic.name}</div>
-              <div className="ob-inspo-card-tag">{aesthetic.desc}</div>
-              {on && <div className="ob-inspo-card-check">✓</div>}
+          {/* Buttons */}
+          <div style={{ display: "flex", gap: 24, marginTop: 24, alignItems: "center" }}>
+            <button onClick={() => handleSwipe(false)} style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid rgba(255,255,255,.15)", background: "rgba(255,255,255,.05)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 24 }}>
+              ✕
             </button>
-          );
-        })}
-      </div>
+            <button onClick={() => handleSwipe(true)} style={{ width: 64, height: 64, borderRadius: "50%", border: "2px solid var(--accent)", background: "rgba(201,169,110,.15)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 28 }}>
+              ♥
+            </button>
+          </div>
+
+          <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 12 }}>
+            {cardIdx + 1}/{STYLE_AESTHETICS.length} · Swipe or tap
+          </div>
+        </div>
+      )}
+
+      {/* Done state */}
+      {isDone && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>✨</div>
+          <h2 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", fontFamily: "'Instrument Serif', serif", marginBottom: 8 }}>
+            {selected.length > 0 ? `${selected.length} styles selected` : "All done!"}
+          </h2>
+          <p style={{ fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.5, marginBottom: 8 }}>
+            {selected.length > 0 ? selected.join(", ") : "No worries — we'll learn your style as you scan."}
+          </p>
+        </div>
+      )}
 
       {/* Bottom CTA */}
       <div className="ob-inspo-footer">
-        <button
-          className="cta"
-          style={{ opacity: selected.length < 3 ? 0.5 : 1 }}
-          onClick={handleContinue}
-          disabled={selected.length < 3}
-        >
-          {selected.length === 0
-            ? _t("ob_pick_at_least")
-            : selected.length < 3
-            ? `${3 - selected.length} ${_t("ob_more_to_go")}`
-            : `${_t("ob_continue_with")} ${selected.length} ${_t("ob_picks")}`}
-        </button>
-        <button className="ob-inspo-skip" onClick={() => { localStorage.setItem("attair_inspirations", "[]"); onSkip(); }}>
-          {_t("ob_skip")}
-        </button>
+        {isDone ? (
+          <button className="cta" onClick={handleContinue}>
+            {selected.length > 0 ? `Continue with ${selected.length} picks` : "Continue"}
+          </button>
+        ) : (
+          <button className="ob-inspo-skip" onClick={() => { localStorage.setItem("attair_inspirations", "[]"); onSkip(); }}>
+            {_t("ob_skip")}
+          </button>
+        )}
       </div>
     </div>
   );
