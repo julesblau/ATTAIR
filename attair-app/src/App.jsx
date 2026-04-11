@@ -7214,6 +7214,39 @@ export default function App() {
 
               {/* Feed cards */}
               {feedScans.length > 0 && (() => {
+                // Synonym map so "purse" finds "bag", "sneakers" finds "shoes", etc.
+                const SYNONYMS = {
+                  purse: ["bag","handbag","clutch","tote","crossbody","satchel"],
+                  bag: ["purse","handbag","clutch","tote","crossbody","satchel"],
+                  handbag: ["bag","purse","clutch","tote","crossbody"],
+                  sneakers: ["shoes","trainers","kicks","footwear"],
+                  shoes: ["sneakers","trainers","boots","heels","sandals","loafers","footwear"],
+                  trainers: ["sneakers","shoes","kicks"],
+                  boots: ["shoes","booties","footwear"],
+                  heels: ["shoes","pumps","stilettos","sandals"],
+                  jacket: ["coat","blazer","outerwear","parka","bomber"],
+                  coat: ["jacket","blazer","outerwear","parka","overcoat"],
+                  blazer: ["jacket","coat","sport coat","outerwear"],
+                  pants: ["trousers","jeans","chinos","slacks","bottoms"],
+                  trousers: ["pants","jeans","chinos","slacks"],
+                  jeans: ["denim","pants","trousers"],
+                  shirt: ["top","blouse","button-down","tee"],
+                  top: ["shirt","blouse","tee","tank","camisole"],
+                  blouse: ["top","shirt"],
+                  dress: ["gown","frock","romper","jumpsuit"],
+                  sweater: ["jumper","pullover","knit","cardigan","sweatshirt"],
+                  hoodie: ["sweatshirt","pullover","sweater"],
+                  skirt: ["mini","midi","maxi"],
+                  sandals: ["slides","flip-flops","heels","shoes"],
+                  watch: ["timepiece","wristwatch"],
+                  sunglasses: ["shades","eyewear","glasses"],
+                  jewelry: ["jewellery","necklace","bracelet","ring","earrings"],
+                  necklace: ["chain","pendant","jewelry"],
+                  scarf: ["wrap","shawl","bandana"],
+                  wallet: ["billfold","card holder","card case"],
+                  belt: ["strap","waist belt"],
+                  hat: ["cap","beanie","bucket hat","beret"],
+                };
                 const fq = feedFilterQuery.toLowerCase().trim();
                 const filteredFeedScans = fq ? feedScans.filter(scan => {
                   const items = scan.items || [];
@@ -7223,8 +7256,12 @@ export default function App() {
                     ...items.map(it => [it.name, it.brand, it.category, ...(it.tags || [])].join(" "))
                   ].join(" ").toLowerCase();
                   const words = fq.split(/\s+/).filter(Boolean);
+                  // Expand each search word with synonyms
+                  const expandedWords = words.map(w => [w, ...(SYNONYMS[w] || [])]);
                   const haystackWords = haystack.split(/\s+/);
-                  return words.every(w => haystackWords.some(hw => hw.startsWith(w) || w.startsWith(hw)));
+                  return expandedWords.every(group =>
+                    group.some(w => haystackWords.some(hw => hw.startsWith(w) || w.startsWith(hw) || hw.includes(w) || w.includes(hw)))
+                  );
                 }) : feedScans;
                 return (
                 <div className="feed-list">
