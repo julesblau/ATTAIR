@@ -6848,7 +6848,9 @@ export default function App() {
                     }).catch(() => showToast("Couldn't mark as read", "error"));
                   }} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "4px 8px" }}>{t("mark_all_read")}</button>
                 )}
-                <button onClick={() => setShowNotifPanel(false)} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "2px 6px" }}>x</button>
+                <button onClick={() => setShowNotifPanel(false)} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: "10px", minWidth: 44, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
               </div>
             </div>
             {("Notification" in window) && Notification.permission === "default" && !pushEnabled && (
@@ -9788,22 +9790,17 @@ export default function App() {
 
               {/* Settings bottom sheet */}
               {profileSettingsOpen && <>
-                <div className="bottom-sheet-overlay" onClick={() => { setProfileSettingsOpen(false); }} />
-                <div role="dialog" aria-label="Settings" aria-modal="true"
-                  style={{ position: "fixed", inset: 0, zIndex: 1001, background: "var(--bg-primary)", display: "flex", flexDirection: "column", transform: settingsSheetY > 0 ? `translateY(${settingsSheetY}px)` : undefined, transition: settingsDragRef.current.dragging ? 'none' : 'transform 0.3s ease', animation: "slideUpSheet 0.25s ease" }}>
-                  <div style={{ padding: "12px 0 0", display: "flex", flexDirection: "column", alignItems: "center", cursor: "grab", flexShrink: 0 }}
-                    onTouchStart={e => { settingsDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
-                    onTouchMove={e => { const dy = e.touches[0].clientY - settingsDragRef.current.startY; settingsDragRef.current.currentY = e.touches[0].clientY; if (dy > 0) { setSettingsSheetY(dy); } }}
-                    onTouchEnd={() => { const dy = settingsDragRef.current.currentY - settingsDragRef.current.startY; settingsDragRef.current.dragging = false; if (dy > 120) { setSettingsSheetY(window.innerHeight); setTimeout(() => { setProfileSettingsOpen(false); setSettingsSheetY(0); }, 300); } else { setSettingsSheetY(0); } }}>
-                    <div style={{ width: 36, height: 4, background: "var(--text-tertiary)", borderRadius: 9999, marginBottom: 12 }} />
-                  </div>
-                  <div style={{ padding: "0 20px", overflowY: "auto", flex: 1, paddingBottom: 40 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                    <button onClick={() => setProfileSettingsOpen(false)} aria-label="Close settings" style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", borderRadius: "50%", color: "var(--text-primary)", marginLeft: -8 }}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>{t("settings")}</div>
-                  </div>
+                <div className="bsheet-wrap">
+                  <div className="bsheet-bg" onClick={() => setProfileSettingsOpen(false)} />
+                  <div className="bsheet" role="dialog" aria-label="Settings" aria-modal="true"
+                    style={{ transform: settingsSheetY > 0 ? `translateY(${settingsSheetY}px)` : undefined, transition: settingsDragRef.current.dragging ? 'none' : 'transform 0.3s ease' }}>
+                    <div className="bsheet-handle"
+                      onTouchStart={e => { settingsDragRef.current = { startY: e.touches[0].clientY, currentY: e.touches[0].clientY, dragging: true }; }}
+                      onTouchMove={e => { const dy = e.touches[0].clientY - settingsDragRef.current.startY; settingsDragRef.current.currentY = e.touches[0].clientY; if (dy > 0) { setSettingsSheetY(dy); } }}
+                      onTouchEnd={() => { const dy = settingsDragRef.current.currentY - settingsDragRef.current.startY; settingsDragRef.current.dragging = false; if (dy > 120) { setSettingsSheetY(window.innerHeight); setTimeout(() => { setProfileSettingsOpen(false); setSettingsSheetY(0); }, 300); } else { setSettingsSheetY(0); } }}
+                    />
+                    <div className="bsheet-body">
+                      <div className="bsheet-title">{t("settings")}</div>
 
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>{t("settings_appearance")}</div>
                   {/* Theme toggle */}
@@ -10084,6 +10081,7 @@ export default function App() {
 
                   {/* Sign out */}
                   <div className="settings-sheet-item danger" style={{ marginTop: 8 }} onClick={() => { setProfileSettingsOpen(false); handleLogout(); }} role="button" aria-label="Sign out">{t("log_out")}</div>
+                    </div>
                   </div>
                 </div>
               </>}
@@ -12080,10 +12078,15 @@ export default function App() {
       )}
       {/* ═══ Hanger Check Fullscreen Overlay ═══ */}
       {hangerFullscreen && (
-        <div className="hanger-overlay" style={{ position: "fixed", inset: 0, zIndex: 10001, background: "var(--bg-app, #0C0C0E)", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+        <div className="bsheet-wrap" style={{ zIndex: 10001 }}>
+          <div className="bsheet-bg" onClick={() => setHangerFullscreen(false)} />
+          <div className="bsheet" style={{ maxHeight: "95vh", background: "var(--bg-app, #0C0C0E)" }}>
+          <div className="bsheet-handle" style={{ marginBottom: 0 }} />
           {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))", position: "relative", zIndex: 10 }}>
-            <button onClick={() => setHangerFullscreen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: "8px 12px", minWidth: 44, minHeight: 44 }}>&#x2715;</button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", position: "relative", zIndex: 10 }}>
+            <button onClick={() => setHangerFullscreen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 20, cursor: "pointer", padding: "8px 12px", minWidth: 44, minHeight: 44 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("hanger_check")}</span>
               {hangerStreak?.current_streak > 0 && <span style={{ fontSize: 13, color: "#FFB74D" }}>&#128293; {hangerStreak.current_streak}</span>}
@@ -12237,6 +12240,7 @@ export default function App() {
           {hangerCurrentIndex < hangerOutfits.length && !hangerVotes[hangerOutfits[hangerCurrentIndex]?.id] && (
             <div style={{ textAlign: "center", padding: "0 0 8px", fontSize: 11, color: "var(--text-tertiary)", opacity: 0.5 }}>Swipe right to wear, left to pass</div>
           )}
+        </div>
         </div>
       )}
 

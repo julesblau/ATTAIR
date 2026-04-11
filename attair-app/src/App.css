@@ -2307,6 +2307,14 @@
 .ReactCrop{border-radius:4px}
 .ReactCrop__crop-selection{border:2px solid var(--accent);box-shadow:0 0 0 9999px rgba(0,0,0,.55)}
 .ReactCrop__drag-handle::after{background:var(--accent);border:2px solid var(--bg-secondary);width:14px;height:14px;border-radius:3px}
+/* ── Reusable bottom sheet pattern ─── */
+.bsheet-wrap{position:fixed;inset:0;z-index:1001;display:flex;align-items:flex-end;justify-content:center}
+.bsheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px)}
+.bsheet{position:relative;width:100%;max-width:430px;max-height:90vh;background:var(--bg-primary);border-radius:20px 20px 0 0;display:flex;flex-direction:column;animation:slideIn .25s ease;overflow:hidden;padding-bottom:max(16px,env(safe-area-inset-bottom))}
+.bsheet-handle{width:36px;height:4px;background:var(--text-tertiary);opacity:.4;border-radius:4px;margin:10px auto 0;flex-shrink:0;cursor:grab}
+.bsheet-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px}
+.bsheet-title{font-size:18px;font-weight:700;color:var(--text-primary);padding:16px 0 12px}
+
 .item-opts-overlay{position:fixed;inset:0;z-index:250;background:rgba(0,0,0,.65);backdrop-filter:blur(4px)}
 .item-opts-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg-card);border-radius:20px 20px 0 0;border-top:1px solid var(--border);padding:20px 20px;padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:251;animation:slideIn .22s ease;max-height:82vh;overflow-y:auto}
 .item-opts-handle{width:36px;height:3px;background:var(--text-tertiary);border-radius:3px;margin:0 auto 18px}
