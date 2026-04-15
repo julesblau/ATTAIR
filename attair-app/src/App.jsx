@@ -4731,8 +4731,8 @@ export default function App() {
   const [profileScanOverlay, setProfileScanOverlay] = useState(null); // scan object for overlay
   const [historyDetailScan, setHistoryDetailScan] = useState(null); // history item detail overlay
 
-  // ─── Interest Picker (style inspirations) ─────────────────
-  const [showInterestPicker, setShowInterestPicker] = useState(false);
+  // ─── Interest Picker (inline card on Scan idle view) ──────
+  const [interestsDismissed, setInterestsDismissed] = useState(() => !!localStorage.getItem("attair_interests_picked"));
   const [selectedInterests, setSelectedInterests] = useState([]);
 
   // ─── Custom occasion ──────────────────────────────────────
@@ -5354,16 +5354,8 @@ export default function App() {
     }
   }, [authed]);
 
-  // ─── Interest picker — show once after first login ─────────
-  useEffect(() => {
-    if (authed && screen === "app") {
-      const picked = localStorage.getItem("attair_interests_picked");
-      // Don't show if already dismissed OR if user already has style interests from profile
-      if (!picked && !(userStatus?.style_interests?.length > 0)) {
-        setTimeout(() => setShowInterestPicker(true), 3000); // 3s delay — less jarring on first login
-      }
-    }
-  }, [authed, screen]);
+  // Interest picker is now an inline card on the Scan idle view (see below).
+  // Visibility is gated on userStatus.style_interests + attair_interests_picked.
 
   // ─── Feed loader (with localStorage cache for instant load) ──
   const FEED_CACHE_KEY = "attair_feed_cache";
@@ -6703,50 +6695,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ─── INTEREST PICKER ─────────────────────────────── */}
-      {showInterestPicker && (
-        <div className="modal-overlay" onClick={() => { setShowInterestPicker(false); localStorage.setItem("attair_interests_picked", "1"); }}>
-          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxHeight: "85vh", overflowY: "auto" }}>
-            <button className="modal-x" onClick={() => { setShowInterestPicker(false); localStorage.setItem("attair_interests_picked", "1"); }} aria-label="Close">✕</button>
-            <h2 className="modal-title" style={{ fontSize: 20, marginBottom: 6 }}>{t("who_inspires")}</h2>
-            <p className="modal-sub" style={{ marginBottom: 20 }}>Pick up to 5. We'll personalize your results.</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
-              {[
-                { v: "Actors & Actresses", l: "Actors & Actresses", icon: "🎬" },
-                { v: "Musicians & K-Pop", l: "Musicians & K-Pop", icon: "🎵" },
-                { v: "Athletes", l: "Athletes", icon: "🏀" },
-                { v: "TikTok Creators", l: "TikTok Creators", icon: "📱" },
-                { v: "Instagram Influencers", l: "Instagram Influencers", icon: "📸" },
-                { v: "Streamers & YouTubers", l: "Streamers & YouTubers", icon: "🎮" },
-                { v: "Fashion Icons & Models", l: "Fashion Icons & Models", icon: "👗" },
-                { v: "Street Style", l: "Street Style", icon: "🌍" },
-              ].map(({ v, l, icon }) => {
-                const on = selectedInterests.includes(v);
-                return (
-                  <button key={v}
-                    onClick={() => setSelectedInterests(prev => on ? prev.filter(x => x !== v) : prev.length < 5 ? [...prev, v] : prev)}
-                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 100, border: `1px solid ${on ? "rgba(201,169,110,.5)" : "var(--border)"}`, background: on ? "rgba(201,169,110,.1)" : "var(--bg-input)", color: on ? "var(--accent)" : "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all .2s", minHeight: 44 }}>
-                    <span style={{ fontSize: 16 }}>{icon}</span>{l}
-                  </button>
-                );
-              })}
-            </div>
-            <button className="cta" onClick={async () => {
-              try {
-                await API.updateProfile({ style_interests: selectedInterests });
-                lsCache.clear("attair_profile_cache");
-                lsCache.clear("attair_styledna_cache");
-              } catch { /* ignore */ }
-              setShowInterestPicker(false);
-              localStorage.setItem("attair_interests_picked", "1");
-              track("interests_picked", { interests: selectedInterests });
-            }}>
-              {selectedInterests.length === 0 ? "Skip for now" : `Save ${selectedInterests.length} pick${selectedInterests.length !== 1 ? "s" : ""}`}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ─── UPGRADE SUCCESS BANNER ──────────────────────── */}
       {upgradeSuccess && (
         <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "var(--accent)", color: "var(--text-inverse)", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
@@ -7074,6 +7022,48 @@ export default function App() {
                 </button>
               </div>
             </div>
+
+            {/* Inline interest picker — shown once until saved/dismissed */}
+            {authed && !interestsDismissed && !(userStatus?.style_interests?.length > 0) && (
+              <div style={{ width: "100%", maxWidth: 340, margin: "0 auto 32px", padding: 20, borderRadius: 16, background: "var(--bg-input)", border: "1px solid var(--border)", position: "relative", textAlign: "left" }}>
+                <button onClick={() => { localStorage.setItem("attair_interests_picked", "1"); setInterestsDismissed(true); }} style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: 4, lineHeight: 1 }} aria-label="Dismiss">✕</button>
+                <h3 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 18, color: "var(--text-primary)", margin: "0 0 4px" }}>{t("who_inspires")}</h3>
+                <p style={{ fontSize: 12, color: "var(--text-tertiary)", margin: "0 0 14px" }}>Pick up to 5. We'll personalize your results.</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+                  {[
+                    { v: "Actors & Actresses", icon: "🎬" },
+                    { v: "Musicians & K-Pop", icon: "🎵" },
+                    { v: "Athletes", icon: "🏀" },
+                    { v: "TikTok Creators", icon: "📱" },
+                    { v: "Instagram Influencers", icon: "📸" },
+                    { v: "Streamers & YouTubers", icon: "🎮" },
+                    { v: "Fashion Icons & Models", icon: "👗" },
+                    { v: "Street Style", icon: "🌍" },
+                  ].map(({ v, icon }) => {
+                    const on = selectedInterests.includes(v);
+                    return (
+                      <button key={v}
+                        onClick={() => setSelectedInterests(prev => on ? prev.filter(x => x !== v) : prev.length < 5 ? [...prev, v] : prev)}
+                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 100, border: `1px solid ${on ? "rgba(201,169,110,.5)" : "var(--border)"}`, background: on ? "rgba(201,169,110,.1)" : "transparent", color: on ? "var(--accent)" : "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>
+                        <span style={{ fontSize: 13 }}>{icon}</span>{v}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button className="cta" style={{ width: "100%", padding: "11px 0", fontSize: 13, opacity: selectedInterests.length === 0 ? 0.5 : 1 }} disabled={selectedInterests.length === 0} onClick={async () => {
+                  try {
+                    await API.updateProfile({ style_interests: selectedInterests });
+                    lsCache.clear("attair_profile_cache");
+                    lsCache.clear("attair_styledna_cache");
+                  } catch { /* ignore */ }
+                  localStorage.setItem("attair_interests_picked", "1");
+                  setInterestsDismissed(true);
+                  track("interests_picked", { interests: selectedInterests });
+                }}>
+                  {selectedInterests.length === 0 ? "Pick at least one" : `Save ${selectedInterests.length} pick${selectedInterests.length !== 1 ? "s" : ""}`}
+                </button>
+              </div>
+            )}
           </>)}
 
           {/* ─── Loading (branded identifying experience) ── */}
