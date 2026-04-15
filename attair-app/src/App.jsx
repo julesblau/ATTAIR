@@ -2784,77 +2784,193 @@ const OB_STEPS = [
   { id: "welcome", type: "info", icon: "✦", title: "Scan any outfit.\nFind where to buy it.", sub: "Upload any outfit photo. Our AI identifies every piece and finds you budget, mid, and premium options instantly.", cta: "Get Started" },
 ];
 
-// Demo data for TikTok-speed onboarding animation
-// 5 real outfits that cycle through the landing page demo
+// Demo data for onboarding animation — 6 curated outfits, W/M/W/M/W/M.
+// Each item carries its own shop matches at $/$$/$$$. The user's selected budget chip
+// (`budget` field, 0|1|2) decides which tier shows in the Shop phase, so the cards
+// directly correspond to the items tagged in the Identify phase.
 const OB_DEMO_OUTFITS = [
+  // [0] W Athleisure — Lululemon (product: LW3DOBS)
   {
-    image: "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=400&h=700&fit=crop&crop=center",
-    alt: "Business casual: navy blazer, white shirt, chinos",
+    image: "/outfits/w-athleisure.webp",
+    alt: "Women athleisure: Lululemon long-sleeve, shorts, sneakers",
+    budget: 1,
     items: [
-      { emoji: "🧥", name: "Tailored Navy Blazer" },
-      { emoji: "👔", name: "White Poplin Shirt" },
-      { emoji: "👖", name: "Tan Chinos" },
-    ],
-    results: [
-      { tier: "budget", store: "Zara", price: "$89", name: "Wool Blend Blazer" },
-      { tier: "mid", store: "J.Crew", price: "$198", name: "Ludlow Slim Blazer" },
-      { tier: "premium", store: "Reiss", price: "$470", name: "Promise Wool Blazer" },
+      {
+        emoji: "👚", name: "Lululemon Swiftly Tech LS", top: 26,
+        shop: {
+          budget: { store: "Uniqlo", price: "$25", name: "Airism Long-Sleeve" },
+          mid: { store: "Lululemon", price: "$88", name: "Swiftly Tech LS" },
+          premium: { store: "Alo Yoga", price: "$118", name: "Alosoft LS" },
+        },
+      },
+      {
+        emoji: "🩳", name: "Lululemon Hotty Hot Short", top: 50,
+        shop: {
+          budget: { store: "Old Navy", price: "$20", name: "PowerSoft Short" },
+          mid: { store: "Lululemon", price: "$58", name: "Hotty Hot Short" },
+          premium: { store: "Alo Yoga", price: "$78", name: "Airbrush Short" },
+        },
+      },
+      {
+        emoji: "👟", name: "Training Sneakers", top: 86,
+        shop: {
+          budget: { store: "Adidas", price: "$65", name: "Cloudfoam Pure" },
+          mid: { store: "Nike", price: "$140", name: "Pegasus 41" },
+          premium: { store: "On", price: "$150", name: "Cloud X 4" },
+        },
+      },
     ],
   },
+  // [1] M Athleisure
   {
-    image: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=700&fit=crop&crop=center",
-    alt: "Street style: cropped hoodie, high-waist jeans",
+    image: "https://images.unsplash.com/photo-1635969506664-9d490128ba30?w=400&h=700&fit=crop&crop=center",
+    alt: "Men athleisure: black tee, tapered joggers, chunky white sneakers",
+    budget: 0,
     items: [
-      { emoji: "👚", name: "Cropped Hoodie" },
-      { emoji: "👖", name: "High-Rise Straight Jeans" },
-      { emoji: "👟", name: "Chunky Sneakers" },
-    ],
-    results: [
-      { tier: "budget", store: "H&M", price: "$35", name: "Cropped Sweatshirt" },
-      { tier: "mid", store: "Levi's", price: "$98", name: "Ribcage Jeans" },
-      { tier: "premium", store: "Axel Arigato", price: "$250", name: "Marathon Runner" },
+      {
+        emoji: "👕", name: "Black Crewneck Tee", top: 24,
+        shop: {
+          budget: { store: "Uniqlo", price: "$15", name: "U Crew Neck Tee" },
+          mid: { store: "Lululemon", price: "$58", name: "Fundamental T" },
+          premium: { store: "Sunspel", price: "$95", name: "Cotton Crew Tee" },
+        },
+      },
+      {
+        emoji: "👖", name: "Tapered Joggers", top: 54,
+        shop: {
+          budget: { store: "Uniqlo", price: "$40", name: "Stretch Jogger" },
+          mid: { store: "Lululemon", price: "$128", name: "ABC Jogger" },
+          premium: { store: "Fear of God", price: "$345", name: "Essentials Jogger" },
+        },
+      },
+      {
+        emoji: "👟", name: "Chunky White Sneakers", top: 86,
+        shop: {
+          budget: { store: "New Balance", price: "$100", name: "327 White" },
+          mid: { store: "Nike", price: "$140", name: "Air Max 1" },
+          premium: { store: "Maison Margiela", price: "$590", name: "Replica Low" },
+        },
+      },
     ],
   },
+  // [2] W Chic — Aritzia Daisychain satin slip dress
   {
-    image: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=400&h=700&fit=crop&crop=center",
-    alt: "Elegant: silk blouse, tailored trousers, heels",
+    image: "/outfits/w-chic.avif",
+    alt: "Women chic: Aritzia Daisychain satin slip dress, strappy heels",
+    budget: 2,
     items: [
-      { emoji: "👗", name: "Silk Button Blouse" },
-      { emoji: "👖", name: "Wide Leg Trousers" },
-      { emoji: "👜", name: "Leather Tote Bag" },
-    ],
-    results: [
-      { tier: "budget", store: "Mango", price: "$59", name: "Satin Blouse" },
-      { tier: "mid", store: "Vince", price: "$245", name: "Silk Button-Down" },
-      { tier: "premium", store: "The Row", price: "$890", name: "Silk Popover" },
+      {
+        emoji: "👗", name: "Aritzia Daisychain Dress", top: 36,
+        shop: {
+          budget: { store: "Zara", price: "$49", name: "Satin Slip Midi" },
+          mid: { store: "Aritzia", price: "$148", name: "Daisychain Dress" },
+          premium: { store: "Khaite", price: "$1,280", name: "Mirella Slip" },
+        },
+      },
+      {
+        emoji: "👡", name: "Strappy Kitten Heels", top: 84,
+        shop: {
+          budget: { store: "ASOS", price: "$42", name: "Mariana Sandal" },
+          mid: { store: "Sam Edelman", price: "$138", name: "Codie Sandal" },
+          premium: { store: "The Row", price: "$890", name: "Romy Sandal" },
+        },
+      },
     ],
   },
+  // [3] M Old Money — 4 items including the orange silk tie
   {
-    image: "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=700&fit=crop&crop=center",
-    alt: "Smart casual: camel blazer, white tee, light jeans",
+    image: "https://images.unsplash.com/photo-1589458222904-d3561126937e?w=400&h=700&fit=crop&crop=center",
+    alt: "Men old money: navy blazer, orange silk tie, chinos, boat shoes",
+    budget: 1,
     items: [
-      { emoji: "🧥", name: "Camel Oversized Blazer" },
-      { emoji: "👕", name: "White Crew Neck Tee" },
-      { emoji: "👟", name: "Retro High-Top Sneakers" },
-    ],
-    results: [
-      { tier: "budget", store: "ASOS", price: "$45", name: "Oversized Blazer" },
-      { tier: "mid", store: "COS", price: "$175", name: "Wool Blend Blazer" },
-      { tier: "premium", store: "Theory", price: "$395", name: "Clinton Blazer" },
+      {
+        emoji: "👔", name: "Orange Silk Tie", top: 22,
+        shop: {
+          budget: { store: "H&M", price: "$25", name: "Solid Silk Tie" },
+          mid: { store: "J.Crew", price: "$69", name: "Italian Silk Tie" },
+          premium: { store: "Hermès", price: "$215", name: "Twill Soie Tie" },
+        },
+      },
+      {
+        emoji: "🧥", name: "Tailored Navy Blazer", top: 40,
+        shop: {
+          budget: { store: "Banana Republic", price: "$130", name: "Wool Blazer" },
+          mid: { store: "J.Crew", price: "$298", name: "Ludlow Italian Wool" },
+          premium: { store: "Brunello Cucinelli", price: "$2,895", name: "Cashmere Blazer" },
+        },
+      },
+      {
+        emoji: "👖", name: "Cuffed Stone Chinos", top: 64,
+        shop: {
+          budget: { store: "Old Navy", price: "$35", name: "Slim Built-In Flex" },
+          mid: { store: "Bonobos", price: "$98", name: "Stretch Washed Chino" },
+          premium: { store: "Loro Piana", price: "$750", name: "Linen Trouser" },
+        },
+      },
+      {
+        emoji: "👞", name: "Tan Boat Shoes", top: 88,
+        shop: {
+          budget: { store: "Sperry", price: "$95", name: "Authentic Original" },
+          mid: { store: "Sebago", price: "$165", name: "Docksides Portland" },
+          premium: { store: "Tod's", price: "$695", name: "Gommino Driver" },
+        },
+      },
     ],
   },
+  // [4] W Night Out
   {
-    image: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=400&h=700&fit=crop&crop=center",
-    alt: "Boho: flowing dress, statement accessories",
+    image: "https://images.unsplash.com/photo-1684815798502-6d5dd6e87419?w=400&h=700&fit=crop&crop=center",
+    alt: "Women night out: long-sleeve ruched mini dress, strappy heels",
+    budget: 0,
     items: [
-      { emoji: "👗", name: "Floral Maxi Dress" },
-      { emoji: "🧣", name: "Woven Belt" },
-      { emoji: "👡", name: "Leather Sandals" },
+      {
+        emoji: "👗", name: "Long-Sleeve Mini Dress", top: 36,
+        shop: {
+          budget: { store: "Princess Polly", price: "$69", name: "Ruched Mini" },
+          mid: { store: "House of CB", price: "$198", name: "Lace Bodice Mini" },
+          premium: { store: "Self-Portrait", price: "$485", name: "Lace Inset Mini" },
+        },
+      },
+      {
+        emoji: "👠", name: "Strappy Ankle Heels", top: 82,
+        shop: {
+          budget: { store: "ASOS", price: "$48", name: "Pointed Ankle Tie" },
+          mid: { store: "Steve Madden", price: "$118", name: "Yvette Sandal" },
+          premium: { store: "Aquazzura", price: "$895", name: "Casablanca" },
+        },
+      },
     ],
-    results: [
-      { tier: "budget", store: "Free People", price: "$68", name: "Floral Midi" },
-      { tier: "mid", store: "Reformation", price: "$218", name: "Juliette Dress" },
-      { tier: "premium", store: "Zimmermann", price: "$695", name: "Linen Dress" },
+  },
+  // [5] M Streetwear
+  {
+    image: "https://images.unsplash.com/photo-1638412326564-47ec4b061636?w=400&h=700&fit=crop&crop=center",
+    alt: "Men streetwear: oversized washed tee, cargo pants, Jordan 1 sneakers",
+    budget: 2,
+    items: [
+      {
+        emoji: "👕", name: "Washed Oversized Tee", top: 28,
+        shop: {
+          budget: { store: "H&M", price: "$13", name: "Loose Fit Tee" },
+          mid: { store: "Stüssy", price: "$65", name: "Pigment Dyed Tee" },
+          premium: { store: "Rick Owens", price: "$360", name: "Level Tee" },
+        },
+      },
+      {
+        emoji: "👖", name: "Tactical Cargo Pants", top: 56,
+        shop: {
+          budget: { store: "H&M", price: "$35", name: "Relaxed Cargo" },
+          mid: { store: "Stüssy", price: "$150", name: "Ripstop Surplus" },
+          premium: { store: "Rick Owens", price: "$820", name: "DRKSHDW Cargo" },
+        },
+      },
+      {
+        emoji: "👟", name: "Air Jordan 1 Highs", top: 88,
+        shop: {
+          budget: { store: "Nike", price: "$115", name: "Air Force 1" },
+          mid: { store: "Jordan", price: "$130", name: "Air Jordan 1 Mid" },
+          premium: { store: "Jordan", price: "$1,800", name: "AJ1 x Travis Scott" },
+        },
+      },
     ],
   },
 ];
@@ -2883,7 +2999,7 @@ const STYLE_AESTHETICS = [
 function OnboardingDemo({ fade, onGetStarted, onLogin }) {
   const _lang = localStorage.getItem("attair_lang") || "en";
   const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
-  const [demoPhase, setDemoPhase] = useState(0); // 0=photo, 1=scanning, 2=items, 3=results, 4=fade-out
+  const [demoPhase, setDemoPhase] = useState(0); // 0=photo, 1=scanning, 2=items, 3=budget, 4=results, 5=fade-out
   const [cycleKey, setCycleKey] = useState(0);
   const [demoOutfitIdx, setDemoOutfitIdx] = useState(0); // cycles through OB_DEMO_OUTFITS
   const demoOutfit = OB_DEMO_OUTFITS[demoOutfitIdx % OB_DEMO_OUTFITS.length];
@@ -2896,16 +3012,17 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
   }, []);
 
   useEffect(() => {
-    const timings = [1200, 1000, 1200, 1800, 600]; // ms per phase (last = fade-out before reset)
+    const timings = [1500, 1300, 1900, 2100, 2600, 700]; // ms per phase (last = fade-out before reset)
     const timer = setTimeout(() => {
-      setDemoPhase(p => {
-        if (p >= 4) {
-          setCycleKey(k => k + 1);
-          setDemoOutfitIdx(i => (i + 1) % OB_DEMO_OUTFITS.length); // next outfit
-          return 0;
-        }
-        return p + 1;
-      });
+      // Side-effect setters must not live inside a setDemoPhase updater — StrictMode
+      // double-invokes updater fns in dev, which would double-advance the outfit index.
+      if (demoPhase >= 5) {
+        setDemoPhase(0);
+        setCycleKey(k => k + 1);
+        setDemoOutfitIdx(i => (i + 1) % OB_DEMO_OUTFITS.length);
+      } else {
+        setDemoPhase(p => p + 1);
+      }
     }, timings[demoPhase]);
     return () => clearTimeout(timer);
   }, [demoPhase, cycleKey]);
@@ -2920,7 +3037,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
       {/* Animated demo viewport */}
       <div className="ob-demo-viewport">
         {/* Mock phone frame */}
-        <div className="ob-demo-phone" style={{ opacity: demoPhase === 4 ? 0 : 1, transition: "opacity 0.5s ease" }}>
+        <div className="ob-demo-phone" style={{ opacity: demoPhase === 5 ? 0 : 1, transition: "opacity 0.5s ease" }}>
           {/* Phase 0-1: Outfit photo with gradient */}
           <div className="ob-demo-photo" style={{ opacity: 1 }}>
             <img
@@ -2930,7 +3047,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
             />
 
             {/* Phase 1: Scanning laser line */}
-            <div key={cycleKey} className={`ob-demo-scan-line ${demoPhase >= 1 && demoPhase < 4 ? "active" : ""}`} />
+            <div key={cycleKey} className={`ob-demo-scan-line ${demoPhase >= 1 && demoPhase < 5 ? "active" : ""}`} />
 
             {/* Phase 2: Item labels pop in */}
             <div className="ob-demo-items">
@@ -2938,7 +3055,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
                 <div
                   key={`${demoOutfitIdx}-${i}`}
                   className={`ob-demo-item-tag ${demoPhase >= 2 && demoPhase < 4 ? "visible" : ""}`}
-                  style={{ transitionDelay: `${i * 150}ms`, top: `${18 + i * 28}%` }}
+                  style={{ transitionDelay: `${i * 150}ms`, top: `${item.top ?? (28 + i * 22)}%` }}
                 >
                   <span className="ob-demo-item-emoji">{item.emoji}</span>
                   <span className="ob-demo-item-name">{item.name}</span>
@@ -2948,37 +3065,76 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
             </div>
           </div>
 
-          {/* Phase 3: Results cards slide up */}
-          <div className={`ob-demo-results ${demoPhase >= 3 && demoPhase < 4 ? "visible" : ""}`}>
+          {/* Phase 3: Budget selector */}
+          <div className={`ob-demo-budget ${demoPhase === 3 ? "visible" : ""}`}>
+            <div className="ob-demo-budget-label">Set your budget</div>
+            <div className="ob-demo-budget-chips">
+              {[
+                { sym: "$", tier: "Budget" },
+                { sym: "$$", tier: "Mid" },
+                { sym: "$$$", tier: "Premium" },
+              ].map((c, i) => (
+                <div
+                  key={`${demoOutfitIdx}-b${i}`}
+                  className={`ob-demo-budget-chip ${i === (demoOutfit.budget ?? 1) ? "selected" : ""}`}
+                  style={{ transitionDelay: `${i * 120}ms` }}
+                >
+                  <span className="ob-demo-budget-chip-sym">{c.sym}</span>
+                  <span className="ob-demo-budget-chip-tier">{c.tier}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Phase 4: Results cards slide up — one per identified item, at the chosen budget tier */}
+          <div className={`ob-demo-results ${demoPhase >= 4 && demoPhase < 5 ? "visible" : ""}`}>
             <div className="ob-demo-results-header">
               <span className="ob-demo-results-dot" />
               Products found
             </div>
-            {demoOutfit.results.map((r, i) => (
-              <div
-                key={`${demoOutfitIdx}-r${i}`}
-                className={`ob-demo-result-card ${demoPhase >= 3 && demoPhase < 4 ? "visible" : ""}`}
-                style={{ transitionDelay: `${i * 120}ms` }}
-              >
-                <div className={`ob-demo-tier-badge ob-demo-tier-${r.tier}`}>{r.tier}</div>
-                <div className="ob-demo-result-info">
-                  <div className="ob-demo-result-name">{r.name}</div>
-                  <div className="ob-demo-result-store">{r.store}</div>
-                </div>
-                <div className="ob-demo-result-price">{r.price}</div>
-              </div>
-            ))}
+            {(() => {
+              const tierKey = ["budget", "mid", "premium"][demoOutfit.budget ?? 1];
+              return demoOutfit.items.map((item, i) => {
+                const r = item.shop?.[tierKey];
+                if (!r) return null;
+                return (
+                  <div
+                    key={`${demoOutfitIdx}-r${i}`}
+                    className={`ob-demo-result-card ${demoPhase >= 4 && demoPhase < 5 ? "visible" : ""}`}
+                    style={{ transitionDelay: `${i * 100}ms` }}
+                  >
+                    <div className={`ob-demo-tier-badge ob-demo-tier-${tierKey}`}>{item.emoji}</div>
+                    <div className="ob-demo-result-info">
+                      <div className="ob-demo-result-name">{r.name}</div>
+                      <div className="ob-demo-result-store">{r.store}</div>
+                    </div>
+                    <div className="ob-demo-result-price">{r.price}</div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
 
-        {/* Phase indicator dots */}
-        <div className="ob-demo-dots">
-          {["Photo", "Scan", "Identify", "Shop"].map((label, i) => (
-            <div key={i} className={`ob-demo-dot ${demoPhase >= i && demoPhase < 4 ? "active" : ""}`}>
-              <div className="ob-demo-dot-circle" />
-              <span className="ob-demo-dot-label">{label}</span>
-            </div>
-          ))}
+        {/* Numbered step indicator: 1 Identify → 2 Budget → 3 Shop */}
+        <div className="ob-demo-steps">
+          {(() => {
+            // map phase → active step: 0-2 ident, 3 budget, 4 shop
+            const activeStep = demoPhase <= 2 ? 1 : demoPhase === 3 ? 2 : demoPhase === 4 ? 3 : 0;
+            return [
+              { n: 1, label: "Identify" },
+              { n: 2, label: "Budget" },
+              { n: 3, label: "Shop" },
+            ].map(({ n, label }) => {
+              const state = activeStep === n ? "active" : activeStep > n ? "done" : "";
+              return (
+                <div key={n} className={`ob-demo-step ${state}`}>
+                  <div className="ob-demo-step-num">{state === "done" ? "✓" : n}</div>
+                  <span className="ob-demo-step-label">{label}</span>
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
 
@@ -3005,17 +3161,6 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
               <span className="ob-social-stat-l">outfits scanned</span>
             </div>
           )}
-          {stats.recent_scans?.length > 0 && (
-            <div className="ob-social-carousel">
-              {stats.recent_scans.map((scan) => (
-                <div key={scan.id} className="ob-social-scan">
-                  <img src={scan.image_url} alt="Scan photo" className="ob-social-scan-img" loading="lazy" />
-                  <div className="ob-social-scan-count">{scan.item_count} items</div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="ob-social-trust">Trusted by style hunters everywhere</div>
         </div>
       )}
 
@@ -3215,7 +3360,7 @@ function FeaturedScansEmpty({ onScan, onDiscover }) {
                     <div className="feed-card-avatar" style={{ background: "var(--accent)" }}>{(scan.user_name || "A")[0]}</div>
                     <div className="feed-card-info">
                       <div className="feed-card-name">{scan.user_name || "ATTAIRE"}</div>
-                      <div className="feed-card-summary">{scan.summary || `${scan.item_count} items found`}</div>
+                      <div className="feed-card-summary">{scan.summary || `${scan.item_count} ${scan.item_count === 1 ? "item" : "items"} found`}</div>
                     </div>
                   </div>
                 </div>

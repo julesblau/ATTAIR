@@ -27,3 +27,4 @@ dist-ssr
 ios/App/Pods/
 ios/DerivedData/
 ios/App/output/
+.vercel

@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Deployment Targets
+- Default deployment platform is **Railway** (NOT Vercel) unless explicitly stated otherwise
+- Always confirm the deployment target before running any deploy commands
+
+## Platform
+- Development environment is **Windows 11** (native, not WSL) — be aware of path issues, OneDrive file locks, and tools that don't support Windows natively (e.g., Turso CLI). Prefer Windows-native or cross-platform solutions.
+- Avoid suggesting reboots without warning the user first
+
 ## How to Work
 
 **Use the fork model.** Break all coding tasks into subtasks and delegate to subagents. Don't do everything in a single thread — fork early and often.
@@ -89,7 +97,7 @@ npx supabase db query --linked -f sql/016-hanger-test-v2.sql  # run specific mig
 - **Railway CLI**: `npx railway` — manage services, view logs, check env vars, redeploy. Backend service is "ATTAIR" (ID `439990b3-e4b3-4b1f-bdbb-ec94885bf784`).
 
 ### Required Environment Variables (backend)
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `ANTHROPIC_API_KEY`, `SERPAPI_KEY`, `CRON_SECRET_KEY`. Stripe keys are optional.
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `ANTHROPIC_API_KEY`, `SERPAPI_KEY`, `CRON_SECRET`. Stripe keys are optional.
 
 ## Working in App.jsx
 
@@ -144,6 +152,15 @@ This means every merge to `main` is a production deploy. Be certain tests pass a
 <!-- TEMPLATE for adding new items:
 - **Short name.** Description of the issue and what to do (or not do) about it.
 -->
+
+## Environment Variables
+- When renaming env vars, grep ALL files (code, .env, .env.example, config files) for both old and new names before committing
+- Watch for trailing newlines/whitespace in env var values — they cause silent production crashes
+- Local environment may not have all credentials (e.g., Beli API, Resy auth) — check before attempting API calls
+
+## Code Changes Checklist
+- When modifying env var names, API endpoints, or config keys: grep the ENTIRE codebase for all references before committing
+- When implementing features, re-read the user's requirements to confirm nothing was missed (e.g., approval flows, real vs fake data)
 
 ## API Contract: Frontend ↔ Backend
 
