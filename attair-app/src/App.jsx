@@ -6312,8 +6312,8 @@ export default function App() {
       {screen === "onboarding" && (
         <OnboardingDemo
           fade={fade}
-          onGetStarted={() => obNext()}
-          onLogin={() => { setScreen("auth"); setAuthScreen("login"); }}
+          onGetStarted={() => { setAuthScreen("signup"); trans(() => setScreen("auth")); }}
+          onLogin={() => { setAuthScreen("login"); trans(() => setScreen("auth")); }}
         />
       )}
 
