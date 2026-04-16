@@ -8309,27 +8309,32 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Filter row: wishlist chips */}
-                <div className="scroll-x scroll-row" style={{ gap: 8, padding: "8px 16px 0" }}>
-                  {wishlists.map(wl => (
-                    <button
-                      key={wl.id}
-                      className={`scan-vis-chip${activeWishlist?.id === wl.id ? " active" : ""}`}
-                      onClick={() => { setActiveWishlist(activeWishlist?.id === wl.id ? null : wl); if (activeWishlist?.id !== wl.id) setHistoryFilter("all"); }}
-                      onTouchStart={() => { wishlistLongPressRef.current = setTimeout(() => { setWishlistEditId(wl.id); setWishlistEditName(wl.name); setWishlistEditOpen(true); }, 500); }}
-                      onTouchEnd={() => { clearTimeout(wishlistLongPressRef.current); }}
-                      onTouchMove={() => { clearTimeout(wishlistLongPressRef.current); }}
-                      onMouseDown={() => { wishlistLongPressRef.current = setTimeout(() => { setWishlistEditId(wl.id); setWishlistEditName(wl.name); setWishlistEditOpen(true); }, 500); }}
-                      onMouseUp={() => { clearTimeout(wishlistLongPressRef.current); }}
-                      onMouseLeave={() => { clearTimeout(wishlistLongPressRef.current); }}
-                      onContextMenu={e => { e.preventDefault(); setWishlistEditId(wl.id); setWishlistEditName(wl.name); setWishlistEditOpen(true); }}
-                      style={{ flexShrink: 0 }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                      {wl.name}
-                    </button>
-                  ))}
-                </div>
+                {/* Filter row: wishlist chips — only when there's something to filter */}
+                {saved.length > 0 && wishlists.length > 0 && (
+                  <div className="scroll-x scroll-row" style={{ gap: 8, padding: "8px 16px 0" }}>
+                    {wishlists.map(wl => {
+                      const isActive = activeWishlist?.id === wl.id;
+                      return (
+                        <div key={wl.id} className={`scan-vis-chip${isActive ? " active" : ""}`} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, paddingRight: 6 }}>
+                          <button
+                            onClick={() => { setActiveWishlist(isActive ? null : wl); if (!isActive) setHistoryFilter("all"); }}
+                            style={{ background: "none", border: "none", color: "inherit", font: "inherit", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: 0 }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                            {wl.name}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setWishlistEditId(wl.id); setWishlistEditName(wl.name); setWishlistEditOpen(true); }}
+                            aria-label={`Edit ${wl.name}`}
+                            style={{ background: "none", border: "none", padding: 2, cursor: "pointer", color: "inherit", display: "inline-flex", alignItems: "center", opacity: 0.6 }}
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* Price drops banner */}
                 {priceAlertCount > 0 && (
