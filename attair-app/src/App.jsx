@@ -8709,17 +8709,7 @@ export default function App() {
                   );
                 })()}
 
-                {saved.length === 0 && (
-                  <div style={{ padding: "40px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}>
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                    </svg>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{t("no_saved")}</div>
-                    <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 260 }}>
-                      Heart items from your scans to save them here
-                    </div>
-                  </div>
-                )}
+                {/* Second empty state suppressed — the looksData empty state above already covers it */}
 
               </div>
             );
