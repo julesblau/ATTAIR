@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "node server.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "vite build && cap sync",
@@ -23,7 +24,8 @@
     "@capacitor/status-bar": "^8.0.2",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-image-crop": "^11.0.10"
+    "react-image-crop": "^11.0.10",
+    "serve-handler": "^6.1.5"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.3.0",
