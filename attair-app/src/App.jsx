@@ -8420,11 +8420,11 @@ export default function App() {
 
                 {/* Filter row: wishlist chips — only when there's something to filter */}
                 {saved.length > 0 && wishlists.length > 0 && (
-                  <div className="scroll-x scroll-row" style={{ gap: 8, padding: "8px 16px 0" }}>
+                  <div className="scroll-x scroll-row" style={{ gap: 8, padding: "12px 16px 0" }}>
                     {wishlists.map(wl => {
                       const isActive = activeWishlist?.id === wl.id;
                       return (
-                        <div key={wl.id} className={`scan-vis-chip${isActive ? " active" : ""}`} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, paddingRight: 6 }}>
+                        <div key={wl.id} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "0 4px 0 14px", height: 36, borderRadius: 999, background: isActive ? "var(--text-primary)" : "var(--bg-card)", border: `1px solid ${isActive ? "var(--text-primary)" : "var(--border)"}`, color: isActive ? "var(--bg-primary)" : "var(--text-primary)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 12, transition: "background var(--transition-fast)" }}>
                           <button
                             onClick={() => { setActiveWishlist(isActive ? null : wl); if (!isActive) setHistoryFilter("all"); }}
                             style={{ background: "none", border: "none", color: "inherit", font: "inherit", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: 0 }}
@@ -8435,7 +8435,7 @@ export default function App() {
                           <button
                             onClick={(e) => { e.stopPropagation(); setWishlistEditId(wl.id); setWishlistEditName(wl.name); setWishlistEditOpen(true); }}
                             aria-label={`Edit ${wl.name}`}
-                            style={{ background: "none", border: "none", padding: 2, cursor: "pointer", color: "inherit", display: "inline-flex", alignItems: "center", opacity: 0.6 }}
+                            style={{ background: "none", border: "none", padding: "4px 6px", cursor: "pointer", color: "inherit", display: "inline-flex", alignItems: "center", opacity: 0.7, marginLeft: 2 }}
                           >
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
@@ -8447,16 +8447,22 @@ export default function App() {
 
                 {/* Price drops banner */}
                 {priceAlertCount > 0 && (
-                  <div style={{ padding: "8px 16px 0" }}>
+                  <div style={{ padding: "12px 16px 0" }}>
                     <button onClick={() => setShowPriceAlerts(true)} style={{
-                      width: "100%", padding: "10px 16px", marginBottom: 12, borderRadius: "var(--radius-sm)",
-                      background: "linear-gradient(135deg, rgba(76,175,80,.08), rgba(76,175,80,.02))",
-                      border: "1px solid rgba(76,175,80,.2)", color: "#4CAF50",
-                      fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-                      fontFamily: "var(--font-sans)"
+                      width: "100%", padding: "12px 14px", borderRadius: "var(--radius-lg)",
+                      background: "var(--bg-card)",
+                      border: "1px solid var(--border)", color: "var(--text-primary)",
+                      cursor: "pointer", display: "flex", alignItems: "center", gap: 12,
+                      fontFamily: "var(--font-display)", textAlign: "left",
                     }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                      {priceAlertCount} price drop{priceAlertCount !== 1 ? "s" : ""} on saved items
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", letterSpacing: -0.2 }}>{priceAlertCount} price drop{priceAlertCount !== 1 ? "s" : ""}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 1, fontFamily: "var(--font-sans)" }}>on saved items</div>
+                      </div>
+                      <span style={{ flexShrink: 0, padding: "5px 10px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "lowercase" }}>view all →</span>
                     </button>
                   </div>
                 )}
@@ -8528,10 +8534,12 @@ export default function App() {
                   }
 
                   return (
-                    <div style={{ padding: "12px 0 0" }}>
-                      <div style={{ padding: "0 16px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase" }}>Complete the Look</span>
-                        <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{looksData.length} outfit{looksData.length !== 1 ? "s" : ""}</span>
+                    <div style={{ padding: "16px 0 0" }}>
+                      <div style={{ padding: "0 16px 10px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+                        <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.05, color: "var(--text-primary)" }}>
+                          your <span className="lime-chip">looks</span>
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "var(--font-display)", fontWeight: 600 }}>{looksData.length} outfit{looksData.length !== 1 ? "s" : ""}</span>
                       </div>
 
                       {looksData.map(look => {
@@ -8588,7 +8596,7 @@ export default function App() {
                         const detailUnsaved = (detailItems || []).filter(si => !si.is_saved);
 
                         return (
-                          <div key={look.scan_id} className={`look-card card-press${isExpanded ? " look-card-expanded" : ""}`} style={{ margin: "0 16px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", transition: "all .3s ease" }}>
+                          <div key={look.scan_id} className={`look-card card-press${isExpanded ? " look-card-expanded" : ""}`} style={{ margin: "0 16px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", overflow: "hidden", transition: "all .3s ease" }}>
                             {/* Header with scan thumbnail */}
                             <div style={{ display: "flex", gap: 12, padding: 12, cursor: "pointer" }} onClick={handleExpand}>
                               <div style={{ width: 64, height: 64, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "var(--bg-input)" }}>
@@ -8772,10 +8780,13 @@ export default function App() {
                     </div>
                   );
                   return (
-                  <div style={{ padding: "12px 16px 0" }}>
-                    {activeWishlist && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{activeWishlist.name} · {displayedItems.length} item{displayedItems.length !== 1 ? "s" : ""}</span>
-                    </div>}
+                  <div style={{ padding: "16px 16px 0" }}>
+                    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 12 }}>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.05, color: "var(--text-primary)" }}>
+                        {activeWishlist ? activeWishlist.name : <>saved <span className="lime-chip">pieces</span></>}
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--text-secondary)", fontFamily: "var(--font-display)", fontWeight: 600 }}>{displayedItems.length} item{displayedItems.length !== 1 ? "s" : ""}</span>
+                    </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       {displayedItems.map(si => {
                         const item = si.item_data || si;
