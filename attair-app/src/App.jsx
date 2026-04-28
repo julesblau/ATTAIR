@@ -8624,8 +8624,12 @@ export default function App() {
                                   const name = item.name || product.name || "Item";
                                   const price = formatPrice(product.price || item.price || item.estimated_price);
                                   const url = product.url || item.url;
+                                  const openPdp = (e) => {
+                                    e.stopPropagation();
+                                    setPdpSheet({ name, brand: product.brand || item.brand, price, image: img, url, scanId: look.scan_id, category: item.category });
+                                  };
                                   return (
-                                    <div key={si.id} className="look-item-card" style={{ flexShrink: 0, width: 100, scrollSnapAlign: "start" }}>
+                                    <button key={si.id} className="look-item-card" onClick={openPdp} style={{ flexShrink: 0, width: 100, scrollSnapAlign: "start", background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit" }}>
                                       <div style={{ width: 100, height: 100, borderRadius: 10, overflow: "hidden", background: "var(--bg-input)", position: "relative" }}>
                                         {img ? (
                                           <img src={img} alt={name} width={100} height={100} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
@@ -8638,15 +8642,12 @@ export default function App() {
                                         <div style={{ position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: "50%", background: "rgba(200, 255, 61, .9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                           <svg width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                                         </div>
-                                        {url && (
-                                          <a href={API.affiliateUrl(crypto.randomUUID(), url, look.scan_id, 0, "saved", "")} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ position: "absolute", inset: 0 }} aria-label={`Shop ${name}`} />
-                                        )}
                                       </div>
                                       <div style={{ padding: "4px 2px 0", overflow: "hidden" }}>
                                         <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
                                         {price && <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 600, marginTop: 1 }}>{price}</div>}
                                       </div>
-                                    </div>
+                                    </button>
                                   );
                                 })}
                               </div>
@@ -8770,46 +8771,55 @@ export default function App() {
                     {activeWishlist && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{activeWishlist.name} · {displayedItems.length} item{displayedItems.length !== 1 ? "s" : ""}</span>
                     </div>}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       {displayedItems.map(si => {
                         const item = si.item_data || si;
                         const product = si.tier_product || {};
                         const img = product.image_url || item.image_url || item.thumbnail;
                         const name = item.name || product.name || "Item";
+                        const brand = product.brand || item.brand;
                         const price = (() => { const p = product.price || item.price || item.estimated_price; if (!p) return null; const n = typeof p === "string" ? parseFloat(p.replace(/[^0-9.]/g, "")) : p; return n && isFinite(n) ? `$${n.toFixed(2)}` : null; })();
                         const url = product.url || item.url;
+                        const styleMatch = product.style_match ?? item.style_match;
+                        const openPdp = (e) => {
+                          e.stopPropagation();
+                          setPdpSheet({ name, brand, price, image: img, url, scanId: si.scan_id || null, category: item.category, match: styleMatch });
+                        };
                         return (
-                          <div key={si.id} className="look-item-card card-press" style={{ position: "relative" }}>
-                            <div style={{ width: "100%", aspectRatio: "1", borderRadius: 10, overflow: "hidden", background: "var(--bg-input)", position: "relative" }}>
-                              {img ? (
-                                <img src={img} alt={name} width={100} height={100} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
-                              ) : (
-                                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "var(--text-tertiary)" }}>
-                                  {item.category || "Item"}
-                                </div>
-                              )}
-                              {url && (
-                                <a href={API.affiliateUrl(crypto.randomUUID(), url, si.scan_id || "", 0, "saved", "")} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ position: "absolute", inset: 0 }} aria-label={`Shop ${name}`} />
-                              )}
-                              {/* Delete button */}
-                              <button onClick={async (e) => { e.preventDefault(); e.stopPropagation(); await API.deleteSaved(si.id).catch(() => {}); setSaved(s => s.filter(i => i.id !== si.id)); lsCache.clear("attair_saved_cache"); refreshStatus(); }} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,.6)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }} aria-label="Remove saved item">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          <div key={si.id} className="card-press" style={{ position: "relative" }}>
+                            <button onClick={openPdp} aria-label={`Open ${name}`} style={{ display: "block", width: "100%", padding: 0, border: "none", background: "transparent", cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit" }}>
+                              <div style={{ width: "100%", aspectRatio: "3/4", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)", border: "1px solid var(--border)", position: "relative" }}>
+                                {img ? (
+                                  <img src={img} alt={name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
+                                ) : (
+                                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--text-tertiary)" }}>
+                                    {item.category || "Item"}
+                                  </div>
+                                )}
+                                {styleMatch != null && styleMatch >= 80 && (
+                                  <div style={{ position: "absolute", top: 8, left: 8, padding: "3px 8px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 9, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: 0.4 }}>{styleMatch}% MATCH</div>
+                                )}
+                              </div>
+                              <div style={{ padding: "8px 4px 0", overflow: "hidden" }}>
+                                {brand && <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, color: "var(--text-secondary)", textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--font-display)" }}>{brand}</div>}
+                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{name}</div>
+                                {price && <div style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 700, marginTop: 2, fontFamily: "var(--font-display)" }}>{price}</div>}
+                              </div>
+                            </button>
+                            {/* Delete button */}
+                            <button onClick={async (e) => { e.preventDefault(); e.stopPropagation(); await API.deleteSaved(si.id).catch(() => {}); setSaved(s => s.filter(i => i.id !== si.id)); lsCache.clear("attair_saved_cache"); refreshStatus(); }} style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.6)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, zIndex: 2 }} aria-label="Remove saved item">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                            {/* Remove from list button (only when viewing a wishlist) */}
+                            {activeWishlist && (
+                              <button onClick={async (e) => {
+                                e.preventDefault(); e.stopPropagation();
+                                await API.removeFromWishlist(activeWishlist.id, si.id).catch(() => {});
+                                setSaved(s => s.map(i => i.id === si.id ? { ...i, wishlist_id: null } : i));
+                              }} style={{ position: "absolute", top: 6, left: 6, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.6)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, zIndex: 2 }} aria-label="Remove from list">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                               </button>
-                              {/* Remove from list button (only when viewing a wishlist) */}
-                              {activeWishlist && (
-                                <button onClick={async (e) => {
-                                  e.preventDefault(); e.stopPropagation();
-                                  await API.removeFromWishlist(activeWishlist.id, si.id).catch(() => {});
-                                  setSaved(s => s.map(i => i.id === si.id ? { ...i, wishlist_id: null } : i));
-                                }} style={{ position: "absolute", top: 4, left: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,.6)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }} aria-label="Remove from list">
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-                                </button>
-                              )}
-                            </div>
-                            <div style={{ padding: "4px 2px 0", overflow: "hidden" }}>
-                              <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                              {price && <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 600, marginTop: 1 }}>{price}</div>}
-                            </div>
+                            )}
                           </div>
                         );
                       })}
