@@ -4716,6 +4716,7 @@ export default function App() {
 
   // ─── Horizontal item tabs + smart refine ──────────────────
   const [activeItemIdx, setActiveItemIdx] = useState(0);           // which item tab is selected
+  const [alternatesExpanded, setAlternatesExpanded] = useState({}); // { [itemIdx]: bool } — show all alternates
   const [refineText, setRefineText] = useState("");                // smart refine input value
   const [refineLoading, setRefineLoading] = useState(false);       // smart refine in progress
   const [refineCountMap, setRefineCountMap] = useState({});        // { [scanId]: number } — refine count per scan
@@ -8258,135 +8259,244 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Horizontal product scroll per tier */}
-                      {item.tiers && ["budget", "mid", "premium", "resale"].map(tierKey => {
-                        const products = asTierArray(item.tiers[tierKey]);
-                        if (!products.length) return null;
-                        const cfg = TIER_CFG[tierKey];
-                        return (
-                          <div key={tierKey} style={{ marginBottom: 12 }}>
-                            <div style={{ padding: "0 20px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.5, color: cfg.accent, textTransform: "uppercase" }}>{cfg.label}</span>
-                              {products.length > 1 && <span style={{ fontSize: 10, color: "var(--text-tertiary)", paddingRight: 4 }}>Swipe &rarr;</span>}
-                            </div>
-                            <div ref={el => { if (el && !el._loopInit && products.length > 2) { el._loopInit = true; const cardW = 162; requestAnimationFrame(() => { el.scrollLeft = products.length * cardW + 20; }); let ticking = false; el.addEventListener("scroll", () => { if (ticking) return; ticking = true; requestAnimationFrame(() => { ticking = false; const sectionW = products.length * cardW; if (el.scrollLeft < sectionW * 0.25) el.scrollLeft += sectionW; else if (el.scrollLeft > sectionW * 1.75) el.scrollLeft -= sectionW; }); }); } }} className="scroll-row" style={{ gap: 12, paddingBottom: 4 }}>
-                              {/* Left spacer to match page padding */}
-                              <div style={{ flexShrink: 0, width: 20 }} />
-                              {(products.length > 2 ? [...products, ...products, ...products] : products).map((p, j) => {
-                                const realIdx = j % products.length;
-                                const isFallback = !p.is_product_page && p.brand === "Google Shopping";
-                                const clickId = `${scanId || "x"}_${i}_${tierKey}_${realIdx}`;
-                                const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tierKey, p.brand) : "#";
-                                const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
-                                const dupeInfo = dupeMap.get(`${tierKey}_${realIdx}`);
-
-                                // Compute flat index for ad insertion
-                                const tiersBefore = ["budget", "mid", "premium", "resale"].slice(0, ["budget", "mid", "premium", "resale"].indexOf(tierKey));
-                                const flatIdx = tiersBefore.reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) + realIdx;
-
-                                return (
-                                  <Fragment key={`${tierKey}_loop_${j}`}>
-                                    <div className="card-press" style={{ flexShrink: 0, width: 150, position: "relative", display: "flex", flexDirection: "column" }}>
-                                      {/* Style Match Score pill */}
-                                      {p.style_match != null && p.style_match >= 50 ? (
-                                        <div
-                                          className={`style-match-pill ${p.style_match >= 80 ? "style-match-green" : "style-match-yellow"}`}
-                                          onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
-                                          style={{ cursor: "pointer" }}
-                                        >
-                                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                                          {p.style_match}% your style
-                                          {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
-                                            <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
-                                              Based on your Style DNA profile
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : p.style_match === null && j === 0 && (
-                                        <div
-                                          className="style-match-pill style-match-new"
-                                          onClick={e => { e.preventDefault(); e.stopPropagation(); setStyleMatchTooltip(prev => prev?.key === `${i}_${tierKey}_${j}` ? null : { key: `${i}_${tierKey}_${j}` }); }}
-                                          style={{ cursor: "pointer" }}
-                                        >
-                                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-                                          New to you
-                                          {styleMatchTooltip?.key === `${i}_${tierKey}_${j}` && (
-                                            <div className="style-match-tooltip" onClick={e => e.stopPropagation()}>
-                                              <span>Scan more outfits to unlock match scores</span>
-                                              <div onClick={e => { e.stopPropagation(); setProfileSettingsOpen(true); setStyleMatchTooltip(null); }} style={{ marginTop: 4, fontSize: 9, fontWeight: 700, color: "var(--accent)", cursor: "pointer", letterSpacing: 0.3 }}>
-                                                Build your Style DNA &rarr;
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                      {/* Dupe Alert pill — reserved for affiliate items only (TODO: re-enable for affiliates) */}
-                                      <a href={href} target="_blank" rel="noopener noreferrer"
-                                        onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, product_name: (p.product_name || "").slice(0, 80), category: item.category, is_fallback: isFallback, is_affiliate: !!p.is_affiliate, is_exploration: !!p.isExploration }, scanId, "scan")}
-                                        style={{ display: "flex", flexDirection: "column", flex: 1, textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(200, 255, 61, .4)" : p.is_identified_brand ? "rgba(200, 255, 61, .25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
-                                        <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                          {p.image_url && <img src={p.image_url} alt={p.product_name || "Product image"} className="product-card-img" width={150} height={150} loading="lazy" onError={e => { e.target.style.display = "none"; }} />}
-                                          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, opacity: 0.3, pointerEvents: "none" }}>👕</div>
-                                        </div>
-                                        <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3, flex: 1 }}>
-                                          {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(200, 255, 61, .12)", color: "var(--accent)", alignSelf: "flex-start" }}>{t("badge_original")}</span>}
-                                          <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                                            {isFallback ? "Search results" : (p.product_name || "Product")}
-                                          </div>
-                                          <div style={{ fontSize: 10, color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>
-                                          <div style={{ fontSize: 14, fontWeight: 700, color: cfg.accent }}>{isFallback ? "Search" : (p.price || t("price_unavailable"))}</div>
-                                          <div style={{ fontSize: 11, fontWeight: 600, color: cfg.accent, textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)", marginTop: "auto" }}>{t("btn_shop")}</div>
-                                        </div>
-                                      </a>
-                                      {/* Find Similar Look button — only on products $150+ */}
-                                      {(() => { const pNum = parseFloat((p.price || "").replace(/[^0-9.]/g, "")); return pNum >= 150 && !isFallback; })() && (
-                                        <button
-                                          onClick={e => { e.preventDefault(); e.stopPropagation(); openDupeModal(p, item, tierKey); }}
-                                          className="dupe-finder-btn"
-                                          style={{ position: "absolute", bottom: 54, left: 4, right: 4, zIndex: 2, padding: "5px 8px", background: "rgba(76,175,80,.9)", backdropFilter: "blur(8px)", border: "none", borderRadius: 8, color: "#fff", fontSize: 9, fontWeight: 700, fontFamily: "var(--font-sans)", cursor: "pointer", letterSpacing: 0.3, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, transition: "all .2s" }}
-                                        >
-                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                          Similar Look
-                                        </button>
-                                      )}
-                                      {/* Save heart */}
-                                      <button
-                                        aria-label={isSavedProduct ? "Remove from Likes" : "Save to Likes"}
-                                        onClick={e => { e.preventDefault(); e.stopPropagation(); quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId); }}
-                                        style={{ position: "absolute", top: 6, right: 6, width: 28, height: 28, borderRadius: "50%", background: isSavedProduct ? "rgba(255,60,80,.9)" : "rgba(0,0,0,.45)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backdropFilter: "blur(4px)", zIndex: 2 }}>
-                                        <svg viewBox="0 0 24 24" width="12" height="12" fill={isSavedProduct ? "#fff" : "none"} stroke={isSavedProduct ? "#fff" : "rgba(255,255,255,.8)"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </Fragment>
-                                );
-                              })}
-                              {/* Right spacer to match page padding */}
-                              <div style={{ flexShrink: 0, width: 20 }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {/* Not finding what you want? */}
+                      {/* Flat product list (B-spine): rows w/ +N alternates disclosure */}
                       {item.tiers && (() => {
-                        const allProducts = ["budget", "mid", "premium"].flatMap(tk => asTierArray(item.tiers[tk]));
-                        const hasFallback = allProducts.some(p => !p.is_product_page && p.brand === "Google Shopping");
-                        if (!hasFallback) return null;
+                        // Flatten + sort: real products first (by style_match desc), Google fallback last
+                        const allTiers = ["budget", "mid", "premium", "resale"];
+                        const flat = allTiers.flatMap(tk => asTierArray(item.tiers[tk]).map((p, idx) => {
+                          const isFallback = !p.is_product_page && p.brand === "Google Shopping";
+                          return { ...p, _tier: tk, _tierIdx: idx, _isFallback: isFallback };
+                        }));
+                        if (!flat.length) return null;
+                        // Sort: non-fallback first, then style_match desc, then price asc
+                        flat.sort((a, b) => {
+                          if (a._isFallback !== b._isFallback) return a._isFallback ? 1 : -1;
+                          const aMatch = a.style_match ?? -1;
+                          const bMatch = b.style_match ?? -1;
+                          if (aMatch !== bMatch) return bMatch - aMatch;
+                          const aP = parseFloat((a.price || "").replace(/[^0-9.]/g, "")) || Infinity;
+                          const bP = parseFloat((b.price || "").replace(/[^0-9.]/g, "")) || Infinity;
+                          return aP - bP;
+                        });
+
+                        const PRIMARY = 5;
+                        const isExpanded = !!alternatesExpanded[i];
+                        const primaryRows = flat.slice(0, PRIMARY);
+                        const altRows = flat.slice(PRIMARY);
+                        const altCount = altRows.length;
+                        // Cheapest alternate price (numeric) for "from $X"
+                        const cheapestAlt = altRows
+                          .map(p => parseFloat((p.price || "").replace(/[^0-9.]/g, "")))
+                          .filter(n => n > 0)
+                          .sort((a, b) => a - b)[0];
+                        const altFromText = cheapestAlt ? `$${Math.round(cheapestAlt)}` : null;
+
+                        const hasFallback = flat.some(p => p._isFallback);
                         const googleQuery = item.search_query || `${item.brand || ""} ${item.name || ""}`.trim();
-                        return (
-                          <div style={{ padding: "0 20px", display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-                            <a href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`} target="_blank" rel="noopener noreferrer"
-                              onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
-                              style={{ padding: "8px 14px", background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                              Google Shopping
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+
+                        // Renders one product row
+                        const renderRow = (p, rowIdx) => {
+                          const tk = p._tier;
+                          const realIdx = p._tierIdx;
+                          const clickId = `${scanId || "x"}_${i}_${tk}_${realIdx}`;
+                          const href = p.url ? API.affiliateUrl(clickId, p.url, scanId, i, tk, p.brand) : "#";
+                          const isSavedProduct = saved.some(s => (s.item_data?.name || s.name) === (p.product_name || item.name));
+                          const dupeInfo = dupeMap.get(`${tk}_${realIdx}`);
+                          const isFallback = p._isFallback;
+                          const priceNum = parseFloat((p.price || "").replace(/[^0-9.]/g, ""));
+                          const showSimilar = priceNum >= 150 && !isFallback;
+                          const matchPct = p.style_match;
+                          const showMatchBadge = matchPct != null && matchPct >= 50;
+
+                          const openPdpForRow = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            track("product_clicked", { tier: tk, brand: p.brand, price: p.price, product_name: (p.product_name || "").slice(0, 80), category: item.category, is_fallback: isFallback, is_affiliate: !!p.is_affiliate, is_exploration: !!p.isExploration }, scanId, "scan");
+                            setPdpSheet({
+                              name: p.product_name || item.name,
+                              brand: p.brand || item.brand,
+                              price: p.price,
+                              image: p.image_url,
+                              url: href,
+                              match: showMatchBadge ? matchPct : undefined,
+                              scanId,
+                              category: item.category,
+                              alternates: altCount > 0 ? { count: altCount, from: altFromText, fromCheaper: showSimilar ? { savings: dupeInfo?.savings } : undefined } : undefined,
+                            });
+                          };
+
+                          return (
+                            <button
+                              key={`row_${tk}_${realIdx}_${rowIdx}`}
+                              onClick={openPdpForRow}
+                              className="card-press"
+                              style={{ display: "flex", gap: 12, padding: 10, background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "var(--accent-border)" : "var(--border)"}`, borderRadius: "var(--radius-lg)", cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit", width: "100%", position: "relative" }}
+                            >
+                              <div style={{ width: 76, height: 96, borderRadius: 12, overflow: "hidden", background: "var(--bg-input)", flexShrink: 0, position: "relative" }}>
+                                {p.image_url && <img src={p.image_url} alt={p.product_name || "Product image"} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />}
+                                {showMatchBadge && (
+                                  <div style={{ position: "absolute", top: 4, left: 4, padding: "2px 6px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 9, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: 0.3 }}>{matchPct}%</div>
+                                )}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 3 }}>
+                                {p.brand && <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.8, color: "var(--text-secondary)", textTransform: "uppercase", fontFamily: "var(--font-display)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.brand}</div>}
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{isFallback ? "Search results" : (p.product_name || "Product")}</div>
+                                {rowIdx === 0 && altCount > 0 && (
+                                  <div style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 2, fontFamily: "var(--font-sans)" }}>+ {altCount} alternates{altFromText ? ` from ${altFromText}` : ""}</div>
+                                )}
+                                {dupeInfo && (
+                                  <div style={{ fontSize: 9, fontWeight: 700, color: "var(--accent-text)", background: "var(--accent)", display: "inline-block", padding: "1px 6px", borderRadius: 4, marginTop: 3, alignSelf: "flex-start", letterSpacing: 0.3, fontFamily: "var(--font-display)" }}>SAVE {dupeInfo.savings}%</div>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", justifyContent: "space-between", flexShrink: 0, gap: 6 }}>
+                                <button
+                                  aria-label={isSavedProduct ? "Remove from Likes" : "Save to Likes"}
+                                  onClick={e => { e.preventDefault(); e.stopPropagation(); quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId); }}
+                                  style={{ width: 28, height: 28, borderRadius: "50%", background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, color: isSavedProduct ? "var(--warm)" : "var(--text-tertiary)" }}
+                                >
+                                  <svg viewBox="0 0 24 24" width="18" height="18" fill={isSavedProduct ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                                </button>
+                                {!isFallback && p.price && (
+                                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{p.price}</div>
+                                )}
+                                {showSimilar && (
+                                  <button
+                                    onClick={e => { e.preventDefault(); e.stopPropagation(); openDupeModal(p, item, tk); }}
+                                    style={{ padding: "3px 8px", borderRadius: 999, background: "var(--accent-bg)", border: "1px solid var(--accent-border)", color: "var(--text-primary)", fontSize: 9, fontWeight: 700, fontFamily: "var(--font-display)", cursor: "pointer", letterSpacing: 0.3, textTransform: "lowercase" }}
+                                  >
+                                    find dupe
+                                  </button>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        };
+
+                        // Inline ad row (matches the new card style)
+                        const renderAd = (rowIdx) => {
+                          const s = RETAILER_SPOTLIGHTS[(rowIdx + i) % RETAILER_SPOTLIGHTS.length];
+                          return (
+                            <a
+                              key={`ad_${i}_${rowIdx}`}
+                              href={s.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => API.logAdEvent("inline", "results", "click", s.name)}
+                              style={{ display: "flex", gap: 12, padding: 10, background: "var(--bg-card)", border: "1px dashed var(--border)", borderRadius: "var(--radius-lg)", textDecoration: "none", color: "inherit", position: "relative" }}
+                            >
+                              <div style={{ width: 76, height: 96, borderRadius: 12, background: s.gradient, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <span style={{ fontSize: 24, fontWeight: 900, color: s.accent, fontFamily: "var(--font-display)" }}>{s.name.charAt(0)}</span>
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: 4 }}>
+                                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: "var(--text-tertiary)", textTransform: "uppercase", fontFamily: "var(--font-display)" }}>Sponsored</div>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{s.name}</div>
+                                <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{s.tagline}</div>
+                              </div>
+                              <div style={{ alignSelf: "center", flexShrink: 0 }}>
+                                <span style={{ display: "inline-block", padding: "5px 10px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 800, letterSpacing: 0.3 }}>shop →</span>
+                              </div>
                             </a>
+                          );
+                        };
+
+                        // Build rendered list with ad insertion every 5 rows (only if free + showAds)
+                        const buildRows = (rows, offset = 0) => {
+                          const out = [];
+                          rows.forEach((p, idx) => {
+                            const flatPos = offset + idx;
+                            if (shouldInsertAds && flatPos > 0 && flatPos % 5 === 0) {
+                              out.push(renderAd(flatPos));
+                            }
+                            out.push(renderRow(p, flatPos));
+                          });
+                          return out;
+                        };
+
+                        return (
+                          <div style={{ padding: "4px 20px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                            {buildRows(primaryRows, 0)}
+                            {altCount > 0 && !isExpanded && (
+                              <button
+                                onClick={() => setAlternatesExpanded(s => ({ ...s, [i]: true }))}
+                                style={{ marginTop: 4, padding: "12px 14px", background: "transparent", border: "1px dashed var(--border)", borderRadius: "var(--radius-lg)", cursor: "pointer", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "var(--text-primary)", letterSpacing: 0.2 }}
+                              >
+                                see all {altCount} alternates →
+                              </button>
+                            )}
+                            {altCount > 0 && isExpanded && (
+                              <>
+                                {buildRows(altRows, primaryRows.length)}
+                                {hasFallback && (
+                                  <a
+                                    href={`https://www.google.com/search?tbm=shop&q=${encodeURIComponent(googleQuery)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => track("google_search_clicked", { item_name: item.name, query: googleQuery }, scanId, "scan")}
+                                    style={{ marginTop: 4, padding: "10px 14px", background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, fontFamily: "var(--font-sans)", textAlign: "center", textDecoration: "underline", textUnderlineOffset: 3 }}
+                                  >
+                                    didn't find what you wanted? google →
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => setAlternatesExpanded(s => ({ ...s, [i]: false }))}
+                                  style={{ marginTop: 2, padding: "8px 10px", background: "transparent", border: "none", cursor: "pointer", fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 600, color: "var(--text-tertiary)" }}
+                                >
+                                  collapse
+                                </button>
+                              </>
+                            )}
                           </div>
                         );
                       })()}
                     </div>
+                  </div>
+                );
+              })()}
+
+              {/* Sticky bottom CTA — add all picked items at the cheapest verified price */}
+              {phase === "done" && results?.items && pickedItems.size > 0 && scanId && (() => {
+                let total = 0;
+                let count = 0;
+                results.items.forEach((it, idx) => {
+                  if (!pickedItems.has(idx) || !it.tiers) return;
+                  const tiers = ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(it.tiers[tk]));
+                  const verified = tiers.filter(p => p.is_product_page && p.price);
+                  if (verified.length === 0) return;
+                  const cheapest = verified
+                    .map(p => parseFloat((p.price || "").replace(/[^0-9.]/g, "")))
+                    .filter(n => n > 0)
+                    .sort((a, b) => a - b)[0];
+                  if (cheapest > 0) { total += cheapest; count += 1; }
+                });
+                if (count === 0) return null;
+                const isWouldWear = scanVerdicts[scanId] === "would_wear";
+                return (
+                  <div className="u-sticky-cta">
+                    <button
+                      onClick={async () => {
+                        // Mark verdict as would_wear (triggers save of best products via existing handler logic)
+                        setScanVerdicts(sv => ({ ...sv, [scanId]: "would_wear" }));
+                        API.setVerdict(scanId, "would_wear").catch(() => {});
+                        track("add_all_clicked", { count, total }, scanId, "scan");
+                        results.items.forEach((it, idx) => {
+                          if (!pickedItems.has(idx) || !it.tiers) return;
+                          const tiers = ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(it.tiers[tk]).map(p => ({ ...p, _tier: tk })));
+                          const verified = tiers.filter(p => p.is_product_page && p.price);
+                          if (verified.length === 0) return;
+                          const cheapest = verified
+                            .map(p => ({ p, n: parseFloat((p.price || "").replace(/[^0-9.]/g, "")) }))
+                            .filter(x => x.n > 0)
+                            .sort((a, b) => a.n - b.n)[0];
+                          if (cheapest) {
+                            API.saveItem(scanId, it, cheapest.p._tier, cheapest.p).catch(() => {});
+                          }
+                        });
+                        lsCache.clear("attair_saved_cache");
+                        try { const d = await API.getSaved(); setSaved(d.items || []); lsCache.set("attair_saved_cache", d.items || []); } catch { /* ignore */ }
+                      }}
+                    >
+                      {isWouldWear ? `added · $${Math.round(total)}` : `add all → $${Math.round(total)}`}
+                    </button>
                   </div>
                 );
               })()}
