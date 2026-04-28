@@ -4320,6 +4320,9 @@ export default function App() {
   const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "saved" | "picks"
   const [confirmDeleteId, setConfirmDeleteId] = useState(null); // scan id awaiting inline delete confirm
   const [upgradeModal, setUpgradeModal] = useState(null); // null | trigger string
+  const [pdpSheet, setPdpSheet] = useState(null); // { name, brand, price, image, url, match, original } — opens the B-spine PDP sheet
+  const [pdpSize, setPdpSize] = useState("M");
+  const [pdpColor, setPdpColor] = useState(0);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeSuccess, setUpgradeSuccess] = useState(false);
   const [trialStarting, setTrialStarting] = useState(false);
@@ -6598,6 +6601,111 @@ export default function App() {
         />
       )}
 
+      {/* ─── PDP SLIDE-UP SHEET (B-spine) ────────────────── */}
+      {pdpSheet && (() => {
+        const p = pdpSheet;
+        const sizes = p.sizes || ["XS","S","M","L","XL"];
+        const colors = p.colors || ["#1a1a1a","#7a6a52","#a99c84"];
+        const close = () => { setPdpSheet(null); };
+        const goShop = () => {
+          if (p.url) {
+            track("pdp_shop_clicked", { brand: p.brand, name: p.name });
+            window.open(p.url, "_blank", "noopener,noreferrer");
+          }
+        };
+        const isSavedProduct = saved.some(s => (s.item_data?.url || s.url) === p.url);
+        return (
+          <>
+            <div className="u-pdp-overlay" onClick={close} />
+            <div className="u-pdp-sheet" role="dialog" aria-label="Product detail">
+              <div className="u-pdp-handle" />
+              <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
+                <div style={{ position: "sticky", top: 0, zIndex: 10, background: "var(--bg-primary)", padding: "20px 14px 8px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button onClick={close} aria-label="Close" style={{ background: "transparent", border: "none", padding: 6, cursor: "pointer", color: "var(--text-primary)" }}>
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+                  </button>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <button aria-label="Share" onClick={() => { try { navigator.share?.({ title: p.name, url: p.url || window.location.origin }); } catch {} }} style={{ background: "transparent", border: "none", padding: 8, cursor: "pointer", color: "var(--text-primary)" }}>
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 21h14"/></svg>
+                    </button>
+                    <button aria-label={isSavedProduct ? "Remove from saved" : "Save"} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } quickSaveItem({ name: p.name, brand: p.brand, price: p.price, image_url: p.image, url: p.url, category: p.category }, p.scanId || null); }} style={{ background: "transparent", border: "none", padding: 8, cursor: "pointer", color: isSavedProduct ? "var(--warm)" : "var(--text-primary)" }}>
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill={isSavedProduct ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                    </button>
+                  </div>
+                </div>
+                {p.image && (
+                  <div style={{ position: "relative", aspectRatio: "3/4", margin: "0 14px", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)" }}>
+                    <img src={p.image} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="eager" />
+                    {p.match != null && (
+                      <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 10px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 10, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: 0.4 }}>{p.match}% MATCH</div>
+                    )}
+                  </div>
+                )}
+                <div style={{ padding: "14px 14px 4px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {p.brand && <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, fontFamily: "var(--font-display)" }}>{p.brand}</div>}
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, marginTop: 2, letterSpacing: -0.6, lineHeight: 1.1, color: "var(--text-primary)" }}>{p.name}</div>
+                  </div>
+                  {p.price && (
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 800, background: "var(--accent)", color: "var(--accent-text)", padding: "0 6px", borderRadius: 4, display: "inline-block" }}>{p.price}</div>
+                      {p.original && <div style={{ fontSize: 11, color: "var(--text-secondary)", textDecoration: "line-through", marginTop: 2 }}>{p.original}</div>}
+                    </div>
+                  )}
+                </div>
+                {!p.hideOptions && (
+                  <>
+                    <div style={{ padding: "10px 14px 0" }}>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "var(--text-primary)" }}>color</div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {colors.map((c, i) => (
+                          <button key={i} onClick={() => setPdpColor(i)} aria-label={`Color ${i + 1}`} style={{ width: 32, height: 32, borderRadius: 999, background: c, border: i === pdpColor ? "2px solid var(--text-primary)" : "1px solid rgba(0,0,0,0.1)", cursor: "pointer", padding: 0 }} />
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ padding: "12px 14px 0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>size</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {sizes.map(sz => (
+                          <button key={sz} onClick={() => setPdpSize(sz)} style={{ flex: 1, height: 44, borderRadius: 12, background: pdpSize === sz ? "var(--text-primary)" : "var(--bg-card)", color: pdpSize === sz ? "var(--bg-primary)" : "var(--text-primary)", fontFamily: "var(--font-display)", fontWeight: 700, border: pdpSize === sz ? "none" : "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 180ms var(--ease-smooth)" }}>{sz}</button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+                {p.alternates && (
+                  <div style={{ padding: "14px 14px 0" }}>
+                    <div style={{ padding: 12, borderRadius: "var(--radius-lg)", background: "var(--bg-card)", display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--border)" }}>
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--warm)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/></svg>
+                      <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35, color: "var(--text-primary)" }}>
+                        <b>{p.alternates.count || 3} cheaper alternates</b> spotted{p.alternates.from ? <> (from {p.alternates.from})</> : null} — same silhouette, different brands.
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {p.description && (
+                  <div style={{ padding: "14px 14px 0" }}>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "var(--text-primary)" }}>description</div>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>{p.description}</div>
+                  </div>
+                )}
+                <div style={{ height: 90 }} />
+              </div>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 14, background: "var(--bg-primary)", borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
+                <button onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } quickSaveItem({ name: p.name, brand: p.brand, price: p.price, image_url: p.image, url: p.url, category: p.category }, p.scanId || null); }} aria-label="Save" style={{ width: 52, height: 52, borderRadius: 16, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill={isSavedProduct ? "var(--warm)" : "none"} stroke={isSavedProduct ? "var(--warm)" : "var(--text-primary)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                </button>
+                <button onClick={goShop} disabled={!p.url} style={{ flex: 1, height: 52, borderRadius: 16, border: "none", background: p.url ? "var(--text-primary)" : "var(--border)", color: p.url ? "var(--bg-primary)" : "var(--text-secondary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", cursor: p.url ? "pointer" : "not-allowed", letterSpacing: 0.2 }}>
+                  shop {p.brand ? `at ${p.brand}` : "now"} {p.price ? `→ ${p.price}` : "→"}
+                </button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
       {/* ─── SIGNUP PROMPT (guest users) ────────────────── */}
       {signupPrompt && (
         <div className="modal-overlay" onClick={() => setSignupPrompt(null)}>
@@ -6927,40 +7035,85 @@ export default function App() {
           <input ref={galleryRef} type="file" accept=".jpg,.jpeg,.png,.heic,.heif,.webp,.gif" className="hid" onChange={(e) => handleFile(e.target.files[0])} />
 
 
-          {/* ─── Scan Landing (clean idle state) ───── */}
+          {/* ─── Scan Landing (camera-style ready state) ───── */}
           {tab === "scan" && phase === "idle" && !img && (<>
-            <div className="screen-enter" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px 40px", minHeight: "60vh", textAlign: "center" }}>
-              {/* Hero icon */}
-              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(200, 255, 61, .08)", border: "1px solid rgba(200, 255, 61, .15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
-                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
-              </div>
-              {/* Title */}
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--text-primary)", marginBottom: 8 }}>{t("scan_outfit")}</div>
-              <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.6, maxWidth: 280, marginBottom: 32 }}>
-                Upload a photo of any outfit to find where to buy it
-              </div>
-
-              {isGuest ? (
-                <div style={{ marginBottom: 24 }}>
-                  <div className="scan-counter" style={{ display: "inline-block" }}><strong>{guestScans}</strong>/3 scans used</div>
+            <div className="screen-enter u-camera-stage" style={{ position: "relative", margin: "12px 16px 0", borderRadius: "var(--radius-lg)", overflow: "hidden", aspectRatio: "3/4", background: "#000" }}>
+              {/* Demo backdrop photo */}
+              <img src="/unified-assets/m-old.jpg" alt="" loading="eager" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 45%, transparent 35%, rgba(0,0,0,0.55) 80%)" }} />
+              {/* Lime corner brackets */}
+              {[
+                { l: 16, t: 16, br: { tl: true } },
+                { r: 16, t: 16, br: { tr: true } },
+                { l: 16, b: 16, br: { bl: true } },
+                { r: 16, b: 16, br: { br: true } },
+              ].map((c, i) => (
+                <div key={i} className="u-cam-corner" style={{ position: "absolute", left: c.l, right: c.r, top: c.t, bottom: c.b, animationDelay: `${i * 90}ms` }}>
+                  {c.br.tl && <><span style={{ position: "absolute", top: 0, left: 0, width: 18, height: 3, background: "var(--accent)", borderRadius: 2 }}/><span style={{ position: "absolute", top: 0, left: 0, width: 3, height: 18, background: "var(--accent)", borderRadius: 2 }}/></>}
+                  {c.br.tr && <><span style={{ position: "absolute", top: 0, right: 0, width: 18, height: 3, background: "var(--accent)", borderRadius: 2 }}/><span style={{ position: "absolute", top: 0, right: 0, width: 3, height: 18, background: "var(--accent)", borderRadius: 2 }}/></>}
+                  {c.br.bl && <><span style={{ position: "absolute", bottom: 0, left: 0, width: 18, height: 3, background: "var(--accent)", borderRadius: 2 }}/><span style={{ position: "absolute", bottom: 0, left: 0, width: 3, height: 18, background: "var(--accent)", borderRadius: 2 }}/></>}
+                  {c.br.br && <><span style={{ position: "absolute", bottom: 0, right: 0, width: 18, height: 3, background: "var(--accent)", borderRadius: 2 }}/><span style={{ position: "absolute", bottom: 0, right: 0, width: 3, height: 18, background: "var(--accent)", borderRadius: 2 }}/></>}
                 </div>
-              ) : isFree && scansLeft != null ? (
-                <div style={{ marginBottom: 24 }}>
-                  <div className="scan-counter" style={{ display: "inline-block" }}>{scansLeft > 0 ? <><strong>{scansLimit - scansLeft}</strong>/{scansLimit} scans used</> : <>No scans left &middot; <span style={{color:"var(--accent)",cursor:"pointer"}} onClick={() => setUpgradeModal("scan_limit")}>Go Pro</span></>}</div>
+              ))}
+              {/* Pin callouts (showing what scanning looks like) */}
+              {[
+                { l: "44%", t: "26%", label: "blazer", conf: 94, delay: 600 },
+                { l: "48%", t: "48%", label: "shirt", conf: 88, delay: 750 },
+                { l: "52%", t: "70%", label: "trousers", conf: 91, delay: 900 },
+              ].map((d, i) => (
+                <div key={i} className="u-cam-pin" style={{ position: "absolute", left: d.l, top: d.t, transform: "translate(-50%, -50%)", animationDelay: `${d.delay}ms` }}>
+                  <div style={{ width: 12, height: 12, borderRadius: 999, background: "var(--accent)", border: "3px solid #fff", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}/>
+                  <div style={{ position: "absolute", left: 20, top: -8, padding: "4px 8px", borderRadius: 999, background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 10, fontWeight: 700, fontFamily: "var(--font-display)", whiteSpace: "nowrap", boxShadow: "0 4px 12px rgba(0,0,0,0.25)" }}>
+                    {d.label} <span style={{ color: "var(--warm)", fontWeight: 800 }}>{d.conf}%</span>
+                  </div>
                 </div>
-              ) : null}
-
-              {/* Scan actions — camera or gallery */}
-              <div style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", gap: 12 }}>
-                <button className="btn-primary" onClick={async () => { if (!(await nativePhotoToFile(takeNativePhoto))) fileRef.current?.click(); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
-                  {t("btn_take_photo")}
-                </button>
-                <button className="btn-secondary" onClick={async () => { if (!(await nativePhotoToFile(pickNativePhoto))) galleryRef.current?.click(); }} style={{ width: "100%", padding: "16px 0", borderRadius: 14, fontFamily: "var(--font-sans)", fontWeight: 700, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 52 }}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  {t("btn_gallery")}
-                </button>
+              ))}
+              {/* Status pill (top center) */}
+              <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", padding: "6px 12px", borderRadius: 999, background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-display)", display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--warm)", animation: "u-pulse 1.4s infinite ease-in-out" }}/>
+                ready · tap to scan
               </div>
+            </div>
+
+            {/* Title under the stage */}
+            <div style={{ padding: "16px 16px 4px" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, color: "var(--text-primary)" }}>
+                snap an outfit.<br/>
+                <span className="lime-chip">find it all.</span>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>
+                {isGuest
+                  ? <><b>{guestScans}</b>/3 free scans used</>
+                  : isFree && scansLeft != null
+                  ? (scansLeft > 0 ? <><b>{scansLimit - scansLeft}</b>/{scansLimit} scans used this month</> : <>no scans left · <span style={{ color: "var(--text-primary)", textDecoration: "underline", cursor: "pointer" }} onClick={() => setUpgradeModal("scan_limit")}>go pro</span></>)
+                  : <>any photo · any budget · any brand ✿</>}
+              </div>
+            </div>
+
+            {/* Mode pills + shutter row */}
+            <div style={{ padding: "14px 16px 0", display: "flex", justifyContent: "center", gap: 6 }}>
+              {[{ k: "photo", on: true }, { k: "live", on: false, soon: true }, { k: "upload", on: false }].map(m => (
+                <div key={m.k} style={{ padding: "6px 12px", borderRadius: 999, background: m.on ? "var(--text-primary)" : "var(--bg-card)", color: m.on ? "var(--bg-primary)" : "var(--text-secondary)", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-display)", border: m.on ? "none" : "1px solid var(--border)", display: "flex", alignItems: "center", gap: 4 }}>
+                  {m.k}{m.soon && <span style={{ fontSize: 8, opacity: 0.6 }}>SOON</span>}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ padding: "18px 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+              {/* Gallery */}
+              <button onClick={async () => { if (!(await nativePhotoToFile(pickNativePhoto))) galleryRef.current?.click(); }} aria-label={t("btn_gallery")} style={{ width: 52, height: 52, borderRadius: 16, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--text-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </button>
+              {/* Shutter */}
+              <button onClick={async () => { if (!(await nativePhotoToFile(takeNativePhoto))) fileRef.current?.click(); }} aria-label={t("btn_take_photo")} style={{ width: 78, height: 78, borderRadius: 999, padding: 4, background: "var(--text-primary)", border: "none", cursor: "pointer", boxShadow: "0 6px 18px rgba(200,255,61,0.35)" }}>
+                <div style={{ width: "100%", height: "100%", borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="var(--accent-text)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h3l2-3h8l2 3h3v12H3z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+              </button>
+              {/* Flash placeholder (visual parity with design) */}
+              <button aria-label="Flash" disabled style={{ width: 52, height: 52, borderRadius: 16, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "default", opacity: 0.7 }}>
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>
+              </button>
             </div>
 
             {/* Inline interest picker — shown once until saved/dismissed */}
@@ -7584,21 +7737,28 @@ export default function App() {
                 </div>
               </div>
 
-              {/* ─── Compact header: photo + summary + gender ─── */}
-              <div style={{ display: "flex", gap: 14, padding: "14px 20px", alignItems: "flex-start" }}>
+              {/* ─── Compact header: photo + lookbook label + count ─── */}
+              <div style={{ display: "flex", gap: 14, padding: "14px 20px", alignItems: "stretch" }}>
                 {img && (
-                  <div style={{ width: 90, height: 120, borderRadius: 12, overflow: "hidden", flexShrink: 0, position: "relative" }}>
+                  <div style={{ width: 92, height: 120, borderRadius: "var(--radius-lg)", overflow: "hidden", flexShrink: 0, position: "relative" }}>
                     <img src={img} alt="Scanned outfit" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     <button onClick={reset} style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.5)", border: "none", color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} aria-label="New scan">
                       <svg viewBox="0 0 14 14" width="10" height="10" stroke="currentColor" strokeWidth="2"><path d="M2 2l10 10M12 2L2 12"/></svg>
                     </button>
                   </div>
                 )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {results.summary && <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 8 }}>{results.summary}</div>}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "var(--text-tertiary)", textTransform: "uppercase" }}>{pickedItems.size} items</span>
+                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "var(--warm)", fontWeight: 800, letterSpacing: 0.6, fontFamily: "var(--font-display)", textTransform: "uppercase" }}>
+                      {phase === "done" ? "scan complete ✿" : phase === "searching" ? "searching ✿" : "ready ✿"}
+                    </div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.05, marginTop: 2, color: "var(--text-primary)" }}>
+                      {pickedItems.size > 0 ? <>{pickedItems.size} {pickedItems.size === 1 ? "piece" : "pieces"}<br/>identified</> : "tap to scan"}
+                    </div>
                   </div>
+                  {results.summary && (
+                    <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4, marginTop: 6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{results.summary}</div>
+                  )}
                 </div>
               </div>
 
@@ -8238,15 +8398,19 @@ export default function App() {
 
             return (
               <div className="likes-v2 animate-fade-in">
-                {/* Header */}
-                <div style={{ padding: "16px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>{t("wardrobe")}</h2>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 13, color: "var(--text-tertiary)", fontWeight: 500 }}>{saved.length} items</span>
-                    <button aria-label="Open settings" onClick={() => { setSettingsSheetY(0); setProfileSettingsOpen(true); }} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: 0 }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    </button>
+                {/* Header — B-spine */}
+                <div style={{ padding: "16px 16px 0", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, color: "var(--text-primary)" }}>
+                      <span className="lime-chip">{t("wardrobe").toLowerCase()}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, fontFamily: "var(--font-display)" }}>
+                      <b style={{ color: "var(--text-primary)" }}>{saved.length}</b> saved · {looks?.length || 0} looks
+                    </div>
                   </div>
+                  <button aria-label="Open settings" onClick={() => { setSettingsSheetY(0); setProfileSettingsOpen(true); }} style={{ width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", color: "var(--text-primary)", padding: 0 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  </button>
                 </div>
 
                 {/* Filter row: wishlist chips — only when there's something to filter */}
@@ -9587,15 +9751,15 @@ export default function App() {
                 return (
                   <>
                     <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 8, marginBottom: 8 }}>
-                      <a href={feature.url || "#"} target={feature.url ? "_blank" : undefined} rel={feature.url ? "noopener noreferrer" : undefined} style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", position: "relative", aspectRatio: "4/5", display: "block", textDecoration: "none" }}>
+                      <button onClick={() => setPdpSheet({ name: feature.name, brand: feature.brand, price: feature.price, image: feature.src, url: feature.url, match: 96, alternates: { count: 3, from: "$34" } })} style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", position: "relative", aspectRatio: "4/5", display: "block", padding: 0, border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}>
                         <img src={feature.src} alt={feature.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
                         <div style={{ position: "absolute", bottom: 8, left: 8, padding: "4px 9px", borderRadius: 999, background: "var(--bg-primary)", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>{feature.price || feature.brand || "saved"}</div>
-                      </a>
+                      </button>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        <a href={tile2.url || "#"} target={tile2.url ? "_blank" : undefined} rel={tile2.url ? "noopener noreferrer" : undefined} style={{ flex: 1, borderRadius: "var(--radius-lg)", overflow: "hidden", position: "relative", display: "block", textDecoration: "none" }}>
+                        <button onClick={() => setPdpSheet({ name: tile2.name, brand: tile2.brand, price: tile2.price, image: tile2.src, url: tile2.url, match: 89 })} style={{ flex: 1, borderRadius: "var(--radius-lg)", overflow: "hidden", position: "relative", display: "block", padding: 0, border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}>
                           <img src={tile2.src} alt={tile2.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
                           <div style={{ position: "absolute", bottom: 6, left: 6, padding: "3px 7px", borderRadius: 999, background: "var(--bg-primary)", fontSize: 10, fontWeight: 700, fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>{tile2.price || tile2.brand || "saved"}</div>
-                        </a>
+                        </button>
                         <button onClick={() => { if (tab === "scan" && phase !== "idle") reset(); setTab("scan"); }} style={{ flex: 1, borderRadius: "var(--radius-lg)", border: "none", background: "var(--accent)", padding: 12, display: "flex", flexDirection: "column", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}>
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/></svg>
                           <div style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "var(--accent-text)", lineHeight: 1.1 }}>scan to find more like this</div>
@@ -9604,7 +9768,7 @@ export default function App() {
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                       {grid.map((p, i) => (
-                        <a key={i} href={p.url || "#"} target={p.url ? "_blank" : undefined} rel={p.url ? "noopener noreferrer" : undefined} style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)", textDecoration: "none", color: "inherit", border: "1px solid var(--border)" }}>
+                        <button key={i} onClick={() => setPdpSheet({ name: p.name, brand: p.brand, price: p.price, image: p.src, url: p.url, match: 80 + (i * 3 % 16) })} style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)", color: "inherit", border: "1px solid var(--border)", padding: 0, cursor: "pointer", textAlign: "left", width: "100%" }}>
                           <div style={{ aspectRatio: "3/4", position: "relative" }}>
                             <img src={p.src} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
                             <div style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: 999, background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -9618,7 +9782,7 @@ export default function App() {
                               {p.price && <span style={{ fontSize: 12, fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>{p.price}</span>}
                             </div>
                           </div>
-                        </a>
+                        </button>
                       ))}
                     </div>
                   </>
