@@ -1,33 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 /* ══════════════════════════════════════════════════════════════
-   ATTAIR Design System — Design Tokens
-   Dark mode is the DEFAULT. Light mode via [data-theme='light'].
+   ATTAIRE Design System — B-Spine (Cream + Lime, Space Grotesk)
+   Light mode is the DEFAULT now. Dark mode token stubs kept for legacy.
    ══════════════════════════════════════════════════════════════ */
 
 :root {
   /* ── Colors ── */
-  --accent: #C9A96E;
-  --accent-hover: #B8944F;
-  --accent-bg: rgba(201,169,110,0.08);
-  --accent-border: rgba(201,169,110,0.3);
+  --accent: #C8FF3D;            /* lime highlight */
+  --accent-hover: #B3E834;
+  --accent-text: #0A0A0A;       /* text on lime */
+  --accent-bg: rgba(200, 255, 61, 0.18);
+  --accent-border: rgba(200, 255, 61, 0.5);
+  --warm: #FF6B3D;              /* secondary punch */
 
-  --bg-primary: #000000;
-  --bg-secondary: #0C0C0E;
-  --bg-card: #1A1A1A;
-  --bg-input: #1A1A1A;
-  --bg-overlay: rgba(0,0,0,0.6);
+  --bg-primary: #FAF7EE;        /* cream */
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-input: #FFFFFF;
+  --bg-overlay: rgba(0, 0, 0, 0.45);
 
-  --text-primary: #FFFFFF;
-  --text-secondary: rgba(255,255,255,0.6);
-  --text-tertiary: rgba(255,255,255,0.35);
-  --text-inverse: #000000;
+  --text-primary: #1A1A1A;
+  --text-secondary: #6B6B6B;
+  --text-tertiary: rgba(0, 0, 0, 0.4);
+  --text-inverse: #FAF7EE;
 
-  --border: rgba(255,255,255,0.08);
-  --border-focus: rgba(201,169,110,0.5);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.16);
+  --border-focus: rgba(0, 0, 0, 0.4);
 
-  --shadow-card: 0 2px 8px rgba(0,0,0,0.3);
-  --shadow-elevated: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.05);
+  --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.12);
+  --shadow-nav: 0 10px 30px rgba(0, 0, 0, 0.25);
 
   --success: #4CAF50;
   --error: #FF5252;
@@ -35,8 +39,8 @@
   --warning: #FFB74D;
 
   /* ── Typography ── */
-  --font-sans: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-sans: 'Inter', -apple-system, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Space Grotesk', -apple-system, system-ui, sans-serif;
 
   --text-xl: 24px;
   --text-lg: 18px;
@@ -44,7 +48,7 @@
   --text-sm: 14px;
   --text-xs: 12px;
 
-  --leading-tight: 1.2;
+  --leading-tight: 1.05;
   --leading-normal: 1.5;
 
   --weight-normal: 400;
@@ -55,42 +59,47 @@
   /* ── Spacing ── */
   --space-xs: 4px;
   --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
+  --space-md: 14px;
+  --space-lg: 22px;
   --space-xl: 32px;
   --space-2xl: 48px;
 
   /* ── Radius ── */
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-lg: 18px;
   --radius-xl: 24px;
   --radius-full: 9999px;
 
-  /* ── Transitions ── */
-  --transition-fast: 150ms ease;
-  --transition-normal: 250ms ease;
-  --transition-slow: 400ms ease;
+  /* ── Motion (springy iOS) ── */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-rubber: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --transition-fast: 150ms var(--ease-smooth);
+  --transition-normal: 250ms var(--ease-smooth);
+  --transition-slow: 400ms var(--ease-smooth);
+  --transition-spring: 280ms var(--spring);
 
   /* ── Z-index ── */
   --z-dropdown: 100;
   --z-modal: 1000;
   --z-toast: 9999;
 
-  /* ── Legacy compat (referenced by old Vite boilerplate code) ── */
-  --text: rgba(255,255,255,0.6);
-  --text-h: #FFFFFF;
-  --bg: #000000;
-  --code-bg: #1f2028;
-  --social-bg: rgba(47,48,58,0.5);
-  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  /* ── Legacy compat (referenced by old code) ── */
+  --text: var(--text-secondary);
+  --text-h: var(--text-primary);
+  --bg: var(--bg-primary);
+  --code-bg: var(--bg-secondary);
+  --social-bg: rgba(0, 0, 0, 0.04);
+  --shadow: var(--shadow-card);
   --sans: var(--font-sans);
   --heading: var(--font-display);
   --mono: ui-monospace, Consolas, monospace;
 
   font: 16px/145% var(--font-sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
+  letter-spacing: -0.01em;
+  color-scheme: light;
   color: var(--text-primary);
   background: var(--bg-primary);
   font-synthesis: none;
@@ -99,48 +108,21 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Light Mode (data-theme toggle) ── */
-[data-theme='light'] {
-  --bg-primary: #F8F8FA;
-  --bg-secondary: #FFFFFF;
-  --bg-card: #FFFFFF;
-  --bg-input: #F0F0F2;
-  --bg-overlay: rgba(0,0,0,0.4);
+/* ── Dark mode stubs (toggle now opt-in, not default) ── */
+[data-theme='dark'] {
+  --bg-primary: #0C0C0E;
+  --bg-secondary: #1A1A1A;
+  --bg-card: #1A1A1A;
+  --bg-input: #1A1A1A;
+  --bg-overlay: rgba(0, 0, 0, 0.6);
 
-  --text-primary: #1A1A1A;
-  --text-secondary: rgba(0,0,0,0.55);
-  --text-tertiary: rgba(0,0,0,0.35);
-  --text-inverse: #FFFFFF;
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-tertiary: rgba(255, 255, 255, 0.35);
+  --text-inverse: #0C0C0E;
 
-  --border: rgba(0,0,0,0.08);
-  --border-focus: rgba(201,169,110,0.5);
-
-  --shadow-card: 0 2px 8px rgba(0,0,0,0.08);
-  --shadow-elevated: 0 8px 32px rgba(0,0,0,0.12);
-
-  /* Legacy compat */
-  --text: rgba(0,0,0,0.55);
-  --text-h: #1A1A1A;
-  --bg: #F8F8FA;
-  --code-bg: #F0F0F2;
-  --social-bg: rgba(0,0,0,0.04);
-  --shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-/* ── Fallback for OS-level dark preference (no manual toggle) ── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: rgba(255,255,255,0.6);
-    --text-h: #FFFFFF;
-    --bg: #000000;
-    --code-bg: #1f2028;
-    --social-bg: rgba(47,48,58,0.5);
-    --shadow: 0 2px 8px rgba(0,0,0,0.3);
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
 }
 
 /* ── Base Element Styles ── */
@@ -160,24 +142,27 @@ body {
   flex-direction: column;
   box-sizing: border-box;
   overflow-x: hidden;
+  background: var(--bg-primary);
 }
 
 h1,
-h2 {
+h2,
+h3 {
   font-family: var(--font-display);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-bold);
   color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 h1 {
-  font-size: 32px;
-  letter-spacing: -0.5px;
-  margin: 20px 0;
+  font-size: 36px;
+  letter-spacing: -1px;
+  line-height: 0.95;
+  margin: 18px 0;
 }
 h2 {
   font-size: var(--text-xl);
   line-height: var(--leading-tight);
-  letter-spacing: -0.24px;
   margin: 0 0 var(--space-sm);
 }
 p {
@@ -197,4 +182,14 @@ code {
   line-height: 135%;
   padding: var(--space-xs) var(--space-sm);
   background: var(--code-bg);
+}
+
+/* ── Lime highlight chip helper (used in headlines) ── */
+.lime-chip {
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 0 8px;
+  border-radius: 8px;
+  display: inline-block;
+  transform: rotate(-1.5deg);
 }

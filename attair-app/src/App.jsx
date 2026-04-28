@@ -791,7 +791,7 @@ const StatusPill = ({ status }) => {
   const cfg = {
     identified: { text: "AI IDENTIFIED", bg: "var(--bg-input)", color: "var(--text-tertiary)", dot: "var(--text-tertiary)" },
     searching: { text: "SEARCHING...", bg: "var(--accent-bg)", color: "var(--accent)", dot: "var(--accent)", pulse: true },
-    verified: { text: "WEB VERIFIED", bg: "rgba(201,169,110,0.1)", color: "var(--accent)", dot: "var(--accent)" },
+    verified: { text: "WEB VERIFIED", bg: "rgba(200, 255, 61, 0.1)", color: "var(--accent)", dot: "var(--accent)" },
     failed: { text: "AI ONLY", bg: "var(--bg-input)", color: "var(--text-tertiary)", dot: "var(--text-tertiary)" },
   }[status] || {};
   return (
@@ -806,7 +806,7 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
   if (!data) return null;
   const _lang = localStorage.getItem("attair_lang") || "en";
   const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
-  const tierCfg = { budget: { label: "Save", icon: "$", accent: "#5AC8FF" }, mid: { label: "Best value", icon: "$$", accent: "#C9A96E" }, premium: { label: "Splurge", icon: "$$$", accent: "#C77DFF" } }[tier];
+  const tierCfg = { budget: { label: "Save", icon: "$", accent: "#5AC8FF" }, mid: { label: "Best value", icon: "$$", accent: "var(--accent)" }, premium: { label: "Splurge", icon: "$$$", accent: "#C77DFF" } }[tier];
   const clickId = `${scanId || "x"}_${itemIndex}_${tier}`;
   const href = data.url ? API.affiliateUrl(clickId, data.url, scanId, itemIndex, tier, data.brand) : "#";
   const isFallback = !data.is_product_page && data.brand === "Google Shopping";
@@ -817,7 +817,7 @@ const TierCard = ({ tier, data, scanId, itemIndex }) => {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: isFallback ? "var(--text-tertiary)" : tierCfg.accent, textTransform: "uppercase" }}>{tierCfg.icon} {tierCfg.label}</span>
         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-          {data.is_identified_brand && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(201,169,110,0.12)", color: "var(--accent)" }}>{_t("badge_original")}</span>}
+          {data.is_identified_brand && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(200, 255, 61, 0.12)", color: "var(--accent)" }}>{_t("badge_original")}</span>}
           {data.is_resale && <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "2px 6px", borderRadius: 3, background: "rgba(120,200,120,0.12)", color: "#7BC87B" }}>{_t("badge_resale")}</span>}
           {data.is_product_page && !data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: .5, padding: "2px 6px", borderRadius: 3, background: "var(--bg-input)", color: "var(--text-tertiary)" }}>Product page</span>}
         </div>
@@ -846,10 +846,10 @@ const MiniCard = ({ tier, data, scanId, itemIndex, onSave, isSavedItem }) => {
   if (!data) return null;
   const tierCfg = {
     budget: { accent: "#5AC8FF" },
-    mid: { accent: "#C9A96E" },
+    mid: { accent: "var(--accent)" },
     premium: { accent: "#C77DFF" },
     resale: { accent: "#7BC47F" },
-  }[tier] || { accent: "#C9A96E" };
+  }[tier] || { accent: "var(--accent)" };
   const clickId = `${scanId || "x"}_${itemIndex}_${tier}_mini`;
   const href = data.url ? API.affiliateUrl(clickId, data.url, scanId, itemIndex, tier, data.brand) : "#";
   const isFallback = !data.is_product_page && data.brand === "Google Shopping";
@@ -864,7 +864,7 @@ const MiniCard = ({ tier, data, scanId, itemIndex, onSave, isSavedItem }) => {
           </div>
         )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          {data.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)" }}>ORIG</span>}
+          {data.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(200, 255, 61, .12)", color: "var(--accent)" }}>ORIG</span>}
           {data.is_resale && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(123,196,127,.12)", color: "#7BC47F" }}>RESALE</span>}
           {!data.is_identified_brand && !data.is_resale && <span style={{ fontSize: 7, color: "var(--text-tertiary)" }}>{data.brand?.slice(0, 14)}</span>}
           <span style={{ fontSize: 13, fontWeight: 700, color: tierCfg.accent }}>{isFallback ? "Search →" : data.price}</span>
@@ -2999,181 +2999,118 @@ const STYLE_AESTHETICS = [
 function OnboardingDemo({ fade, onGetStarted, onLogin }) {
   const _lang = localStorage.getItem("attair_lang") || "en";
   const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
-  const [demoPhase, setDemoPhase] = useState(0); // 0=photo, 1=scanning, 2=items, 3=budget, 4=results, 5=fade-out
-  const [cycleKey, setCycleKey] = useState(0);
-  const [demoOutfitIdx, setDemoOutfitIdx] = useState(0); // cycles through OB_DEMO_OUTFITS
-  const demoOutfit = OB_DEMO_OUTFITS[demoOutfitIdx % OB_DEMO_OUTFITS.length];
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
     API.getStats().then(setStats).catch(() => {});
-    // Preload all demo outfit images for smooth transitions
-    OB_DEMO_OUTFITS.forEach(o => { const img = new Image(); img.src = o.image; });
   }, []);
 
-  useEffect(() => {
-    const timings = [1500, 1300, 1900, 2100, 2600, 700]; // ms per phase (last = fade-out before reset)
-    const timer = setTimeout(() => {
-      // Side-effect setters must not live inside a setDemoPhase updater — StrictMode
-      // double-invokes updater fns in dev, which would double-advance the outfit index.
-      if (demoPhase >= 5) {
-        setDemoPhase(0);
-        setCycleKey(k => k + 1);
-        setDemoOutfitIdx(i => (i + 1) % OB_DEMO_OUTFITS.length);
-      } else {
-        setDemoPhase(p => p + 1);
-      }
-    }, timings[demoPhase]);
-    return () => clearTimeout(timer);
-  }, [demoPhase, cycleKey]);
+  // Tagline split: "See it. Scan it. Shop it." → ("See it. Scan it.", "Shop it.")
+  const tagParts = (() => {
+    const tl = _t("ob_tagline").trim().replace(/\.$/, "");
+    const segs = tl.split(".").map(s => s.trim()).filter(Boolean);
+    if (segs.length < 2) return { lines: [tl], tail: "" };
+    return { lines: segs.slice(0, -1).map(s => `${s}.`), tail: `${segs[segs.length - 1]}.` };
+  })();
+
+  const totalScans = stats?.total_scans ?? 2613;
+  const weeklyScans = (() => {
+    if (typeof totalScans !== "number") return "2,613";
+    const v = Math.max(1200, Math.round(totalScans * 0.06)); // approx this-week derivation
+    return v.toLocaleString();
+  })();
+
+  const heroImgs = ["/unified-assets/aritzia1.jpg", "/unified-assets/lulu1.jpg", "/unified-assets/skims1.jpg"];
+  const avatarImgs = ["/unified-assets/w-chic.jpg", "/unified-assets/m-old.jpg", "/unified-assets/aritzia2.jpg", "/unified-assets/streetD.jpg"];
+  const feedItems = [
+    { src: "/unified-assets/m-old.jpg", chip: "NEW" },
+    { src: "/unified-assets/w-chic.jpg", chip: "HOT" },
+    { src: "/unified-assets/aritzia2.jpg", chip: "LO" },
+    { src: "/unified-assets/streetD.jpg", chip: "HI" },
+    { src: "/unified-assets/skims1.jpg", chip: "◉" },
+  ];
 
   return (
-    <div className={`ob ob-demo ${fade}`}>
-      {/* Logo pinned to top */}
-      <img src="/logo.png" alt="ATTAIRE" style={{ display: "block", margin: "0 auto", paddingTop: 16, width: "60%", maxWidth: 220, height: "auto", mixBlendMode: "lighten" }} />
-      <h2 style={{ textAlign: "center", margin: "12px 0 4px", fontSize: 18, fontWeight: 600, letterSpacing: 1.5, color: "#FAFAFA" }}>
-        {(() => { const tl = _t("ob_tagline"); const parts = tl.split(". "); if (parts.length >= 2) { const last = parts.pop(); return <>{parts.join(". ")}. <span style={{ color: "#C9A96E" }}>{last}</span></>; } return tl; })()}
-      </h2>
-      {/* Animated demo viewport */}
-      <div className="ob-demo-viewport">
-        {/* Mock phone frame */}
-        <div className="ob-demo-phone" style={{ opacity: demoPhase === 5 ? 0 : 1, transition: "opacity 0.5s ease" }}>
-          {/* Phase 0-1: Outfit photo with gradient */}
-          <div className="ob-demo-photo" style={{ opacity: 1 }}>
-            <img
-              src={demoOutfit.image}
-              alt={demoOutfit.alt}
-              style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0, borderRadius: "inherit", transition: "opacity 0.4s ease" }}
-            />
+    <div className={`u-landing ${fade || ""}`} style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100svh", fontFamily: "var(--font-sans)" }}>
+      {/* Top bar: wordmark + EST. */}
+      <div style={{ padding: "16px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 24, letterSpacing: -1, color: "var(--text-primary)" }}>attaire</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: 0.5 }}>EST. '25</span>
+      </div>
 
-            {/* Phase 1: Scanning laser line */}
-            <div key={cycleKey} className={`ob-demo-scan-line ${demoPhase >= 1 && demoPhase < 5 ? "active" : ""}`} />
-
-            {/* Phase 2: Item labels pop in */}
-            <div className="ob-demo-items">
-              {demoOutfit.items.map((item, i) => (
-                <div
-                  key={`${demoOutfitIdx}-${i}`}
-                  className={`ob-demo-item-tag ${demoPhase >= 2 && demoPhase < 4 ? "visible" : ""}`}
-                  style={{ transitionDelay: `${i * 150}ms`, top: `${item.top ?? (28 + i * 22)}%` }}
-                >
-                  <span className="ob-demo-item-emoji">{item.emoji}</span>
-                  <span className="ob-demo-item-name">{item.name}</span>
-                  <span className="ob-demo-item-check">✓</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Phase 3: Budget selector */}
-          <div className={`ob-demo-budget ${demoPhase === 3 ? "visible" : ""}`}>
-            <div className="ob-demo-budget-label">Set your budget</div>
-            <div className="ob-demo-budget-chips">
-              {[
-                { sym: "$", tier: "Budget" },
-                { sym: "$$", tier: "Mid" },
-                { sym: "$$$", tier: "Premium" },
-              ].map((c, i) => (
-                <div
-                  key={`${demoOutfitIdx}-b${i}`}
-                  className={`ob-demo-budget-chip ${i === (demoOutfit.budget ?? 1) ? "selected" : ""}`}
-                  style={{ transitionDelay: `${i * 120}ms` }}
-                >
-                  <span className="ob-demo-budget-chip-sym">{c.sym}</span>
-                  <span className="ob-demo-budget-chip-tier">{c.tier}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Phase 4: Results cards slide up — one per identified item, at the chosen budget tier */}
-          <div className={`ob-demo-results ${demoPhase >= 4 && demoPhase < 5 ? "visible" : ""}`}>
-            <div className="ob-demo-results-header">
-              <span className="ob-demo-results-dot" />
-              Products found
-            </div>
-            {(() => {
-              const tierKey = ["budget", "mid", "premium"][demoOutfit.budget ?? 1];
-              return demoOutfit.items.map((item, i) => {
-                const r = item.shop?.[tierKey];
-                if (!r) return null;
-                return (
-                  <div
-                    key={`${demoOutfitIdx}-r${i}`}
-                    className={`ob-demo-result-card ${demoPhase >= 4 && demoPhase < 5 ? "visible" : ""}`}
-                    style={{ transitionDelay: `${i * 100}ms` }}
-                  >
-                    <div className={`ob-demo-tier-badge ob-demo-tier-${tierKey}`}>{item.emoji}</div>
-                    <div className="ob-demo-result-info">
-                      <div className="ob-demo-result-name">{r.name}</div>
-                      <div className="ob-demo-result-store">{r.store}</div>
-                    </div>
-                    <div className="ob-demo-result-price">{r.price}</div>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        </div>
-
-        {/* Numbered step indicator: 1 Identify → 2 Budget → 3 Shop */}
-        <div className="ob-demo-steps">
-          {(() => {
-            // map phase → active step: 0-2 ident, 3 budget, 4 shop
-            const activeStep = demoPhase <= 2 ? 1 : demoPhase === 3 ? 2 : demoPhase === 4 ? 3 : 0;
-            return [
-              { n: 1, label: "Identify" },
-              { n: 2, label: "Budget" },
-              { n: 3, label: "Shop" },
-            ].map(({ n, label }) => {
-              const state = activeStep === n ? "active" : activeStep > n ? "done" : "";
-              return (
-                <div key={n} className={`ob-demo-step ${state}`}>
-                  <div className="ob-demo-step-num">{state === "done" ? "✓" : n}</div>
-                  <span className="ob-demo-step-label">{label}</span>
-                </div>
-              );
-            });
-          })()}
+      {/* Typographic hero */}
+      <div style={{ padding: "16px 16px 0" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: "clamp(48px, 14vw, 64px)", lineHeight: 0.92, fontWeight: 700, letterSpacing: -2, color: "var(--text-primary)" }}>
+          {tagParts.lines.map((ln, i) => (<span key={i}>{ln.toLowerCase()}<br/></span>))}
+          {tagParts.tail && (
+            <span className="lime-chip">{tagParts.tail.toLowerCase()}</span>
+          )}
         </div>
       </div>
 
-      {/* CTA section */}
-      <div className="ob-demo-cta">
-        <h1 className="ob-demo-title">
-          {(() => { const sub = _t("ob_subtitle"); const dotIdx = sub.indexOf("."); if (dotIdx > 0) { return <>{sub.slice(0, sub.lastIndexOf(" "))}<br /><span className="ob-demo-title-gold">{sub.slice(sub.lastIndexOf(" ") + 1)}</span></>; } return sub; })()}
-        </h1>
-        <p className="ob-demo-sub">
-          {_t("ob_scan_desc")}
-        </p>
-        <button className="cta" onClick={onGetStarted}>{_t("get_started")}</button>
-        <button className="ob-demo-login" onClick={onLogin}>
-          Already have an account? Log in
+      {/* Image stack 1.3fr / 1fr */}
+      <div style={{ padding: "20px 16px 0", display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 8 }}>
+        <div style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", aspectRatio: "3/4", position: "relative" }}>
+          <img src={heroImgs[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="eager" />
+          <div style={{ position: "absolute", bottom: 8, left: 8, padding: "4px 10px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 10, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: 0.3 }}>scanned · 4 pieces</div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", flex: 1 }}>
+            <img src={heroImgs[1]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="eager" />
+          </div>
+          <div style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", flex: 1 }}>
+            <img src={heroImgs[2]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="eager" />
+          </div>
+        </div>
+      </div>
+
+      {/* CTA row: get the app + log in */}
+      <div style={{ padding: "16px 16px 0", display: "flex", alignItems: "center", gap: 10 }}>
+        <button onClick={onGetStarted} style={{ flex: 1, height: 54, borderRadius: 16, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontWeight: 700, fontSize: 15, fontFamily: "var(--font-display)", letterSpacing: 0.3, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          get the app <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>→</span>
+        </button>
+        <button onClick={onLogin} style={{ height: 54, padding: "0 18px", borderRadius: 16, border: "1.5px solid var(--text-primary)", background: "transparent", color: "var(--text-primary)", fontWeight: 600, fontSize: 13, fontFamily: "var(--font-sans)", cursor: "pointer" }}>
+          log in
         </button>
       </div>
 
-      {/* Social proof bar */}
-      {stats && (
-        <div className="ob-social-proof">
-          {stats.total_scans > 0 && (
-            <div className="ob-social-stat">
-              <span className="ob-social-stat-n">{stats.total_scans.toLocaleString()}+</span>
-              <span className="ob-social-stat-l">outfits scanned</span>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Social proof: avatar trail + scan count */}
+      <div style={{ padding: "20px 16px 0", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-secondary)" }}>
+        <span style={{ display: "inline-flex", marginRight: 4 }}>
+          {avatarImgs.map((src, i) => (
+            <span key={i} style={{ width: 24, height: 24, borderRadius: 999, border: "2px solid var(--bg-primary)", marginLeft: i ? -8 : 0, overflow: "hidden", display: "inline-block" }}>
+              <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
+            </span>
+          ))}
+        </span>
+        <b style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{weeklyScans}</b>
+        <span>outfits scanned this week</span>
+      </div>
 
-      {/* Social links */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 20, padding: "16px 0 24px" }}>
+      {/* Fresh feed strip */}
+      <div style={{ padding: "20px 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>fresh feed</span>
+        <span style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 1 }}>updated 2m ago</span>
+      </div>
+      <div style={{ display: "flex", gap: 8, padding: "8px 16px 24px", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+        {feedItems.map((it, i) => (
+          <div key={i} style={{ flexShrink: 0, width: 110, height: 140, borderRadius: 12, overflow: "hidden", position: "relative" }}>
+            <img src={it.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
+            <div style={{ position: "absolute", top: 6, left: 6, padding: "2px 6px", borderRadius: 4, background: "var(--accent)", color: "var(--accent-text)", fontSize: 9, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: 0.4 }}>{it.chip}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer social links */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 16, padding: "8px 0 32px" }}>
         {[
           { label: "Instagram", href: "https://instagram.com/attaire.app", path: "M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6m9.65 1.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5M12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10m0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6" },
           { label: "TikTok", href: "https://tiktok.com/@attaire.app", path: "M16.6 5.82s.51.64 1.62 1.13c.73.33 1.57.48 2.28.51v3.34s-1.16-.04-2.26-.46c-.75-.28-1.26-.65-1.26-.65s-.03 3.35-.03 4.8c0 1.34-.35 2.76-1.34 3.87-1.1 1.24-2.53 1.83-3.98 1.87-1.78.05-3.44-.77-4.39-2.15a5.27 5.27 0 0 1 3.08-7.9c.67-.15 1.35-.14 1.99-.02v3.42a2.34 2.34 0 0 0-1.6.39 2.3 2.3 0 0 0-.73 2.63c.36.84 1.2 1.38 2.15 1.34.94-.04 1.7-.63 2-1.48.1-.3.13-.63.13-1.01V2h3.3s-.06 1.53.04 2.2c.14.92.61 1.62.61 1.62" },
           { label: "X", href: "https://x.com/attaireapp", path: "M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" },
         ].map(({ label, href, path }) => (
           <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}
-            style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", border: "1px solid rgba(255,255,255,.15)", background: "rgba(255,255,255,.05)", transition: "background .2s" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,.6)"><path d={path} /></svg>
+            style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", border: "1px solid var(--border)", background: "transparent", transition: "background .2s" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--text-secondary)"><path d={path} /></svg>
           </a>
         ))}
       </div>
@@ -3188,24 +3125,10 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
   const _lang = localStorage.getItem("attair_lang") || "en";
   const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
   const [shopFor, setShopFor] = useState(null); // "women" | "men" | "both"
-  const [selected, setSelected] = useState([]);
-  const [cardIdx, setCardIdx] = useState(0);
-  const [swipeDir, setSwipeDir] = useState(null); // "left" | "right" | null
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchDelta, setTouchDelta] = useState(0);
+  const [selected, setSelected] = useState([]); // array of vibe names
+  const [step, setStep] = useState(1); // 1 = gender, 2 = vibes
 
-  const current = STYLE_AESTHETICS[cardIdx];
-  const isDone = cardIdx >= STYLE_AESTHETICS.length;
-
-  const handleSwipe = (liked) => {
-    setSwipeDir(liked ? "right" : "left");
-    if (liked) setSelected(prev => [...prev, current.name]);
-    setTimeout(() => {
-      setSwipeDir(null);
-      setTouchDelta(0);
-      setCardIdx(i => i + 1);
-    }, 250);
-  };
+  const tog = (name) => setSelected(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
 
   const handleContinue = () => {
     localStorage.setItem("attair_inspirations", JSON.stringify(selected));
@@ -3213,107 +3136,124 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
     onContinue(selected, shopFor === "women" ? "female" : shopFor === "men" ? "male" : null);
   };
 
-  // Preload next image
-  useEffect(() => {
-    if (cardIdx < STYLE_AESTHETICS.length - 1) {
-      const img = new Image();
-      img.src = STYLE_AESTHETICS[cardIdx + 1].img;
-    }
-  }, [cardIdx]);
+  const minVibes = 3;
+  const canAdvance = step === 1 ? !!shopFor : selected.length >= minVibes;
+  const totalSteps = 2;
+
+  // Gender card images
+  const genderCards = [
+    { key: "women", label: "women's", img: "/unified-assets/aritzia1.jpg" },
+    { key: "men", label: "men's", img: "/unified-assets/m-old.jpg" },
+    { key: "both", label: "both", img: "/unified-assets/streetD.jpg" },
+  ];
 
   return (
-    <div className={`ob ob-inspo ${fade}`}>
-      {/* Gender picker (only before swiping starts) */}
-      {cardIdx === 0 && !shopFor && (
-        <div style={{ padding: "20px 0", textAlign: "center" }}>
-          <h1 className="ob-inspo-title" style={{ marginBottom: 8 }}>{_t("ob_style_vibe")}</h1>
-          <p className="ob-inspo-sub" style={{ marginBottom: 20 }}>First, what do you shop for?</p>
-          <div className="ob-inspo-gender">
-            {[{ key: "women", label: "Women's" }, { key: "men", label: "Men's" }, { key: "both", label: "Both" }].map(({ key, label }) => (
-              <button key={key} className={`ob-inspo-gender-btn ${shopFor === key ? "active" : ""}`} onClick={() => setShopFor(key)}>{label}</button>
-            ))}
-          </div>
+    <div className={`u-onboarding ${fade || ""}`} style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100svh", display: "flex", flexDirection: "column", fontFamily: "var(--font-sans)" }}>
+      {/* Top: progress */}
+      <div style={{ padding: "20px 16px 4px", display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 600, letterSpacing: 0.4 }}>{String(step).padStart(2, "0")} / {String(totalSteps).padStart(2, "0")}</span>
+        <div style={{ flex: 1, height: 3, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
+          <div style={{ width: `${(step / totalSteps) * 100}%`, height: "100%", background: "var(--text-primary)", borderRadius: 2, transition: "width 280ms var(--spring)" }}/>
         </div>
+        {step === 2 && (
+          <button onClick={() => setStep(1)} style={{ background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, padding: 6, cursor: "pointer", fontFamily: "var(--font-display)" }}>back</button>
+        )}
+      </div>
+
+      {/* Step 1: Gender */}
+      {step === 1 && (
+        <>
+          <div style={{ padding: "16px 16px 18px" }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 700, letterSpacing: -1.5, lineHeight: 0.95 }}>
+              what do<br/>you<span> </span>
+              <span className="lime-chip">shop for?</span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>pick one ✿</div>
+          </div>
+          <div style={{ flex: 1, padding: "0 16px", display: "grid", gridTemplateColumns: "1fr", gap: 12, alignContent: "flex-start" }}>
+            {genderCards.map((g) => {
+              const on = shopFor === g.key;
+              return (
+                <button key={g.key} onClick={() => setShopFor(g.key)} style={{ position: "relative", aspectRatio: "16/9", borderRadius: "var(--radius-lg)", overflow: "hidden", border: on ? "3px solid var(--text-primary)" : "3px solid transparent", padding: 0, cursor: "pointer", background: "transparent", transition: "transform 180ms var(--spring), border-color 180ms var(--ease-smooth)", transform: on ? "scale(0.99)" : "scale(1)" }}>
+                  <img src={g.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="eager" />
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55))" }} />
+                  <div style={{ position: "absolute", left: 14, bottom: 12, color: "#fff", fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: -0.6, textTransform: "lowercase" }}>{g.label}</div>
+                  {on && (
+                    <div style={{ position: "absolute", top: 10, right: 10, width: 28, height: 28, borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      {/* Swipe cards */}
-      {(shopFor || cardIdx > 0) && !isDone && current && (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 20px", position: "relative", overflow: "hidden" }}>
-          {/* Progress */}
-          <div style={{ display: "flex", gap: 3, marginBottom: 16, width: "100%", maxWidth: 320 }}>
-            {STYLE_AESTHETICS.map((_, i) => (
-              <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < cardIdx ? "var(--accent)" : i === cardIdx ? "rgba(201,169,110,.5)" : "rgba(255,255,255,.1)", transition: "background .3s" }} />
-            ))}
+      {/* Step 2: Vibes */}
+      {step === 2 && (
+        <>
+          <div style={{ padding: "14px 16px 16px" }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 700, letterSpacing: -1.5, lineHeight: 0.95 }}>
+              tag your<br/>
+              <span className="lime-chip">energy</span>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>pick {minVibes}+ to tune your feed ✿</div>
           </div>
+          <div style={{ flex: 1, padding: "0 14px 14px", overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignContent: "flex-start" }}>
+            {STYLE_AESTHETICS.map((v, i) => {
+              const on = selected.includes(v.name);
+              return (
+                <button key={v.name} onClick={() => tog(v.name)} style={{ display: "flex", flexDirection: "column", gap: 6, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", transition: "transform 180ms var(--spring)", transform: on ? "scale(0.98)" : "scale(1)" }}>
+                  <div style={{ position: "relative", aspectRatio: "4/5", borderRadius: "var(--radius-lg)", overflow: "hidden", border: on ? "3px solid var(--text-primary)" : "3px solid transparent" }}>
+                    <img src={v.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading={i < 4 ? "eager" : "lazy"} />
+                    {on && (
+                      <div style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "var(--text-primary)", letterSpacing: -0.3, paddingLeft: 2, lineHeight: 1.1, textTransform: "lowercase" }}>{v.name}</div>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
-          {/* Card */}
-          <div
-            style={{
-              width: "100%", maxWidth: 320, aspectRatio: "3/4", borderRadius: 20, overflow: "hidden",
-              position: "relative", boxShadow: "0 8px 32px rgba(0,0,0,.3)",
-              transform: swipeDir ? `translateX(${swipeDir === "right" ? 120 : -120}%) rotate(${swipeDir === "right" ? 12 : -12}deg)` : `translateX(${touchDelta}px) rotate(${touchDelta * 0.05}deg)`,
-              opacity: swipeDir ? 0 : 1,
-              transition: swipeDir ? "transform .25s ease, opacity .25s ease" : "none",
+      {/* Sticky footer */}
+      <div style={{ padding: "12px 16px 24px", background: "var(--bg-primary)", borderTop: "1px solid var(--border)" }}>
+        {step === 2 && (
+          <div style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "center", marginBottom: 8, fontFamily: "var(--font-display)" }}>
+            {selected.length} picked · {Math.max(0, minVibes - selected.length)} more to go
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => {
+              if (step === 1 && shopFor) { setStep(2); return; }
+              if (step === 2 && canAdvance) handleContinue();
             }}
-            onTouchStart={e => setTouchStart(e.touches[0].clientX)}
-            onTouchMove={e => { if (touchStart != null) setTouchDelta(e.touches[0].clientX - touchStart); }}
-            onTouchEnd={() => {
-              if (Math.abs(touchDelta) > 80) handleSwipe(touchDelta > 0);
-              else { setTouchDelta(0); setTouchStart(null); }
+            disabled={!canAdvance}
+            style={{
+              flex: 1, height: 54, borderRadius: 16, border: "none",
+              background: canAdvance ? "var(--text-primary)" : "var(--border)",
+              color: canAdvance ? "var(--bg-primary)" : "var(--text-secondary)",
+              fontWeight: 700, fontSize: 15, fontFamily: "var(--font-display)",
+              cursor: canAdvance ? "pointer" : "not-allowed",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+              transition: "background 180ms var(--ease-smooth), color 180ms var(--ease-smooth), transform 120ms var(--spring)",
             }}
           >
-            <img src={current.img} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} loading="eager" />
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent 40%, rgba(0,0,0,.8))" }} />
-            {/* Swipe indicator overlays */}
-            {touchDelta > 40 && <div style={{ position: "absolute", top: 20, left: 20, padding: "8px 18px", border: "3px solid #4CAF50", borderRadius: 8, color: "#4CAF50", fontSize: 20, fontWeight: 800, transform: "rotate(-12deg)" }}>LOVE</div>}
-            {touchDelta < -40 && <div style={{ position: "absolute", top: 20, right: 20, padding: "8px 18px", border: "3px solid #f44336", borderRadius: 8, color: "#f44336", fontSize: 20, fontWeight: 800, transform: "rotate(12deg)" }}>PASS</div>}
-            {/* Label */}
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 20px" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", fontFamily: "'Instrument Serif', serif" }}>{current.name}</div>
-              <div style={{ fontSize: 14, color: "rgba(255,255,255,.7)", marginTop: 4 }}>{current.desc}</div>
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <div style={{ display: "flex", gap: 24, marginTop: 24, alignItems: "center" }}>
-            <button onClick={() => handleSwipe(false)} style={{ width: 56, height: 56, borderRadius: "50%", border: "2px solid rgba(255,255,255,.15)", background: "rgba(255,255,255,.05)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 24 }}>
-              ✕
-            </button>
-            <button onClick={() => handleSwipe(true)} style={{ width: 64, height: 64, borderRadius: "50%", border: "2px solid var(--accent)", background: "rgba(201,169,110,.15)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 28 }}>
-              ♥
-            </button>
-          </div>
-
-          <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 12 }}>
-            {cardIdx + 1}/{STYLE_AESTHETICS.length} · Swipe or tap
-          </div>
-        </div>
-      )}
-
-      {/* Done state */}
-      {isDone && (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px", textAlign: "center" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>✨</div>
-          <h2 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", fontFamily: "'Instrument Serif', serif", marginBottom: 8 }}>
-            {selected.length > 0 ? `${selected.length} styles selected` : "All done!"}
-          </h2>
-          <p style={{ fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.5, marginBottom: 8 }}>
-            {selected.length > 0 ? selected.join(", ") : "No worries — we'll learn your style as you scan."}
-          </p>
-        </div>
-      )}
-
-      {/* Bottom CTA */}
-      <div className="ob-inspo-footer">
-        {isDone ? (
-          <button className="cta" onClick={handleContinue}>
-            {selected.length > 0 ? `Continue with ${selected.length} picks` : "Continue"}
+            next <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>→</span>
           </button>
-        ) : (
-          <button className="ob-inspo-skip" onClick={() => { localStorage.setItem("attair_inspirations", "[]"); if (shopFor) localStorage.setItem("attair_ob_gender", shopFor === "women" ? "female" : shopFor === "men" ? "male" : "both"); onSkip(); }}>
-            {_t("ob_skip")}
+          <button
+            onClick={() => { localStorage.setItem("attair_inspirations", "[]"); if (shopFor) localStorage.setItem("attair_ob_gender", shopFor === "women" ? "female" : shopFor === "men" ? "male" : "both"); onSkip(); }}
+            style={{ height: 54, padding: "0 18px", borderRadius: 16, border: "1.5px solid var(--text-primary)", background: "transparent", color: "var(--text-primary)", fontWeight: 600, fontSize: 13, fontFamily: "var(--font-sans)", cursor: "pointer" }}
+          >
+            {_t("ob_skip") || "skip"}
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -3429,15 +3369,15 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
   if (verdict) {
     const labels = { would_wear: "Would Wear", on_the_fence: "On the Fence", not_for_me: "Not for Me" };
     const colors = { would_wear: "#4CAF50", on_the_fence: "#FFB74D", not_for_me: "#FF5252" };
-    ctx.fillStyle = colors[verdict] || "#C9A96E";
-    ctx.font = "bold 48px 'Outfit', system-ui";
+    ctx.fillStyle = colors[verdict] || "var(--accent)";
+    ctx.font = "bold 48px 'Inter', system-ui";
     ctx.textAlign = "center";
     ctx.fillText(labels[verdict] || "", 540, verdictY);
   }
 
   // Summary
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "600 36px 'Outfit', system-ui";
+  ctx.font = "600 36px 'Inter', system-ui";
   ctx.textAlign = "center";
   const summaryText = summary?.substring(0, 60) || "";
   if (summaryText) ctx.fillText(summaryText, 540, 1460);
@@ -3445,23 +3385,23 @@ async function generateShareCard({ imageUrl, summary, items, verdict, userName }
   // Items count
   const itemCount = items?.length || 0;
   ctx.fillStyle = "rgba(255,255,255,0.5)";
-  ctx.font = "400 28px 'Outfit', system-ui";
+  ctx.font = "400 28px 'Inter', system-ui";
   ctx.fillText(`${itemCount} item${itemCount !== 1 ? "s" : ""} identified`, 540, 1520);
 
   // User name
   if (userName) {
     ctx.fillStyle = "rgba(255,255,255,0.4)";
-    ctx.font = "400 24px 'Outfit', system-ui";
+    ctx.font = "400 24px 'Inter', system-ui";
     ctx.fillText(`Scanned by ${userName}`, 540, 1580);
   }
 
   // ATTAIR watermark
-  ctx.fillStyle = "#C9A96E";
-  ctx.font = "bold 56px 'Outfit', system-ui";
+  ctx.fillStyle = "var(--accent)";
+  ctx.font = "bold 56px 'Inter', system-ui";
   ctx.textAlign = "center";
   ctx.fillText("ATTAIR", 540, 1800);
-  ctx.fillStyle = "rgba(201,169,110,0.5)";
-  ctx.font = "400 24px 'Outfit', system-ui";
+  ctx.fillStyle = "rgba(200, 255, 61, 0.5)";
+  ctx.font = "400 24px 'Inter', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1850);
 
   return canvas.toDataURL("image/png");
@@ -3500,8 +3440,8 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
   }));
 
   // Color palette
-  const GOLD = "#C9A96E";
-  const GOLD_DIM = "rgba(201,169,110,0.5)";
+  const GOLD = "var(--accent)";
+  const GOLD_DIM = "rgba(200, 255, 61, 0.5)";
   const BG_DARK = "#0C0C0E";
   const BG_CARD = "#1A1A1A";
   const WHITE = "#FFFFFF";
@@ -3561,7 +3501,7 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
     // Animated ambient gold glow behind photo
     const glowPulse = 0.5 + 0.5 * Math.sin(frameTime * 1.5);
     const glowGrad = ctx.createRadialGradient(W / 2, 600, 100, W / 2, 600, 500 + glowPulse * 80);
-    glowGrad.addColorStop(0, `rgba(201,169,110,${0.04 + glowPulse * 0.02})`);
+    glowGrad.addColorStop(0, `rgba(200,255,61,${0.04 + glowPulse * 0.02})`);
     glowGrad.addColorStop(1, "transparent");
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, W, H);
@@ -3575,7 +3515,7 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
       const pSize = 1.5 + Math.sin(frameTime + p * 0.7) * 0.8;
       ctx.beginPath();
       ctx.arc(px, py, pSize, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(201,169,110,${pAlpha})`;
+      ctx.fillStyle = `rgba(200,255,61,${pAlpha})`;
       ctx.fill();
     }
     ctx.restore();
@@ -3622,15 +3562,15 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
         const scanLineY = photoY + scanLineT * photoH;
         const scanGrad = ctx.createLinearGradient(photoX, 0, photoX + photoW, 0);
         scanGrad.addColorStop(0, "transparent");
-        scanGrad.addColorStop(0.2, `rgba(201,169,110,${0.7 * (1 - scanLineT)})`);
-        scanGrad.addColorStop(0.8, `rgba(201,169,110,${0.7 * (1 - scanLineT)})`);
+        scanGrad.addColorStop(0.2, `rgba(200,255,61,${0.7 * (1 - scanLineT)})`);
+        scanGrad.addColorStop(0.8, `rgba(200,255,61,${0.7 * (1 - scanLineT)})`);
         scanGrad.addColorStop(1, "transparent");
         ctx.fillStyle = scanGrad;
         ctx.fillRect(photoX, scanLineY - 1.5, photoW, 3);
 
         // Glow below scan line
         const scanGlow = ctx.createLinearGradient(0, scanLineY, 0, scanLineY + 40);
-        scanGlow.addColorStop(0, `rgba(201,169,110,${0.15 * (1 - scanLineT)})`);
+        scanGlow.addColorStop(0, `rgba(200,255,61,${0.15 * (1 - scanLineT)})`);
         scanGlow.addColorStop(1, "transparent");
         ctx.fillStyle = scanGlow;
         ctx.fillRect(photoX, scanLineY, photoW, 40);
@@ -3681,13 +3621,13 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
 
       // Item name
       ctx.fillStyle = WHITE;
-      ctx.font = "600 32px 'Outfit', system-ui";
+      ctx.font = "600 32px 'Inter', system-ui";
       ctx.textAlign = "left";
       const displayName = item.name.length > 28 ? item.name.slice(0, 26) + "..." : item.name;
       ctx.fillText(displayName, itemX + 24, itemY + 40);
 
       // Brand + price row
-      ctx.font = "400 24px 'Outfit', system-ui";
+      ctx.font = "400 24px 'Inter', system-ui";
       ctx.fillStyle = WHITE_60;
       const brandText = item.brand ? item.brand : item.category;
       ctx.fillText(brandText.length > 24 ? brandText.slice(0, 22) + "..." : brandText, itemX + 24, itemY + 72);
@@ -3695,7 +3635,7 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
       if (item.price) {
         const priceStr = typeof item.price === "number" ? `$${item.price}` : `${item.price}`;
         ctx.fillStyle = GOLD;
-        ctx.font = "700 26px 'Outfit', system-ui";
+        ctx.font = "700 26px 'Inter', system-ui";
         ctx.textAlign = "right";
         ctx.fillText(priceStr, itemX + itemW - 20, itemY + 56);
       }
@@ -3714,9 +3654,9 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
 
       // Summary text
       ctx.fillStyle = WHITE_60;
-      ctx.font = "400 28px 'Outfit', system-ui";
+      ctx.font = "400 28px 'Inter', system-ui";
       ctx.textAlign = "center";
-      const lines = wrapText(summary.substring(0, 80), W - 200, "400 28px 'Outfit', system-ui");
+      const lines = wrapText(summary.substring(0, 80), W - 200, "400 28px 'Inter', system-ui");
       lines.forEach((line, li) => {
         ctx.fillText(line, W / 2, summaryY + li * 38);
       });
@@ -3738,7 +3678,7 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
 
         // Pill background
         const pillText = verdictLabels[verdict];
-        ctx.font = "bold 34px 'Outfit', system-ui";
+        ctx.font = "bold 34px 'Inter', system-ui";
         const pillW = ctx.measureText(pillText).width + 60;
         const pillX = W / 2 - pillW / 2;
         const pillH = 52;
@@ -3774,18 +3714,18 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
 
       // ATTAIR logo
       ctx.fillStyle = GOLD;
-      ctx.font = "bold 52px 'Outfit', system-ui";
+      ctx.font = "bold 52px 'Inter', system-ui";
       ctx.fillText("ATTAIR", W / 2, H - 160);
 
       // Tagline
       ctx.fillStyle = GOLD_DIM;
-      ctx.font = "400 24px 'Outfit', system-ui";
+      ctx.font = "400 24px 'Inter', system-ui";
       ctx.fillText("AI Fashion Scanner", W / 2, H - 110);
 
       // User attribution
       if (userName) {
         ctx.fillStyle = WHITE_35;
-        ctx.font = "400 22px 'Outfit', system-ui";
+        ctx.font = "400 22px 'Inter', system-ui";
         ctx.fillText(`Scanned by @${userName}`, W / 2, H - 70);
       }
 
@@ -3798,7 +3738,7 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
       ctx.save();
       ctx.globalAlpha = 0.35 * easeOutCubic(wmT);
       ctx.fillStyle = GOLD;
-      ctx.font = "bold 28px 'Outfit', system-ui";
+      ctx.font = "bold 28px 'Inter', system-ui";
       ctx.textAlign = "left";
       ctx.fillText("ATTAIR", 80, 100);
       ctx.restore();
@@ -3810,12 +3750,12 @@ async function generateScanReel({ imageUrl, summary, items, verdict, userName })
       ctx.save();
       ctx.globalAlpha = easeOutCubic(badgeT);
       const countText = `${items?.length || 0} items`;
-      ctx.font = "600 22px 'Outfit', system-ui";
+      ctx.font = "600 22px 'Inter', system-ui";
       const countW = ctx.measureText(countText).width + 32;
       roundRect(W - 80 - countW, 80, countW, 36, 18);
-      ctx.fillStyle = "rgba(201,169,110,0.12)";
+      ctx.fillStyle = "rgba(200, 255, 61, 0.12)";
       ctx.fill();
-      ctx.strokeStyle = "rgba(201,169,110,0.25)";
+      ctx.strokeStyle = "rgba(200, 255, 61, 0.25)";
       ctx.lineWidth = 1;
       ctx.stroke();
       ctx.fillStyle = GOLD;
@@ -3942,23 +3882,23 @@ async function generateStyleDnaCard(dna, userName) {
   // Subtle gold accent circle in background
   ctx.beginPath();
   ctx.arc(540, 600, 300, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(201,169,110,0.03)";
+  ctx.fillStyle = "rgba(200, 255, 61, 0.03)";
   ctx.fill();
 
   // "YOUR STYLE DNA" header
-  ctx.fillStyle = "#C9A96E";
-  ctx.font = "bold 28px 'Outfit', system-ui";
+  ctx.fillStyle = "var(--accent)";
+  ctx.font = "bold 28px 'Inter', system-ui";
   ctx.textAlign = "center";
   ctx.fillText("YOUR STYLE DNA", 540, 300);
 
   // Archetype - big and bold
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 72px 'Outfit', system-ui";
+  ctx.font = "bold 72px 'Inter', system-ui";
   ctx.fillText(dna.archetype || "", 540, 500);
 
   // Description
   ctx.fillStyle = "rgba(255,255,255,0.6)";
-  ctx.font = "400 32px 'Outfit', system-ui";
+  ctx.font = "400 32px 'Inter', system-ui";
   const descWords = (dna.description || "").split(" ");
   let descLine = "", descY = 600;
   for (const word of descWords) {
@@ -3975,16 +3915,16 @@ async function generateStyleDnaCard(dna, userName) {
 
   // Trait pills
   const traitY = descY + 80;
-  ctx.font = "500 28px 'Outfit', system-ui";
+  ctx.font = "500 28px 'Inter', system-ui";
   (dna.traits || []).forEach((trait, i) => {
     const ty = traitY + i * 56;
     const tw = ctx.measureText(trait).width + 48;
     const tx = 540 - tw / 2;
-    ctx.fillStyle = "rgba(201,169,110,0.1)";
+    ctx.fillStyle = "rgba(200, 255, 61, 0.1)";
     ctx.beginPath();
     ctx.roundRect(tx, ty - 20, tw, 44, 22);
     ctx.fill();
-    ctx.strokeStyle = "rgba(201,169,110,0.2)";
+    ctx.strokeStyle = "rgba(200, 255, 61, 0.2)";
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.fillStyle = "rgba(255,255,255,0.7)";
@@ -4001,7 +3941,7 @@ async function generateStyleDnaCard(dna, userName) {
   ];
   dims.forEach(({ label, label2, key }, i) => {
     const y = barY + i * 70;
-    ctx.font = "600 22px 'Outfit', system-ui";
+    ctx.font = "600 22px 'Inter', system-ui";
     ctx.fillStyle = "rgba(255,255,255,0.3)";
     ctx.textAlign = "left";
     ctx.fillText(label, 100, y);
@@ -4014,7 +3954,7 @@ async function generateStyleDnaCard(dna, userName) {
     ctx.fill();
     // Bar fill
     const pct = ((dna.style_score?.[key] || 5) / 10) * 880;
-    ctx.fillStyle = "#C9A96E";
+    ctx.fillStyle = "var(--accent)";
     ctx.beginPath();
     ctx.roundRect(100, y + 12, pct, 8, 4);
     ctx.fill();
@@ -4024,17 +3964,17 @@ async function generateStyleDnaCard(dna, userName) {
   if (userName) {
     ctx.textAlign = "center";
     ctx.fillStyle = "rgba(255,255,255,0.35)";
-    ctx.font = "400 26px 'Outfit', system-ui";
+    ctx.font = "400 26px 'Inter', system-ui";
     ctx.fillText(userName, 540, 1700);
   }
 
   // ATTAIR watermark
-  ctx.fillStyle = "#C9A96E";
-  ctx.font = "bold 56px 'Outfit', system-ui";
+  ctx.fillStyle = "var(--accent)";
+  ctx.font = "bold 56px 'Inter', system-ui";
   ctx.textAlign = "center";
   ctx.fillText("ATTAIR", 540, 1810);
-  ctx.fillStyle = "rgba(201,169,110,0.5)";
-  ctx.font = "400 24px 'Outfit', system-ui";
+  ctx.fillStyle = "rgba(200, 255, 61, 0.5)";
+  ctx.font = "400 24px 'Inter', system-ui";
   ctx.fillText("AI Fashion Scanner", 540, 1860);
 
   return canvas.toDataURL("image/png");
@@ -4863,7 +4803,7 @@ export default function App() {
   const [challengeLoading, setChallengeLoading] = useState(false);
 
   // ─── Theme (dark / light) ─────────────────────────────────
-  const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "dark");
+  const [theme, setTheme] = useState(() => localStorage.getItem("attair_theme") || "light");
   const toggleTheme = () => setTheme(t => { const n = t === "dark" ? "light" : "dark"; localStorage.setItem("attair_theme", n); return n; });
 
   // ─── Language (i18n) ──────────────────────────────────────
@@ -5011,13 +4951,13 @@ export default function App() {
       ctx.fillRect(0, 0, 1080, 1920);
 
       // Header: "DUPE ALERT"
-      ctx.fillStyle = "#C9A96E";
+      ctx.fillStyle = "var(--accent)";
       ctx.font = "bold 56px system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("DUPE ALERT", 540, 140);
 
       // Divider line
-      ctx.strokeStyle = "rgba(201,169,110,0.4)";
+      ctx.strokeStyle = "rgba(200, 255, 61, 0.4)";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(140, 180);
@@ -5115,7 +5055,7 @@ export default function App() {
       const vsY = cardY + imgH / 2;
       ctx.beginPath();
       ctx.arc(540, vsY, 40, 0, Math.PI * 2);
-      ctx.fillStyle = "#C9A96E";
+      ctx.fillStyle = "var(--accent)";
       ctx.fill();
       ctx.font = "bold 28px system-ui, -apple-system, sans-serif";
       ctx.fillStyle = "#000";
@@ -5148,8 +5088,8 @@ export default function App() {
       }
 
       // ATTAIRE watermark
-      ctx.font = "bold 32px 'Instrument Serif', Georgia, serif";
-      ctx.fillStyle = "rgba(201,169,110,0.6)";
+      ctx.font = "bold 32px var(--font-display), Georgia, serif";
+      ctx.fillStyle = "rgba(200, 255, 61, 0.6)";
       ctx.textAlign = "center";
       ctx.fillText("ATTAIRE", 540, 1820);
       ctx.font = "400 18px system-ui, -apple-system, sans-serif";
@@ -6280,7 +6220,7 @@ export default function App() {
     }
   };
 
-  const brandConfLabel = (c) => ({ confirmed: { t: "Confirmed", c: "#C9A96E" }, high: { t: "High confidence", c: "rgba(201,169,110,0.7)" }, moderate: { t: "Moderate", c: "rgba(255,255,255,0.4)" }, low: { t: "Estimated", c: "rgba(255,255,255,0.25)" } }[c] || { t: "Unknown", c: "rgba(255,255,255,0.2)" });
+  const brandConfLabel = (c) => ({ confirmed: { t: "Confirmed", c: "var(--accent)" }, high: { t: "High confidence", c: "rgba(200, 255, 61, 0.7)" }, moderate: { t: "Moderate", c: "rgba(255,255,255,0.4)" }, low: { t: "Estimated", c: "rgba(255,255,255,0.25)" } }[c] || { t: "Unknown", c: "rgba(255,255,255,0.2)" });
 
   const handleLogout = () => { trackBeacon("logout", {}); Auth.clear(); lsCache.clear("attair_history_cache"); lsCache.clear("attair_saved_cache"); lsCache.clear("attair_wishlists_cache"); lsCache.clear("attair_styledna_cache"); lsCache.clear("attair_profile_cache"); setAuthed(false); setAuthEmail(""); setAuthName(""); setAuthPass(""); setAuthAvatarUrl(null); setUserStatus(null); setProfileBio(""); setProfileStats(null); setProfileStatsLoaded(false); setScreen("onboarding"); setObIdx(0); };
 
@@ -6294,7 +6234,7 @@ export default function App() {
     {/* Styles moved to App.css — imported at top of file */}
     {/* REMOVED: ~690 lines of inline <style> */}
 
-    <div className="app" data-theme={["onboarding","inspo","paywall","auth"].includes(screen) ? "dark" : theme}>
+    <div className="app" data-theme={theme}>
       {isOffline && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 99999, background: "var(--error, #FF5252)", color: "#fff", textAlign: "center", fontSize: 12, fontWeight: 600, padding: "4px 0", fontFamily: "var(--font-sans)" }}>
           {t("ob_youre_offline")}
@@ -6304,7 +6244,7 @@ export default function App() {
       {screen === "onboarding" && (
         <OnboardingDemo
           fade={fade}
-          onGetStarted={() => { setAuthScreen("signup"); trans(() => setScreen("auth")); }}
+          onGetStarted={() => { trans(() => setScreen("inspiration")); }}
           onLogin={() => { setAuthScreen("login"); trans(() => setScreen("auth")); }}
         />
       )}
@@ -6357,7 +6297,7 @@ export default function App() {
       {screen === "auth" && (
         <div className={`auth ${fade}`}>
           <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <svg width="32" height="32" viewBox="0 0 100 100" style={{ display: "block", margin: "0 auto 8px" }}><path d="M34.5,2.4 L65.5,2.4 L65,24 L83.5,12.8 L98.9,39.6 L80,50 L98.9,60.4 L83.5,87.2 L65,76 L65.5,97.6 L34.5,97.6 L35,76 L16.5,87.2 L1.1,60.4 L20,50 L1.1,39.6 L16.5,12.8 L35,24 Z" fill="#C9A96E"/></svg>
+            <svg width="32" height="32" viewBox="0 0 100 100" style={{ display: "block", margin: "0 auto 8px" }}><path d="M34.5,2.4 L65.5,2.4 L65,24 L83.5,12.8 L98.9,39.6 L80,50 L98.9,60.4 L83.5,87.2 L65,76 L65.5,97.6 L34.5,97.6 L35,76 L16.5,87.2 L1.1,60.4 L20,50 L1.1,39.6 L16.5,12.8 L35,24 Z" fill="var(--accent)"/></svg>
             <h1 className="ob-title" style={{ fontSize: 26 }}>{authScreen === "signup" ? "Create your account" : "Welcome back"}</h1>
             <p className="ob-sub" style={{ marginBottom: 0 }}>{authScreen === "signup" ? "Sign up to start scanning outfits" : "Log in to continue"}</p>
           </div>
@@ -6572,10 +6512,10 @@ export default function App() {
                           <div style={{ padding: "0 12px 8px" }}>
                             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                               <span style={{ fontSize: 9, fontWeight: 600, color: "var(--text-tertiary)", letterSpacing: 0.3 }}>Visual Match</span>
-                              <span style={{ fontSize: 9, fontWeight: 700, color: dupe.similarity_score >= 80 ? "#4CAF50" : dupe.similarity_score >= 60 ? "#C9A96E" : "var(--text-tertiary)" }}>{dupe.similarity_score}%</span>
+                              <span style={{ fontSize: 9, fontWeight: 700, color: dupe.similarity_score >= 80 ? "#4CAF50" : dupe.similarity_score >= 60 ? "var(--accent)" : "var(--text-tertiary)" }}>{dupe.similarity_score}%</span>
                             </div>
                             <div style={{ height: 3, borderRadius: 2, background: "var(--bg-input)", overflow: "hidden" }}>
-                              <div style={{ height: "100%", borderRadius: 2, width: `${dupe.similarity_score}%`, background: dupe.similarity_score >= 80 ? "#4CAF50" : dupe.similarity_score >= 60 ? "#C9A96E" : "var(--text-tertiary)", transition: "width .5s ease" }} />
+                              <div style={{ height: "100%", borderRadius: 2, width: `${dupe.similarity_score}%`, background: dupe.similarity_score >= 80 ? "#4CAF50" : dupe.similarity_score >= 60 ? "var(--accent)" : "var(--text-tertiary)", transition: "width .5s ease" }} />
                             </div>
                             {dupe.similarity_reason && (
                               <div style={{ fontSize: 9, color: "var(--text-tertiary)", marginTop: 4, lineHeight: 1.3, fontStyle: "italic" }}>
@@ -6711,8 +6651,8 @@ export default function App() {
 
       {/* ─── FOLLOW-UP NUDGE BANNER ────────────────────── */}
       {nudgeBanner && screen === "app" && (
-        <div className="animate-slide-up" style={{ position: "fixed", top: 56, left: 12, right: 12, background: "linear-gradient(135deg, rgba(201,169,110,.12), rgba(201,169,110,.04))", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 16, padding: "14px 16px", zIndex: 9997, display: "flex", gap: 12, alignItems: "center", boxShadow: "0 8px 32px rgba(0,0,0,.3)" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(201,169,110,.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div className="animate-slide-up" style={{ position: "fixed", top: 56, left: 12, right: 12, background: "linear-gradient(135deg, rgba(200, 255, 61, .12), rgba(200, 255, 61, .04))", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(200, 255, 61, .25)", borderRadius: 16, padding: "14px 16px", zIndex: 9997, display: "flex", gap: 12, alignItems: "center", boxShadow: "0 8px 32px rgba(0,0,0,.3)" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(200, 255, 61, .15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -6735,7 +6675,7 @@ export default function App() {
       {/* ─── Style Twin Save Banner ────────────────────── */}
       {styleTwinSaveBanner && screen === "app" && (
         <div className="animate-slide-up style-twin-save-toast" onClick={() => setStyleTwinSaveBanner(null)}>
-          <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(201,169,110,.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(200, 255, 61, .15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" strokeWidth="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -6934,7 +6874,7 @@ export default function App() {
               </div>
             </div>
             {("Notification" in window) && Notification.permission === "default" && !pushEnabled && (
-              <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "rgba(201,169,110,.06)" }}>
+              <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "rgba(200, 255, 61, .06)" }}>
                 <div style={{ fontSize: 13, color: "var(--text-primary)", marginBottom: 8 }}>Enable push notifications for price drops, new posts, and more.</div>
                 <button onClick={async () => { const perm = await Notification.requestPermission(); if (perm === "granted") { const ok = await subscribeToPush(); setPushEnabled(ok); } localStorage.setItem("attair_notif_prompted", "1"); setShowNotifPrompt(false); }} className="cta" style={{ padding: "8px 20px", fontSize: 12, borderRadius: 100, width: "100%" }}>Enable Notifications</button>
               </div>
@@ -6947,9 +6887,9 @@ export default function App() {
                   <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4, opacity: 0.7 }}>Price drops, followers, and posts will show up here</div>
                 </div>
               ) : notifications.map(n => (
-                <div key={n.id} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: n.read_at ? "transparent" : "rgba(201,169,110,.04)", cursor: n.data?.url ? "pointer" : "default" }} onClick={() => { if (n.data?.url) { setShowNotifPanel(false); if (!n.data.url.startsWith("/")) { window.open(n.data.url, "_blank", "noopener"); } } }}>
+                <div key={n.id} style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", background: n.read_at ? "transparent" : "rgba(200, 255, 61, .04)", cursor: n.data?.url ? "pointer" : "default" }} onClick={() => { if (n.data?.url) { setShowNotifPanel(false); if (!n.data.url.startsWith("/")) { window.open(n.data.url, "_blank", "noopener"); } } }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: n.type === "price_drop" ? "rgba(76,175,80,.15)" : n.type === "social" ? "rgba(201,169,110,.15)" : n.type === "style_twins" ? "rgba(201,169,110,.15)" : n.type === "new_post" ? "rgba(100,181,246,.15)" : n.type === "follow_up" ? "rgba(201,169,110,.12)" : "rgba(255,255,255,.08)" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: n.type === "price_drop" ? "rgba(76,175,80,.15)" : n.type === "social" ? "rgba(200, 255, 61, .15)" : n.type === "style_twins" ? "rgba(200, 255, 61, .15)" : n.type === "new_post" ? "rgba(100,181,246,.15)" : n.type === "follow_up" ? "rgba(200, 255, 61, .12)" : "rgba(255,255,255,.08)" }}>
                       {n.type === "price_drop" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" strokeWidth="2"><path d="M12 2v20M17 17l-5 5-5-5"/></svg> : n.type === "social" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> : n.type === "style_twins" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg> : n.type === "new_post" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m21 15-5-5L5 21"/></svg> : n.type === "follow_up" ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -6968,7 +6908,7 @@ export default function App() {
         {/* Push notification permission prompt */}
         {showNotifPrompt && !showNotifPanel && (
           <div className="animate-slide-up" style={{ position: "fixed", bottom: 90, left: 16, right: 16, background: "var(--bg-card)", borderRadius: 16, border: "1px solid var(--border)", boxShadow: "0 12px 40px rgba(0,0,0,.5)", padding: "16px", zIndex: 9990, display: "flex", gap: 12, alignItems: "center" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(201,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(200, 255, 61, .1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             </div>
             <div style={{ flex: 1 }}>
@@ -6991,11 +6931,11 @@ export default function App() {
           {tab === "scan" && phase === "idle" && !img && (<>
             <div className="screen-enter" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px 40px", minHeight: "60vh", textAlign: "center" }}>
               {/* Hero icon */}
-              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
-                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C9A96E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
+              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(200, 255, 61, .08)", border: "1px solid rgba(200, 255, 61, .15)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="14" rx="3" /><circle cx="12" cy="13" r="4" /><path d="M8 6l1.5-3h5L16 6" /></svg>
               </div>
               {/* Title */}
-              <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "var(--text-primary)", marginBottom: 8 }}>{t("scan_outfit")}</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--text-primary)", marginBottom: 8 }}>{t("scan_outfit")}</div>
               <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.6, maxWidth: 280, marginBottom: 32 }}>
                 Upload a photo of any outfit to find where to buy it
               </div>
@@ -7027,7 +6967,7 @@ export default function App() {
             {authed && !interestsDismissed && !(userStatus?.style_interests?.length > 0) && (
               <div style={{ width: "100%", maxWidth: 340, margin: "0 auto 32px", padding: 20, borderRadius: 16, background: "var(--bg-input)", border: "1px solid var(--border)", position: "relative", textAlign: "left" }}>
                 <button onClick={() => { localStorage.setItem("attair_interests_picked", "1"); setInterestsDismissed(true); }} style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 18, cursor: "pointer", padding: 4, lineHeight: 1 }} aria-label="Dismiss">✕</button>
-                <h3 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 18, color: "var(--text-primary)", margin: "0 0 4px" }}>{t("who_inspires")}</h3>
+                <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--text-primary)", margin: "0 0 4px" }}>{t("who_inspires")}</h3>
                 <p style={{ fontSize: 12, color: "var(--text-tertiary)", margin: "0 0 14px" }}>Pick up to 5. We'll personalize your results.</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
                   {[
@@ -7044,7 +6984,7 @@ export default function App() {
                     return (
                       <button key={v}
                         onClick={() => setSelectedInterests(prev => on ? prev.filter(x => x !== v) : prev.length < 5 ? [...prev, v] : prev)}
-                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 100, border: `1px solid ${on ? "rgba(201,169,110,.5)" : "var(--border)"}`, background: on ? "rgba(201,169,110,.1)" : "transparent", color: on ? "var(--accent)" : "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>
+                        style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 11px", borderRadius: 100, border: `1px solid ${on ? "rgba(200, 255, 61, .5)" : "var(--border)"}`, background: on ? "rgba(200, 255, 61, .1)" : "transparent", color: on ? "var(--accent)" : "var(--text-secondary)", fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "all .2s" }}>
                         <span style={{ fontSize: 13 }}>{icon}</span>{v}
                       </button>
                     );
@@ -7075,7 +7015,7 @@ export default function App() {
                 <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
               </div>
               {/* Centered content panel — fixed width to prevent layout shift */}
-              <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 24, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(201,169,110,.15)", width: 300 }}>
+              <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 24, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(200, 255, 61, .15)", width: 300 }}>
                 {/* Branded logo spinner — triple orbit rings + floating logo + particles */}
                 <div className="identify-logo-container">
                   <div className="identify-orbit-outer" />
@@ -7197,7 +7137,7 @@ export default function App() {
 
               {/* Prompt */}
               <div style={{ padding: "16px 20px 6px", textAlign: "center" }}>
-                <div style={{ fontFamily: "'Instrument Serif'", fontSize: 22, color: "var(--text-primary)", marginBottom: 6 }}>{t("scan_what_shop")}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--text-primary)", marginBottom: 6 }}>{t("scan_what_shop")}</div>
                 <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5 }}>{t("scan_tap_items")}</div>
               </div>
 
@@ -7428,20 +7368,20 @@ export default function App() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                               <span style={{ fontSize: 14, fontWeight: 600, color: isPicked ? "var(--text-primary)" : "var(--text-secondary)", transition: "color .2s" }}>{item.name}</span>
-                              {item.priority && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", border: "1px solid rgba(201,169,110,.35)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, flexShrink: 0 }}>&#11044; Circled</span>}
+                              {item.priority && <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(200, 255, 61, .12)", border: "1px solid rgba(200, 255, 61, .35)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, flexShrink: 0 }}>&#11044; Circled</span>}
                             </div>
-                            <div style={{ fontSize: 11, color: isPicked ? "rgba(201,169,110,.6)" : "var(--text-tertiary)", transition: "color .2s" }}>
+                            <div style={{ fontSize: 11, color: isPicked ? "rgba(200, 255, 61, .6)" : "var(--text-tertiary)", transition: "color .2s" }}>
                               {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
                               {item.identification_confidence ? <span style={{ marginLeft: 4, color: "var(--text-tertiary)" }}>· {item.identification_confidence}%</span> : null}
                             </div>
                           </div>
                           {ov?.budgetMin != null
                             ? <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3, flexShrink: 0 }}>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "rgba(201,169,110,.1)", border: "1px solid rgba(201,169,110,.25)", borderRadius: 7, padding: "4px 9px", whiteSpace: "nowrap" }}>${ov.budgetMin}–${ov.budgetMax ?? ov.budgetMin * 2}</div>
-                                <div style={{ fontSize: 9, color: "rgba(201,169,110,.5)", letterSpacing: .3 }}>tap to edit</div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "rgba(200, 255, 61, .1)", border: "1px solid rgba(200, 255, 61, .25)", borderRadius: 7, padding: "4px 9px", whiteSpace: "nowrap" }}>${ov.budgetMin}–${ov.budgetMax ?? ov.budgetMin * 2}</div>
+                                <div style={{ fontSize: 9, color: "rgba(200, 255, 61, .5)", letterSpacing: .3 }}>tap to edit</div>
                               </div>
-                            : <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 10, flexShrink: 0, cursor: "pointer" }}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C9A96E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="#C9A96E" stroke="none"/><circle cx="16" cy="12" r="2" fill="#C9A96E" stroke="none"/><circle cx="10" cy="18" r="2" fill="#C9A96E" stroke="none"/></svg>
+                            : <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 12px", background: "rgba(200, 255, 61, .06)", border: "1px solid rgba(200, 255, 61, .2)", borderRadius: 10, flexShrink: 0, cursor: "pointer" }}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="var(--accent)" stroke="none"/><circle cx="16" cy="12" r="2" fill="var(--accent)" stroke="none"/><circle cx="10" cy="18" r="2" fill="var(--accent)" stroke="none"/></svg>
                                 <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>Set prefs</span>
                               </div>
                           }
@@ -7568,7 +7508,7 @@ export default function App() {
                           ) : isFailed ? (
                             <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" fill="none" stroke="#FF5252" strokeWidth="2" strokeLinecap="round"/></svg>
                           ) : (
-                            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5L5.5 11L12 3" fill="none" stroke="#C9A96E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5L5.5 11L12 3" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           )}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -7593,13 +7533,13 @@ export default function App() {
 
                 {/* ATTAIRE promo for free users during search — skip during grace period */}
                 {(isFree || isGuest) && !inGracePeriod && (
-                  <div style={{ marginTop: 24, padding: "20px 24px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.15)", borderRadius: 16, textAlign: "center", maxWidth: 320 }}>
+                  <div style={{ marginTop: 24, padding: "20px 24px", background: "rgba(200, 255, 61, .08)", border: "1px solid rgba(200, 255, 61, .15)", borderRadius: 16, textAlign: "center", maxWidth: 320 }}>
                     <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.5, color: "var(--accent)", marginBottom: 8, textTransform: "uppercase" }}>ATTAIRE Pro</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>Unlock unlimited scans</div>
                     <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 14, lineHeight: 1.4 }}>
                       Extended search, price alerts, Style DNA, and priority results.
                     </div>
-                    <button onClick={() => { setUpgradeModal("search_promo"); track("promo_clicked", { location: "search_loading" }); }} style={{ padding: "10px 28px", background: "linear-gradient(135deg, #C9A96E 0%, #B8944F 100%)", border: "none", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "#0C0C0E", cursor: "pointer", fontFamily: "var(--font-sans)" }}>
+                    <button onClick={() => { setUpgradeModal("search_promo"); track("promo_clicked", { location: "search_loading" }); }} style={{ padding: "10px 28px", background: "linear-gradient(135deg, var(--accent) 0%, #B8944F 100%)", border: "none", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "#0C0C0E", cursor: "pointer", fontFamily: "var(--font-sans)" }}>
                       Try Pro Free
                     </button>
                   </div>
@@ -7634,8 +7574,8 @@ export default function App() {
                     <div className="v-step-l" style={{ color: "var(--accent)" }}>&larr; Identified</div>
                   </div>
                   <div className="v-step">
-                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: phase === "searching" ? "40%" : "100%", background: phase === "done" ? (results.items.some(it => it.status === "verified") ? "var(--accent)" : "var(--text-tertiary)") : "rgba(201,169,110,.4)", transition: phase === "searching" ? "width 12s linear" : "width .5s ease" }} /></div>
-                    <div className="v-step-l" style={{ color: phase === "searching" ? "rgba(201,169,110,.5)" : results.items.some(it => it.status === "verified") ? "var(--accent)" : "var(--text-tertiary)", transition: "opacity .35s ease", opacity: phase === "searching" ? (loadMsgVisible ? 1 : 0.3) : 1 }}>
+                    <div className="v-step-bar"><div className="v-step-fill" style={{ width: phase === "searching" ? "40%" : "100%", background: phase === "done" ? (results.items.some(it => it.status === "verified") ? "var(--accent)" : "var(--text-tertiary)") : "rgba(200, 255, 61, .4)", transition: phase === "searching" ? "width 12s linear" : "width .5s ease" }} /></div>
+                    <div className="v-step-l" style={{ color: phase === "searching" ? "rgba(200, 255, 61, .5)" : results.items.some(it => it.status === "verified") ? "var(--accent)" : "var(--text-tertiary)", transition: "opacity .35s ease", opacity: phase === "searching" ? (loadMsgVisible ? 1 : 0.3) : 1 }}>
                       {phase === "searching"
                         ? (isResearch ? RESEARCH_MESSAGES[loadMsgIdx % RESEARCH_MESSAGES.length] : SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length])
                         : results.items.some(it => it.status === "verified") ? "Products found" : "Search complete"}
@@ -7665,7 +7605,7 @@ export default function App() {
               {/* ─── Ident preview while searching ─── */}
               {phase === "searching" && identPreview && identPreview.length > 0 && (
                 <div style={{ padding: "0 20px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "rgba(201,169,110,.4)", textTransform: "uppercase", marginBottom: 2 }}>Found in this photo</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "rgba(200, 255, 61, .4)", textTransform: "uppercase", marginBottom: 2 }}>Found in this photo</div>
                   {identPreview.slice(0, 4).map((item, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--accent-bg)", borderRadius: 10, border: "1px solid var(--border)" }}>
                       <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
@@ -7798,7 +7738,7 @@ export default function App() {
                                   <img src={prod.image_url} alt="Pairing suggestion" width={150} height={150} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                                 </div>
                               ) : (
-                                <div style={{ width: "100%", aspectRatio: "1", background: "rgba(201,169,110,.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+                                <div style={{ width: "100%", aspectRatio: "1", background: "rgba(200, 255, 61, .08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
                                   {{ shoes: "S", accessory: "A", bag: "B", outerwear: "O", top: "T", bottom: "B", dress: "D" }[p.category] || "?"}
                                 </div>
                               )}
@@ -7901,8 +7841,8 @@ export default function App() {
                                 onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); }}
                                 style={{
                                   padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, fontFamily: "var(--font-sans)", cursor: "pointer", transition: "all .2s",
-                                  background: isActive ? "rgba(201,169,110,.12)" : "var(--bg-input)",
-                                  border: `1px solid ${isActive ? "rgba(201,169,110,.4)" : "var(--border)"}`,
+                                  background: isActive ? "rgba(200, 255, 61, .12)" : "var(--bg-input)",
+                                  border: `1px solid ${isActive ? "rgba(200, 255, 61, .4)" : "var(--border)"}`,
                                   color: isActive ? "var(--accent)" : "var(--text-tertiary)",
                                 }}>
                                 {preset.l}
@@ -7971,7 +7911,7 @@ export default function App() {
                             background: "var(--accent)", color: "var(--text-inverse)",
                             border: "none", borderRadius: "var(--radius-md)",
                             fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 700, cursor: "pointer",
-                            boxShadow: "0 2px 12px rgba(201,169,110,.3)",
+                            boxShadow: "0 2px 12px rgba(200, 255, 61, .3)",
                           }}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -8018,8 +7958,8 @@ export default function App() {
                       onClick={() => setSavedLooksOpen(o => !o)}
                       style={{
                         display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 12px",
-                        background: savedLooksOpen ? "rgba(201,169,110,.12)" : "var(--bg-input)",
-                        border: `1px solid ${savedLooksOpen ? "rgba(201,169,110,.3)" : "var(--border)"}`,
+                        background: savedLooksOpen ? "rgba(200, 255, 61, .12)" : "var(--bg-input)",
+                        border: `1px solid ${savedLooksOpen ? "rgba(200, 255, 61, .3)" : "var(--border)"}`,
                         borderRadius: 10, color: savedLooksOpen ? "var(--accent)" : "var(--text-tertiary)",
                         fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600, cursor: "pointer",
                       }}
@@ -8063,7 +8003,7 @@ export default function App() {
                 const activeEntry = pickedItemsList[clampedIdx >= 0 ? clampedIdx : 0];
                 if (!activeEntry) return null;
                 const { item, i } = activeEntry;
-                const TIER_CFG = { budget: { label: "Budget", accent: "#5AC8FF" }, mid: { label: "Match", accent: "#C9A96E" }, premium: { label: "Premium", accent: "#C77DFF" }, resale: { label: "Resale", accent: "#7BC47F" } };
+                const TIER_CFG = { budget: { label: "Budget", accent: "#5AC8FF" }, mid: { label: "Match", accent: "var(--accent)" }, premium: { label: "Premium", accent: "#C77DFF" }, resale: { label: "Resale", accent: "#7BC47F" } };
                 const allTierProducts = item.tiers ? ["budget", "mid", "premium", "resale"].flatMap(tk => asTierArray(item.tiers[tk]).map(p => ({ ...p, _tier: tk }))) : [];
 
                 // Dupe detection: find highest-priced product, flag 40%+ cheaper alternatives
@@ -8125,7 +8065,7 @@ export default function App() {
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
                           {item.name}
-                          {item.priority && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(201,169,110,.12)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, verticalAlign: "middle" }}>Circled</span>}
+                          {item.priority && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, padding: "2px 6px", background: "rgba(200, 255, 61, .12)", borderRadius: 100, color: "var(--accent)", letterSpacing: .5, verticalAlign: "middle" }}>Circled</span>}
                         </div>
                         <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 2 }}>
                           {item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}{item.color} · {item.category}
@@ -8140,7 +8080,7 @@ export default function App() {
                     <div style={{ padding: "0 0 16px", overflow: "hidden", animation: "slideDown .2s ease" }}>
                       {/* Searching state */}
                       {item.status === "searching" && (
-                        <div style={{ padding: "12px 20px", textAlign: "center", color: "rgba(201,169,110,.5)", fontSize: 12 }}>
+                        <div style={{ padding: "12px 20px", textAlign: "center", color: "rgba(200, 255, 61, .5)", fontSize: 12 }}>
                           Finding products...
                         </div>
                       )}
@@ -8218,13 +8158,13 @@ export default function App() {
                                       {/* Dupe Alert pill — reserved for affiliate items only (TODO: re-enable for affiliates) */}
                                       <a href={href} target="_blank" rel="noopener noreferrer"
                                         onClick={() => track("product_clicked", { tier: tierKey, brand: p.brand, price: p.price, product_name: (p.product_name || "").slice(0, 80), category: item.category, is_fallback: isFallback, is_affiliate: !!p.is_affiliate, is_exploration: !!p.isExploration }, scanId, "scan")}
-                                        style={{ display: "flex", flexDirection: "column", flex: 1, textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(201,169,110,.4)" : p.is_identified_brand ? "rgba(201,169,110,.25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
+                                        style={{ display: "flex", flexDirection: "column", flex: 1, textDecoration: "none", color: "inherit", background: "var(--bg-card)", border: `1px solid ${dupeInfo ? "rgba(200, 255, 61, .4)" : p.is_identified_brand ? "rgba(200, 255, 61, .25)" : "var(--border)"}`, borderRadius: 12, overflow: "hidden", transition: "all .2s" }}>
                                         <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                           {p.image_url && <img src={p.image_url} alt={p.product_name || "Product image"} className="product-card-img" width={150} height={150} loading="lazy" onError={e => { e.target.style.display = "none"; }} />}
                                           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, opacity: 0.3, pointerEvents: "none" }}>👕</div>
                                         </div>
                                         <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 3, flex: 1 }}>
-                                          {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)", alignSelf: "flex-start" }}>{t("badge_original")}</span>}
+                                          {p.is_identified_brand && <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 1, padding: "2px 5px", borderRadius: 3, background: "rgba(200, 255, 61, .12)", color: "var(--accent)", alignSelf: "flex-start" }}>{t("badge_original")}</span>}
                                           <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
                                             {isFallback ? "Search results" : (p.product_name || "Product")}
                                           </div>
@@ -8531,7 +8471,7 @@ export default function App() {
                                           </div>
                                         )}
                                         {/* Saved badge */}
-                                        <div style={{ position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: "50%", background: "rgba(201,169,110,.9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                        <div style={{ position: "absolute", top: 4, right: 4, width: 18, height: 18, borderRadius: "50%", background: "rgba(200, 255, 61, .9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                           <svg width="10" height="10" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                                         </div>
                                         {url && (
@@ -8575,7 +8515,7 @@ export default function App() {
                                               )}
                                               {/* Plus icon */}
                                               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(201,169,110,.85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(200, 255, 61, .85)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                                 </div>
                                               </div>
@@ -8779,10 +8719,10 @@ export default function App() {
                       const on = (ov.marketPref || "both") === o.v;
                       return (
                         <div key={o.v}
-                          style={{ flex: 1, padding: "8px 6px", textAlign: "center", background: on ? "rgba(201,169,110,.1)" : "var(--bg-input)", border: `1px solid ${on ? "rgba(201,169,110,.4)" : "var(--border)"}`, borderRadius: 10, cursor: "pointer", transition: "all .2s" }}
+                          style={{ flex: 1, padding: "8px 6px", textAlign: "center", background: on ? "rgba(200, 255, 61, .1)" : "var(--bg-input)", border: `1px solid ${on ? "rgba(200, 255, 61, .4)" : "var(--border)"}`, borderRadius: 10, cursor: "pointer", transition: "all .2s" }}
                           onClick={() => setOv(o2 => ({ ...(o2 || ov), marketPref: o.v }))}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: on ? "var(--accent)" : "var(--text-secondary)", marginBottom: 2 }}>{o.l}</div>
-                          <div style={{ fontSize: 9, color: on ? "rgba(201,169,110,.55)" : "var(--text-tertiary)", lineHeight: 1.3 }}>{o.desc}</div>
+                          <div style={{ fontSize: 9, color: on ? "rgba(200, 255, 61, .55)" : "var(--text-tertiary)", lineHeight: 1.3 }}>{o.desc}</div>
                         </div>
                       );
                     })}
@@ -8991,8 +8931,8 @@ export default function App() {
                                   onClick={() => { setBudgetMin(preset.min); setBudgetMax(preset.max); setSettingsBudgetDirty(true); setSettingsBudgetError(null); }}
                                   style={{
                                     flex: 1, padding: "8px 4px", borderRadius: 20, fontSize: 10, fontWeight: 600, fontFamily: "var(--font-sans)", cursor: "pointer", transition: "all .2s", minHeight: 44,
-                                    background: isActive ? "rgba(201,169,110,.12)" : "var(--bg-input)",
-                                    border: `1px solid ${isActive ? "rgba(201,169,110,.4)" : "var(--border)"}`,
+                                    background: isActive ? "rgba(200, 255, 61, .12)" : "var(--bg-input)",
+                                    border: `1px solid ${isActive ? "rgba(200, 255, 61, .4)" : "var(--border)"}`,
                                     color: isActive ? "var(--accent)" : "var(--text-tertiary)",
                                   }}>
                                   {label}
@@ -9262,7 +9202,7 @@ export default function App() {
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.85) 100%)" }} />
               <div style={{ position: "absolute", bottom: 24, left: 20, right: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, var(--accent), #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 1.5, textTransform: "uppercase" }}>This Week's Look</span>
@@ -9304,7 +9244,7 @@ export default function App() {
                             </div>
                         }
                         {/* Rank badge — gold gradient for top 3, muted for 4-10 */}
-                        <div style={{ position: "absolute", top: 8, left: 8, padding: "2px 8px", borderRadius: 100, background: idx < 3 ? "linear-gradient(135deg, #C9A96E, #E8D5A8)" : "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 800, color: idx < 3 ? "#0C0C0E" : "rgba(255,255,255,0.7)", backdropFilter: idx >= 3 ? "blur(8px)" : "none" }}>#{idx + 1}</div>
+                        <div style={{ position: "absolute", top: 8, left: 8, padding: "2px 8px", borderRadius: 100, background: idx < 3 ? "linear-gradient(135deg, var(--accent), #E8D5A8)" : "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 800, color: idx < 3 ? "#0C0C0E" : "rgba(255,255,255,0.7)", backdropFilter: idx >= 3 ? "blur(8px)" : "none" }}>#{idx + 1}</div>
                         <div className="feed-card-pills">
                           {scan.save_count > 0 && (
                             <div className="feed-card-pill">
@@ -9395,14 +9335,14 @@ export default function App() {
             {/* Not Pro — upgrade nudge */}
             {weeklyReportNotPro && !weeklyReportLoading && (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 16, padding: 32, textAlign: "center" }}>
-                <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, rgba(201,169,110,0.15), rgba(232,213,168,0.15))", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, rgba(200, 255, 61, 0.15), rgba(232,213,168,0.15))", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
                   <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                 </div>
                 <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text-primary)" }}>Weekly Style Reports are for Pro</div>
                 <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 280 }}>Upgrade to Pro to get 3 personalized looks delivered every Sunday, curated from trending scans that match your style.</div>
                 <button
                   onClick={() => { setWeeklyReportOpen(false); setWeeklyReportNotPro(false); setProfileSettingsOpen(true); }}
-                  style={{ marginTop: 8, padding: "10px 28px", borderRadius: 100, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", color: "#0C0C0E", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}
+                  style={{ marginTop: 8, padding: "10px 28px", borderRadius: 100, background: "linear-gradient(135deg, var(--accent), #E8D5A8)", color: "#0C0C0E", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}
                 >Upgrade to Pro</button>
                 <button
                   onClick={() => { setWeeklyReportOpen(false); setWeeklyReportNotPro(false); }}
@@ -9423,7 +9363,7 @@ export default function App() {
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.85) 100%)" }} />
               <div style={{ position: "absolute", bottom: 24, left: 20, right: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, var(--accent), #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 1.5, textTransform: "uppercase" }}>Your Weekly Style Report</span>
@@ -9462,7 +9402,7 @@ export default function App() {
                         </div>
                       )}
                       {/* Pick number badge */}
-                      <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 12px", borderRadius: 100, background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", fontSize: 12, fontWeight: 800, color: "#0C0C0E" }}>Pick #{idx + 1}</div>
+                      <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 12px", borderRadius: 100, background: "linear-gradient(135deg, var(--accent), #E8D5A8)", fontSize: 12, fontWeight: 800, color: "#0C0C0E" }}>Pick #{idx + 1}</div>
                       {scan.save_count > 0 && (
                         <div style={{ position: "absolute", top: 12, right: 12, padding: "4px 10px", borderRadius: 100, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", fontSize: 11, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
                           <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -9514,7 +9454,7 @@ export default function App() {
                   </button>
                   {/* Save to wardrobe (bookmark) */}
                   <button className="reel-action" onClick={(e) => { e.stopPropagation(); const itemData = { name: scan.summary || "Scanned outfit", brand: u.display_name || "Unknown", category: "outfit", image_url: scan.image_url }; quickSaveItem(itemData, scan.id); }}>
-                    <svg viewBox="0 0 24 24" width="26" height="26" fill={isSaved ? "#C9A96E" : "none"} stroke={isSaved ? "#C9A96E" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                    <svg viewBox="0 0 24 24" width="26" height="26" fill={isSaved ? "var(--accent)" : "none"} stroke={isSaved ? "var(--accent)" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                     <span className="reel-action-label">{scan.save_count || ""}</span>
                   </button>
                   <button className="reel-action" onClick={(e) => { e.stopPropagation(); if (navigator.share) navigator.share({ title: scan.summary || "Check out this outfit on ATTAIRE", url: `${window.location.origin}/scan/${scan.id}` }).catch(() => {}); else { navigator.clipboard.writeText(`${window.location.origin}/scan/${scan.id}`); showToast("Link copied!", "success"); } }}>
@@ -9602,21 +9542,235 @@ export default function App() {
 
         {/* PWA Install Banner removed — install option lives in Settings */}
 
-        {/* ─── Tab bar (2 tabs: Scan, Wardrobe) ── */}
-        <div className="tb">
-          <button className="tab-scan" onClick={() => { track("tab_switched", { tab: "scan" }); if (tab === "scan" && phase !== "idle") { reset(); if (fileRef.current) fileRef.current.value = ""; if (galleryRef.current) galleryRef.current.value = ""; } setTab("scan"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Scan outfit">
-            <div className="tab-scan-icon">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        {/* ─── Picks tab (B-spine: magazine grid of recommendations) ─── */}
+        {tab === "picks" && (
+          <div style={{ paddingTop: 8, paddingBottom: 110, background: "var(--bg-primary)" }}>
+            <div style={{ padding: "8px 16px 0" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, color: "var(--text-primary)" }}>
+                picks for<br/>
+                <span className="lime-chip">{(authName || authEmail?.split("@")[0] || "you").toLowerCase()} ✿</span>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>
+                {(saved?.length || 0)} fresh from your saved scans
+              </div>
             </div>
-            <span className="tab-l">{t("tab_scan")}</span>
-          </button>
-          <button className={`tab${tab==="likes"?" on":""}`} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); }} aria-label="Wardrobe">
-            <svg viewBox="0 0 24 24" fill={tab==="likes"?"currentColor":"none"} stroke="currentColor" strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            <span className="tab-l">{t("wardrobe")}</span>
-            {priceAlertCount > 0 && (
-              <span className="tab-badge" />
+            <div style={{ display: "flex", gap: 6, padding: "12px 16px 10px", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+              {["for you", "old money", "streetwear", "under $100", "just dropped", "y2k"].map((tag, i) => (
+                <span key={tag} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, background: i === 0 ? "var(--text-primary)" : "var(--bg-card)", color: i === 0 ? "var(--bg-primary)" : "var(--text-primary)", fontSize: 11, fontWeight: 600, fontFamily: "var(--font-display)", border: i === 0 ? "none" : "1px solid var(--border)" }}>{tag}</span>
+              ))}
+            </div>
+            <div style={{ padding: "0 16px" }}>
+              {(() => {
+                // Source: real saved items if present, fall back to design picks
+                const fallback = [
+                  { src: "/unified-assets/aritzia1.jpg", name: "pleated skirt", brand: "Aritzia", price: "$98" },
+                  { src: "/unified-assets/streetD.jpg", name: "oversized hoodie", brand: "Stüssy", price: "$120" },
+                  { src: "/unified-assets/m-old.jpg", name: "oxford shirt", brand: "Drake's", price: "$185" },
+                  { src: "/unified-assets/lulu1.jpg", name: "wide-leg trouser", brand: "lululemon", price: "$148" },
+                  { src: "/unified-assets/skims1.jpg", name: "rib tank", brand: "SKIMS", price: "$48" },
+                  { src: "/unified-assets/chicB1.jpg", name: "cashmere v-neck", brand: "Quince", price: "$60" },
+                ];
+                const items = (saved && saved.length > 0
+                  ? saved.slice(0, 6).map(s => ({
+                      src: s.thumbnail_url || s.image_url || s.product_image_url || fallback[0].src,
+                      name: (s.name || s.product_name || s.title || "saved piece").toString().slice(0, 28),
+                      brand: (s.brand || s.retailer || "").toString().toUpperCase(),
+                      price: s.price ? (typeof s.price === "string" ? s.price : `$${Math.round(s.price)}`) : "",
+                      url: s.url || s.product_url,
+                    }))
+                  : fallback
+                );
+                const feature = items[0] || fallback[0];
+                const tile2 = items[1] || fallback[1];
+                const grid = items.slice(2, 6);
+                while (grid.length < 4) grid.push(fallback[grid.length + 2]);
+                return (
+                  <>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 8, marginBottom: 8 }}>
+                      <a href={feature.url || "#"} target={feature.url ? "_blank" : undefined} rel={feature.url ? "noopener noreferrer" : undefined} style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", position: "relative", aspectRatio: "4/5", display: "block", textDecoration: "none" }}>
+                        <img src={feature.src} alt={feature.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
+                        <div style={{ position: "absolute", bottom: 8, left: 8, padding: "4px 9px", borderRadius: 999, background: "var(--bg-primary)", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>{feature.price || feature.brand || "saved"}</div>
+                      </a>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <a href={tile2.url || "#"} target={tile2.url ? "_blank" : undefined} rel={tile2.url ? "noopener noreferrer" : undefined} style={{ flex: 1, borderRadius: "var(--radius-lg)", overflow: "hidden", position: "relative", display: "block", textDecoration: "none" }}>
+                          <img src={tile2.src} alt={tile2.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
+                          <div style={{ position: "absolute", bottom: 6, left: 6, padding: "3px 7px", borderRadius: 999, background: "var(--bg-primary)", fontSize: 10, fontWeight: 700, fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>{tile2.price || tile2.brand || "saved"}</div>
+                        </a>
+                        <button onClick={() => { if (tab === "scan" && phase !== "idle") reset(); setTab("scan"); }} style={{ flex: 1, borderRadius: "var(--radius-lg)", border: "none", background: "var(--accent)", padding: 12, display: "flex", flexDirection: "column", justifyContent: "space-between", cursor: "pointer", textAlign: "left" }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/></svg>
+                          <div style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "var(--accent-text)", lineHeight: 1.1 }}>scan to find more like this</div>
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {grid.map((p, i) => (
+                        <a key={i} href={p.url || "#"} target={p.url ? "_blank" : undefined} rel={p.url ? "noopener noreferrer" : undefined} style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)", textDecoration: "none", color: "inherit", border: "1px solid var(--border)" }}>
+                          <div style={{ aspectRatio: "3/4", position: "relative" }}>
+                            <img src={p.src} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
+                            <div style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: 999, background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                            </div>
+                          </div>
+                          <div style={{ padding: "6px 8px 8px" }}>
+                            {p.brand && <div style={{ fontSize: 9, color: "var(--text-secondary)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, fontFamily: "var(--font-display)" }}>{p.brand}</div>}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)" }}>{p.name}</span>
+                              {p.price && <span style={{ fontSize: 12, fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>{p.price}</span>}
+                            </div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Profile / Me tab (B-spine) ─── */}
+        {tab === "me" && (
+          <div style={{ paddingTop: 8, paddingBottom: 110, background: "var(--bg-primary)" }}>
+            <div style={{ padding: "8px 16px", display: "flex", justifyContent: "space-between" }}>
+              <button onClick={() => { setSettingsSheetY(0); setProfileSettingsOpen(true); }} aria-label="Settings" style={{ background: "transparent", border: "none", padding: 6, cursor: "pointer", color: "var(--text-primary)" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 01-.1 1.2l2.1 1.6-2 3.4-2.5-1a7 7 0 01-2 1.2l-.4 2.6h-4l-.4-2.6a7 7 0 01-2-1.2l-2.5 1-2-3.4 2.1-1.6A7 7 0 015 12a7 7 0 01.1-1.2L3 9.2l2-3.4 2.5 1a7 7 0 012-1.2L9.9 3h4l.4 2.6a7 7 0 012 1.2l2.5-1 2 3.4-2.1 1.6c.1.4.2.8.2 1.2z"/></svg>
+              </button>
+              <button onClick={() => { try { navigator.share?.({ title: "ATTAIRE", text: "Check out my style on ATTAIRE", url: window.location.origin }); } catch {} }} aria-label="Share" style={{ background: "transparent", border: "none", padding: 6, cursor: "pointer", color: "var(--text-primary)" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 21h14"/></svg>
+              </button>
+            </div>
+
+            <div style={{ padding: "8px 16px 0", display: "grid", gridTemplateColumns: "auto 1fr", gap: 14, alignItems: "center" }}>
+              <div style={{ width: 80, height: 80, borderRadius: 16, overflow: "hidden", background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                {authAvatarUrl ? (
+                  <img src={authAvatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                ) : (
+                  <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 800 }}>
+                    {(authName || authEmail || "A")[0].toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700, letterSpacing: -1, lineHeight: 1, color: "var(--text-primary)" }}>{(authName || authEmail?.split("@")[0] || "you").toLowerCase()} ✿</div>
+                <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{authEmail ? `@${authEmail.split("@")[0]}` : "guest"}</div>
+                <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 11, color: "var(--text-secondary)" }}>
+                  <span><b style={{ fontFamily: "var(--font-display)", fontSize: 13, color: "var(--text-primary)" }}>{(history?.length || 0).toLocaleString()}</b> scans</span>
+                  <span><b style={{ fontFamily: "var(--font-display)", fontSize: 13, color: "var(--text-primary)" }}>{(saved?.length || 0).toLocaleString()}</b> saved</span>
+                  {profileStats?.followers_count > 0 && (
+                    <span><b style={{ fontFamily: "var(--font-display)", fontSize: 13, color: "var(--text-primary)" }}>{profileStats.followers_count.toLocaleString()}</b> followers</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {profileBio && (
+              <div style={{ padding: "12px 16px 0", fontSize: 13, lineHeight: 1.4, color: "var(--text-primary)" }}>{profileBio}</div>
             )}
-          </button>
+
+            <div style={{ padding: "14px 16px 0", display: "flex", gap: 6 }}>
+              <button onClick={() => { setSettingsSheetY(0); setProfileSettingsOpen(true); }} style={{ flex: 1, height: 42, borderRadius: 14, background: "var(--text-primary)", color: "var(--bg-primary)", fontSize: 12, fontWeight: 700, fontFamily: "var(--font-display)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>edit</button>
+              <button onClick={() => { try { navigator.share?.({ title: "ATTAIRE", text: "Find every piece in any outfit ✿", url: window.location.origin }); } catch {} }} style={{ flex: 1, height: 42, borderRadius: 14, background: "var(--accent)", color: "var(--accent-text)", fontSize: 12, fontWeight: 700, fontFamily: "var(--font-display)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>share profile ✿</button>
+            </div>
+
+            {looks?.length > 0 && (
+              <>
+                <div style={{ padding: "20px 16px 4px", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>boards</span>
+                  <button onClick={() => setTab("likes")} style={{ background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 11, cursor: "pointer", padding: 4 }}>see all</button>
+                </div>
+                <div style={{ display: "flex", gap: 8, padding: "6px 16px 0", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+                  {looks.slice(0, 6).map((l, i) => (
+                    <div key={l.id || i} style={{ flexShrink: 0, width: 110 }}>
+                      <div style={{ width: "100%", height: 130, borderRadius: 14, overflow: "hidden", background: "var(--bg-card)" }}>
+                        {l.image_url || l.thumbnail_url ? (
+                          <img src={l.image_url || l.thumbnail_url} alt={l.summary || "Look"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
+                        ) : null}
+                      </div>
+                      <div style={{ padding: "6px 2px" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, fontFamily: "var(--font-display)", color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(l.summary || l.scan_name || `look ${i + 1}`).toString().slice(0, 18)}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-secondary)" }}>{(l.item_count || l.items?.length || 0)} pieces</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div style={{ padding: "20px 16px 4px" }}>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>recent scans</span>
+            </div>
+            <div style={{ padding: "6px 16px 0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              {(history?.length > 0
+                ? history.slice(0, 4).map((h) => h.image_url || h.thumbnail_url).filter(Boolean)
+                : ["/unified-assets/aritzia1.jpg", "/unified-assets/m-old.jpg", "/unified-assets/streetD.jpg", "/unified-assets/lulu1.jpg"]
+              ).slice(0, 4).map((src, i) => (
+                <div key={i} style={{ aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", background: "var(--bg-card)" }}>
+                  <img src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
+                </div>
+              ))}
+            </div>
+
+            {(history?.length || 0) === 0 && (history?.length || 0) === 0 && (
+              <div style={{ padding: "12px 16px 0", textAlign: "center", color: "var(--text-secondary)", fontSize: 12 }}>
+                No scans yet — tap the lime camera to start ✿
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Pill nav (B-spine: dark pill, lime cam FAB) ── */}
+        <div className="u-pillnav">
+          {(() => {
+            const active = tab === "scan" || tab === "home" ? "home"
+              : tab === "picks" ? "picks"
+              : tab === "likes" ? "saved"
+              : tab === "me" ? "me"
+              : "home";
+            const goto = (next) => {
+              if (next === "saved") { if (isGuest) { setSignupPrompt("save"); return; } track("tab_switched", { tab: "likes" }); setTab("likes"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); return; }
+              if (next === "cam" || next === "home") {
+                track("tab_switched", { tab: "scan" });
+                if (tab === "scan" && phase !== "idle") { reset(); if (fileRef.current) fileRef.current.value = ""; if (galleryRef.current) galleryRef.current.value = ""; }
+                setTab("scan"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" });
+                if (next === "cam") { setTimeout(() => { try { fileRef.current?.click(); } catch {} }, 80); }
+                return;
+              }
+              if (next === "picks") { track("tab_switched", { tab: "picks" }); setTab("picks"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); return; }
+              if (next === "me") {
+                if (isGuest) { setSignupPrompt("social"); return; }
+                track("tab_switched", { tab: "me" }); setTab("me"); setShowUserSearch(false); window.scrollTo({ top: 0, behavior: "instant" }); return;
+              }
+            };
+            const Icon = ({ n, on }) => {
+              const stroke = on ? "var(--accent)" : "rgba(255,255,255,0.55)";
+              const sw = on ? 2.2 : 1.8;
+              const p = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke, strokeWidth: sw, strokeLinecap: "round", strokeLinejoin: "round" };
+              if (n === "home") return <svg {...p}><path d="M3 11l9-8 9 8v10H3z"/></svg>;
+              if (n === "picks") return <svg {...p}><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>;
+              if (n === "saved") return <svg {...p}><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>;
+              if (n === "me") return <svg {...p}><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 5-6 8-6s7 2 8 6"/></svg>;
+              return null;
+            };
+            const Btn = ({ n, label }) => (
+              <button onClick={() => goto(n)} aria-label={label} style={{ background: "transparent", border: "none", padding: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                <Icon n={n} on={active === n} />
+                {n === "saved" && priceAlertCount > 0 && (
+                  <span style={{ position: "absolute", top: 4, right: 2, width: 8, height: 8, borderRadius: "50%", background: "var(--accent)" }} />
+                )}
+              </button>
+            );
+            return (
+              <>
+                <Btn n="home" label="Home" />
+                <Btn n="picks" label="Picks" />
+                <button onClick={() => goto("cam")} aria-label="Scan outfit" style={{ width: 52, height: 52, borderRadius: 999, background: "var(--accent)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 14px rgba(200,255,61,0.45)" }}>
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--accent-text)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h3l2-3h8l2 3h3v12H3z"/><circle cx="12" cy="13" r="4"/></svg>
+                </button>
+                <Btn n="saved" label="Saved" />
+                <Btn n="me" label="Me" />
+              </>
+            );
+          })()}
         </div>
       </>)}
 
@@ -9675,14 +9829,14 @@ export default function App() {
                     setCircleConfirmed(false);
                     setCircleSearchActive(true);
                   }}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "var(--accent-bg)", border: "1px solid rgba(201,169,110,.4)", borderRadius: 100, color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 44 }}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "var(--accent-bg)", border: "1px solid rgba(200, 255, 61, .4)", borderRadius: 100, color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", minHeight: 44 }}
                   aria-label="Clear circled item"
                 >
                   ✓ Item circled — Clear
                 </button>
               ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "rgba(201,169,110,.06)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 100 }}>
-                  <span style={{ fontSize: 11, color: "rgba(201,169,110,.7)", fontFamily: "var(--font-sans)", fontWeight: 600 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", background: "rgba(200, 255, 61, .06)", border: "1px solid rgba(200, 255, 61, .2)", borderRadius: 100 }}>
+                  <span style={{ fontSize: 11, color: "rgba(200, 255, 61, .7)", fontFamily: "var(--font-sans)", fontWeight: 600 }}>
                     ✏ Draw a circle around any item to prioritize it
                   </span>
                 </div>
@@ -9717,7 +9871,7 @@ export default function App() {
                 <button
                   onClick={skipCrop}
                   aria-label={priorityRegionBase64 ? "Scan circled item" : "Scan this outfit"}
-                  style={{ flex: 2, padding: "14px 0", background: priorityRegionBase64 ? "rgba(201,169,110,.9)" : "var(--accent)", border: "none", borderRadius: 12, color: "var(--text-inverse)", fontFamily: "var(--font-sans)", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 48, boxShadow: "0 4px 16px rgba(201,169,110,.35)", transition: "all var(--transition-fast)" }}
+                  style={{ flex: 2, padding: "14px 0", background: priorityRegionBase64 ? "rgba(200, 255, 61, .9)" : "var(--accent)", border: "none", borderRadius: 12, color: "var(--text-inverse)", fontFamily: "var(--font-sans)", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, minHeight: 48, boxShadow: "0 4px 16px rgba(200, 255, 61, .35)", transition: "all var(--transition-fast)" }}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0C0C0E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                   {priorityRegionBase64 ? "Scan Circled Item" : "Scan This"}
@@ -9815,7 +9969,7 @@ export default function App() {
                       background: "var(--accent)", color: "var(--text-inverse)", border: "none", borderRadius: 14,
                       fontFamily: "var(--font-sans)", fontSize: 16, fontWeight: 700, cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                      boxShadow: "0 4px 20px rgba(201,169,110,.4)",
+                      boxShadow: "0 4px 20px rgba(200, 255, 61, .4)",
                     }}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
@@ -9843,7 +9997,7 @@ export default function App() {
             {/* Handle */}
             <div className="bottom-sheet-handle" />
 
-            <h2 style={{ fontFamily: "'Instrument Serif'", fontSize: 24, color: "var(--text-primary)", marginBottom: 6, textAlign: "center" }}>Personalize Your Experience</h2>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--text-primary)", marginBottom: 6, textAlign: "center" }}>Personalize Your Experience</h2>
             <p style={{ fontSize: 13, color: "var(--text-tertiary)", textAlign: "center", marginBottom: 24, lineHeight: 1.5 }}>Help us find better matches for you.</p>
 
             {/* Budget range */}
@@ -9876,8 +10030,8 @@ export default function App() {
                     <button key={fit} onClick={() => setPrefSheetFit(prev => isOn ? prev.filter(f => f !== fit.toLowerCase()) : [...prev, fit.toLowerCase()])}
                       style={{
                         padding: "10px 20px", minHeight: 44,
-                        background: isOn ? "rgba(201,169,110,.12)" : "var(--bg-input)",
-                        border: `1px solid ${isOn ? "rgba(201,169,110,.4)" : "var(--border)"}`,
+                        background: isOn ? "rgba(200, 255, 61, .12)" : "var(--bg-input)",
+                        border: `1px solid ${isOn ? "rgba(200, 255, 61, .4)" : "var(--border)"}`,
                         borderRadius: 100, cursor: "pointer",
                         fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 600,
                         color: isOn ? "var(--accent)" : "var(--text-secondary)",
@@ -9928,25 +10082,25 @@ export default function App() {
           <div onClick={e => e.stopPropagation()} style={{
             position: "relative", width: "calc(100% - 48px)", maxWidth: 380,
             background: "linear-gradient(145deg, #1A1A1C 0%, #0C0C0E 100%)",
-            border: "1px solid rgba(201,169,110,.2)", borderRadius: 20,
+            border: "1px solid rgba(200, 255, 61, .2)", borderRadius: 20,
             padding: "28px 24px", textAlign: "center",
             animation: "slideIn .4s ease forwards", overflow: "hidden",
-            boxShadow: "0 20px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(201,169,110,.08)",
+            boxShadow: "0 20px 60px rgba(0,0,0,.5), inset 0 1px 0 rgba(200, 255, 61, .08)",
           }}>
             <div style={{
               position: "absolute", inset: 0, borderRadius: 20, overflow: "hidden", pointerEvents: "none",
-              background: "linear-gradient(105deg, transparent 40%, rgba(201,169,110,.06) 45%, rgba(201,169,110,.12) 50%, rgba(201,169,110,.06) 55%, transparent 60%)",
+              background: "linear-gradient(105deg, transparent 40%, rgba(200, 255, 61, .06) 45%, rgba(200, 255, 61, .12) 50%, rgba(200, 255, 61, .06) 55%, transparent 60%)",
               backgroundSize: "200% 100%", animation: "searchPulse 2s ease infinite",
             }} />
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color: "var(--accent)", textTransform: "uppercase", marginBottom: 12 }}>Your Style Fingerprint</div>
-            <div style={{ fontFamily: "'Instrument Serif'", fontSize: 28, color: "var(--text-primary)", marginBottom: 20 }}>Looking good.</div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 28, color: "var(--text-primary)", marginBottom: 20 }}>Looking good.</div>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 16 }}>
-              <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, textAlign: "center" }}>
+              <div style={{ padding: "10px 16px", background: "rgba(200, 255, 61, .08)", border: "1px solid rgba(200, 255, 61, .2)", borderRadius: 12, textAlign: "center" }}>
                 <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Budget</div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "var(--accent)" }}>${prefSheetBudgetMin}-${prefSheetBudgetMax}</div>
               </div>
               {prefSheetFit.length > 0 && (
-                <div style={{ padding: "10px 16px", background: "rgba(201,169,110,.08)", border: "1px solid rgba(201,169,110,.2)", borderRadius: 12, textAlign: "center" }}>
+                <div style={{ padding: "10px 16px", background: "rgba(200, 255, 61, .08)", border: "1px solid rgba(200, 255, 61, .2)", borderRadius: 12, textAlign: "center" }}>
                   <div style={{ fontSize: 10, color: "var(--text-tertiary)", fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>Fit</div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "var(--accent)", textTransform: "capitalize" }}>{prefSheetFit.join(", ")}</div>
                 </div>
@@ -10206,7 +10360,7 @@ export default function App() {
               <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{activeChallengeDetail.title}</div>
               <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{activeChallengeDetail.description}</div>
             </div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: activeChallengeDetail.status === "voting" ? "#C77DFF" : activeChallengeDetail.status === "completed" ? "#5AC8A0" : "var(--accent)", padding: "4px 10px", borderRadius: 100, background: activeChallengeDetail.status === "voting" ? "rgba(199,125,255,.1)" : activeChallengeDetail.status === "completed" ? "rgba(90,200,160,.1)" : "rgba(201,169,110,.1)", textTransform: "uppercase", letterSpacing: .5 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: activeChallengeDetail.status === "voting" ? "#C77DFF" : activeChallengeDetail.status === "completed" ? "#5AC8A0" : "var(--accent)", padding: "4px 10px", borderRadius: 100, background: activeChallengeDetail.status === "voting" ? "rgba(199,125,255,.1)" : activeChallengeDetail.status === "completed" ? "rgba(90,200,160,.1)" : "rgba(200, 255, 61, .1)", textTransform: "uppercase", letterSpacing: .5 }}>
               {activeChallengeDetail.status}
             </div>
           </div>
@@ -10231,7 +10385,7 @@ export default function App() {
                   setActiveChallengeDetail(null);
                   setTab("scan");
                 }
-              }} style={{ width: "100%", padding: "14px 0", background: "linear-gradient(135deg, #C9A96E, #C77DFF)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: "pointer", fontFamily: "var(--font-sans)" }}>
+              }} style={{ width: "100%", padding: "14px 0", background: "linear-gradient(135deg, var(--accent), #C77DFF)", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 700, color: "#fff", cursor: "pointer", fontFamily: "var(--font-sans)" }}>
                 Submit Your Look
               </button>
             </div>
@@ -10252,7 +10406,7 @@ export default function App() {
                     <div style={{ position: "relative" }}>
                       <img src={sub.image_url} alt="Challenge submission" width={150} height={200} loading="lazy" style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover" }} />
                       {si === 0 && activeChallengeDetail.status !== "active" && (
-                        <div style={{ position: "absolute", top: 8, left: 8, padding: "3px 8px", borderRadius: 100, background: "rgba(201,169,110,.9)", fontSize: 9, fontWeight: 700, color: "#fff" }}>
+                        <div style={{ position: "absolute", top: 8, left: 8, padding: "3px 8px", borderRadius: 100, background: "rgba(200, 255, 61, .9)", fontSize: 9, fontWeight: 700, color: "#fff" }}>
                           {isWinner ? "WINNER" : "#1"}
                         </div>
                       )}
@@ -10266,7 +10420,7 @@ export default function App() {
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                         <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "var(--text-inverse)" }}>{ini}</div>
                         <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.display_name || "Anonymous"}</span>
-                        {(u.challenge_wins || 0) > 0 && <span style={{ fontSize: 8, fontWeight: 700, padding: "1px 4px", borderRadius: 3, background: "rgba(201,169,110,.12)", color: "var(--accent)" }}>{u.challenge_wins}x</span>}
+                        {(u.challenge_wins || 0) > 0 && <span style={{ fontSize: 8, fontWeight: 700, padding: "1px 4px", borderRadius: 3, background: "rgba(200, 255, 61, .12)", color: "var(--accent)" }}>{u.challenge_wins}x</span>}
                       </div>
                       {sub.caption && <div style={{ fontSize: 10, color: "var(--text-tertiary)", marginBottom: 6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{sub.caption}</div>}
                       <button
@@ -10287,7 +10441,7 @@ export default function App() {
                             }).catch(() => {});
                           }
                         }}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "6px 0", background: sub.user_voted ? "rgba(201,169,110,.15)" : "var(--bg-input)", border: `1px solid ${sub.user_voted ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, cursor: "pointer", fontFamily: "var(--font-sans)" }}
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "6px 0", background: sub.user_voted ? "rgba(200, 255, 61, .15)" : "var(--bg-input)", border: `1px solid ${sub.user_voted ? "var(--accent)" : "var(--border)"}`, borderRadius: 8, cursor: "pointer", fontFamily: "var(--font-sans)" }}
                       >
                         <svg viewBox="0 0 24 24" width="14" height="14" fill={sub.user_voted ? "var(--accent)" : "none"} stroke={sub.user_voted ? "var(--accent)" : "var(--text-tertiary)"} strokeWidth="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
                         <span style={{ fontSize: 12, fontWeight: 600, color: sub.user_voted ? "var(--accent)" : "var(--text-secondary)" }}>{sub.vote_count}</span>
@@ -10679,7 +10833,7 @@ export default function App() {
               }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", opacity: reelGenerating ? 0.5 : 1, position: "relative" }}>
                 <div style={{
                   width: 52, height: 52, borderRadius: 14, position: "relative", overflow: "hidden",
-                  background: isPro ? "linear-gradient(135deg, #C9A96E, #E8D5A3)" : "var(--bg-input)",
+                  background: isPro ? "linear-gradient(135deg, var(--accent), #E8D5A3)" : "var(--bg-input)",
                   border: isPro ? "none" : "1px solid var(--border)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
@@ -10887,9 +11041,9 @@ export default function App() {
             {Array.from({ length: hangerOutfits.length || 5 }).map((_, i) => (
               <div key={i} style={{
                 width: 8, height: 8, borderRadius: "50%", transition: "all .3s",
-                background: i < hangerCurrentIndex ? "#C9A96E" : i === hangerCurrentIndex ? "#C9A96E" : "rgba(var(--text-rgb, 255,255,255),.15)",
+                background: i < hangerCurrentIndex ? "var(--accent)" : i === hangerCurrentIndex ? "var(--accent)" : "rgba(var(--text-rgb, 255,255,255),.15)",
                 transform: i === hangerCurrentIndex ? "scale(1.3)" : "scale(1)",
-                boxShadow: i === hangerCurrentIndex ? "0 0 6px rgba(201,169,110,.5)" : "none",
+                boxShadow: i === hangerCurrentIndex ? "0 0 6px rgba(200, 255, 61, .5)" : "none",
               }} />
             ))}
           </div>
@@ -10955,7 +11109,7 @@ export default function App() {
                         {outfit.style_tags?.length > 0 && (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                             {outfit.style_tags.slice(0, 4).map((tag, ti) => (
-                              <span key={ti} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 100, background: "rgba(201,169,110,.1)", color: "var(--accent)", fontWeight: 600 }}>{tag}</span>
+                              <span key={ti} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 100, background: "rgba(200, 255, 61, .1)", color: "var(--accent)", fontWeight: 600 }}>{tag}</span>
                             ))}
                           </div>
                         )}
@@ -11018,7 +11172,7 @@ export default function App() {
               <button className="hanger-btn-pass" onClick={() => { setHangerSwipeX(-400); handleHangerVote("pass"); }} style={{ width: 64, height: 64, borderRadius: "50%", border: "2px solid #EF5350", background: "rgba(239,83,80,.08)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#EF5350" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
-              <button className="hanger-btn-wear" onClick={() => { setHangerSwipeX(400); handleHangerVote("wear"); }} style={{ width: 64, height: 64, borderRadius: "50%", border: "none", background: "linear-gradient(135deg, #C9A96E, #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(201,169,110,.3)" }}>
+              <button className="hanger-btn-wear" onClick={() => { setHangerSwipeX(400); handleHangerVote("wear"); }} style={{ width: 64, height: 64, borderRadius: "50%", border: "none", background: "linear-gradient(135deg, var(--accent), #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(200, 255, 61, .3)" }}>
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               </button>
             </div>
@@ -11065,7 +11219,7 @@ export default function App() {
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                         <div style={{ width: 60, fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", textTransform: "capitalize" }}>{s.style}</div>
                         <div style={{ flex: 1, height: 6, borderRadius: 3, background: "var(--bg-input)", overflow: "hidden" }}>
-                          <div style={{ width: `${s.pct}%`, height: "100%", borderRadius: 3, background: i === 0 ? "var(--accent)" : i === 1 ? "rgba(201,169,110,.5)" : "rgba(201,169,110,.25)", transition: "width 0.8s ease" }} />
+                          <div style={{ width: `${s.pct}%`, height: "100%", borderRadius: 3, background: i === 0 ? "var(--accent)" : i === 1 ? "rgba(200, 255, 61, .5)" : "rgba(200, 255, 61, .25)", transition: "width 0.8s ease" }} />
                         </div>
                         <div style={{ width: 30, fontSize: 11, fontWeight: 700, color: "var(--text-primary)", textAlign: "right" }}>{s.pct}%</div>
                       </div>
@@ -11075,7 +11229,7 @@ export default function App() {
                 {hangerInsight.favorite_vibes && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 12 }}>
                     {hangerInsight.favorite_vibes.map(v => (
-                      <span key={v} style={{ fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "rgba(201,169,110,.1)", color: "var(--accent)", border: "1px solid rgba(201,169,110,.2)" }}>{v}</span>
+                      <span key={v} style={{ fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "rgba(200, 255, 61, .1)", color: "var(--accent)", border: "1px solid rgba(200, 255, 61, .2)" }}>{v}</span>
                     ))}
                   </div>
                 )}
@@ -11097,7 +11251,7 @@ export default function App() {
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 20 }}>
               {["Style Insights", "Price Alerts", "Outfit Reports", "Extended Search"].map(f => (
-                <span key={f} style={{ fontSize: 11, fontWeight: 600, padding: "4px 12px", borderRadius: 100, background: "rgba(201,169,110,.1)", color: "var(--accent)", border: "1px solid rgba(201,169,110,.2)" }}>{f}</span>
+                <span key={f} style={{ fontSize: 11, fontWeight: 600, padding: "4px 12px", borderRadius: 100, background: "rgba(200, 255, 61, .1)", color: "var(--accent)", border: "1px solid rgba(200, 255, 61, .2)" }}>{f}</span>
               ))}
             </div>
             <button onClick={() => {
@@ -11206,7 +11360,7 @@ export default function App() {
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                       <span style={{ fontSize: 13, color: "var(--text-secondary)", width: 90, textAlign: "right", textTransform: "capitalize" }}>{s.style}</span>
                       <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--bg-input)" }}>
-                        <div style={{ height: "100%", borderRadius: 4, background: i === 0 ? "var(--accent)" : "rgba(201,169,110,.4)", width: `${s.pct}%`, transition: "width .6s ease" }} />
+                        <div style={{ height: "100%", borderRadius: 4, background: i === 0 ? "var(--accent)" : "rgba(200, 255, 61, .4)", width: `${s.pct}%`, transition: "width .6s ease" }} />
                       </div>
                       <span style={{ fontSize: 13, fontWeight: 700, color: i === 0 ? "var(--accent)" : "var(--text-tertiary)", width: 40 }}>{s.pct}%</span>
                     </div>
@@ -11244,7 +11398,7 @@ export default function App() {
                 )}
 
                 {hangerTasteProfile.is_pro_gated && (
-                  <div style={{ padding: 20, background: "linear-gradient(135deg, rgba(201,169,110,.08), rgba(201,169,110,.03))", border: "1px solid rgba(201,169,110,.15)", borderRadius: 16, textAlign: "center" }}>
+                  <div style={{ padding: 20, background: "linear-gradient(135deg, rgba(200, 255, 61, .08), rgba(200, 255, 61, .03))", border: "1px solid rgba(200, 255, 61, .15)", borderRadius: 16, textAlign: "center" }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>Unlock Full Taste Profile</div>
                     <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5, marginBottom: 12 }}>See your favorite vibes, styles to avoid, and deep analytics with Pro</div>
                     <button onClick={() => { setHangerTasteProfileOpen(false); setScreen("paywall"); }} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--accent)", color: "#000", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer" }}>Go Pro</button>
