@@ -7783,9 +7783,9 @@ export default function App() {
               {phase === "done" && scanId && (
                 <div style={{ padding: "0 20px 12px", display: "flex", gap: 8, justifyContent: "center" }}>
                   {[
-                    { key: "would_wear", label: "Would Wear", icon: "\u2713", color: "var(--success)", bg: "rgba(76,175,80,.1)", border: "rgba(76,175,80,.3)" },
-                    { key: "on_the_fence", label: "On the Fence", icon: "~", color: "var(--warning)", bg: "rgba(255,183,77,.1)", border: "rgba(255,183,77,.3)" },
-                    { key: "not_for_me", label: "Not for Me", icon: "\u2717", color: "var(--error)", bg: "rgba(255,82,82,.1)", border: "rgba(255,82,82,.3)" },
+                    { key: "would_wear", label: "would wear", icon: "\u2713", color: "var(--success)", bg: "rgba(76,175,80,.16)", border: "var(--success)" },
+                    { key: "on_the_fence", label: "on the fence", icon: "~", color: "var(--warning)", bg: "rgba(255,183,77,.18)", border: "var(--warning)" },
+                    { key: "not_for_me", label: "not for me", icon: "\u2717", color: "var(--error)", bg: "rgba(255,82,82,.14)", border: "var(--error)" },
                   ].map(v => {
                     const isActive = scanVerdicts[scanId] === v.key;
                     const isAnimating = verdictAnimating === v.key;
@@ -7816,18 +7816,18 @@ export default function App() {
                           }
                         }}
                         style={{
-                          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                          padding: "10px 8px", minHeight: 44,
+                          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4,
+                          padding: "8px 6px", height: 52,
                           background: isActive ? v.bg : "var(--bg-card)",
                           border: `1px solid ${isActive ? v.border : "var(--border)"}`,
-                          borderRadius: "var(--radius-md)", cursor: "pointer",
+                          borderRadius: "var(--radius-lg)", cursor: "pointer",
                           transition: "all var(--transition-fast)",
                           animation: isAnimating && v.key === "not_for_me" ? "verdictShake 0.4s ease" : isAnimating ? "verdictPop 0.4s ease" : "none",
-                          fontFamily: "var(--font-sans)",
+                          fontFamily: "var(--font-display)",
                         }}
                       >
-                        <span style={{ fontSize: 18, fontWeight: 700, color: isActive ? v.color : "rgba(255,255,255,.25)", transition: "color var(--transition-fast)" }}>{v.icon}</span>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: isActive ? v.color : "rgba(255,255,255,.3)", letterSpacing: 0.3, transition: "color var(--transition-fast)" }}>{v.label}</span>
+                        <span style={{ fontSize: 16, fontWeight: 800, color: isActive ? v.color : "var(--text-tertiary)", transition: "color var(--transition-fast)", lineHeight: 1 }}>{v.icon}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? v.color : "var(--text-secondary)", letterSpacing: 0.2, transition: "color var(--transition-fast)", lineHeight: 1 }}>{v.label}</span>
                       </button>
                     );
                   })}
@@ -7855,7 +7855,9 @@ export default function App() {
                   ═══════════════════════════════════════════════════════════ */}
               {phase === "done" && results?.items?.length > 0 && (
                 <div style={{ padding: "12px 20px 8px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, color: "var(--text-tertiary)", textTransform: "uppercase", marginBottom: 10 }}>{t("complete_look")}</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.1, marginBottom: 10, color: "var(--text-primary)" }}>
+                    <span className="lime-chip">complete</span> the look
+                  </div>
                   {!pairings && !pairingsLoading && (
                     <button
                       onClick={async () => {
@@ -7867,7 +7869,7 @@ export default function App() {
                         } catch { setPairings([]); }
                         setPairingsLoading(false);
                       }}
-                      style={{ width: "100%", padding: "12px 0", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, color: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                      style={{ width: "100%", padding: "14px 0", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", color: "var(--text-primary)", fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: 0.2 }}>
                       {t("complete_look_btn")}
                     </button>
                   )}
@@ -7892,21 +7894,24 @@ export default function App() {
                                 authFetch(`${API_BASE}/api/suggest-pairings/track-click`, { method: "POST", body: JSON.stringify({ pairing_product_url: shopUrl, item_name: p.name }) }).catch(() => {});
                               }}
                               className="card-press"
-                              style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 12, textDecoration: "none", color: "inherit", overflow: "hidden" }}>
+                              style={{ flexShrink: 0, width: 150, scrollSnapAlign: "start", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", textDecoration: "none", color: "inherit", overflow: "hidden" }}>
                               {prod?.image_url ? (
                                 <div style={{ width: "100%", aspectRatio: "1", background: "var(--bg-input)", overflow: "hidden" }}>
                                   <img src={prod.image_url} alt="Pairing suggestion" width={150} height={150} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />
                                 </div>
                               ) : (
-                                <div style={{ width: "100%", aspectRatio: "1", background: "rgba(200, 255, 61, .08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+                                <div style={{ width: "100%", aspectRatio: "1", background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontFamily: "var(--font-display)", fontWeight: 800, color: "var(--accent-text)" }}>
                                   {{ shoes: "S", accessory: "A", bag: "B", outerwear: "O", top: "T", bottom: "B", dress: "D" }[p.category] || "?"}
                                 </div>
                               )}
-                              <div style={{ padding: "8px 10px" }}>
-                                <div style={{ fontSize: 11, fontWeight: 500, color: "var(--text-secondary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{prod?.product_name || p.name || "Item"}</div>
-                                {(prod?.brand || p.brand) && <div style={{ fontSize: 10, color: "var(--text-tertiary)" }}>{prod?.brand || p.brand}</div>}
-                                {(prod?.price || p.price) && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", marginTop: 2 }}>{prod?.price || p.price}</div>}
-                                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", textAlign: "center", paddingTop: 4, borderTop: "1px solid var(--border)" }}>{t("btn_shop")}</div>
+                              <div style={{ padding: "10px 10px 12px" }}>
+                                {(prod?.brand || p.brand) && <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: "var(--text-secondary)", fontFamily: "var(--font-display)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{prod?.brand || p.brand}</div>}
+                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginTop: 2 }}>{prod?.product_name || p.name || "Item"}</div>
+                                {(prod?.price || p.price) && (
+                                  <div style={{ marginTop: 6 }}>
+                                    <span style={{ display: "inline-block", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 800, background: "var(--accent)", color: "var(--accent-text)", padding: "1px 6px", borderRadius: 4, letterSpacing: 0.2 }}>{prod?.price || p.price}</span>
+                                  </div>
+                                )}
                               </div>
                             </a>
                           );
