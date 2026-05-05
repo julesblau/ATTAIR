@@ -17,10 +17,10 @@ if (!isNative && 'serviceWorker' in navigator) {
   });
 }
 
-// Native: dark status bar matching splash background
+// Native: cream status bar with dark icons to match B-spine light UI
 if (isNative) {
   import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
     StatusBar.setStyle({ style: Style.Dark });
-    StatusBar.setBackgroundColor({ color: '#0C0C0E' });
+    StatusBar.setBackgroundColor({ color: '#FAF7EE' });
   }).catch(() => {});
 }
