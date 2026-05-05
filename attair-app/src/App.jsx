@@ -4525,6 +4525,7 @@ export default function App() {
   // ─── Wishlists ────────────────────────────────────────────
   const [wishlists, setWishlists] = useState([]);       // [{ id, name, created_at }]
   const [activeWishlist, setActiveWishlist] = useState(null); // { id, name } | null
+  const [savedSubTab, setSavedSubTab] = useState("looks"); // "scans" | "looks" | "alerts" — design canvas split
   const [wishlistInput, setWishlistInput] = useState("");
   const [wishlistCreating, setWishlistCreating] = useState(false);
   const [addToListOpenId, setAddToListOpenId] = useState(null); // saved item id with open dropdown
@@ -8671,6 +8672,106 @@ export default function App() {
                   </button>
                 </div>
 
+                {/* Sub-tab pills (scans / looks / alerts) — design canvas */}
+                <div style={{ display: "flex", gap: 6, padding: "14px 16px 4px" }}>
+                  {[
+                    { k: "scans", label: "scans" },
+                    { k: "looks", label: "looks" },
+                    { k: "alerts", label: "alerts" },
+                  ].map(t => {
+                    const on = savedSubTab === t.k;
+                    return (
+                      <button key={t.k} onClick={() => setSavedSubTab(t.k)} style={{ padding: "7px 14px", borderRadius: 999, background: on ? "var(--text-primary)" : "var(--bg-card)", color: on ? "var(--bg-primary)" : "var(--text-primary)", fontSize: 11, fontWeight: 600, fontFamily: "var(--font-display)", border: on ? "none" : "1px solid var(--border)", cursor: "pointer", textTransform: "lowercase" }}>{t.label}</button>
+                    );
+                  })}
+                </div>
+
+                {/* ─── SCANS sub-tab: scan history list ─── */}
+                {savedSubTab === "scans" && (
+                  <div style={{ padding: "8px 16px 0" }}>
+                    {(history?.length || 0) === 0 ? (
+                      <div style={{ padding: "40px 16px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}>
+                          <path d="M3 7h3l2-3h8l2 3h3v12H3z"/><circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>No scans yet</div>
+                        <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 260 }}>Tap the lime camera to scan your first outfit</div>
+                        <button className="btn-primary" style={{ marginTop: 8, padding: "10px 24px", fontSize: 13, borderRadius: 100 }} onClick={() => setTab("scan")}>Start scanning</button>
+                      </div>
+                    ) : (
+                      <div>
+                        {history.map((h, i) => {
+                          const dt = h.created_at ? new Date(h.created_at) : null;
+                          const ago = dt ? relativeDate(h.created_at) : "";
+                          const itemCount = h.items?.length || h.item_count || 0;
+                          const summary = (h.scan_name || h.summary || "outfit").toString().toLowerCase().slice(0, 40);
+                          return (
+                            <button key={h.id || i} onClick={() => {
+                              if (h.id && h.items) {
+                                setScanId(h.id); setSelIdx(0);
+                                setPickedItems(new Set((h.tiers || []).map(t2 => t2.item_index)));
+                                setPhase("done"); setTab("scan");
+                              }
+                            }} style={{ width: "100%", display: "grid", gridTemplateColumns: "76px 1fr auto", gap: 12, padding: "12px 0", borderBottom: i < history.length - 1 ? "1px solid var(--border)" : "none", alignItems: "center", background: "transparent", border: "none", cursor: "pointer", textAlign: "left" }}>
+                              <div style={{ width: 76, height: 96, borderRadius: 12, overflow: "hidden", position: "relative", background: "var(--bg-card)" }}>
+                                {(h.image_url || h.thumbnail_url) && <img src={h.image_url || h.thumbnail_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />}
+                                {itemCount > 0 && <div style={{ position: "absolute", top: 4, left: 4, padding: "2px 6px", borderRadius: 4, background: "var(--bg-primary)", fontSize: 9, fontWeight: 800, fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>{itemCount} pieces</div>}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, fontFamily: "var(--font-display)" }}>{ago}</div>
+                                <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2, color: "var(--text-primary)" }}>{summary}</div>
+                              </div>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ─── ALERTS sub-tab: price drops list ─── */}
+                {savedSubTab === "alerts" && (
+                  <div style={{ padding: "8px 16px 0" }}>
+                    {priceAlerts.length === 0 && !priceAlertsLoading ? (
+                      <div style={{ padding: "40px 16px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}>
+                          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                        </svg>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>No price drops yet</div>
+                        <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 260 }}>{isPro ? "we'll ping you when a saved item drops" : "go pro to track price drops on saved items"}</div>
+                        {!isPro && <button className="btn-primary" style={{ marginTop: 8, padding: "10px 24px", fontSize: 13, borderRadius: 100 }} onClick={() => setUpgradeModal("price_drop")}>Go Pro</button>}
+                      </div>
+                    ) : (
+                      <div>
+                        {priceAlerts.map((a, i) => {
+                          const fresh = a.percent_drop > 0;
+                          return (
+                            <a key={a.id || i} href={a.url} target="_blank" rel="noopener noreferrer" style={{ display: "grid", gridTemplateColumns: "76px 1fr auto", gap: 12, padding: "12px 0", borderBottom: i < priceAlerts.length - 1 ? "1px solid var(--border)" : "none", alignItems: "center", textDecoration: "none", color: "inherit" }}>
+                              <div style={{ width: 76, height: 96, borderRadius: 12, overflow: "hidden", position: "relative", background: "var(--bg-card)" }}>
+                                {a.image_url && <img src={a.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />}
+                                {fresh && <div style={{ position: "absolute", top: 4, left: 4, padding: "2px 6px", borderRadius: 4, background: "var(--accent)", color: "var(--accent-text)", fontSize: 9, fontWeight: 800, fontFamily: "var(--font-display)" }}>↓{Math.round(a.percent_drop)}%</div>}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, fontFamily: "var(--font-display)" }}>{a.brand || ""}</div>
+                                <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2, color: "var(--text-primary)" }}>{(a.name || a.product_name || "saved piece").toString().slice(0, 32)}</div>
+                                <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{fresh ? `was $${Math.round(a.original_price)} · now $${Math.round(a.current_price)}` : `tracking · $${Math.round(a.current_price || 0)}`}</div>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 800, color: fresh ? "var(--text-primary)" : "var(--text-secondary)" }}>${Math.round(a.current_price || 0)}</div>
+                                {fresh && <div style={{ fontSize: 11, color: "var(--text-secondary)", textDecoration: "line-through" }}>${Math.round(a.original_price)}</div>}
+                              </div>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ─── LOOKS sub-tab: existing wishlist + looks rendering (default) ─── */}
+                {savedSubTab === "looks" && (<>
+
                 {/* Filter row: wishlist chips — only when there's something to filter */}
                 {saved.length > 0 && wishlists.length > 0 && (
                   <div className="scroll-x scroll-row" style={{ gap: 8, padding: "12px 16px 0" }}>
@@ -9099,6 +9200,7 @@ export default function App() {
 
                 {/* Second empty state suppressed — the looksData empty state above already covers it */}
 
+                </>)}
               </div>
             );
           })()}
