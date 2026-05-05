@@ -3126,19 +3126,34 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
   const _t = (key) => STRINGS[_lang]?.[key] ?? STRINGS.en[key] ?? key;
   const [shopFor, setShopFor] = useState(null); // "women" | "men" | "both"
   const [selected, setSelected] = useState([]); // array of vibe names
-  const [step, setStep] = useState(1); // 1 = gender, 2 = vibes
+  const [step, setStep] = useState(1); // 1 = gender, 2 = vibes, 3 = budget, "loading" = DNA loading
+  const [budgetTier, setBudgetTier] = useState("mid");
+  const [dnaTick, setDnaTick] = useState(0);
 
   const tog = (name) => setSelected(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
 
   const handleContinue = () => {
     localStorage.setItem("attair_inspirations", JSON.stringify(selected));
     if (shopFor) localStorage.setItem("attair_ob_gender", shopFor === "women" ? "female" : shopFor === "men" ? "male" : "both");
+    if (budgetTier) localStorage.setItem("attair_budget_tier", budgetTier);
     onContinue(selected, shopFor === "women" ? "female" : shopFor === "men" ? "male" : null);
   };
 
+  // DNA loading animation — runs ~5s, then transitions to app
+  React.useEffect(() => {
+    if (step !== "loading") return;
+    const start = performance.now();
+    let raf;
+    const loop = (now) => { setDnaTick(now - start); if (now - start < 5000) raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+    const t = setTimeout(handleContinue, 5200);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   const minVibes = 3;
-  const canAdvance = step === 1 ? !!shopFor : selected.length >= minVibes;
-  const totalSteps = 2;
+  const canAdvance = step === 1 ? !!shopFor : step === 2 ? selected.length >= minVibes : step === 3 ? !!budgetTier : false;
+  const totalSteps = 3;
 
   // Gender card images
   const genderCards = [
@@ -3146,6 +3161,48 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
     { key: "men", label: "men's", img: "/unified-assets/m-old.jpg" },
     { key: "both", label: "both", img: "/unified-assets/streetD.jpg" },
   ];
+
+  // Budget tier options
+  const budgetTiers = [
+    { id: "budget", label: "thrift", sub: "$0 – $80", desc: "depop, vintage, sale racks", emoji: "◯" },
+    { id: "mid", label: "mid-range", sub: "$80 – $300", desc: "cos, aritzia, madewell", emoji: "◐" },
+    { id: "splurge", label: "splurge", sub: "$300+", desc: "toteme, ferragamo, the row", emoji: "●" },
+    { id: "all", label: "show me all", sub: "every tier", desc: "we'll surface the best of each", emoji: "✦" },
+  ];
+
+  // ─── DNA loading screen — full-bleed transition between onboarding and app
+  if (step === "loading") {
+    const k = dnaTick;
+    const msgs = ["analyzing your picks…", "matching to 200,000 looks…", "building your dna…", "one more sec…"];
+    const msgIdx = Math.min(msgs.length - 1, Math.floor(k / 1500));
+    const prog = Math.min(0.92, k / 4500);
+    return (
+      <div className={`u-onboarding ${fade || ""}`} style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100svh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "50px 16px", fontFamily: "var(--font-sans)" }}>
+        <div style={{ position: "relative", width: 240, height: 240, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {/* Soft halo */}
+          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--accent)", opacity: 0.18 + 0.06 * Math.sin(k / 700), transform: `scale(${1 + 0.02 * Math.sin(k / 700)})`, transition: "opacity 200ms linear" }} />
+          {/* Slow rotating dashed ring */}
+          <svg width="240" height="240" style={{ position: "absolute", inset: 0, transform: `rotate(${k / 50}deg)` }}>
+            <circle cx="120" cy="120" r="112" fill="none" stroke="var(--text-primary)" strokeWidth="1.5" strokeDasharray="2 8" opacity="0.35" />
+          </svg>
+          {/* Wordmark disc */}
+          <div style={{ position: "relative", width: 168, height: 168, borderRadius: "50%", background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, color: "var(--accent)", letterSpacing: -1.6 }}>attaire</span>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 40, textAlign: "center" }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", fontFamily: "var(--font-display)", textTransform: "uppercase" }}>building your style dna</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: -0.8, marginTop: 8 }}>this is just for you</div>
+          <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 14, opacity: 0.7 + 0.3 * Math.sin(k / 300) }}>{msgs[msgIdx]}</div>
+        </div>
+
+        <div style={{ width: "60%", marginTop: 24, height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
+          <div style={{ width: `${prog * 100}%`, height: "100%", background: "var(--text-primary)", transition: "width 200ms linear" }} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`u-onboarding ${fade || ""}`} style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100svh", display: "flex", flexDirection: "column", fontFamily: "var(--font-sans)" }}>
@@ -3228,6 +3285,38 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
         </>
       )}
 
+      {/* Step 3: Budget tier */}
+      {step === 3 && (
+        <>
+          <div style={{ padding: "20px 16px 10px" }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, letterSpacing: -1.6, lineHeight: 0.95, textTransform: "lowercase" }}>
+              what's the<br/>damage?
+            </div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8 }}>your usual budget per piece</div>
+          </div>
+          <div style={{ flex: 1, padding: "14px 16px 0", display: "flex", flexDirection: "column", gap: 8, alignContent: "flex-start" }}>
+            {budgetTiers.map(t => {
+              const on = budgetTier === t.id;
+              return (
+                <button key={t.id} onClick={() => setBudgetTier(t.id)} style={{ padding: 14, borderRadius: 16, background: on ? "var(--text-primary)" : "var(--bg-card)", color: on ? "var(--bg-primary)" : "var(--text-primary)", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", border: "none", textAlign: "left", transition: "background 180ms var(--ease-smooth)" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 999, background: on ? "var(--accent)" : "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 20, color: on ? "var(--accent-text)" : "var(--text-primary)", fontWeight: 700, flexShrink: 0 }}>{t.emoji}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 800, letterSpacing: -0.4 }}>{t.label}</span>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 600, opacity: 0.7 }}>{t.sub}</span>
+                    </div>
+                    <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{t.desc}</div>
+                  </div>
+                  {on && (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       {/* Sticky footer */}
       <div style={{ padding: "12px 16px 24px", background: "var(--bg-primary)", borderTop: "1px solid var(--border)" }}>
         {step === 2 && (
@@ -3239,7 +3328,8 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
           <button
             onClick={() => {
               if (step === 1 && shopFor) { setStep(2); return; }
-              if (step === 2 && canAdvance) handleContinue();
+              if (step === 2 && canAdvance) { setStep(3); return; }
+              if (step === 3 && canAdvance) { setStep("loading"); return; }
             }}
             disabled={!canAdvance}
             style={{
@@ -3250,9 +3340,10 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
               cursor: canAdvance ? "pointer" : "not-allowed",
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
               transition: "background 180ms var(--ease-smooth), color 180ms var(--ease-smooth), transform 120ms var(--spring)",
+              textTransform: "lowercase",
             }}
           >
-            next <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>→</span>
+            {step === 3 ? <>build my dna <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>→</span></> : <>next <span aria-hidden style={{ fontSize: 18, lineHeight: 1 }}>→</span></>}
           </button>
           <button
             onClick={() => { localStorage.setItem("attair_inspirations", "[]"); if (shopFor) localStorage.setItem("attair_ob_gender", shopFor === "women" ? "female" : shopFor === "men" ? "male" : "both"); onSkip(); }}
