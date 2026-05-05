@@ -2349,7 +2349,7 @@
 .tb{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;align-items:stretch;background:rgba(12,12,14,.92);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border-top:1px solid rgba(255,255,255,.06);padding:0;padding-bottom:max(4px,env(safe-area-inset-bottom));z-index:200}
 
 /* Pill nav (B-spine: floating dark pill, lime cam FAB) */
-.u-pillnav{position:fixed;left:50%;transform:translateX(-50%);bottom:max(14px,env(safe-area-inset-bottom));width:calc(100% - 28px);max-width:402px;height:62px;border-radius:999px;background:#0C0C0E;display:flex;align-items:center;justify-content:space-around;padding:0 14px;box-shadow:0 10px 30px rgba(0,0,0,0.25),0 2px 8px rgba(0,0,0,0.15);z-index:200}
+.u-pillnav{position:fixed;left:50%;transform:translateX(-50%);bottom:max(14px,env(safe-area-inset-bottom));width:calc(100% - 28px);max-width:402px;height:60px;border-radius:999px;background:var(--text-primary);display:flex;align-items:center;justify-content:space-around;padding:0 10px;box-shadow:0 10px 30px rgba(0,0,0,0.25),0 2px 8px rgba(0,0,0,0.15);z-index:200}
 .u-pillnav button{transition:transform 180ms var(--spring)}
 .u-pillnav button:active{transform:scale(0.92)}
 

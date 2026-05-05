@@ -3200,12 +3200,12 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
       {/* Step 2: Vibes */}
       {step === 2 && (
         <>
-          <div style={{ padding: "14px 16px 16px" }}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 700, letterSpacing: -1.5, lineHeight: 0.95 }}>
+          <div style={{ padding: "20px 16px 10px" }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, letterSpacing: -1.6, lineHeight: 0.95, textTransform: "lowercase" }}>
               tag your<br/>
               <span className="lime-chip">energy</span>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>pick {minVibes}+ to tune your feed</div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8 }}>pick {minVibes}+ to tune your feed</div>
           </div>
           <div style={{ flex: 1, padding: "0 14px 14px", overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignContent: "flex-start" }}>
             {STYLE_AESTHETICS.map((v, i) => {
@@ -10003,7 +10003,7 @@ export default function App() {
                 )}
               </div>
               <div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700, letterSpacing: -1, lineHeight: 1, color: "var(--text-primary)" }}>{(authName || authEmail?.split("@")[0] || "you").toLowerCase()}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: -1, lineHeight: 1, color: "var(--text-primary)" }}>{(authName || authEmail?.split("@")[0] || "you").toLowerCase()}</div>
                 <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{authEmail ? `@${authEmail.split("@")[0]}` : "guest"}</div>
                 <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 11, color: "var(--text-secondary)" }}>
                   <span><b style={{ fontFamily: "var(--font-display)", fontSize: 13, color: "var(--text-primary)" }}>{(history?.length || 0).toLocaleString()}</b> scans</span>
@@ -10115,7 +10115,7 @@ export default function App() {
               <>
                 <Btn n="home" label="Home" />
                 <Btn n="picks" label="Picks" />
-                <button onClick={() => goto("cam")} aria-label="Scan outfit" style={{ width: 52, height: 52, borderRadius: 999, background: "var(--accent)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 14px rgba(200,255,61,0.45)" }}>
+                <button onClick={() => goto("cam")} aria-label="Scan outfit" style={{ width: 48, height: 48, borderRadius: 999, background: "var(--accent)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 14px rgba(200,255,61,0.45)" }}>
                   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--accent-text)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h3l2-3h8l2 3h3v12H3z"/><circle cx="12" cy="13" r="4"/></svg>
                 </button>
                 <Btn n="saved" label="Saved" />
