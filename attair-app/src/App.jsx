@@ -4526,6 +4526,12 @@ export default function App() {
   const [wishlists, setWishlists] = useState([]);       // [{ id, name, created_at }]
   const [activeWishlist, setActiveWishlist] = useState(null); // { id, name } | null
   const [savedSubTab, setSavedSubTab] = useState("looks"); // "scans" | "looks" | "alerts" — design canvas split
+  const [settingsRoute, setSettingsRoute] = useState("root"); // "root" | "notifications" | "account" | "privacy" | "billing" | "help"
+  const [privacyToggles, setPrivacyToggles] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("attair_privacy") || '{"photoAuto":true,"profilePublic":false,"locShop":false}'); }
+    catch { return { photoAuto: true, profilePublic: false, locShop: false }; }
+  });
+  const togglePrivacy = (k) => setPrivacyToggles(p => { const n = { ...p, [k]: !p[k] }; localStorage.setItem("attair_privacy", JSON.stringify(n)); return n; });
   const [wishlistInput, setWishlistInput] = useState("");
   const [wishlistCreating, setWishlistCreating] = useState(false);
   const [addToListOpenId, setAddToListOpenId] = useState(null); // saved item id with open dropdown
@@ -9408,7 +9414,145 @@ export default function App() {
                       onTouchEnd={() => { const dy = settingsDragRef.current.currentY - settingsDragRef.current.startY; settingsDragRef.current.dragging = false; if (dy > 120) { setSettingsSheetY(window.innerHeight); setTimeout(() => { setProfileSettingsOpen(false); setSettingsSheetY(0); }, 300); } else { setSettingsSheetY(0); } }}
                     />
                     <div className="bsheet-body">
-                      <div className="bsheet-title">{t("settings")}</div>
+                      {/* Header — title (root) OR back-arrow + sub-page label */}
+                      {settingsRoute === "root" ? (
+                        <div className="bsheet-title">{t("settings")}</div>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                          <button onClick={() => setSettingsRoute("root")} aria-label="Back to settings" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)", display: "flex", alignItems: "center" }}>
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+                          </button>
+                          <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase" }}>{settingsRoute}</span>
+                        </div>
+                      )}
+
+                      {/* ROOT VIEW — 5 nav cards per design canvas */}
+                      {settingsRoute === "root" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+                          {[
+                            { k: "notifications", l: "notifications", sub: "price drops, restocks, weekly digest" },
+                            { k: "account", l: "account", sub: "name, email, theme, language" },
+                            { k: "privacy", l: "privacy", sub: "what we keep · what we don't" },
+                            { k: "billing", l: "billing", sub: isPro ? "pro · manage subscription" : "free · upgrade to pro" },
+                            { k: "help", l: "help & feedback", sub: "search, contact, referral" },
+                          ].map(r => (
+                            <button key={r.k} onClick={() => setSettingsRoute(r.k)} style={{ width: "100%", padding: "14px", borderRadius: 14, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", textAlign: "left", color: "var(--text-primary)" }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-display)", textTransform: "lowercase" }}>{r.l}</div>
+                                <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{r.sub}</div>
+                              </div>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                            </button>
+                          ))}
+                          {/* Sign out always visible at root */}
+                          <button onClick={() => { setProfileSettingsOpen(false); setSettingsRoute("root"); handleLogout(); }} style={{ width: "100%", marginTop: 8, padding: "14px", borderRadius: 14, background: "transparent", border: "1px solid var(--border)", color: "#B83A3A", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, cursor: "pointer", textTransform: "lowercase" }}>{t("log_out")}</button>
+                        </div>
+                      )}
+
+                      {/* PRIVACY sub-page — design-spec toggles (local-only state) */}
+                      {settingsRoute === "privacy" && (
+                        <div>
+                          <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginBottom: 14, color: "var(--text-primary)" }}>what we keep, what we don't</div>
+                          <div style={{ background: "var(--bg-card)", borderRadius: 14, overflow: "hidden", border: "1px solid var(--border)" }}>
+                            {[
+                              { k: "photoAuto", l: "auto-delete photos", sub: "scan photos removed after 24 hours" },
+                              { k: "profilePublic", l: "public profile", sub: "other users can see your saved looks" },
+                              { k: "locShop", l: "location for shopping", sub: "show items in stock near you" },
+                            ].map((row, i, arr) => {
+                              const on = privacyToggles[row.k];
+                              return (
+                                <div key={row.k} style={{ padding: "14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none", display: "flex", alignItems: "center", gap: 12 }}>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{row.l}</div>
+                                    <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{row.sub}</div>
+                                  </div>
+                                  <button onClick={() => togglePrivacy(row.k)} aria-label={`Toggle ${row.l}`} style={{ width: 46, height: 26, borderRadius: 999, background: on ? "var(--text-primary)" : "var(--border)", position: "relative", cursor: "pointer", flexShrink: 0, border: "none", padding: 0 }}>
+                                    <div style={{ position: "absolute", top: 3, left: on ? 23 : 3, width: 20, height: 20, borderRadius: 999, background: on ? "var(--accent)" : "var(--bg-primary)", transition: "left 180ms ease" }} />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ marginTop: 14, padding: "14px", borderRadius: 14, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>download my data</div>
+                              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>get a copy of everything we have on you</div>
+                            </div>
+                            <span style={{ color: "var(--text-secondary)", fontSize: 18 }}>›</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* BILLING sub-page — Pro card + payment method placeholder */}
+                      {settingsRoute === "billing" && (
+                        <div>
+                          {isPro ? (
+                            <div style={{ padding: 18, borderRadius: 18, background: "var(--text-primary)", color: "var(--bg-primary)", position: "relative", overflow: "hidden", marginBottom: 14 }}>
+                              <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: 999, background: "var(--accent)", opacity: 0.3 }} />
+                              <div style={{ position: "relative" }}>
+                                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, opacity: 0.7, fontFamily: "var(--font-display)", textTransform: "uppercase" }}>✦ pro · {userStatus?.subscription_period || "active"}</div>
+                                <div style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 800, letterSpacing: -0.8, marginTop: 6 }}>{userStatus?.subscription_period === "yearly" ? "$29.99/yr" : "$4.99/mo"}</div>
+                                <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>thank you for going pro</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div style={{ padding: 18, borderRadius: 18, background: "var(--bg-card)", border: "1px solid var(--border)", marginBottom: 14 }}>
+                                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", fontFamily: "var(--font-display)", textTransform: "uppercase" }}>current plan</div>
+                                <div style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 800, marginTop: 6, color: "var(--text-primary)" }}>free</div>
+                                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{scansLimit} scans/month · ads · 7-day history</div>
+                              </div>
+                              <button onClick={() => { setProfileSettingsOpen(false); setUpgradeModal("general"); }} style={{ width: "100%", height: 52, borderRadius: 16, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, cursor: "pointer", textTransform: "lowercase" }}>upgrade to pro →</button>
+                            </>
+                          )}
+                          {isPro && (
+                            <div style={{ marginTop: 14 }}>
+                              <button onClick={() => { setProfileSettingsOpen(false); window.open("https://billing.stripe.com/p/login/test", "_blank"); }} style={{ width: "100%", padding: "14px", borderRadius: 14, background: "var(--bg-card)", border: "1px solid var(--border)", color: "var(--text-primary)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, cursor: "pointer", textTransform: "lowercase" }}>manage subscription →</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* HELP sub-page */}
+                      {settingsRoute === "help" && (
+                        <div>
+                          <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, marginBottom: 14, color: "var(--text-primary)", textTransform: "lowercase" }}>how can<br/>we help?</div>
+                          <div style={{ marginBottom: 14 }}>
+                            {[
+                              { l: "how does scanning work?", sub: "tips for best results" },
+                              { l: "why are some prices off?", sub: "how we source pricing" },
+                              { l: "how does pro billing work?", sub: "trials, refunds, cancels" },
+                              { l: "photo privacy", sub: "what we keep + delete" },
+                              { l: "request a brand", sub: "we add 5 new brands a week" },
+                            ].map((row, i, arr) => (
+                              <div key={i} style={{ padding: "14px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div>
+                                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{row.l}</div>
+                                  <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{row.sub}</div>
+                                </div>
+                                <span style={{ color: "var(--text-secondary)", fontSize: 18 }}>›</span>
+                              </div>
+                            ))}
+                          </div>
+                          {referralCode && (
+                            <div style={{ marginBottom: 14, padding: "14px", borderRadius: 14, background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-display)", color: "var(--text-primary)", marginBottom: 4, textTransform: "lowercase" }}>{t("refer_friend")}</div>
+                              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10, lineHeight: 1.4 }}>{t("refer_desc")}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <div style={{ flex: 1, padding: "8px 12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: 8, fontWeight: 800, color: "var(--text-primary)", letterSpacing: 2, fontSize: 14, fontFamily: "var(--font-sans)" }}>{referralCode}</div>
+                                <button className="btn-secondary" style={{ padding: "8px 14px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => { navigator.clipboard.writeText(referralCode).then(() => { setReferralCopied(true); setTimeout(() => setReferralCopied(false), 2000); }).catch(() => {}); }}>{referralCopied ? t("copied") : t("copy")}</button>
+                              </div>
+                            </div>
+                          )}
+                          <a href="mailto:hello@attaire.app?subject=ATTAIRE%20feedback" style={{ display: "block", width: "100%", padding: "16px", borderRadius: 16, background: "var(--text-primary)", color: "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, textAlign: "center", textDecoration: "none", textTransform: "lowercase" }}>contact support →</a>
+                        </div>
+                      )}
+
+                      {/* NOTIFICATIONS + ACCOUNT sub-pages render the existing inline content below.
+                          They use the legacy inline settings UI which lives in the {settingsRoute === "account"} block. */}
+
+                      {/* Account sub-page = legacy inline settings (Appearance, Preferences, Account, Support sections) */}
+                      {settingsRoute === "account" && (<>
 
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>{t("settings_appearance")}</div>
                   {/* Theme toggle */}
@@ -9689,6 +9833,37 @@ export default function App() {
 
                   {/* Sign out */}
                   <div className="settings-sheet-item danger" style={{ marginTop: 8 }} onClick={() => { setProfileSettingsOpen(false); handleLogout(); }} role="button" aria-label="Sign out">{t("log_out")}</div>
+
+                      </>)}
+
+                      {/* NOTIFICATIONS sub-page — push toggle + nudges + style twins */}
+                      {settingsRoute === "notifications" && (
+                        <div>
+                          <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.6, marginBottom: 14, color: "var(--text-primary)" }}>what we ping you about</div>
+                          {("Notification" in window) && Notification.permission !== "granted" ? (
+                            <button className="btn-secondary" style={{ width: "100%", padding: "12px 0", fontSize: 13 }} onClick={async () => { const perm = await Notification.requestPermission(); if (perm === "granted") { const ok = await subscribeToPush(); setPushEnabled(ok); } }}>
+                              {t("enable_push")}
+                            </button>
+                          ) : (
+                            <div style={{ background: "var(--bg-card)", borderRadius: 14, overflow: "hidden", border: "1px solid var(--border)" }}>
+                              {[
+                                { k: "follow_up", l: t("follow_up_reminders"), sub: t("nudge_desc"), get on() { return !(localStorage.getItem("attair_nudge_off") === "1"); }, toggle() { const cur = localStorage.getItem("attair_nudge_off") === "1"; localStorage.setItem("attair_nudge_off", cur ? "0" : "1"); API.updateNotifPrefs({ follow_up_nudges: cur }); } },
+                                { k: "style_twins", l: t("style_twins_notif"), sub: t("style_twins_desc"), get on() { return !(localStorage.getItem("attair_twins_notif_off") === "1"); }, toggle() { const cur = localStorage.getItem("attair_twins_notif_off") === "1"; localStorage.setItem("attair_twins_notif_off", cur ? "0" : "1"); API.updateNotifPrefs({ style_twins: cur }); } },
+                              ].map((row, i, arr) => (
+                                <div key={row.k} style={{ padding: "14px", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none", display: "flex", alignItems: "center", gap: 12 }}>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{row.l}</div>
+                                    <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{row.sub}</div>
+                                  </div>
+                                  <button onClick={() => { row.toggle(); setSettingsRoute(r => r); }} aria-label={`Toggle ${row.l}`} style={{ width: 46, height: 26, borderRadius: 999, background: row.on ? "var(--text-primary)" : "var(--border)", position: "relative", cursor: "pointer", flexShrink: 0, border: "none", padding: 0 }}>
+                                    <div style={{ position: "absolute", top: 3, left: row.on ? 23 : 3, width: 20, height: 20, borderRadius: 999, background: row.on ? "var(--accent)" : "var(--bg-primary)", transition: "left 180ms ease" }} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
