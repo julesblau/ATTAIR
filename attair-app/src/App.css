@@ -3045,7 +3045,7 @@
 .ootw-overlay .feed-card:nth-child(1) .ootw-rank,
 .ootw-overlay .feed-card:nth-child(2) .ootw-rank,
 .ootw-overlay .feed-card:nth-child(3) .ootw-rank{
-  background:linear-gradient(135deg,var(--accent),#E8D5A8);
+  background:var(--accent);
   color:#0C0C0E;
 }
 

@@ -9554,7 +9554,7 @@ export default function App() {
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.85) 100%)" }} />
               <div style={{ position: "absolute", bottom: 24, left: 20, right: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, var(--accent), #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 1.5, textTransform: "uppercase" }}>This Week's Look</span>
@@ -9596,7 +9596,7 @@ export default function App() {
                             </div>
                         }
                         {/* Rank badge — gold gradient for top 3, muted for 4-10 */}
-                        <div style={{ position: "absolute", top: 8, left: 8, padding: "2px 8px", borderRadius: 100, background: idx < 3 ? "linear-gradient(135deg, var(--accent), #E8D5A8)" : "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 800, color: idx < 3 ? "#0C0C0E" : "rgba(255,255,255,0.7)", backdropFilter: idx >= 3 ? "blur(8px)" : "none" }}>#{idx + 1}</div>
+                        <div style={{ position: "absolute", top: 8, left: 8, padding: "2px 8px", borderRadius: 100, background: idx < 3 ? "var(--accent)" : "rgba(255,255,255,0.12)", fontSize: 11, fontWeight: 800, color: idx < 3 ? "#0C0C0E" : "rgba(255,255,255,0.7)", backdropFilter: idx >= 3 ? "blur(8px)" : "none" }}>#{idx + 1}</div>
                         <div className="feed-card-pills">
                           {scan.save_count > 0 && (
                             <div className="feed-card-pill">
@@ -9694,7 +9694,7 @@ export default function App() {
                 <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, maxWidth: 280 }}>Upgrade to Pro to get 3 personalized looks delivered every Sunday, curated from trending scans that match your style.</div>
                 <button
                   onClick={() => { setWeeklyReportOpen(false); setWeeklyReportNotPro(false); setProfileSettingsOpen(true); }}
-                  style={{ marginTop: 8, padding: "10px 28px", borderRadius: 100, background: "linear-gradient(135deg, var(--accent), #E8D5A8)", color: "#0C0C0E", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}
+                  style={{ marginTop: 8, padding: "10px 28px", borderRadius: 100, background: "var(--accent)", color: "#0C0C0E", fontSize: 14, fontWeight: 700, border: "none", cursor: "pointer" }}
                 >Upgrade to Pro</button>
                 <button
                   onClick={() => { setWeeklyReportOpen(false); setWeeklyReportNotPro(false); }}
@@ -9715,7 +9715,7 @@ export default function App() {
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.85) 100%)" }} />
               <div style={{ position: "absolute", bottom: 24, left: 20, right: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "linear-gradient(135deg, var(--accent), #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                   </div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", letterSpacing: 1.5, textTransform: "uppercase" }}>Your Weekly Style Report</span>
@@ -9754,7 +9754,7 @@ export default function App() {
                         </div>
                       )}
                       {/* Pick number badge */}
-                      <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 12px", borderRadius: 100, background: "linear-gradient(135deg, var(--accent), #E8D5A8)", fontSize: 12, fontWeight: 800, color: "#0C0C0E" }}>Pick #{idx + 1}</div>
+                      <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 12px", borderRadius: 100, background: "var(--accent)", fontSize: 12, fontWeight: 800, color: "#0C0C0E" }}>Pick #{idx + 1}</div>
                       {scan.save_count > 0 && (
                         <div style={{ position: "absolute", top: 12, right: 12, padding: "4px 10px", borderRadius: 100, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)", fontSize: 11, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 4 }}>
                           <svg viewBox="0 0 24 24" width="12" height="12" fill="var(--accent)" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -9764,7 +9764,7 @@ export default function App() {
                     </div>
                     <div style={{ padding: "12px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg, var(--accent), #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#0C0C0E" }}>{ini}</div>
+                        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#0C0C0E" }}>{ini}</div>
                         <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{u.display_name || "Anonymous"}</span>
                       </div>
                       {scan.summary && <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{scan.summary}</div>}
@@ -11524,7 +11524,7 @@ export default function App() {
               <button className="hanger-btn-pass" onClick={() => { setHangerSwipeX(-400); handleHangerVote("pass"); }} style={{ width: 64, height: 64, borderRadius: "50%", border: "2px solid #EF5350", background: "rgba(239,83,80,.08)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#EF5350" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
-              <button className="hanger-btn-wear" onClick={() => { setHangerSwipeX(400); handleHangerVote("wear"); }} style={{ width: 64, height: 64, borderRadius: "50%", border: "none", background: "linear-gradient(135deg, var(--accent), #E8D5A8)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(200, 255, 61, .3)" }}>
+              <button className="hanger-btn-wear" onClick={() => { setHangerSwipeX(400); handleHangerVote("wear"); }} style={{ width: 64, height: 64, borderRadius: "50%", border: "none", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(200, 255, 61, .35)" }}>
                 <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               </button>
             </div>
