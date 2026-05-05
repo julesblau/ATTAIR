@@ -6271,88 +6271,133 @@ export default function App() {
       {/* ─── PAYWALL ─────────────────────────────────────── */}
       {screen === "paywall" && (
         <div className={`pw ${fade}`}>
-          <button className="pw-skip" onClick={() => trans(() => setScreen("app"))}>{authed ? "Maybe later" : "Skip — start free"}</button>
+          {/* Top bar: x icon + maybe later */}
+          <div className="pw-top">
+            <button className="pw-x" onClick={() => trans(() => setScreen("app"))} aria-label="Close">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+            <button className="pw-skip" onClick={() => trans(() => setScreen("app"))}>{authed ? "maybe later" : "skip — start free"}</button>
+          </div>
           <div className="pw-badge">✦ LIMITED OFFER</div>
-          <h1 className="pw-t">Unlock unlimited<br />outfit scans</h1>
-          <p className="pw-st">Unlimited scans, zero ads, and priority results. Three price options for every item.</p>
+          <h1 className="pw-t">unlock<br/><span className="lime-chip">unlimited</span><br/>outfit scans</h1>
+          <p className="pw-st">unlimited scans, zero ads, and priority results. three price options for every item.</p>
           <div className="pw-fs">
-            {["Unlimited AI outfit scans","Completely ad-free experience","Web-verified product links","Price drop alerts on saved items","Full scan history forever"].map((f,i) => <div className="pw-f" key={i}><div className="pw-ck">✓</div>{f}</div>)}
+            {["unlimited AI outfit scans","completely ad-free experience","web-verified product links","price drop alerts on saved items","full scan history forever"].map((f,i) => (
+              <div className="pw-f" key={i}>
+                <div className="pw-ck">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                </div>
+                {f}
+              </div>
+            ))}
           </div>
           <div className="pw-plans">
-            <div className={`pw-p ${selPlan==="yearly"?"sel":""}`} onClick={() => setSelPlan("yearly")}><div className="pw-ptag">BEST VALUE · SAVE 50%</div><div className="pw-pp">$29.99<span className="pw-pd"> /year</span></div><div className="pw-pw">$0.58/week</div></div>
-            <div className={`pw-p ${selPlan==="monthly"?"sel":""}`} onClick={() => setSelPlan("monthly")}><div className="pw-pp">$4.99<span className="pw-pd"> /mo</span></div><div className="pw-pw">$1.25/week</div></div>
+            <div className={`pw-p ${selPlan==="yearly"?"sel":""}`} onClick={() => setSelPlan("yearly")}>
+              <div className="pw-ptag">BEST VALUE · SAVE 50%</div>
+              <div className="pw-prow">
+                <span><span className="pw-pp">$29.99</span><span className="pw-pd"> /year</span></span>
+                <span className="pw-pw">$0.58/week</span>
+              </div>
+            </div>
+            <div className={`pw-p ${selPlan==="monthly"?"sel":""}`} onClick={() => setSelPlan("monthly")}>
+              <div className="pw-prow">
+                <span><span className="pw-pp">$4.99</span><span className="pw-pd"> /mo</span></span>
+                <span className="pw-pw">$1.25/week</span>
+              </div>
+            </div>
           </div>
-          <button className="cta" onClick={() => {
+          <button className="pw-cta" onClick={() => {
             if (authed) {
               handleUpgrade(selPlan);
             } else {
-              // Store intent so auth flow can trigger checkout after signup
               sessionStorage.setItem("attair_pending_plan", selPlan);
               trans(() => setScreen("auth"));
             }
           }}>
-            {authed ? (upgradeLoading ? "Loading..." : `Start Pro — ${selPlan === "yearly" ? "$29.99/yr" : "$4.99/mo"}`) : "Get started"}
+            {authed ? (upgradeLoading ? "loading…" : `start pro — ${selPlan === "yearly" ? "$29.99/yr" : "$4.99/mo"}`) : "get started"}
           </button>
-          <div className="pw-terms">{scansLimit} free scans per month. Upgrade anytime.</div>
+          <div className="pw-terms">{scansLimit} free scans per month · cancel anytime</div>
         </div>
       )}
 
       {/* ─── AUTH (Login / Signup) ────────────────────────── */}
       {screen === "auth" && (
-        <div className={`auth ${fade}`}>
-          <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <svg width="32" height="32" viewBox="0 0 100 100" style={{ display: "block", margin: "0 auto 8px" }}><path d="M34.5,2.4 L65.5,2.4 L65,24 L83.5,12.8 L98.9,39.6 L80,50 L98.9,60.4 L83.5,87.2 L65,76 L65.5,97.6 L34.5,97.6 L35,76 L16.5,87.2 L1.1,60.4 L20,50 L1.1,39.6 L16.5,12.8 L35,24 Z" fill="var(--accent)"/></svg>
-            <h1 className="ob-title" style={{ fontSize: 26 }}>{authScreen === "signup" ? "Create your account" : "Welcome back"}</h1>
-            <p className="ob-sub" style={{ marginBottom: 0 }}>{authScreen === "signup" ? "Sign up to start scanning outfits" : "Log in to continue"}</p>
+        <div className={fade} style={{ flex: 1, display: "flex", flexDirection: "column", padding: "50px 14px 14px", background: "var(--bg-primary)", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
+          {/* Top bar: close + label */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+            <button onClick={() => trans(() => setScreen(authed ? "app" : "onboarding"))} aria-label="Close" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase" }}>{authScreen === "signup" ? "sign up" : "log in"}</span>
+            <span style={{ width: 24 }} />
           </div>
 
-          {/* OAuth buttons */}
-          <button disabled={!!oauthLoading} onClick={() => { setOauthLoading('google'); API.oauthLogin("google"); }} style={{ width: "100%", padding: "14px 18px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: oauthLoading ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8, transition: "all .2s", opacity: oauthLoading ? 0.6 : 1 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-            {oauthLoading === 'google' ? 'Connecting...' : 'Continue with Google'}
+          {/* Hero */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, letterSpacing: -1.4, lineHeight: 0.95, textTransform: "lowercase" }}>
+              {authScreen === "signup"
+                ? <><span className="lime-chip">start</span><br/>scanning</>
+                : <>welcome<br/>back</>}
+            </div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 10 }}>
+              {authScreen === "signup" ? "sign up to start scanning outfits" : "log in to continue your scans"}
+            </div>
+          </div>
+
+          {/* OAuth */}
+          <button disabled={!!oauthLoading} onClick={() => { setOauthLoading('google'); API.oauthLogin("google"); }} style={{ width: "100%", height: 50, borderRadius: 14, border: "1.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8, fontSize: 13, fontWeight: 600, fontFamily: "var(--font-sans)", cursor: oauthLoading ? "default" : "pointer", opacity: oauthLoading ? 0.6 : 1 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            {oauthLoading === 'google' ? 'connecting…' : 'continue with google'}
           </button>
           {import.meta.env.VITE_APPLE_AUTH_ENABLED === "true" && (
-            <button disabled={!!oauthLoading} onClick={() => { setOauthLoading('apple'); API.oauthLogin("apple"); }} style={{ width: "100%", padding: "14px 18px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-primary)", fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600, cursor: oauthLoading ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8, transition: "all .2s", opacity: oauthLoading ? 0.6 : 1 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
-              {oauthLoading === 'apple' ? 'Connecting...' : 'Continue with Apple'}
+            <button disabled={!!oauthLoading} onClick={() => { setOauthLoading('apple'); API.oauthLogin("apple"); }} style={{ width: "100%", height: 50, borderRadius: 14, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 16, fontSize: 13, fontWeight: 600, fontFamily: "var(--font-sans)", cursor: oauthLoading ? "default" : "pointer", opacity: oauthLoading ? 0.6 : 1 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+              {oauthLoading === 'apple' ? 'connecting…' : 'continue with apple'}
             </button>
           )}
 
           {/* Divider */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "4px 0 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 14px" }}>
             <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-            <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontWeight: 500 }}>or</span>
+            <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600, fontFamily: "var(--font-display)" }}>or</span>
             <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
           </div>
 
           {authErr && <div className="auth-err">{authErr}</div>}
 
-          <form onSubmit={e => { e.preventDefault(); if (authEmail && authPass.length >= 6) handleAuth(); }}>
-          {/* Name + phone (signup only) */}
-          {authScreen === "signup" && (<>
-            <input type="text" placeholder="Full name" value={authName} onChange={e => setAuthName(e.target.value)} autoComplete="name" />
-            <input type="tel" placeholder="Phone number (optional)" value={authPhone} onChange={e => setAuthPhone(e.target.value)} autoComplete="tel" />
-          </>)}
-
-          <input type="email" placeholder="Email address" value={authEmail} onChange={e => setAuthEmail(e.target.value)} autoComplete="email" />
-          <div style={{ position: "relative" }}>
-            <input type={showPass ? "text" : "password"} placeholder="Password" value={authPass} onChange={e => setAuthPass(e.target.value)} autoComplete={authScreen === "signup" ? "new-password" : "current-password"} style={{ paddingRight: 48 }} />
-            <button type="button" onClick={() => setShowPass(p => !p)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 12, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px", minHeight: 44, minWidth: 44 }}>{showPass ? "Hide" : "Show"}</button>
-          </div>
-          {authScreen === "signup" && authPass.length > 0 && authPass.length < 6 && (
-            <div style={{ fontSize: 11, color: "rgba(255,150,100,.5)", marginTop: -4, marginBottom: 4 }}>Password must be at least 6 characters</div>
-          )}
-          <button type="submit" className="cta" style={{ marginTop: 8, opacity: (!authEmail || authPass.length < 6) ? 0.4 : 1 }} disabled={authLoading || !authEmail || authPass.length < 6}>
-            {authLoading ? "Loading..." : authScreen === "signup" ? "Create Account" : "Log In"}
-          </button>
+          {/* Form */}
+          <form onSubmit={e => { e.preventDefault(); if (authEmail && authPass.length >= 6) handleAuth(); }} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {authScreen === "signup" && (
+              <input type="text" placeholder="full name" value={authName} onChange={e => setAuthName(e.target.value)} autoComplete="name" style={{ height: 50, borderRadius: 14, border: "1.5px solid var(--border)", background: "var(--bg-card)", padding: "0 16px", fontSize: 14, fontFamily: "var(--font-sans)", outline: "none", color: "var(--text-primary)", boxSizing: "border-box", margin: 0 }} />
+            )}
+            {authScreen === "signup" && (
+              <input type="tel" placeholder="phone number (optional)" value={authPhone} onChange={e => setAuthPhone(e.target.value)} autoComplete="tel" style={{ height: 50, borderRadius: 14, border: "1.5px solid var(--border)", background: "var(--bg-card)", padding: "0 16px", fontSize: 14, fontFamily: "var(--font-sans)", outline: "none", color: "var(--text-primary)", boxSizing: "border-box", margin: 0 }} />
+            )}
+            <input type="email" placeholder="email address" value={authEmail} onChange={e => setAuthEmail(e.target.value)} autoComplete="email" style={{ height: 50, borderRadius: 14, border: "1.5px solid var(--border)", background: "var(--bg-card)", padding: "0 16px", fontSize: 14, fontFamily: "var(--font-sans)", outline: "none", color: "var(--text-primary)", boxSizing: "border-box", margin: 0 }} />
+            <div style={{ position: "relative" }}>
+              <input type={showPass ? "text" : "password"} placeholder="password" value={authPass} onChange={e => setAuthPass(e.target.value)} autoComplete={authScreen === "signup" ? "new-password" : "current-password"} style={{ width: "100%", height: 50, borderRadius: 14, border: "1.5px solid var(--border)", background: "var(--bg-card)", padding: "0 60px 0 16px", fontSize: 14, fontFamily: "var(--font-sans)", outline: "none", color: "var(--text-primary)", boxSizing: "border-box", margin: 0 }} />
+              <button type="button" onClick={() => setShowPass(p => !p)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-display)", letterSpacing: 0.4, textTransform: "lowercase", padding: "8px 4px" }}>{showPass ? "hide" : "show"}</button>
+            </div>
+            {authScreen === "signup" && authPass.length > 0 && authPass.length < 6 && (
+              <div style={{ fontSize: 11, color: "var(--error)", opacity: 0.8 }}>password must be at least 6 characters</div>
+            )}
+            <button type="submit" disabled={authLoading || !authEmail || authPass.length < 6} style={{ width: "100%", height: 52, borderRadius: 16, border: "none", background: (!authEmail || authPass.length < 6) ? "var(--border)" : "var(--text-primary)", color: (!authEmail || authPass.length < 6) ? "var(--text-secondary)" : "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, cursor: (authLoading || !authEmail || authPass.length < 6) ? "not-allowed" : "pointer", marginTop: 6, textTransform: "lowercase" }}>
+              {authLoading ? "loading…" : authScreen === "signup" ? "create account" : "log in"}
+            </button>
           </form>
-          <button className="auth-toggle" onClick={() => { setAuthScreen(authScreen === "login" ? "signup" : "login"); setAuthErr(null); setShowPass(false); }}>
-            {authScreen === "login" ? "Don't have an account? Sign up" : "Already have an account? Log in"}
-          </button>
+
+          {/* Switch link */}
+          <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: "var(--text-secondary)" }}>
+            {authScreen === "signup" ? "have an account? " : "don't have an account? "}
+            <button onClick={() => { setAuthScreen(authScreen === "login" ? "signup" : "login"); setAuthErr(null); setShowPass(false); }} style={{ background: "transparent", border: "none", color: "var(--text-primary)", fontWeight: 700, textDecoration: "underline", padding: 0, cursor: "pointer", fontSize: "inherit", fontFamily: "inherit" }}>
+              {authScreen === "signup" ? "log in" : "sign up"}
+            </button>
+          </div>
+
           {guestScans > 0 && (
-            <button style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 12, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px 0", marginTop: 4, minHeight: 44 }}
+            <button style={{ background: "transparent", border: "none", color: "var(--text-tertiary)", fontSize: 12, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px 0", marginTop: 4 }}
               onClick={() => trans(() => setScreen("app"))}>
-              Continue browsing
+              continue browsing
             </button>
           )}
         </div>
