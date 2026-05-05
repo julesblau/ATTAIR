@@ -3023,11 +3023,11 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
   const heroImgs = ["/unified-assets/aritzia1.jpg", "/unified-assets/lulu1.jpg", "/unified-assets/skims1.jpg"];
   const avatarImgs = ["/unified-assets/w-chic.jpg", "/unified-assets/m-old.jpg", "/unified-assets/aritzia2.jpg", "/unified-assets/streetD.jpg"];
   const feedItems = [
-    { src: "/unified-assets/m-old.jpg", chip: "NEW" },
-    { src: "/unified-assets/w-chic.jpg", chip: "HOT" },
-    { src: "/unified-assets/aritzia2.jpg", chip: "LO" },
-    { src: "/unified-assets/streetD.jpg", chip: "HI" },
-    { src: "/unified-assets/skims1.jpg", chip: "◉" },
+    { src: "/unified-assets/m-old.jpg", chip: "2m" },
+    { src: "/unified-assets/w-chic.jpg", chip: "8m" },
+    { src: "/unified-assets/aritzia2.jpg", chip: "14m" },
+    { src: "/unified-assets/streetD.jpg", chip: "21m" },
+    { src: "/unified-assets/skims1.jpg", chip: "32m" },
   ];
 
   return (
@@ -3096,7 +3096,7 @@ function OnboardingDemo({ fade, onGetStarted, onLogin }) {
         {feedItems.map((it, i) => (
           <div key={i} style={{ flexShrink: 0, width: 110, height: 140, borderRadius: 12, overflow: "hidden", position: "relative" }}>
             <img src={it.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" />
-            <div style={{ position: "absolute", top: 6, left: 6, padding: "2px 6px", borderRadius: 4, background: "var(--accent)", color: "var(--accent-text)", fontSize: 9, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: 0.4 }}>{it.chip}</div>
+            <div style={{ position: "absolute", top: 6, left: 6, padding: "2px 7px", borderRadius: 999, background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 10, fontWeight: 700, fontFamily: "var(--font-display)" }}>{it.chip}</div>
           </div>
         ))}
       </div>
