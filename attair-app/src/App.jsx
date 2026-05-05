@@ -6827,7 +6827,7 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-            <button onClick={() => { setNudgeBanner(null); setTab("scan"); }} style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>View</button>
+            <button onClick={() => { setNudgeBanner(null); setTab("scan"); }} style={{ background: "var(--accent)", color: "var(--accent-text)", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>View</button>
             <button onClick={() => setNudgeBanner(null)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 9, cursor: "pointer", padding: "2px 0" }}>Dismiss</button>
           </div>
         </div>
@@ -6843,7 +6843,7 @@ export default function App() {
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>Style Twin Match!</div>
             <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>{styleTwinSaveBanner.message}</div>
           </div>
-          <button onClick={() => { setStyleTwinSaveBanner(null); }} style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>Dismiss</button>
+          <button onClick={() => { setStyleTwinSaveBanner(null); }} style={{ background: "var(--accent)", color: "var(--accent-text)", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>Dismiss</button>
         </div>
       )}
 
@@ -7077,7 +7077,7 @@ export default function App() {
               <div style={{ fontSize: 11, color: "var(--text-tertiary)", lineHeight: 1.4 }}>Get notified about price drops, new posts, and more.</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <button onClick={async () => { localStorage.setItem("attair_notif_prompted", "1"); const perm = await Notification.requestPermission(); if (perm === "granted") { const ok = await subscribeToPush(); setPushEnabled(ok); } setShowNotifPrompt(false); }} style={{ background: "var(--accent)", color: "#000", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>Enable</button>
+              <button onClick={async () => { localStorage.setItem("attair_notif_prompted", "1"); const perm = await Notification.requestPermission(); if (perm === "granted") { const ok = await subscribeToPush(); setPushEnabled(ok); } setShowNotifPrompt(false); }} style={{ background: "var(--accent)", color: "var(--accent-text)", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>Enable</button>
               <button onClick={() => { setShowNotifPrompt(false); localStorage.setItem("attair_notif_prompted", "1"); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 10, cursor: "pointer" }}>Not now</button>
             </div>
           </div>
@@ -10854,7 +10854,7 @@ export default function App() {
                 </div>
                 <a href={alert.product_url} target="_blank" rel="noopener" onClick={() => { API.priceAlertSeen(alert.id).catch(() => {}); setPriceAlertCount(c => Math.max(0, c - 1)); }}
                   aria-label={`Shop ${alert.product_name || "item"} at new price`}
-                  style={{ padding: "8px 14px", background: "var(--accent)", color: "#000", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", minHeight: 44, display: "flex", alignItems: "center" }}>
+                  style={{ padding: "8px 14px", background: "var(--accent)", color: "var(--accent-text)", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", minHeight: 44, display: "flex", alignItems: "center" }}>
                   Shop
                 </a>
               </div>
@@ -11201,7 +11201,7 @@ export default function App() {
                 {!isPro && (
                   <span style={{
                     position: "absolute", top: -2, right: -2, fontSize: 8, fontWeight: 800,
-                    background: "var(--accent)", color: "#000", padding: "2px 5px", borderRadius: 6,
+                    background: "var(--accent)", color: "var(--accent-text)", padding: "2px 5px", borderRadius: 6,
                     letterSpacing: 0.5, fontFamily: "var(--font-sans)",
                   }}>PRO</span>
                 )}
@@ -11304,7 +11304,7 @@ export default function App() {
       {refineToast && (
         <div style={{
           position: "fixed", bottom: 140, left: "50%", transform: "translateX(-50%)", zIndex: 10001,
-          background: "var(--accent)", color: "#000", padding: "10px 20px", borderRadius: 12,
+          background: "var(--accent)", color: "var(--accent-text)", padding: "10px 20px", borderRadius: 12,
           fontWeight: 700, fontSize: 13, fontFamily: "var(--font-sans)",
           boxShadow: "0 4px 20px rgba(0,0,0,.3)", animation: "slideUp .3s ease",
           maxWidth: "90vw", textAlign: "center",
@@ -11358,7 +11358,7 @@ export default function App() {
 
       {/* Share auto-public toast */}
       {sharePublicToast && (
-        <div style={{ position: "fixed", bottom: 140, left: "50%", transform: "translateX(-50%)", zIndex: 10000, background: "var(--accent)", color: "#000", padding: "10px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13, fontFamily: "var(--font-sans)", boxShadow: "0 4px 20px rgba(0,0,0,.3)", animation: "slideUp .3s ease", display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ position: "fixed", bottom: 140, left: "50%", transform: "translateX(-50%)", zIndex: 10000, background: "var(--accent)", color: "var(--accent-text)", padding: "10px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13, fontFamily: "var(--font-sans)", boxShadow: "0 4px 20px rgba(0,0,0,.3)", animation: "slideUp .3s ease", display: "flex", alignItems: "center", gap: 6 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
           Link is now public
         </div>
@@ -11366,7 +11366,7 @@ export default function App() {
 
       {/* Wishlist added confirmation toast */}
       {addToListConfirm && (
-        <div style={{ position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)", zIndex: 10000, background: "var(--accent)", color: "#000", padding: "10px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13, fontFamily: "var(--font-sans)", boxShadow: "0 4px 20px rgba(0,0,0,.3)", animation: "slideUp .3s ease" }}>
+        <div style={{ position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)", zIndex: 10000, background: "var(--accent)", color: "var(--accent-text)", padding: "10px 20px", borderRadius: 12, fontWeight: 700, fontSize: 13, fontFamily: "var(--font-sans)", boxShadow: "0 4px 20px rgba(0,0,0,.3)", animation: "slideUp .3s ease" }}>
           Added to {addToListConfirm.wishlistName}
         </div>
       )}
@@ -11511,7 +11511,7 @@ export default function App() {
                     ))}
                   </div>
                 )}
-                <button onClick={() => setHangerTasteProfileOpen(true)} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--accent)", color: "#000", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", marginBottom: 10 }}>{t("hanger_view_taste")}</button>
+                <button onClick={() => setHangerTasteProfileOpen(true)} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--accent)", color: "var(--accent-text)", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer", marginBottom: 10 }}>{t("hanger_view_taste")}</button>
                 <button onClick={() => { setHangerFullscreen(false); setTab("scan"); }} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--bg-card)", color: "var(--text-primary)", fontWeight: 600, fontSize: 14, border: "1px solid var(--border)", cursor: "pointer" }}>{t("hanger_find_similar")}</button>
                 <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 16 }}>{t("hanger_next_batch")}</div>
               </div>
@@ -11753,7 +11753,7 @@ export default function App() {
                   <div style={{ padding: 20, background: "linear-gradient(135deg, rgba(200, 255, 61, .08), rgba(200, 255, 61, .03))", border: "1px solid rgba(200, 255, 61, .15)", borderRadius: 16, textAlign: "center" }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>Unlock Full Taste Profile</div>
                     <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5, marginBottom: 12 }}>See your favorite vibes, styles to avoid, and deep analytics with Pro</div>
-                    <button onClick={() => { setHangerTasteProfileOpen(false); setScreen("paywall"); }} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--accent)", color: "#000", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer" }}>Go Pro</button>
+                    <button onClick={() => { setHangerTasteProfileOpen(false); setScreen("paywall"); }} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--accent)", color: "var(--accent-text)", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer" }}>Go Pro</button>
                   </div>
                 )}
               </>
