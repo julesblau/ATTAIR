@@ -11865,7 +11865,7 @@ export default function App() {
       {hangerFullscreen && (
         <div className="bsheet-wrap" style={{ zIndex: 10001 }}>
           <div className="bsheet-bg" onClick={() => setHangerFullscreen(false)} />
-          <div className="bsheet" style={{ maxHeight: "95vh", background: "var(--bg-app, #0C0C0E)" }}>
+          <div className="bsheet" style={{ maxHeight: "95vh", background: "var(--bg-primary)" }}>
           <div className="bsheet-handle" style={{ marginBottom: 0 }} />
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", position: "relative", zIndex: 10 }}>
@@ -11874,7 +11874,7 @@ export default function App() {
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("hanger_check")}</span>
-              {hangerStreak?.current_streak > 0 && <span style={{ fontSize: 13, color: "#FFB74D" }}>&#128293; {hangerStreak.current_streak}</span>}
+              {hangerStreak?.current_streak > 0 && <span style={{ fontSize: 11, color: "var(--accent-text)", background: "var(--accent)", padding: "2px 8px", borderRadius: 999, fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: 0.4 }}>{hangerStreak.current_streak} day streak</span>}
             </div>
             <button onClick={() => { setHangerHistoryOpen(true); API.hangerTestHistory(20, 0).then(d => setHangerHistory(d.history || [])).catch(() => {}); }} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 13, cursor: "pointer", padding: 4 }}>{t("hanger_history")}</button>
           </div>
@@ -11938,12 +11938,12 @@ export default function App() {
                       {/* Outfit image */}
                       <img src={outfit.image_url} alt="Outfit photo" width={400} height={500} loading="lazy" style={{ width: "100%", height: "65%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; }} />
 
-                      {/* Swipe labels */}
+                      {/* Swipe labels — design lime YAY chip + dark NAY chip */}
                       {isActive && swipeDir === "wear" && (
-                        <div style={{ position: "absolute", top: 40, left: 20, padding: "8px 20px", border: "3px solid #4CAF50", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#4CAF50", transform: "rotate(-15deg)", opacity: swipeProgress, letterSpacing: 2 }}>{t("hanger_wear")}</div>
+                        <div style={{ position: "absolute", top: 40, left: 20, padding: "8px 18px", background: "var(--accent)", color: "var(--accent-text)", borderRadius: 12, fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 900, transform: "rotate(-12deg)", opacity: swipeProgress, letterSpacing: 1, boxShadow: "0 8px 20px rgba(0,0,0,0.2)" }}>YAY</div>
                       )}
                       {isActive && swipeDir === "pass" && (
-                        <div style={{ position: "absolute", top: 40, right: 20, padding: "8px 20px", border: "3px solid #EF5350", borderRadius: 8, fontSize: 24, fontWeight: 900, color: "#EF5350", transform: "rotate(15deg)", opacity: swipeProgress, letterSpacing: 2 }}>{t("hanger_pass")}</div>
+                        <div style={{ position: "absolute", top: 40, right: 20, padding: "8px 18px", background: "var(--text-primary)", color: "var(--bg-primary)", borderRadius: 12, fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 900, transform: "rotate(12deg)", opacity: swipeProgress, letterSpacing: 1, boxShadow: "0 8px 20px rgba(0,0,0,0.2)" }}>NAY</div>
                       )}
 
                       {/* Info section */}
@@ -11952,28 +11952,35 @@ export default function App() {
                         {outfit.style_tags?.length > 0 && (
                           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                             {outfit.style_tags.slice(0, 4).map((tag, ti) => (
-                              <span key={ti} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 100, background: "rgba(200, 255, 61, .1)", color: "var(--accent)", fontWeight: 600 }}>{tag}</span>
+                              <span key={ti} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 100, background: "var(--bg-card)", color: "var(--text-primary)", fontWeight: 600, fontFamily: "var(--font-display)", border: "1px solid var(--border)" }}>{tag}</span>
                             ))}
                           </div>
                         )}
 
-                        {/* Post-vote stats */}
-                        {hangerVotes[outfit.id] && hangerStatsMap[outfit.id] && (
-                          <div style={{ marginTop: 12, padding: "10px 0", borderTop: "1px solid var(--border)" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text-tertiary)", marginBottom: 6 }}>
-                              <span>&#128154; {hangerStatsMap[outfit.id].wear_pct}% would wear</span>
-                              <span>{hangerStatsMap[outfit.id].total_votes} votes</span>
-                            </div>
-                            <div style={{ height: 6, borderRadius: 3, background: "rgba(239,83,80,.2)", overflow: "hidden" }}>
-                              <div style={{ height: "100%", borderRadius: 3, background: "linear-gradient(90deg, #4CAF50, #66BB6A)", width: `${hangerStatsMap[outfit.id].wear_pct}%`, transition: "width .6s ease" }} />
-                            </div>
-                            {hangerTranche && hangerTranche.tranche_wear_pct != null && (
-                              <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6, fontWeight: 600 }}>
-                                {hangerTranche.tranche_wear_pct}% of {hangerTranche.tranche_archetype} voters agree
+                        {/* Post-vote stats — design's YAY/NAY split bar */}
+                        {hangerVotes[outfit.id] && hangerStatsMap[outfit.id] && (() => {
+                          const yay = Math.max(0, Math.min(100, hangerStatsMap[outfit.id].wear_pct));
+                          const nay = 100 - yay;
+                          const total = hangerStatsMap[outfit.id].total_votes;
+                          const yayCount = Math.round(total * yay / 100);
+                          const nayCount = total - yayCount;
+                          return (
+                            <div style={{ marginTop: 14, padding: "12px 0 0", borderTop: "1px solid var(--border)" }}>
+                              <div style={{ display: "flex", height: 36, borderRadius: 12, overflow: "hidden" }}>
+                                <div style={{ width: `${yay}%`, background: "var(--accent)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "flex-start", padding: "0 12px", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 13 }}>YAY · {yay}%</div>
+                                <div style={{ width: `${nay}%`, background: "var(--bg-card)", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "0 8px", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 12 }}>{nay}%</div>
                               </div>
-                            )}
-                          </div>
-                        )}
+                              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>
+                                <span>{yayCount.toLocaleString()} yay</span><span>{nayCount.toLocaleString()} nay</span>
+                              </div>
+                              {hangerTranche && hangerTranche.tranche_wear_pct != null && (
+                                <div style={{ fontSize: 11, color: "var(--text-primary)", marginTop: 8, fontWeight: 600, fontFamily: "var(--font-display)" }}>
+                                  {hangerTranche.tranche_wear_pct}% of {hangerTranche.tranche_archetype} voters agree
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -11985,7 +11992,7 @@ export default function App() {
                 <div style={{ fontSize: 48, marginBottom: 12 }}>&#10024;</div>
                 <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>All Done!</div>
                 {hangerStreak?.current_streak > 0 && (
-                  <div style={{ fontSize: 16, color: "#FFB74D", marginBottom: 16 }}>&#128293; {hangerStreak.current_streak} day streak</div>
+                  <div style={{ fontSize: 12, padding: "6px 14px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontWeight: 800, letterSpacing: 0.4, marginBottom: 16, display: "inline-block" }}>{hangerStreak.current_streak} day streak</div>
                 )}
                 {hangerTasteProfile && (
                   <div style={{ padding: 16, background: "var(--bg-card)", borderRadius: 14, border: "1px solid var(--border)", marginBottom: 16, width: "100%", maxWidth: 280 }}>
@@ -12009,21 +12016,23 @@ export default function App() {
             )}
           </div>
 
-          {/* Bottom buttons (only when card is active and not yet voted) */}
+          {/* Bottom buttons — design's nay/yay pills */}
           {hangerCurrentIndex < hangerOutfits.length && !hangerVotes[hangerOutfits[hangerCurrentIndex]?.id] && !hangerVoteAnim && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 24, padding: "16px 0 max(16px, env(safe-area-inset-bottom))" }}>
-              <button className="hanger-btn-pass" onClick={() => { setHangerSwipeX(-400); handleHangerVote("pass"); }} style={{ width: 64, height: 64, borderRadius: "50%", border: "2px solid #EF5350", background: "rgba(239,83,80,.08)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#EF5350" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <div style={{ display: "flex", gap: 8, padding: "14px 16px max(14px, env(safe-area-inset-bottom))" }}>
+              <button className="hanger-btn-pass" onClick={() => { setHangerSwipeX(-400); handleHangerVote("pass"); }} style={{ flex: 1, height: 50, borderRadius: 14, border: "1.5px solid var(--border)", background: "var(--bg-card)", color: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, cursor: "pointer", textTransform: "lowercase" }}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                nay
               </button>
-              <button className="hanger-btn-wear" onClick={() => { setHangerSwipeX(400); handleHangerVote("wear"); }} style={{ width: 64, height: 64, borderRadius: "50%", border: "none", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 16px rgba(200, 255, 61, .35)" }}>
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              <button className="hanger-btn-wear" onClick={() => { setHangerSwipeX(400); handleHangerVote("wear"); }} style={{ flex: 1, height: 50, borderRadius: 14, border: "none", background: "var(--accent)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, cursor: "pointer", textTransform: "lowercase", boxShadow: "0 4px 14px rgba(200, 255, 61, .35)" }}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                yay
               </button>
             </div>
           )}
 
           {/* Swipe hint */}
           {hangerCurrentIndex < hangerOutfits.length && !hangerVotes[hangerOutfits[hangerCurrentIndex]?.id] && (
-            <div style={{ textAlign: "center", padding: "0 0 8px", fontSize: 11, color: "var(--text-tertiary)", opacity: 0.5 }}>Swipe right to wear, left to pass</div>
+            <div style={{ textAlign: "center", padding: "0 0 8px", fontSize: 11, color: "var(--text-secondary)", opacity: 0.6, fontFamily: "var(--font-display)" }}>swipe right to wear · left to pass</div>
           )}
         </div>
         </div>
