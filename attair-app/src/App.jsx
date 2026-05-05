@@ -3168,7 +3168,7 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
               what do<br/>you<span> </span>
               <span className="lime-chip">shop for?</span>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>pick one ✿</div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>pick one</div>
           </div>
           <div style={{ flex: 1, padding: "0 16px", display: "grid", gridTemplateColumns: "1fr", gap: 12, alignContent: "flex-start" }}>
             {genderCards.map((g) => {
@@ -3198,7 +3198,7 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
               tag your<br/>
               <span className="lime-chip">energy</span>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>pick {minVibes}+ to tune your feed ✿</div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>pick {minVibes}+ to tune your feed</div>
           </div>
           <div style={{ flex: 1, padding: "0 14px 14px", overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignContent: "flex-start" }}>
             {STYLE_AESTHETICS.map((v, i) => {
@@ -7065,13 +7065,13 @@ export default function App() {
                 <div key={i} className="u-cam-pin" style={{ position: "absolute", left: d.l, top: d.t, transform: "translate(-50%, -50%)", animationDelay: `${d.delay}ms` }}>
                   <div style={{ width: 12, height: 12, borderRadius: 999, background: "var(--accent)", border: "3px solid #fff", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}/>
                   <div style={{ position: "absolute", left: 20, top: -8, padding: "4px 8px", borderRadius: 999, background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 10, fontWeight: 700, fontFamily: "var(--font-display)", whiteSpace: "nowrap", boxShadow: "0 4px 12px rgba(0,0,0,0.25)" }}>
-                    {d.label} <span style={{ color: "var(--warm)", fontWeight: 800 }}>{d.conf}%</span>
+                    {d.label} <span style={{ color: "var(--text-primary)", fontWeight: 800, opacity: 0.5 }}>{d.conf}%</span>
                   </div>
                 </div>
               ))}
               {/* Status pill (top center) */}
               <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", padding: "6px 12px", borderRadius: 999, background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-display)", display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 8px rgba(0,0,0,0.25)" }}>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--warm)", animation: "u-pulse 1.4s infinite ease-in-out" }}/>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: "var(--accent)", animation: "u-pulse 1.4s infinite ease-in-out" }}/>
                 ready · tap to scan
               </div>
             </div>
@@ -7087,7 +7087,7 @@ export default function App() {
                   ? <><b>{guestScans}</b>/3 free scans used</>
                   : isFree && scansLeft != null
                   ? (scansLeft > 0 ? <><b>{scansLimit - scansLeft}</b>/{scansLimit} scans used this month</> : <>no scans left · <span style={{ color: "var(--text-primary)", textDecoration: "underline", cursor: "pointer" }} onClick={() => setUpgradeModal("scan_limit")}>go pro</span></>)
-                  : <>any photo · any budget · any brand ✿</>}
+                  : <>any photo · any budget · any brand</>}
               </div>
             </div>
 
@@ -7750,8 +7750,8 @@ export default function App() {
                 )}
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
                   <div>
-                    <div style={{ fontSize: 11, color: "var(--warm)", fontWeight: 800, letterSpacing: 0.6, fontFamily: "var(--font-display)", textTransform: "uppercase" }}>
-                      {phase === "done" ? "scan complete ✿" : phase === "searching" ? "searching ✿" : "ready ✿"}
+                    <div style={{ fontSize: 11, color: "var(--text-primary)", fontWeight: 800, letterSpacing: 1, fontFamily: "var(--font-display)", textTransform: "uppercase" }}>
+                      {phase === "done" ? "scan complete" : phase === "searching" ? "searching" : "ready"}
                     </div>
                     <div style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.05, marginTop: 2, color: "var(--text-primary)" }}>
                       {pickedItems.size > 0 ? <>{pickedItems.size} {pickedItems.size === 1 ? "piece" : "pieces"}<br/>identified</> : "tap to scan"}
@@ -9848,7 +9848,7 @@ export default function App() {
             <div style={{ padding: "8px 16px 0" }}>
               <div style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, color: "var(--text-primary)" }}>
                 picks for<br/>
-                <span className="lime-chip">{(authName || authEmail?.split("@")[0] || "you").toLowerCase()} ✿</span>
+                <span className="lime-chip">{(authName || authEmail?.split("@")[0] || "you").toLowerCase()}</span>
               </div>
               <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>
                 {(saved?.length || 0)} fresh from your saved scans
@@ -9951,7 +9951,7 @@ export default function App() {
                 )}
               </div>
               <div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700, letterSpacing: -1, lineHeight: 1, color: "var(--text-primary)" }}>{(authName || authEmail?.split("@")[0] || "you").toLowerCase()} ✿</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700, letterSpacing: -1, lineHeight: 1, color: "var(--text-primary)" }}>{(authName || authEmail?.split("@")[0] || "you").toLowerCase()}</div>
                 <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{authEmail ? `@${authEmail.split("@")[0]}` : "guest"}</div>
                 <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 11, color: "var(--text-secondary)" }}>
                   <span><b style={{ fontFamily: "var(--font-display)", fontSize: 13, color: "var(--text-primary)" }}>{(history?.length || 0).toLocaleString()}</b> scans</span>
@@ -9969,7 +9969,7 @@ export default function App() {
 
             <div style={{ padding: "14px 16px 0", display: "flex", gap: 6 }}>
               <button onClick={() => { setSettingsSheetY(0); setProfileSettingsOpen(true); }} style={{ flex: 1, height: 42, borderRadius: 14, background: "var(--text-primary)", color: "var(--bg-primary)", fontSize: 12, fontWeight: 700, fontFamily: "var(--font-display)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>edit</button>
-              <button onClick={() => { try { navigator.share?.({ title: "ATTAIRE", text: "Find every piece in any outfit ✿", url: window.location.origin }); } catch {} }} style={{ flex: 1, height: 42, borderRadius: 14, background: "var(--accent)", color: "var(--accent-text)", fontSize: 12, fontWeight: 700, fontFamily: "var(--font-display)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>share profile ✿</button>
+              <button onClick={() => { try { navigator.share?.({ title: "ATTAIRE", text: "Find every piece in any outfit", url: window.location.origin }); } catch {} }} style={{ flex: 1, height: 42, borderRadius: 14, background: "var(--accent)", color: "var(--accent-text)", fontSize: 12, fontWeight: 700, fontFamily: "var(--font-display)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>share profile</button>
             </div>
 
             {looks?.length > 0 && (
@@ -10012,7 +10012,7 @@ export default function App() {
 
             {(history?.length || 0) === 0 && (history?.length || 0) === 0 && (
               <div style={{ padding: "12px 16px 0", textAlign: "center", color: "var(--text-secondary)", fontSize: 12 }}>
-                No scans yet — tap the lime camera to start ✿
+                No scans yet — tap the lime camera to start
               </div>
             )}
           </div>
