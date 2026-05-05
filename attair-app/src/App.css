@@ -72,17 +72,17 @@
   min-height: 44px;
   padding: 12px 24px;
   background: transparent;
-  color: var(--accent);
-  border: 1.5px solid var(--accent-border);
+  color: var(--text-primary);
+  border: 1.5px solid var(--text-primary);
   border-radius: var(--radius-md);
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   font-weight: var(--weight-semibold);
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   cursor: pointer;
-  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
+  transition: background var(--transition-fast), opacity var(--transition-fast), transform var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
 }
-.btn-secondary:hover { background: var(--accent-bg); border-color: var(--accent); }
+.btn-secondary:hover { background: rgba(0, 0, 0, 0.04); }
 .btn-secondary:active { transform: scale(0.97); }
 .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
