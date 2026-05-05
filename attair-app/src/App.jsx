@@ -6629,7 +6629,7 @@ export default function App() {
                     <button aria-label="Share" onClick={() => { try { navigator.share?.({ title: p.name, url: p.url || window.location.origin }); } catch {} }} style={{ background: "transparent", border: "none", padding: 8, cursor: "pointer", color: "var(--text-primary)" }}>
                       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 21h14"/></svg>
                     </button>
-                    <button aria-label={isSavedProduct ? "Remove from saved" : "Save"} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } quickSaveItem({ name: p.name, brand: p.brand, price: p.price, image_url: p.image, url: p.url, category: p.category }, p.scanId || null); }} style={{ background: "transparent", border: "none", padding: 8, cursor: "pointer", color: isSavedProduct ? "var(--warm)" : "var(--text-primary)" }}>
+                    <button aria-label={isSavedProduct ? "Remove from saved" : "Save"} onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } quickSaveItem({ name: p.name, brand: p.brand, price: p.price, image_url: p.image, url: p.url, category: p.category }, p.scanId || null); }} style={{ background: "transparent", border: "none", padding: 8, cursor: "pointer", color: "var(--text-primary)" }}>
                       <svg viewBox="0 0 24 24" width="20" height="20" fill={isSavedProduct ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
                     </button>
                   </div>
@@ -6679,7 +6679,7 @@ export default function App() {
                 {p.alternates && (
                   <div style={{ padding: "14px 14px 0" }}>
                     <div style={{ padding: 12, borderRadius: "var(--radius-lg)", background: "var(--bg-card)", display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--border)" }}>
-                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--warm)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/></svg>
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/></svg>
                       <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35, color: "var(--text-primary)" }}>
                         <b>{p.alternates.count || 3} cheaper alternates</b> spotted{p.alternates.from ? <> (from {p.alternates.from})</> : null} — same silhouette, different brands.
                       </div>
@@ -6696,7 +6696,7 @@ export default function App() {
               </div>
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 14, background: "var(--bg-primary)", borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
                 <button onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } quickSaveItem({ name: p.name, brand: p.brand, price: p.price, image_url: p.image, url: p.url, category: p.category }, p.scanId || null); }} aria-label="Save" style={{ width: 52, height: 52, borderRadius: 16, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill={isSavedProduct ? "var(--warm)" : "none"} stroke={isSavedProduct ? "var(--warm)" : "var(--text-primary)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill={isSavedProduct ? "var(--text-primary)" : "none"} stroke="var(--text-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
                 </button>
                 <button onClick={goShop} disabled={!p.url} style={{ flex: 1, height: 52, borderRadius: 16, border: "none", background: p.url ? "var(--text-primary)" : "var(--border)", color: p.url ? "var(--bg-primary)" : "var(--text-secondary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", cursor: p.url ? "pointer" : "not-allowed", letterSpacing: 0.2 }}>
                   shop {p.brand ? `at ${p.brand}` : "now"} {p.price ? `→ ${p.price}` : "→"}
@@ -8352,7 +8352,7 @@ export default function App() {
                                 <button
                                   aria-label={isSavedProduct ? "Remove from Likes" : "Save to Likes"}
                                   onClick={e => { e.preventDefault(); e.stopPropagation(); quickSaveItem({ name: p.product_name || item.name, brand: p.brand || item.brand, price: p.price, image_url: p.image_url, url: p.url, category: item.category }, scanId); }}
-                                  style={{ width: 28, height: 28, borderRadius: "50%", background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, color: isSavedProduct ? "var(--warm)" : "var(--text-tertiary)" }}
+                                  style={{ width: 28, height: 28, borderRadius: "50%", background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, color: isSavedProduct ? "var(--text-primary)" : "var(--text-tertiary)" }}
                                 >
                                   <svg viewBox="0 0 24 24" width="18" height="18" fill={isSavedProduct ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
                                 </button>
