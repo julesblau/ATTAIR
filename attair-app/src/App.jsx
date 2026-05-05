@@ -10661,55 +10661,178 @@ export default function App() {
 
       {/* ═══ STYLE DNA — WRAPPED EXPERIENCE ═══════════════════ */}
       {showStyleDna && styleDna?.ready && (() => {
-        const slide = styleDnaSlide;
-        const TOTAL_SLIDES = 7;
         const stats = styleDna.stats || {};
         const scores = styleDna.style_score || {};
-
-        const handleSlideNav = (e) => {
-          e.stopPropagation();
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX || (e.touches?.[0]?.clientX ?? rect.width);
-          const relX = x - rect.left;
-          // Tap left 30% = back, rest = forward
-          if (relX < rect.width * 0.3 && slide > 0) {
-            setStyleDnaSlide(s => s - 1);
-          } else if (slide < TOTAL_SLIDES - 1) {
-            setStyleDnaSlide(s => s + 1);
-          }
-        };
+        // Legacy refs (kept so the hidden old-slide markup doesn't crash on render)
+        const slide = -1;
+        const TOTAL_SLIDES = 0;
+        const GRADIENTS = [""];
+        const handleSlideNav = () => {};
 
         const handleClose = () => {
           setShowStyleDna(false);
           setStyleDnaSlide(0);
         };
 
-        const GRADIENTS = [
-          "linear-gradient(165deg, #0C0C0E 0%, #1a1520 50%, #0C0C0E 100%)",
-          "linear-gradient(165deg, #1a0a2e 0%, #12081e 50%, #0C0C0E 100%)",
-          "linear-gradient(165deg, #0a1e1e 0%, #081414 50%, #0C0C0E 100%)",
-          "linear-gradient(165deg, #1e1508 0%, #141008 50%, #0C0C0E 100%)",
-          "linear-gradient(165deg, #1e0a14 0%, #14080e 50%, #0C0C0E 100%)",
-          "linear-gradient(165deg, #0a0e1e 0%, #080a14 50%, #0C0C0E 100%)",
-          "linear-gradient(165deg, #1a1508 0%, #12100a 50%, #0C0C0E 100%)",
-        ];
+        // Pull a few mood images from history if available, otherwise design fallbacks
+        const moodImgs = (history?.length > 0
+          ? history.slice(0, 3).map(h => h.image_url || h.thumbnail_url).filter(Boolean)
+          : ["/unified-assets/m-old.jpg", "/unified-assets/aritzia2.jpg", "/unified-assets/aritzia1.jpg"]
+        );
+        while (moodImgs.length < 3) moodImgs.push("/unified-assets/m-old.jpg");
+
+        // Map style_score (0-10) to design's "signals" pattern with 4 trait bars
+        // For each spectrum, we pick the dominant side based on score
+        const sigBars = [
+          { l: "silhouette", a: "classic", b: "trendy", v: scores.classic_vs_trendy ?? 5 },
+          { l: "density", a: "minimal", b: "maximal", v: scores.minimal_vs_maximal ?? 5 },
+          { l: "register", a: "casual", b: "formal", v: scores.casual_vs_formal ?? 5 },
+          { l: "tier", a: "budget", b: "luxury", v: scores.budget_vs_luxury ?? 5 },
+        ].map(s => ({ ...s, label: s.v >= 5 ? s.b : s.a, pct: Math.round((s.v >= 5 ? s.v : 10 - s.v) * 10) }));
+
+        const topBrands = (stats.top_brands || []).slice(0, 7).map(b => typeof b === "string" ? b : b.value).filter(Boolean);
+        const restArchetype = (styleDna.archetype || "your style").replace(/\s*$/g, "");
+        const archParts = restArchetype.split(/\s+/);
+        const archHead = archParts[0] || restArchetype;
+        const archTail = archParts.slice(1).join(" ");
+
+        const handleShare = async (e) => {
+          e?.stopPropagation();
+          setStyleDnaShareLoading(true);
+          try {
+            const cardUrl = await generateStyleDnaCard(styleDna, authName);
+            if (navigator.share) {
+              const blob = await (await fetch(cardUrl)).blob();
+              const file = new File([blob], "style-dna.png", { type: "image/png" });
+              await navigator.share({ files: [file], title: "My Style DNA — ATTAIR" });
+            } else {
+              const a = document.createElement("a");
+              a.href = cardUrl;
+              a.download = "style-dna.png";
+              a.click();
+            }
+          } catch { /* ignore */ }
+          setStyleDnaShareLoading(false);
+        };
 
         return (
-          <div className="sdna-overlay" role="dialog" aria-label="Style DNA report" aria-modal="true">
-            {/* Progress bar — Instagram Stories style */}
-            <div className="sdna-progress">
-              {Array.from({ length: TOTAL_SLIDES }).map((_, i) => (
-                <div key={i} className={`sdna-seg${i < slide ? " done" : ""}${i === slide ? " active" : ""}`} />
+          <div role="dialog" aria-label="Style DNA report" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 9998, background: "var(--bg-primary)", overflowY: "auto", paddingTop: 50, paddingBottom: 30, fontFamily: "var(--font-sans)", color: "var(--text-primary)" }}>
+            {/* Top bar: cl + "YOUR DNA" + share */}
+            <div style={{ padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <button onClick={handleClose} aria-label="Close Style DNA" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+              </button>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase" }}>your dna</span>
+              <button onClick={handleShare} aria-label="Share Style DNA" disabled={styleDnaShareLoading} style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)", opacity: styleDnaShareLoading ? 0.5 : 1 }}>
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 21h14"/></svg>
+              </button>
+            </div>
+
+            {/* Hero: archetype reveal */}
+            <div style={{ padding: "12px 14px 0" }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-primary)", fontFamily: "var(--font-display)", textTransform: "uppercase" }}>{(authName || authEmail?.split("@")[0] || "you").toLowerCase()}, you are…</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, letterSpacing: -1.6, lineHeight: 0.95, marginTop: 6, textTransform: "lowercase" }}>
+                <span className="lime-chip">{archHead}</span>{archTail ? <><br/>{archTail}</> : null}
+              </div>
+              {styleDna.description && (
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 12, lineHeight: 1.5 }}>{styleDna.description}</div>
+              )}
+            </div>
+
+            {/* Mood collage — 3-col grid mixing real scan thumbs + lime score tile + dark filler */}
+            <div style={{ padding: "18px 14px 0", display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: 6, height: 200 }}>
+              <div style={{ borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)" }}>
+                <img src={moodImgs[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="eager" />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ flex: 1, borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)" }}>
+                  <img src={moodImgs[1]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                </div>
+                <div style={{ flex: 1, borderRadius: "var(--radius-lg)", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 800, color: "var(--accent-text)", letterSpacing: -1.2, transform: "rotate(-2deg)" }}>{stats.total_scans || 0}</div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ flex: 1.4, borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)" }}>
+                  <img src={moodImgs[2]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                </div>
+                <div style={{ flex: 1, borderRadius: "var(--radius-lg)", background: "var(--text-primary)" }} />
+              </div>
+            </div>
+
+            {/* Style signals — 4 trait bars */}
+            <div style={{ padding: "20px 14px 0" }}>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", fontFamily: "var(--font-display)", textTransform: "uppercase", marginBottom: 10 }}>your signals</div>
+              {sigBars.map((s, i) => (
+                <div key={s.l} style={{ padding: "10px 0", borderBottom: i < sigBars.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, fontFamily: "var(--font-display)" }}>{s.l}</span>
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700 }}>{s.label}</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 3, background: "var(--bg-card)", overflow: "hidden" }}>
+                    <div style={{ width: `${s.pct}%`, height: "100%", background: "var(--text-primary)", borderRadius: 3, transition: "width 600ms var(--ease-smooth)" }} />
+                  </div>
+                </div>
               ))}
             </div>
 
-            {/* Close button */}
-            <button className="sdna-close" onClick={handleClose} aria-label="Close Style DNA">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+            {/* Brand affinities */}
+            {topBrands.length > 0 && (
+              <div style={{ padding: "18px 14px 0" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", fontFamily: "var(--font-display)", textTransform: "uppercase", marginBottom: 10 }}>brands in your dna</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {topBrands.map((b, i) => (
+                    <span key={i} style={{ padding: "7px 12px", borderRadius: 999, background: i < 3 ? "var(--text-primary)" : "var(--bg-card)", color: i < 3 ? "var(--bg-primary)" : "var(--text-primary)", fontSize: 11, fontWeight: 600, fontFamily: "var(--font-display)", border: i < 3 ? "none" : "1px solid var(--border)" }}>{b}</span>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {/* Card — full screen, tap to advance */}
-            <div className="sdna-card" style={{ background: GRADIENTS[slide] }} onClick={handleSlideNav} key={slide}>
+            {/* Traits as lime chips */}
+            {(styleDna.traits || []).length > 0 && (
+              <div style={{ padding: "18px 14px 0" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", fontFamily: "var(--font-display)", textTransform: "uppercase", marginBottom: 10 }}>your style in four words</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {(styleDna.traits || []).map((trait, i) => (
+                    <span key={i} style={{ padding: "7px 12px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-display)" }}>{trait}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Color palette */}
+            {(stats.dominant_colors || []).length > 0 && (
+              <div style={{ padding: "18px 14px 0" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", fontFamily: "var(--font-display)", textTransform: "uppercase", marginBottom: 10 }}>your color palette</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {(stats.dominant_colors || []).slice(0, 5).map((cObj, i) => {
+                    const name = typeof cObj === "string" ? cObj : cObj.value;
+                    return (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: 999, background: sdnaColorHex(name), border: "1px solid var(--border)" }} />
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* CTA */}
+            <div style={{ padding: "24px 14px 12px" }}>
+              <button onClick={() => { handleClose(); setTab("picks"); }} style={{ width: "100%", height: 52, borderRadius: 16, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, cursor: "pointer", textTransform: "lowercase" }}>
+                see picks made for you →
+              </button>
+            </div>
+
+            {/* Footer share button (secondary) */}
+            <div style={{ padding: "0 14px 30px" }}>
+              <button onClick={handleShare} disabled={styleDnaShareLoading} style={{ width: "100%", height: 52, borderRadius: 16, border: "1.5px solid var(--text-primary)", background: "transparent", color: "var(--text-primary)", fontWeight: 600, fontSize: 13, fontFamily: "var(--font-sans)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: styleDnaShareLoading ? 0.5 : 1 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3v13M7 8l5-5 5 5M5 21h14"/></svg>
+                {styleDnaShareLoading ? "generating…" : "share your style dna"}
+              </button>
+            </div>
+
+            {/* Legacy stories slides removed; design's single-page layout is above */}
+            <div style={{ display: "none" }} key="legacy">
               {/* Ambient glow */}
               <div className="sdna-glow" />
 
