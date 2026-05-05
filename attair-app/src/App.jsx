@@ -3149,38 +3149,45 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
 
   return (
     <div className={`u-onboarding ${fade || ""}`} style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100svh", display: "flex", flexDirection: "column", fontFamily: "var(--font-sans)" }}>
-      {/* Top: progress */}
-      <div style={{ padding: "20px 16px 4px", display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 600, letterSpacing: 0.4 }}>{String(step).padStart(2, "0")} / {String(totalSteps).padStart(2, "0")}</span>
-        <div style={{ flex: 1, height: 3, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
-          <div style={{ width: `${(step / totalSteps) * 100}%`, height: "100%", background: "var(--text-primary)", borderRadius: 2, transition: "width 280ms var(--spring)" }}/>
-        </div>
-        {step === 2 && (
-          <button onClick={() => setStep(1)} style={{ background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, padding: 6, cursor: "pointer", fontFamily: "var(--font-display)" }}>back</button>
+      {/* Top bar: close + 3-dash progress + step label */}
+      <div style={{ padding: "20px 16px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        {step > 1 ? (
+          <button onClick={() => setStep(s => s - 1)} aria-label="Back" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
+        ) : (
+          <span style={{ width: 24 }} />
         )}
+        <div style={{ display: "flex", gap: 4 }}>
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <span key={i} style={{ width: 24, height: 4, borderRadius: 2, background: i < step ? "var(--text-primary)" : "var(--border)", transition: "background 280ms var(--spring)" }} />
+          ))}
+        </div>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase" }}>{step} / {totalSteps}</span>
       </div>
 
       {/* Step 1: Gender */}
       {step === 1 && (
         <>
-          <div style={{ padding: "16px 16px 18px" }}>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 700, letterSpacing: -1.5, lineHeight: 0.95 }}>
-              what do<br/>you<span> </span>
+          <div style={{ padding: "20px 16px 10px" }}>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, letterSpacing: -1.6, lineHeight: 0.95, textTransform: "lowercase" }}>
+              what do<br/>you{" "}
               <span className="lime-chip">shop for?</span>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8 }}>pick one</div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8 }}>this shapes which fits we'll match</div>
           </div>
-          <div style={{ flex: 1, padding: "0 16px", display: "grid", gridTemplateColumns: "1fr", gap: 12, alignContent: "flex-start" }}>
-            {genderCards.map((g) => {
+          <div style={{ flex: 1, padding: "14px 16px 0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignContent: "flex-start" }}>
+            {genderCards.map((g, idx) => {
               const on = shopFor === g.key;
+              const spanFull = genderCards.length === 3 && idx === 2;
               return (
-                <button key={g.key} onClick={() => setShopFor(g.key)} style={{ position: "relative", aspectRatio: "16/9", borderRadius: "var(--radius-lg)", overflow: "hidden", border: on ? "3px solid var(--text-primary)" : "3px solid transparent", padding: 0, cursor: "pointer", background: "transparent", transition: "transform 180ms var(--spring), border-color 180ms var(--ease-smooth)", transform: on ? "scale(0.99)" : "scale(1)" }}>
-                  <img src={g.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="eager" />
-                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55))" }} />
-                  <div style={{ position: "absolute", left: 14, bottom: 12, color: "#fff", fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: -0.6, textTransform: "lowercase" }}>{g.label}</div>
+                <button key={g.key} onClick={() => setShopFor(g.key)} style={{ gridColumn: spanFull ? "span 2" : "auto", position: "relative", aspectRatio: spanFull ? "16/7" : "1", borderRadius: "var(--radius-lg)", overflow: "hidden", border: on ? "3px solid var(--text-primary)" : "3px solid transparent", padding: 0, cursor: "pointer", background: "transparent", transition: "transform 180ms var(--spring), border-color 180ms var(--ease-smooth)", transform: on ? "scale(0.98)" : "scale(1)" }}>
+                  <img src={g.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 130 }} loading="eager" />
+                  <div style={{ position: "absolute", inset: 0, background: on ? "transparent" : "rgba(0,0,0,0.18)" }} />
+                  <div style={{ position: "absolute", left: 8, bottom: 8, padding: "5px 11px", borderRadius: 999, background: on ? "var(--accent)" : "var(--bg-primary)", color: on ? "var(--accent-text)" : "var(--text-primary)", fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, textTransform: "lowercase" }}>{g.label}</div>
                   {on && (
-                    <div style={{ position: "absolute", top: 10, right: 10, width: 28, height: 28, borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                    <div style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: 999, background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--bg-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
                     </div>
                   )}
                 </button>
@@ -8561,11 +8568,11 @@ export default function App() {
                 {/* Header — B-spine */}
                 <div style={{ padding: "16px 16px 0", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
                   <div>
-                    <div style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, color: "var(--text-primary)" }}>
-                      <span className="lime-chip">{t("wardrobe").toLowerCase()}</span>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 44, fontWeight: 700, letterSpacing: -1.6, lineHeight: 0.95, color: "var(--text-primary)", textTransform: "lowercase" }}>
+                      saved
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, fontFamily: "var(--font-display)" }}>
-                      <b style={{ color: "var(--text-primary)" }}>{saved.length}</b> saved · {looks?.length || 0} looks
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
+                      {saved.length} saved · {looks?.length || 0} looks
                     </div>
                   </div>
                   <button aria-label="Open settings" onClick={() => { setSettingsSheetY(0); setProfileSettingsOpen(true); }} style={{ width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", color: "var(--text-primary)", padding: 0 }}>
@@ -9891,11 +9898,11 @@ export default function App() {
         {tab === "picks" && (
           <div style={{ paddingTop: 8, paddingBottom: 110, background: "var(--bg-primary)" }}>
             <div style={{ padding: "8px 16px 0" }}>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, color: "var(--text-primary)" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 44, fontWeight: 700, letterSpacing: -1.6, lineHeight: 0.95, color: "var(--text-primary)" }}>
                 picks for<br/>
                 <span className="lime-chip">{(authName || authEmail?.split("@")[0] || "you").toLowerCase()}</span>
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6 }}>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6 }}>
                 {(saved?.length || 0)} fresh from your saved scans
               </div>
             </div>
