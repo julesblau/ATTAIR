@@ -4572,6 +4572,7 @@ export default function App() {
   const [wishlists, setWishlists] = useState([]);       // [{ id, name, created_at }]
   const [activeWishlist, setActiveWishlist] = useState(null); // { id, name } | null
   const [retakeConfirmOpen, setRetakeConfirmOpen] = useState(false);
+  const [camPermPrompt, setCamPermPrompt] = useState(null); // null | "camera" | "gallery"
   const [savedSubTab, setSavedSubTab] = useState("looks"); // "scans" | "looks" | "alerts" — design canvas split
   const [settingsRoute, setSettingsRoute] = useState("root"); // "root" | "notifications" | "account" | "privacy" | "billing" | "help"
   const [privacyToggles, setPrivacyToggles] = useState(() => {
@@ -7441,11 +7442,19 @@ export default function App() {
 
             <div style={{ padding: "18px 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
               {/* Gallery */}
-              <button onClick={async () => { if (!(await nativePhotoToFile(pickNativePhoto))) galleryRef.current?.click(); }} aria-label={t("btn_gallery")} style={{ width: 52, height: 52, borderRadius: 16, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button onClick={async () => {
+                const seen = localStorage.getItem("attair_perm_gallery") === "1";
+                if (!seen) { setCamPermPrompt("gallery"); return; }
+                if (!(await nativePhotoToFile(pickNativePhoto))) galleryRef.current?.click();
+              }} aria-label={t("btn_gallery")} style={{ width: 52, height: 52, borderRadius: 16, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--text-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               </button>
               {/* Shutter */}
-              <button onClick={async () => { if (!(await nativePhotoToFile(takeNativePhoto))) fileRef.current?.click(); }} aria-label={t("btn_take_photo")} style={{ width: 78, height: 78, borderRadius: 999, padding: 4, background: "var(--text-primary)", border: "none", cursor: "pointer", boxShadow: "0 6px 18px rgba(200,255,61,0.35)" }}>
+              <button onClick={async () => {
+                const seen = localStorage.getItem("attair_perm_camera") === "1";
+                if (!seen) { setCamPermPrompt("camera"); return; }
+                if (!(await nativePhotoToFile(takeNativePhoto))) fileRef.current?.click();
+              }} aria-label={t("btn_take_photo")} style={{ width: 78, height: 78, borderRadius: 999, padding: 4, background: "var(--text-primary)", border: "none", cursor: "pointer", boxShadow: "0 6px 18px rgba(200,255,61,0.35)" }}>
                 <div style={{ width: "100%", height: "100%", borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="var(--accent-text)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h3l2-3h8l2 3h3v12H3z"/><circle cx="12" cy="13" r="4"/></svg>
                 </div>
@@ -12637,6 +12646,44 @@ export default function App() {
         <div className={`toast toast-${toast.type}`}>{toast.message}</div>
       </div>
     )}
+    {/* ─── CAMERA / GALLERY PERMISSION PRE-PROMPT (design canvas UScanPerm) ─── */}
+    {camPermPrompt && (
+      <div className="modal-overlay" onClick={() => setCamPermPrompt(null)} style={{ alignItems: "flex-end" }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, background: "var(--bg-primary)", borderRadius: "24px 24px 0 0", padding: "16px 20px 24px", animation: "slideIn .25s var(--spring)" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 999, background: "var(--border)", margin: "0 auto 22px" }} />
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {camPermPrompt === "camera" ? (
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--accent-text)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7h3l2-3h8l2 3h3v12H3z"/><circle cx="12" cy="13" r="4"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--accent-text)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              )}
+            </div>
+          </div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "var(--text-primary)", textTransform: "lowercase", textAlign: "center" }}>
+            {camPermPrompt === "camera" ? "we need camera access" : "pick from your gallery"}
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8, lineHeight: 1.5, textAlign: "center", padding: "0 8px" }}>
+            {camPermPrompt === "camera" ? "snap any outfit to scan it. nothing leaves your phone unless you tap shop." : "we'll pull one photo at a time. nothing else is uploaded."}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 22 }}>
+            <button onClick={() => setCamPermPrompt(null)} style={{ flex: 1, height: 50, borderRadius: 14, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-primary)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 13, cursor: "pointer", textTransform: "lowercase" }}>not now</button>
+            <button onClick={async () => {
+              const kind = camPermPrompt;
+              localStorage.setItem(kind === "camera" ? "attair_perm_camera" : "attair_perm_gallery", "1");
+              setCamPermPrompt(null);
+              await new Promise(r => setTimeout(r, 100));
+              if (kind === "camera") {
+                if (!(await nativePhotoToFile(takeNativePhoto))) fileRef.current?.click();
+              } else {
+                if (!(await nativePhotoToFile(pickNativePhoto))) galleryRef.current?.click();
+              }
+            }} style={{ flex: 1, height: 50, borderRadius: 14, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, letterSpacing: 0.3, cursor: "pointer", textTransform: "lowercase" }}>allow →</button>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* ─── RETAKE CONFIRM SHEET (design canvas UScanRetake) ─── */}
     {retakeConfirmOpen && (
       <div className="modal-overlay" onClick={() => setRetakeConfirmOpen(false)} style={{ alignItems: "flex-end" }}>
