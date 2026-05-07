@@ -247,6 +247,21 @@ const API = {
     window.location.href = `${SUPABASE_URL}/auth/v1/authorize?provider=${provider}&redirect_to=${encodeURIComponent(redirectTo)}`;
   },
 
+  async sendPasswordReset(email) {
+    const redirectTo = isNative ? 'com.attaire.app://auth-callback' : window.location.origin + '/';
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/recover`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ email, options: { redirectTo } }),
+    });
+    if (!res.ok) {
+      let msg = "Couldn't send reset link";
+      try { const j = await res.json(); msg = j?.msg || j?.message || msg; } catch {}
+      throw new Error(msg);
+    }
+    return true;
+  },
+
   async uploadAvatar(base64DataUri) {
     const res = await authFetch(`${API_BASE}/api/user/avatar`, {
       method: "POST",
@@ -4328,7 +4343,9 @@ export default function App() {
 
   // ─── Auth state ───────────────────────────────────────────
   const [authed, setAuthed] = useState(!!Auth.getToken());
-  const [authScreen, setAuthScreen] = useState("login"); // login | signup
+  const [authScreen, setAuthScreen] = useState("login"); // login | signup | reset
+  const [resetSent, setResetSent] = useState(false);
+  const [resetSentAt, setResetSentAt] = useState(null);
   const [authEmail, setAuthEmail] = useState("");
   const [authPass, setAuthPass] = useState("");
   const [authErr, setAuthErr] = useState(null);
@@ -6425,17 +6442,69 @@ export default function App() {
         </div>
       )}
 
-      {/* ─── AUTH (Login / Signup) ────────────────────────── */}
+      {/* ─── AUTH (Login / Signup / Reset) ────────────────────────── */}
       {screen === "auth" && (
         <div className={fade} style={{ flex: 1, display: "flex", flexDirection: "column", padding: "50px 14px 14px", background: "var(--bg-primary)", color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
           {/* Top bar: close + label */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
-            <button onClick={() => trans(() => setScreen(authed ? "app" : "onboarding"))} aria-label="Close" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
+            <button onClick={() => {
+              if (authScreen === "reset") { setAuthScreen("login"); setResetSent(false); setAuthErr(null); return; }
+              trans(() => setScreen(authed ? "app" : "onboarding"));
+            }} aria-label="Close" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
               <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
             </button>
-            <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase" }}>{authScreen === "signup" ? "sign up" : "log in"}</span>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase" }}>{authScreen === "signup" ? "sign up" : authScreen === "reset" ? "reset password" : "log in"}</span>
             <span style={{ width: 24 }} />
           </div>
+
+          {/* ─── RESET PASSWORD branch ─── */}
+          {authScreen === "reset" && (
+            <>
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 700, letterSpacing: -1.2, lineHeight: 1.05, textTransform: "lowercase" }}>
+                  enter your<br/>email
+                </div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 10 }}>we'll send a reset link in under a minute.</div>
+              </div>
+
+              {authErr && <div className="auth-err">{authErr}</div>}
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!authEmail) return;
+                setAuthErr(null);
+                setAuthLoading(true);
+                try {
+                  await API.sendPasswordReset(authEmail);
+                  setResetSent(true);
+                  setResetSentAt(Date.now());
+                } catch (err) {
+                  setAuthErr(err?.message || "Couldn't send reset link");
+                }
+                setAuthLoading(false);
+              }} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <input type="email" placeholder="email address" value={authEmail} onChange={e => setAuthEmail(e.target.value)} autoComplete="email" autoFocus style={{ height: 50, borderRadius: 14, border: "1.5px solid var(--border)", background: "var(--bg-card)", padding: "0 16px", fontSize: 14, fontFamily: "var(--font-sans)", outline: "none", color: "var(--text-primary)", boxSizing: "border-box", margin: 0 }} />
+
+                {resetSent && (
+                  <div style={{ marginTop: 4, padding: 12, borderRadius: 10, background: "var(--accent)", color: "var(--accent-text)", fontSize: 11, fontWeight: 600, fontFamily: "var(--font-display)", display: "flex", gap: 8, alignItems: "center" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                    <span>check your inbox · sent {resetSentAt ? Math.max(1, Math.round((Date.now() - resetSentAt) / 1000)) : 0}s ago</span>
+                  </div>
+                )}
+
+                <button type="submit" disabled={authLoading || !authEmail} style={{ width: "100%", height: 52, borderRadius: 16, border: "none", background: !authEmail ? "var(--border)" : "var(--text-primary)", color: !authEmail ? "var(--text-secondary)" : "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, cursor: (authLoading || !authEmail) ? "not-allowed" : "pointer", marginTop: 14, textTransform: "lowercase" }}>
+                  {authLoading ? "sending…" : resetSent ? "resend link" : "send reset link"}
+                </button>
+              </form>
+
+              <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: "var(--text-secondary)" }}>
+                back to{" "}
+                <button onClick={() => { setAuthScreen("login"); setAuthErr(null); setResetSent(false); }} style={{ background: "transparent", border: "none", color: "var(--text-primary)", fontWeight: 700, textDecoration: "underline", padding: 0, cursor: "pointer", fontSize: "inherit", fontFamily: "inherit" }}>sign in</button>
+              </div>
+            </>
+          )}
+
+          {authScreen !== "reset" && (<>
 
           {/* Hero */}
           <div style={{ marginBottom: 24 }}>
@@ -6486,6 +6555,11 @@ export default function App() {
             {authScreen === "signup" && authPass.length > 0 && authPass.length < 6 && (
               <div style={{ fontSize: 11, color: "var(--error)", opacity: 0.8 }}>password must be at least 6 characters</div>
             )}
+            {authScreen === "login" && (
+              <div style={{ textAlign: "right", marginTop: 2 }}>
+                <button type="button" onClick={() => { setAuthScreen("reset"); setAuthErr(null); setResetSent(false); }} style={{ background: "transparent", border: "none", color: "var(--text-primary)", fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, cursor: "pointer", padding: "4px 0", textTransform: "lowercase" }}>forgot password?</button>
+              </div>
+            )}
             <button type="submit" disabled={authLoading || !authEmail || authPass.length < 6} style={{ width: "100%", height: 52, borderRadius: 16, border: "none", background: (!authEmail || authPass.length < 6) ? "var(--border)" : "var(--text-primary)", color: (!authEmail || authPass.length < 6) ? "var(--text-secondary)" : "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, cursor: (authLoading || !authEmail || authPass.length < 6) ? "not-allowed" : "pointer", marginTop: 6, textTransform: "lowercase" }}>
               {authLoading ? "loading…" : authScreen === "signup" ? "create account" : "log in"}
             </button>
@@ -6499,12 +6573,13 @@ export default function App() {
             </button>
           </div>
 
-          {guestScans > 0 && (
+          {guestScans > 0 && authScreen !== "reset" && (
             <button style={{ background: "transparent", border: "none", color: "var(--text-tertiary)", fontSize: 12, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px 0", marginTop: 4 }}
               onClick={() => trans(() => setScreen("app"))}>
               continue browsing
             </button>
           )}
+          </>)}
         </div>
       )}
 
