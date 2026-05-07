@@ -6978,40 +6978,79 @@ export default function App() {
       })()}
 
       {/* ─── SIGNUP PROMPT (guest users) ────────────────── */}
-      {signupPrompt && (
-        <div className="modal-overlay" onClick={() => setSignupPrompt(null)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ textAlign: "center", padding: "32px 24px", background: "var(--bg-primary)", borderRadius: 24 }}>
-            <button className="modal-x" onClick={() => setSignupPrompt(null)} aria-label="Close" style={{ width: 36, height: 36, borderRadius: 999, background: "var(--bg-card)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)", padding: 0 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-            </button>
-            <div style={{ display: "inline-block", padding: "6px 12px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 800, letterSpacing: 1, marginBottom: 14, textTransform: "uppercase" }}>
-              {signupPrompt === "scan_limit" ? "free account" : signupPrompt === "save" ? "sign up to save" : signupPrompt === "social" ? "join attaire" : "sign up"}
+      {signupPrompt && (() => {
+        const isPostScan = signupPrompt === "post_scan";
+        const isSocial = signupPrompt === "social";
+        const badge = signupPrompt === "scan_limit" ? "free account" : signupPrompt === "save" ? "sign up to save" : isSocial ? "join attaire" : isPostScan ? "before they go" : "sign up";
+        const title = signupPrompt === "scan_limit" ? "you're on a roll" : signupPrompt === "save" ? "save your favorites" : isSocial ? "share fits with friends" : isPostScan ? "save these before they go" : "loving what you see?";
+        const body = signupPrompt === "scan_limit" ? "create a free account to keep scanning. you get 12 scans per month, plus saves and wishlists." : signupPrompt === "save" ? "sign up free to save items, build wishlists, and get price drop alerts." : isSocial ? "create collections, follow stylists, see what your friends are scanning." : isPostScan ? "create an account to save this scan, track prices, and get daily picks built for you." : "sign up free to save your results, unlock more scans, and get personalized recommendations.";
+
+        // Post-scan: show 4-tile image grid of just-scanned items
+        const recentItems = isPostScan
+          ? (results?.items || []).slice(0, 4).map((it, i) => {
+              const img = it.image_url || it.thumbnail_url || ["/unified-assets/aritzia1.jpg", "/unified-assets/m-old.jpg", "/unified-assets/skims1.jpg", "/unified-assets/aritzia2.jpg"][i];
+              const tier = (it.tiers && it.tiers.mid?.[0]) || (it.tiers && it.tiers.budget?.[0]) || null;
+              const price = tier?.price || it.price || ["$148", "$190", "$58", "$680"][i];
+              return { src: img, price };
+            })
+          : [];
+        while (isPostScan && recentItems.length < 4) {
+          recentItems.push({ src: ["/unified-assets/aritzia1.jpg", "/unified-assets/m-old.jpg", "/unified-assets/skims1.jpg", "/unified-assets/aritzia2.jpg"][recentItems.length], price: ["$148", "$190", "$58", "$680"][recentItems.length] });
+        }
+
+        const socialAvatars = ["/unified-assets/aritzia2.jpg", "/unified-assets/skims1.jpg", "/unified-assets/m-old.jpg", "/unified-assets/streetD.jpg"];
+
+        return (
+          <div className="modal-overlay" onClick={() => setSignupPrompt(null)}>
+            <div className="modal-box" onClick={e => e.stopPropagation()} style={{ textAlign: isSocial ? "center" : "left", padding: isPostScan || isSocial ? "20px 20px 24px" : "32px 24px", background: "var(--bg-primary)", borderRadius: 24, maxWidth: 380 }}>
+              <button onClick={() => setSignupPrompt(null)} aria-label="Close" style={{ position: "absolute", top: 14, right: 14, width: 36, height: 36, borderRadius: 999, background: "var(--bg-card)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)", padding: 0, cursor: "pointer", zIndex: 1 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+              </button>
+
+              {/* Visual: image grid for post_scan, avatar stack for social */}
+              {isPostScan && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 14, marginTop: 6 }}>
+                  {recentItems.map((it, i) => (
+                    <div key={i} style={{ borderRadius: 12, overflow: "hidden", aspectRatio: "4/5", position: "relative", background: "var(--bg-card)" }}>
+                      <img src={it.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                      <div style={{ position: "absolute", bottom: 6, left: 6, padding: "3px 8px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 800 }}>{it.price}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {isSocial && (
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 6, marginBottom: 14 }}>
+                  {socialAvatars.map((s, i) => (
+                    <div key={i} style={{ width: 54, height: 54, borderRadius: 999, overflow: "hidden", border: "3px solid var(--bg-primary)", marginLeft: i === 0 ? 0 : -14, position: "relative", zIndex: 4 - i, background: "var(--bg-card)" }}>
+                      <img src={s} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: "inline-block", padding: "5px 11px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 800, letterSpacing: 1, marginBottom: 12, textTransform: "uppercase" }}>{badge}</div>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: isPostScan || isSocial ? 26 : 22, fontWeight: 700, letterSpacing: -0.8, lineHeight: 1.05, marginBottom: 8, color: "var(--text-primary)", textTransform: "lowercase" }}>{title}</h2>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 18 }}>{body}</p>
+
+              <button onClick={() => { setSignupPrompt(null); trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }} style={{ width: "100%", height: 52, borderRadius: 16, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, marginBottom: 8, cursor: "pointer", textTransform: "lowercase" }}>
+                {isPostScan ? "save with email →" : isSocial ? "create account →" : "create free account"}
+              </button>
+
+              {(isPostScan || isSocial) && (
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  <button onClick={() => { setSignupPrompt(null); setOauthLoading('apple'); setTimeout(() => API.oauthLogin("apple"), 200); }} style={{ flex: 1, height: 46, borderRadius: 14, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-primary)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 13, cursor: "pointer", textTransform: "lowercase" }}>apple</button>
+                  <button onClick={() => { setSignupPrompt(null); setOauthLoading('google'); setTimeout(() => API.oauthLogin("google"), 200); }} style={{ flex: 1, height: 46, borderRadius: 14, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-primary)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 13, cursor: "pointer", textTransform: "lowercase" }}>google</button>
+                </div>
+              )}
+
+              <button style={{ width: "100%", background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px 0", minHeight: 44 }}
+                onClick={() => setSignupPrompt(null)}>
+                {isPostScan ? "maybe later · continue as guest" : "maybe later"}
+              </button>
             </div>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.8, marginBottom: 8, color: "var(--text-primary)" }}>
-              {signupPrompt === "scan_limit" ? "you're on a roll"
-                : signupPrompt === "save" ? "save your favorites"
-                : signupPrompt === "social" ? "join the community"
-                : "loving what you see?"}
-            </h2>
-            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 18 }}>
-              {signupPrompt === "scan_limit"
-                ? "create a free account to keep scanning. you get 12 scans per month, plus saves and wishlists."
-                : signupPrompt === "save"
-                ? "sign up free to save items, build wishlists, and get price drop alerts."
-                : signupPrompt === "social"
-                ? "create a free account to follow stylists, share looks, and build your style profile."
-                : "sign up free to save your results, unlock more scans, and get personalized recommendations."}
-            </p>
-            <button onClick={() => { setSignupPrompt(null); trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }} style={{ width: "100%", height: 50, borderRadius: 14, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, marginBottom: 8, cursor: "pointer", textTransform: "lowercase" }}>
-              create free account
-            </button>
-            <button style={{ background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px 0", minHeight: 44 }}
-              onClick={() => setSignupPrompt(null)}>
-              maybe later
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ─── UPGRADE SUCCESS BANNER ──────────────────────── */}
       {upgradeSuccess && (
