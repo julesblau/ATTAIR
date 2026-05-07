@@ -9801,8 +9801,39 @@ export default function App() {
                       {/* NOTIFICATIONS + ACCOUNT sub-pages render the existing inline content below.
                           They use the legacy inline settings UI which lives in the {settingsRoute === "account"} block. */}
 
-                      {/* Account sub-page = legacy inline settings (Appearance, Preferences, Account, Support sections) */}
+                      {/* Account sub-page = profile fields header (per design canvas USetAccount) + legacy inline settings */}
                       {settingsRoute === "account" && (<>
+
+                  {/* Avatar + change photo (read-only display per design) */}
+                  <div style={{ padding: "20px 0 14px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{ position: "relative", width: 96, height: 96 }}>
+                      <div style={{ width: 96, height: 96, borderRadius: 999, overflow: "hidden", background: "var(--bg-card)", border: "1px solid var(--border)" }}>
+                        {authAvatarUrl ? (
+                          <img src={authAvatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 800 }}>{(authName || authEmail || "A")[0].toUpperCase()}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-secondary)", fontFamily: "var(--font-display)", fontWeight: 700, textTransform: "lowercase" }}>change photo</div>
+                  </div>
+
+                  {/* Profile fields list (read-only — taps fall through to existing handlers if any) */}
+                  <div style={{ background: "var(--bg-card)", borderRadius: 14, overflow: "hidden", border: "1px solid var(--border)", marginBottom: 14 }}>
+                    {[
+                      { l: "name", v: authName || "—" },
+                      { l: "email", v: authEmail || "—" },
+                      authPhone && { l: "phone", v: authPhone },
+                    ].filter(Boolean).map((row, i, arr) => (
+                      <div key={i} style={{ padding: 14, borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <div style={{ fontFamily: "var(--font-display)", fontSize: 11, color: "var(--text-secondary)", fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>{row.l}</div>
+                          <div style={{ fontSize: 14, marginTop: 2, color: "var(--text-primary)" }}>{row.v}</div>
+                        </div>
+                        <span style={{ color: "var(--text-secondary)", fontSize: 18 }}>›</span>
+                      </div>
+                    ))}
+                  </div>
 
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1, textTransform: "uppercase", padding: "12px 0 4px" }}>{t("settings_appearance")}</div>
                   {/* Theme toggle */}
@@ -12472,82 +12503,102 @@ export default function App() {
 
       {/* ─── Taste Profile Modal ─────────────────────── */}
       {hangerTasteProfileOpen && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 10002, background: "var(--bg-app)", overflowY: "auto" }}>
-          <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))", borderBottom: "1px solid var(--border)" }}>
-            <button onClick={() => setHangerTasteProfileOpen(false)} style={{ background: "none", border: "none", color: "var(--text-primary)", fontSize: 24, cursor: "pointer", padding: 4 }}>&#x2190;</button>
-            <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{t("hanger_taste_profile")}</span>
-            <div style={{ width: 32 }} />
+        <div style={{ position: "fixed", inset: 0, zIndex: 10002, background: "var(--bg-primary)", overflowY: "auto", paddingTop: 50, paddingBottom: 30, fontFamily: "var(--font-sans)", color: "var(--text-primary)" }}>
+          {/* Top bar — design canvas UTasteProfile */}
+          <div style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => setHangerTasteProfileOpen(false)} aria-label="Close" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--text-secondary)" }}>taste profile</span>
           </div>
 
-          <div style={{ padding: "24px 20px 80px" }}>
-            {!hangerTasteProfile || !hangerTasteProfile.archetype ? (
-              <div style={{ textAlign: "center", padding: "60px 20px" }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>&#128083;</div>
-                <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>Keep Swiping!</div>
-                <div style={{ fontSize: 14, color: "var(--text-tertiary)", lineHeight: 1.5 }}>Complete a few daily cadences to build your taste profile</div>
+          {!hangerTasteProfile || !hangerTasteProfile.archetype ? (
+            <div style={{ padding: "60px 24px", textAlign: "center" }}>
+              <div style={{ width: 130, height: 130, borderRadius: 999, background: "var(--bg-card)", border: "1px solid var(--border)", margin: "0 auto 18px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
               </div>
-            ) : (
-              <>
-                {/* Archetype hero */}
-                <div style={{ textAlign: "center", marginBottom: 24 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-tertiary)", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 6 }}>Your Style Archetype</div>
-                  <div style={{ fontSize: 26, fontWeight: 800, color: "var(--accent)" }}>{hangerTasteProfile.archetype}</div>
-                </div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "var(--text-primary)", textTransform: "lowercase" }}>keep swiping</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 10, lineHeight: 1.5 }}>complete a few daily cadences to build your taste profile.</div>
+            </div>
+          ) : (
+            <>
+              {/* Hero */}
+              <div style={{ padding: "12px 14px 0" }}>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, textTransform: "lowercase", color: "var(--text-primary)" }}>tune your<br/>taste</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8 }}>the more you tell us, the better the picks.</div>
+              </div>
 
-                {/* Style breakdown */}
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>Style Breakdown</div>
-                  {(hangerTasteProfile.style_breakdown || []).map((s, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                      <span style={{ fontSize: 13, color: "var(--text-secondary)", width: 90, textAlign: "right", textTransform: "capitalize" }}>{s.style}</span>
-                      <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--bg-input)" }}>
-                        <div style={{ height: "100%", borderRadius: 4, background: i === 0 ? "var(--accent)" : "rgba(200, 255, 61, .4)", width: `${s.pct}%`, transition: "width .6s ease" }} />
-                      </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: i === 0 ? "var(--accent)" : "var(--text-tertiary)", width: 40 }}>{s.pct}%</span>
-                    </div>
-                  ))}
-                </div>
+              {/* Archetype eyebrow */}
+              <div style={{ padding: "20px 14px 0" }}>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase", marginBottom: 8 }}>your archetype</div>
+                <div style={{ display: "inline-block", padding: "6px 14px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, textTransform: "lowercase" }}>{hangerTasteProfile.archetype}</div>
+              </div>
 
-                {/* Wear rate */}
-                <div style={{ padding: 16, background: "var(--bg-card)", borderRadius: 14, border: "1px solid var(--border)", marginBottom: 24, textAlign: "center" }}>
-                  <div style={{ fontSize: 36, fontWeight: 800, color: "var(--accent)" }}>{hangerTasteProfile.wear_rate}%</div>
-                  <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>of outfits you'd wear</div>
-                  <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>Based on {hangerTasteProfile.total_votes} votes</div>
-                </div>
-
-                {/* Pro-gated sections */}
-                {hangerTasteProfile.favorite_vibes && hangerTasteProfile.favorite_vibes.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>Vibes You Love</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {hangerTasteProfile.favorite_vibes.map((v, i) => (
-                        <span key={i} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 100, background: "rgba(76,175,80,.1)", color: "#66BB6A", fontWeight: 600 }}>{v}</span>
-                      ))}
-                    </div>
+              {/* Wear rate big tile */}
+              <div style={{ padding: "20px 14px 0" }}>
+                <div style={{ padding: 18, borderRadius: 18, background: "var(--text-primary)", color: "var(--bg-primary)", position: "relative", overflow: "hidden" }}>
+                  <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: 999, background: "var(--accent)", opacity: 0.3 }} />
+                  <div style={{ position: "relative" }}>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 1, opacity: 0.7, textTransform: "uppercase" }}>wear rate</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 800, letterSpacing: -1, marginTop: 6 }}>{hangerTasteProfile.wear_rate}%</div>
+                    <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>of outfits you'd wear · {hangerTasteProfile.total_votes} votes</div>
                   </div>
-                )}
+                </div>
+              </div>
 
-                {hangerTasteProfile.avoid_vibes && hangerTasteProfile.avoid_vibes.length > 0 && (
-                  <div style={{ marginBottom: 20 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>Not Your Thing</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {hangerTasteProfile.avoid_vibes.map((v, i) => (
-                        <span key={i} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 100, background: "rgba(239,83,80,.08)", color: "#EF5350", fontWeight: 600 }}>{v}</span>
-                      ))}
+              {/* Style breakdown bars */}
+              <div style={{ padding: "20px 14px 0" }}>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase", marginBottom: 10 }}>style breakdown</div>
+                {(hangerTasteProfile.style_breakdown || []).map((s, i, arr) => (
+                  <div key={i} style={{ padding: "10px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, fontFamily: "var(--font-display)" }}>{s.style}</span>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700 }}>{s.pct}%</span>
+                    </div>
+                    <div style={{ height: 6, borderRadius: 3, background: "var(--bg-card)", overflow: "hidden" }}>
+                      <div style={{ width: `${s.pct}%`, height: "100%", background: "var(--text-primary)", borderRadius: 3, transition: "width 600ms var(--ease-smooth)" }} />
                     </div>
                   </div>
-                )}
+                ))}
+              </div>
 
-                {hangerTasteProfile.is_pro_gated && (
-                  <div style={{ padding: 20, background: "linear-gradient(135deg, rgba(200, 255, 61, .08), rgba(200, 255, 61, .03))", border: "1px solid rgba(200, 255, 61, .15)", borderRadius: 16, textAlign: "center" }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>Unlock Full Taste Profile</div>
-                    <div style={{ fontSize: 12, color: "var(--text-tertiary)", lineHeight: 1.5, marginBottom: 12 }}>See your favorite vibes, styles to avoid, and deep analytics with Pro</div>
-                    <button onClick={() => { setHangerTasteProfileOpen(false); setScreen("paywall"); }} style={{ padding: "12px 28px", borderRadius: 100, background: "var(--accent)", color: "var(--accent-text)", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer" }}>Go Pro</button>
+              {/* Vibes you love */}
+              {hangerTasteProfile.favorite_vibes && hangerTasteProfile.favorite_vibes.length > 0 && (
+                <div style={{ padding: "20px 14px 0" }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase", marginBottom: 10 }}>vibes you love</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {hangerTasteProfile.favorite_vibes.map((v, i) => (
+                      <span key={i} style={{ padding: "7px 12px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-display)" }}>{v}</span>
+                    ))}
                   </div>
-                )}
-              </>
-            )}
-          </div>
+                </div>
+              )}
+
+              {/* Not your thing */}
+              {hangerTasteProfile.avoid_vibes && hangerTasteProfile.avoid_vibes.length > 0 && (
+                <div style={{ padding: "20px 14px 0" }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase", marginBottom: 10 }}>never show me</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {hangerTasteProfile.avoid_vibes.map((v, i) => (
+                      <span key={i} style={{ padding: "7px 12px", borderRadius: 999, background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 11, fontWeight: 600, fontFamily: "var(--font-display)", border: "1px solid var(--border)", textDecoration: "line-through", textDecorationColor: "var(--text-secondary)" }}>{v}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pro upsell */}
+              {hangerTasteProfile.is_pro_gated && (
+                <div style={{ padding: "20px 14px 30px" }}>
+                  <div style={{ padding: 16, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16 }}>
+                    <div style={{ display: "inline-block", padding: "3px 8px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 9, fontWeight: 800, letterSpacing: 1, marginBottom: 8, textTransform: "uppercase" }}>✦ pro</div>
+                    <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, textTransform: "lowercase" }}>unlock full taste profile</div>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.4 }}>see your favorite vibes, styles to avoid, and deep analytics.</div>
+                    <button onClick={() => { setHangerTasteProfileOpen(false); setScreen("paywall"); }} style={{ padding: "10px 18px", background: "var(--text-primary)", color: "var(--bg-primary)", border: "none", borderRadius: 999, fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, cursor: "pointer", textTransform: "lowercase", letterSpacing: 0.3 }}>go pro →</button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
