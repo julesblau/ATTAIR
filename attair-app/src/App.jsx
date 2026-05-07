@@ -4570,6 +4570,7 @@ export default function App() {
   // ─── Wishlists ────────────────────────────────────────────
   const [wishlists, setWishlists] = useState([]);       // [{ id, name, created_at }]
   const [activeWishlist, setActiveWishlist] = useState(null); // { id, name } | null
+  const [retakeConfirmOpen, setRetakeConfirmOpen] = useState(false);
   const [savedSubTab, setSavedSubTab] = useState("looks"); // "scans" | "looks" | "alerts" — design canvas split
   const [settingsRoute, setSettingsRoute] = useState("root"); // "root" | "notifications" | "account" | "privacy" | "billing" | "help"
   const [privacyToggles, setPrivacyToggles] = useState(() => {
@@ -7659,8 +7660,8 @@ export default function App() {
               {/* Image with toggleable hotspots */}
               <div className="res-img-sec">
                 <img src={img} className="res-img" alt="Scanned outfit" /><div className="res-grad" />
-                <button className="res-close" onClick={reset}><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
-                <button className="res-new" onClick={reset}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>{t("new_scan")}</button>
+                <button className="res-close" onClick={() => setRetakeConfirmOpen(true)}><svg viewBox="0 0 14 14"><path d="M2 2l10 10M12 2L2 12"/></svg></button>
+                <button className="res-new" onClick={() => setRetakeConfirmOpen(true)}><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="3"/><circle cx="12" cy="13" r="4"/><path d="M8 6l1.5-3h5L16 6"/></svg>{t("new_scan")}</button>
                 {results.items.map((item, i) => {
                   const py = item.position_y != null ? Math.max(0.08, Math.min(0.85, item.position_y)) : (CAT_POSITIONS[item.category] || 0.5);
                   const px = 0.5 + (i % 2 === 0 ? -0.22 : 0.22);
@@ -8138,7 +8139,7 @@ export default function App() {
                 {img && (
                   <div style={{ width: 92, height: 120, borderRadius: "var(--radius-lg)", overflow: "hidden", flexShrink: 0, position: "relative" }}>
                     <img src={img} alt="Scanned outfit" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <button onClick={reset} style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.5)", border: "none", color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} aria-label="New scan">
+                    <button onClick={() => setRetakeConfirmOpen(true)} style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,.5)", border: "none", color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }} aria-label="New scan">
                       <svg viewBox="0 0 14 14" width="10" height="10" stroke="currentColor" strokeWidth="2"><path d="M2 2l10 10M12 2L2 12"/></svg>
                     </button>
                   </div>
@@ -10545,6 +10546,17 @@ export default function App() {
                 {(saved?.length || 0)} fresh from your saved scans
               </div>
             </div>
+            {/* Empty state — fresh user with no saved + no history (design canvas UPicksEmpty) */}
+            {(saved?.length || 0) === 0 && (history?.length || 0) === 0 ? (
+              <div style={{ padding: "30px 14px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                <div style={{ width: 130, height: 130, borderRadius: 999, background: "var(--bg-card)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, border: "1px solid var(--border)" }}>
+                  <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+                </div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700, letterSpacing: -0.4, lineHeight: 1.2, color: "var(--text-primary)", textTransform: "lowercase" }}>scan a fit to start<br/>building picks</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 10, lineHeight: 1.5, maxWidth: 280 }}>we'll save your favorites and refresh the feed daily based on your style dna.</div>
+                <button onClick={() => setTab("scan")} style={{ marginTop: 20, padding: "14px 24px", borderRadius: 16, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, cursor: "pointer", textTransform: "lowercase" }}>scan first fit →</button>
+              </div>
+            ) : (<>
             <div style={{ display: "flex", gap: 6, padding: "12px 16px 10px", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
               {["for you", "old money", "streetwear", "under $100", "just dropped", "y2k"].map((tag, i) => (
                 <span key={tag} style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 999, background: i === 0 ? "var(--text-primary)" : "var(--bg-card)", color: i === 0 ? "var(--bg-primary)" : "var(--text-primary)", fontSize: 11, fontWeight: 600, fontFamily: "var(--font-display)", border: i === 0 ? "none" : "1px solid var(--border)" }}>{tag}</span>
@@ -10616,6 +10628,7 @@ export default function App() {
                 );
               })()}
             </div>
+            </>)}
           </div>
         )}
 
@@ -12572,6 +12585,21 @@ export default function App() {
         <div className={`toast toast-${toast.type}`}>{toast.message}</div>
       </div>
     )}
+    {/* ─── RETAKE CONFIRM SHEET (design canvas UScanRetake) ─── */}
+    {retakeConfirmOpen && (
+      <div className="modal-overlay" onClick={() => setRetakeConfirmOpen(false)} style={{ alignItems: "flex-end" }}>
+        <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, background: "var(--bg-primary)", borderRadius: "24px 24px 0 0", padding: "12px 20px 24px", animation: "slideIn .25s var(--spring)" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 999, background: "var(--border)", margin: "0 auto 18px" }} />
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.6, color: "var(--text-primary)", textTransform: "lowercase" }}>retake this scan?</div>
+          <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8, lineHeight: 1.5 }}>your current results will be cleared. saved items stay safe in your closet.</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+            <button onClick={() => setRetakeConfirmOpen(false)} style={{ flex: 1, height: 50, borderRadius: 14, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-primary)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 13, cursor: "pointer", textTransform: "lowercase" }}>keep results</button>
+            <button onClick={() => { setRetakeConfirmOpen(false); reset(); }} style={{ flex: 1, height: 50, borderRadius: 14, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, letterSpacing: 0.3, cursor: "pointer", textTransform: "lowercase" }}>retake →</button>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* ─── OFFLINE TAKEOVER (design canvas UErrorOffline) ─── */}
     {isOffline && !offlineDismissed && (
       <div role="dialog" aria-label="Offline" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 11999, background: "var(--bg-primary)", display: "flex", flexDirection: "column", paddingTop: 50, fontFamily: "var(--font-sans)" }}>
