@@ -906,49 +906,78 @@ const UpgradeModal = ({ trigger, onClose, onUpgrade, onStartTrial, userStatus })
   const [plan, setPlan] = useState("yearly");
   const [loadingPlan, setLoadingPlan] = useState(false);
   const msgs = {
-    scan_limit: { title: `You've used all ${userStatus?.scans_limit || 12} free scans this month`, sub: "Go Pro for unlimited scans, zero ads, and price drop alerts.", cta: "Unlock Unlimited Scans" },
-    ad_fatigue: { title: "Tired of ads?", sub: "Pro members get a completely ad-free experience plus unlimited scans.", cta: "Remove Ads Forever" },
-    history_expiring: { title: "Your scan history expires soon", sub: "Free accounts only keep 7 days. Pro keeps everything forever.", cta: "Keep My History" },
-    save_limit: { title: `You've hit the ${userStatus?.saved_limit || 20}-item save limit`, sub: "Unlock unlimited saves, price drop alerts, and an ad-free experience.", cta: "Save Unlimited Items" },
-    price_drop: { title: "A saved item dropped 30%", sub: "Pro users get instant price drop alerts. Never miss a deal.", cta: "Get Price Alerts" },
-    general: { title: "Unlock the full experience", sub: "Unlimited scans, zero ads, price alerts, and more.", cta: "Go Pro" },
+    scan_limit: { eyebrow: "out of scans", title: `you've used all ${userStatus?.scans_limit || 12} free scans this month`, sub: "go pro for unlimited scans, zero ads, and price drop alerts.", cta: "unlock unlimited scans" },
+    ad_fatigue: { eyebrow: "tired of ads?", title: "ad-free experience", sub: "pro members get a completely ad-free experience plus unlimited scans.", cta: "remove ads forever" },
+    history_expiring: { eyebrow: "history expiring", title: "your scan history expires soon", sub: "free accounts only keep 7 days. pro keeps everything forever.", cta: "keep my history" },
+    save_limit: { eyebrow: "save limit hit", title: `you've hit the ${userStatus?.saved_limit || 20}-item save limit`, sub: "unlock unlimited saves, price drop alerts, and an ad-free experience.", cta: "save unlimited items" },
+    price_drop: { eyebrow: "price drop alert", title: "a saved item dropped 30%", sub: "pro users get instant price drop alerts. never miss a deal.", cta: "get price alerts" },
+    post_trial: { eyebrow: "your free trial ended", title: "keep scanning?", sub: `you scanned ${userStatus?.total_scans || "a bunch of"} fits in your trial. don't lose momentum.`, cta: "continue pro" },
+    general: { eyebrow: "✦ go pro", title: "unlock the full experience", sub: "unlimited scans, zero ads, price alerts, and more.", cta: "go pro" },
   };
   const m = msgs[trigger] || msgs.general;
   const handleCta = async () => {
     setLoadingPlan(true);
     try { await onUpgrade(plan); } finally { setLoadingPlan(false); }
   };
+  const isPostTrial = trigger === "post_trial";
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()} style={{ overflowY: "auto", maxHeight: "90vh" }}>
-        <button className="modal-x" onClick={onClose} aria-label="Close">✕</button>
-        <div className="pw-badge">✦ ATTAIRE PRO</div>
-        <h2 className="modal-title">{m.title}</h2>
-        <p className="modal-sub">{m.sub}</p>
-        <div className="pw-fs" style={{ marginBottom: 24 }}>
-          {["Unlimited AI outfit scans", "Completely ad-free", "Price drop alerts", "Full scan history forever"].map((f, i) => (
-            <div className="pw-f" key={i}><div className="pw-ck">✓</div>{f}</div>
-          ))}
-        </div>
-        <div className="pw-plans">
-          <div className={`pw-p${plan === "yearly" ? " sel" : ""}`} onClick={() => setPlan("yearly")} style={{ textAlign: "center" }}>
-            <div className="pw-ptag">SAVE 50%</div>
-            <div className="pw-pp">$29.99<span className="pw-pd">/yr</span></div>
-            <div className="pw-pw">$0.58/week</div>
-          </div>
-          <div className={`pw-p${plan === "monthly" ? " sel" : ""}`} onClick={() => setPlan("monthly")} style={{ textAlign: "center" }}>
-            <div className="pw-pp">$4.99<span className="pw-pd">/mo</span></div>
-            <div className="pw-pw">$1.25/week</div>
-          </div>
-        </div>
-        <button className="cta" onClick={handleCta} disabled={loadingPlan} style={{ opacity: loadingPlan ? 0.7 : 1 }}>
-          {loadingPlan ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(12,12,14,.3)", borderTopColor: "#0C0C0E", borderRadius: "50%", animation: "spin .7s linear infinite" }} />Processing...</span> : m.cta}
+      <div className="modal-box" onClick={e => e.stopPropagation()} style={{ overflowY: "auto", maxHeight: "90vh", textAlign: "left" }}>
+        <button className="modal-x" onClick={onClose} aria-label="Close" style={{ width: 36, height: 36, borderRadius: 999, background: "var(--bg-card)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)", padding: 0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
-        <button className="modal-later" onClick={onClose}>Maybe later</button>
-        {userStatus?.tier === "free" && !userStatus?.trial_ends_at && (
-          <div style={{ textAlign: "center", marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
-            <button onClick={() => onStartTrial && onStartTrial()} style={{ background: "transparent", border: "1px solid rgba(255,107,53,.35)", color: "#FF6B35", padding: "10px 24px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-sans)", width: "100%" }}>
-              Start 7-day free trial — no card required
+        <div className="pw-badge">{m.eyebrow.toUpperCase()}</div>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 700, letterSpacing: -1, lineHeight: 1, margin: "0 0 10px", color: "var(--text-primary)", textTransform: "lowercase" }}>{m.title}</h2>
+        <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, margin: "0 0 18px" }}>{m.sub}</p>
+        {isPostTrial ? (
+          <div style={{ padding: 18, borderRadius: 18, background: "var(--text-primary)", color: "var(--bg-primary)", position: "relative", overflow: "hidden", marginBottom: 14 }}>
+            <div style={{ position: "absolute", top: -30, right: -30, width: 140, height: 140, borderRadius: 999, background: "var(--accent)", opacity: 0.3 }} />
+            <div style={{ position: "relative" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 1, opacity: 0.7, textTransform: "uppercase" }}>✦ continue pro</div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 8 }}>
+                <span style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 800, letterSpacing: -1 }}>$29.99</span>
+                <span style={{ fontSize: 13, opacity: 0.7 }}>/year · $2.50/mo</span>
+              </div>
+              <div style={{ marginTop: 6, fontSize: 11, opacity: 0.7, textDecoration: "line-through" }}>was $4.99/mo · save 50%</div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="pw-fs" style={{ marginBottom: 18 }}>
+              {["unlimited AI outfit scans", "completely ad-free", "price drop alerts", "full scan history forever"].map((f, i) => (
+                <div className="pw-f" key={i}>
+                  <div className="pw-ck">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                  </div>
+                  {f}
+                </div>
+              ))}
+            </div>
+            <div className="pw-plans">
+              <div className={`pw-p${plan === "yearly" ? " sel" : ""}`} onClick={() => setPlan("yearly")}>
+                <div className="pw-ptag">BEST VALUE · SAVE 50%</div>
+                <div className="pw-prow">
+                  <span><span className="pw-pp">$29.99</span><span className="pw-pd"> /yr</span></span>
+                  <span className="pw-pw">$0.58/week</span>
+                </div>
+              </div>
+              <div className={`pw-p${plan === "monthly" ? " sel" : ""}`} onClick={() => setPlan("monthly")}>
+                <div className="pw-prow">
+                  <span><span className="pw-pp">$4.99</span><span className="pw-pd"> /mo</span></span>
+                  <span className="pw-pw">$1.25/week</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+        <button onClick={handleCta} disabled={loadingPlan} style={{ width: "100%", height: 52, borderRadius: 16, border: "none", background: isPostTrial ? "var(--accent)" : "var(--text-primary)", color: isPostTrial ? "var(--accent-text)" : "var(--bg-primary)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, letterSpacing: 0.3, cursor: loadingPlan ? "default" : "pointer", textTransform: "lowercase", opacity: loadingPlan ? 0.7 : 1, marginTop: 4 }}>
+          {loadingPlan ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid rgba(0,0,0,.3)", borderTopColor: isPostTrial ? "var(--accent-text)" : "var(--bg-primary)", borderRadius: "50%", animation: "spin .7s linear infinite" }} />processing…</span> : m.cta}
+        </button>
+        <button onClick={onClose} style={{ width: "100%", padding: "10px 0", marginTop: 8, background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 12, fontFamily: "var(--font-sans)", cursor: "pointer", textTransform: "lowercase" }}>{isPostTrial ? "downgrade to free (1 scan/day)" : "maybe later"}</button>
+        {!isPostTrial && userStatus?.tier === "free" && !userStatus?.trial_ends_at && (
+          <div style={{ marginTop: 8, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+            <button onClick={() => onStartTrial && onStartTrial()} style={{ width: "100%", padding: "12px 0", background: "transparent", border: "1.5px solid var(--text-primary)", color: "var(--text-primary)", fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 600, borderRadius: 14, cursor: "pointer", textTransform: "lowercase" }}>
+              start 7-day free trial — no card required
             </button>
           </div>
         )}
