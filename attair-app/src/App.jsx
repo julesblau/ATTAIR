@@ -7012,14 +7012,16 @@ export default function App() {
       {/* ─── Style Twin Save Banner ────────────────────── */}
       {styleTwinSaveBanner && screen === "app" && (
         <div className="animate-slide-up style-twin-save-toast" onClick={() => setStyleTwinSaveBanner(null)}>
-          <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(200, 255, 61, .15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent)" strokeWidth="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg>
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--accent-text)" strokeWidth="2"><circle cx="9" cy="7" r="3"/><circle cx="15" cy="7" r="3"/><path d="M3 21c0-3.31 2.69-6 6-6h0c1.1 0 2.12.3 3 .82A5.98 5.98 0 0115 15h0c3.31 0 6 2.69 6 6"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>Style Twin Match!</div>
-            <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>{styleTwinSaveBanner.message}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 1 }}>style twin match</div>
+            <div style={{ fontSize: 12, opacity: 0.8, lineHeight: 1.3 }}>{styleTwinSaveBanner.message}</div>
           </div>
-          <button onClick={() => { setStyleTwinSaveBanner(null); }} style={{ background: "var(--accent)", color: "var(--accent-text)", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>Dismiss</button>
+          <button onClick={(e) => { e.stopPropagation(); setStyleTwinSaveBanner(null); }} aria-label="Dismiss" style={{ background: "transparent", border: "none", color: "var(--accent-text)", padding: 4, cursor: "pointer", flexShrink: 0, opacity: 0.5 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
         </div>
       )}
 

@@ -4560,19 +4560,18 @@
 .style-twin-save-toast {
   position: fixed;
   top: 56px;
-  left: 12px;
-  right: 12px;
-  background: linear-gradient(135deg, rgba(200, 255, 61, 0.14), rgba(200, 255, 61, 0.04));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(200, 255, 61, 0.3);
-  border-radius: 16px;
+  left: 14px;
+  right: 14px;
+  background: var(--accent);
+  color: var(--accent-text);
+  border: none;
+  border-radius: 18px;
   padding: 14px 16px;
   z-index: 9998;
   display: flex;
   gap: 12px;
   align-items: center;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   cursor: pointer;
 }
 
