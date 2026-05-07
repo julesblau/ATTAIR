@@ -7498,59 +7498,74 @@ export default function App() {
           </>)}
 
           {/* ─── Loading (branded identifying experience) ── */}
-          {tab === "scan" && phase === "identifying" && img && (
-            <div className="ld-wrap" style={{ position: "relative", minHeight: "70vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              {/* Background photo — blurred and darkened */}
-              <div style={{ position: "absolute", inset: 0, overflow: "hidden", zIndex: 0 }}>
-                <img src={img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "blur(12px) brightness(0.3)", transform: "scale(1.1)" }} />
-                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
+          {tab === "scan" && phase === "identifying" && img && (() => {
+            // Design canvas UScanIdentifying: scan photo background + scanning sweep line
+            // + top status pill + bottom cream card with step list
+            const totalSteps = SCAN_MESSAGES.length;
+            const stepsForDisplay = SCAN_MESSAGES.slice(0, 4);
+            const elapsedSec = Math.max(0, Math.round(((loadMsgIdx + 1) * 1.7)));
+            return (
+              <div style={{ position: "relative", minHeight: "70vh", display: "flex", flexDirection: "column" }}>
+                <div style={{ position: "absolute", inset: 0, background: "#000", overflow: "hidden", zIndex: 0 }}>
+                  <img src={img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.85 }} />
+                  <div className="u-scan-sweep" style={{ position: "absolute", left: 0, right: 0, height: 2, background: "var(--accent)", boxShadow: `0 0 24px var(--accent)`, opacity: 0.85 }} />
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%)" }} />
+                </div>
+
+                {/* Top status pill */}
+                <div style={{ position: "absolute", top: 50, left: 0, right: 0, padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
+                  <button onClick={reset} aria-label="Cancel" style={{ width: 36, height: 36, borderRadius: 999, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(10px)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                  </button>
+                  <div style={{ padding: "8px 14px", borderRadius: 999, background: "var(--bg-primary)", color: "var(--text-primary)", fontSize: 11, fontWeight: 700, fontFamily: "var(--font-display)", display: "flex", alignItems: "center", gap: 6, textTransform: "lowercase", letterSpacing: 0.4 }}>
+                    <span className="u-pulse-dot" style={{ width: 6, height: 6, borderRadius: 999, background: "var(--accent)" }} />
+                    identifying pieces…
+                  </div>
+                  <span style={{ width: 36 }} />
+                </div>
+
+                {/* Bottom card — design's cream pattern */}
+                <div style={{ position: "absolute", left: 14, right: 14, bottom: 30, background: "var(--bg-primary)", borderRadius: 24, padding: 18, zIndex: 2, boxShadow: "0 -8px 24px rgba(0,0,0,0.18)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <span className="u-pulse-dot" style={{ width: 8, height: 8, borderRadius: 999, background: "var(--accent)" }} />
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: "uppercase", color: "var(--text-primary)" }}>scanning · 0:{String(elapsedSec).padStart(2, "0")}</span>
+                  </div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.6, lineHeight: 1.1, marginBottom: 12, color: "var(--text-primary)" }}>finding the pieces in this look</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {stepsForDisplay.map((label, i) => {
+                      const done = i < loadMsgIdx;
+                      const active = i === loadMsgIdx;
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: done ? "var(--text-secondary)" : (active ? "var(--text-primary)" : "var(--text-secondary)"), fontWeight: active ? 600 : 400, opacity: done || active ? 1 : 0.5 }}>
+                          <div style={{ width: 18, height: 18, borderRadius: 999, background: done ? "var(--text-primary)" : (active ? "var(--accent)" : "var(--border)"), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {done ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--bg-primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                              : active ? <span className="u-pulse-dot" style={{ width: 6, height: 6, borderRadius: 999, background: "var(--accent-text)" }} />
+                              : null}
+                          </div>
+                          <span>{label.toLowerCase().replace(/[.…]+$/, "")}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Free user ad slot — kept but reskinned to cream card */}
+                  {isFree && !inGracePeriod && (() => {
+                    const spot = RETAILER_SPOTLIGHTS[loadMsgIdx % RETAILER_SPOTLIGHTS.length];
+                    return (
+                      <a href={spot.url} target="_blank" rel="noopener noreferrer" onClick={() => track("identify_ad_clicked", { retailer: spot.name })} style={{ marginTop: 12, padding: "10px 12px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 12, textDecoration: "none", display: "flex", alignItems: "center", gap: 10, color: "inherit" }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: spot.gradient, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: spot.accent, flexShrink: 0 }}>{spot.name[0]}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{spot.name}</div>
+                          <div style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 1 }}>{spot.tagline}</div>
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", flexShrink: 0, textTransform: "lowercase" }}>shop</div>
+                      </a>
+                    );
+                  })()}
+                </div>
               </div>
-              {/* Centered content panel — fixed width to prevent layout shift */}
-              <div className="animate-scale-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 24, padding: "40px 32px", background: "rgba(12,12,14,0.7)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderRadius: 20, border: "1px solid rgba(200, 255, 61, .15)", width: 300 }}>
-                {/* Branded logo spinner — triple orbit rings + floating logo + particles */}
-                <div className="identify-logo-container">
-                  <div className="identify-orbit-outer" />
-                  <div className="identify-orbit" />
-                  <div className="identify-orbit-inner" />
-                  <div className="identify-progress-arc" />
-                  <div className="identify-glow" />
-                  <div className="identify-scan-line" />
-                  <div className="identify-particle" />
-                  <div className="identify-particle" />
-                  <div className="identify-particle" />
-                  <img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-transparent.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
-                </div>
-
-                {/* Animated status text */}
-                <div style={{ textAlign: "center" }}>
-                  <div className="identify-shimmer" style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 10 }}>{t("scan_identifying")}</div>
-                  <div className="serif" style={{ fontSize: 18, color: "var(--text-primary)", transition: "opacity .35s ease", opacity: loadMsgVisible ? 1 : 0, minHeight: 28 }}>{SCAN_MESSAGES[loadMsgIdx]}</div>
-                </div>
-
-                {/* Step dots progress */}
-                <div className="identify-steps">
-                  {SCAN_MESSAGES.map((_, i) => (
-                    <div key={i} className={`identify-step-dot${i <= loadMsgIdx ? " active" : ""}`} />
-                  ))}
-                </div>
-
-                {/* Free user ad slot during loading — skip during grace period */}
-                {isFree && !inGracePeriod && (() => {
-                  const spot = RETAILER_SPOTLIGHTS[loadMsgIdx % RETAILER_SPOTLIGHTS.length];
-                  return (
-                    <a href={spot.url} target="_blank" rel="noopener noreferrer" onClick={() => track("identify_ad_clicked", { retailer: spot.name })} style={{ width: "100%", padding: "14px 16px", background: spot.gradient, border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, textDecoration: "none", display: "flex", alignItems: "center", gap: 12, transition: "opacity .3s" }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(255,255,255,.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: spot.accent, flexShrink: 0 }}>{spot.name[0]}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{spot.name}</div>
-                        <div style={{ fontSize: 10, color: "rgba(255,255,255,.5)", marginTop: 1 }}>{spot.tagline}</div>
-                      </div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: spot.accent, flexShrink: 0 }}>Shop</div>
-                    </a>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ─── Scan failed (design canvas UErrorScan) ──────────── */}
           {tab === "scan" && error && phase === "idle" && (() => {
@@ -7982,93 +7997,103 @@ export default function App() {
 
           {/* ─── Search Takeover (A+B combo: branded full-screen + item cards) ── */}
           {tab === "scan" && results && phase === "searching" && !isResearch && (
-            <div className="search-takeover animate-fade-in">
-              {/* Back button */}
-              <button className="search-takeover-back" onClick={() => { setPhase("picking"); setExpandedItems(new Set()); }}>
-                &larr; Back
-              </button>
-
-              {/* Blurred photo background */}
-              <div className="search-takeover-bg">
-                <img src={img} alt="Scanned outfit" loading="lazy" />
+            <div className="animate-fade-in" style={{ minHeight: "70vh", paddingTop: 50, paddingBottom: 30, background: "var(--bg-primary)" }}>
+              {/* Top bar — cl + share per design canvas UScanSearching */}
+              <div style={{ padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <button onClick={() => { setPhase("picking"); setExpandedItems(new Set()); }} aria-label="Back" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+                </button>
+                <button aria-label="Share" onClick={() => { try { navigator.share?.({ title: "ATTAIRE", url: window.location.origin }); } catch {} }} style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v13M7 8l5-5 5 5M5 21h14"/></svg>
+                </button>
               </div>
 
-              {/* Content */}
-              <div className="search-takeover-content">
-                {/* Branded logo spinner — reuse identifying animation */}
-                <div className="identify-logo-container">
-                  <div className="identify-orbit-outer" />
-                  <div className="identify-orbit" />
-                  <div className="identify-orbit-inner" />
-                  <div className="identify-progress-arc" />
-                  <div className="identify-glow" />
-                  <div className="identify-scan-line" />
-                  <div className="identify-particle" />
-                  <div className="identify-particle" />
-                  <div className="identify-particle" />
-                  <img src="/logo.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--dark" loading="lazy" /><img src="/logo-transparent.png" alt="ATTAIRE" className="identify-logo-img identify-logo-img--light" loading="lazy" />
-                </div>
-
-                {/* Cycling status text */}
-                <div className="search-takeover-status">
-                  <div className="identify-shimmer search-takeover-status-label">Finding your matches</div>
-                  <div className="search-takeover-status-msg serif" style={{ opacity: loadMsgVisible ? 1 : 0, transition: "opacity .35s ease" }}>
-                    {SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length]}
-                  </div>
-                </div>
-
-                {/* Item cards */}
-                <div className="search-item-cards">
-                  {results.items.map((item, i) => {
-                    if (!pickedItems.has(i)) return null;
-                    const isRevealed = revealedSearchItems.has(i);
-                    const isFailed = isRevealed && item.status === "failed";
-                    const productCount = item.tiers ? ["budget", "mid", "premium", "resale"].reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) : 0;
-                    return (
-                      <div key={i} className={`search-item-card${isRevealed ? (isFailed ? " failed" : " found") : ""}`} style={{ animationDelay: `${i * 0.1}s` }}>
-                        <div className={`search-card-icon${isRevealed ? (isFailed ? " failed" : " found") : " searching"}`}>
-                          {!isRevealed ? (
-                            <div className="ld-dot" style={{ width: 8, height: 8, background: "var(--accent)" }} />
-                          ) : isFailed ? (
-                            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M3 3l8 8M11 3l-8 8" fill="none" stroke="#FF5252" strokeWidth="2" strokeLinecap="round"/></svg>
-                          ) : (
-                            <svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7.5L5.5 11L12 3" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          )}
+              {/* Header: photo thumb + caps "searching" + display + tags */}
+              {(() => {
+                const pickedCount = (results?.items || []).filter((_, i) => pickedItems.has(i)).length;
+                const summaryTags = (results?.summary || "").toString().split(/[,·]/).map(s => s.trim()).filter(Boolean).slice(0, 2);
+                return (
+                  <div style={{ padding: "4px 14px 14px", display: "flex", gap: 12 }}>
+                    {img && (
+                      <div style={{ width: 92, height: 120, borderRadius: "var(--radius-lg)", overflow: "hidden", flexShrink: 0, background: "var(--bg-card)" }}>
+                        <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                      </div>
+                    )}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: "var(--text-primary)", fontWeight: 800, letterSpacing: 1, fontFamily: "var(--font-display)", textTransform: "uppercase" }}>searching</div>
+                        <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: -1, lineHeight: 1.05, marginTop: 4, color: "var(--text-primary)", textTransform: "lowercase" }}>{pickedCount} {pickedCount === 1 ? "piece" : "pieces"}<br/>going live</div>
+                      </div>
+                      {summaryTags.length > 0 && (
+                        <div style={{ display: "flex", gap: 5 }}>
+                          {summaryTags.map((tag, i) => (
+                            <span key={i} style={{ padding: "3px 8px", borderRadius: 999, background: "var(--bg-card)", fontSize: 10, fontWeight: 600, fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>{tag}</span>
+                          ))}
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div className="search-card-name">{item.name}</div>
-                          <div className={`search-card-detail${isRevealed ? (isFailed ? " failed" : " found") : ""}`}>
-                            {!isRevealed
-                              ? `${item.brand && item.brand !== "Unidentified" ? item.brand + " · " : ""}${item.category}`
-                              : isFailed ? "No matches" : `${productCount} match${productCount !== 1 ? "es" : ""} found`}
-                          </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Progress bar with cycling message */}
+              {(() => {
+                const pickedCount = (results?.items || []).filter((_, i) => pickedItems.has(i)).length;
+                const prog = pickedCount > 0 ? Math.min(0.95, revealedSearchItems.size / pickedCount) : 0;
+                return (
+                  <div style={{ padding: "0 14px 14px" }}>
+                    <div style={{ height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
+                      <div style={{ width: `${prog * 100}%`, height: "100%", background: "var(--accent)", transition: "width 600ms var(--ease-smooth)" }} />
+                    </div>
+                    <div className="serif" style={{ marginTop: 10, fontSize: 13, color: "var(--text-primary)", fontWeight: 600, fontFamily: "var(--font-display)", opacity: loadMsgVisible ? 1 : 0.4, transition: "opacity .35s ease" }}>
+                      {SEARCH_MESSAGES[loadMsgIdx % SEARCH_MESSAGES.length]?.toString().toLowerCase()}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Item rows — each shows a status icon (check/spinner/dashed dot) */}
+              <div style={{ padding: "0 14px" }}>
+                {results.items.map((item, i) => {
+                  if (!pickedItems.has(i)) return null;
+                  const isRevealed = revealedSearchItems.has(i);
+                  const isFailed = isRevealed && item.status === "failed";
+                  const productCount = item.tiers ? ["budget", "mid", "premium", "resale"].reduce((sum, tk) => sum + asTierArray(item.tiers[tk]).length, 0) : 0;
+                  const state = !isRevealed ? "searching" : isFailed ? "failed" : "done";
+                  return (
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "64px 1fr auto", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
+                      <div style={{ width: 64, height: 80, borderRadius: 12, overflow: "hidden", position: "relative", background: "var(--bg-card)" }}>
+                        {(item.image_url || img) && <img src={item.image_url || img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />}
+                        {state === "searching" && <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.4)", backdropFilter: "blur(2px)" }} />}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, fontFamily: "var(--font-display)" }}>{item.subcategory || item.category || "piece"}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>
+                          {state === "done" ? `${productCount} match${productCount !== 1 ? "es" : ""} found` : state === "failed" ? "no matches" : "checking retailers…"}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-
-                {/* Progress dots */}
-                <div className="identify-steps" style={{ marginTop: 4 }}>
-                  {results.items.filter((_, i) => pickedItems.has(i)).map((_, i) => (
-                    <div key={i} className={`identify-step-dot${i < revealedSearchItems.size ? " active" : ""}`} />
-                  ))}
-                </div>
-
-                {/* ATTAIRE promo for free users during search — skip during grace period */}
-                {(isFree || isGuest) && !inGracePeriod && (
-                  <div style={{ marginTop: 24, padding: "20px 24px", background: "rgba(200, 255, 61, .08)", border: "1px solid rgba(200, 255, 61, .15)", borderRadius: 16, textAlign: "center", maxWidth: 320 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.5, color: "var(--accent)", marginBottom: 8, textTransform: "uppercase" }}>ATTAIRE Pro</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>Unlock unlimited scans</div>
-                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 14, lineHeight: 1.4 }}>
-                      Extended search, price alerts, Style DNA, and priority results.
+                      <div style={{ flexShrink: 0 }}>
+                        {state === "done" && <div style={{ width: 24, height: 24, borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg></div>}
+                        {state === "searching" && <div style={{ width: 24, height: 24, borderRadius: 999, border: "2px solid var(--border)", borderTopColor: "var(--text-primary)", animation: "spin 1s linear infinite" }} />}
+                        {state === "failed" && <div style={{ width: 24, height: 24, borderRadius: 999, border: "2px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2.5" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>}
+                      </div>
                     </div>
-                    <button onClick={() => { setUpgradeModal("search_promo"); track("promo_clicked", { location: "search_loading" }); }} style={{ padding: "10px 28px", background: "linear-gradient(135deg, var(--accent) 0%, #B8944F 100%)", border: "none", borderRadius: 100, fontSize: 12, fontWeight: 700, color: "#0C0C0E", cursor: "pointer", fontFamily: "var(--font-sans)" }}>
-                      Try Pro Free
-                    </button>
-                  </div>
-                )}
+                  );
+                })}
               </div>
+
+              {/* ATTAIRE promo for free users during search — skip during grace period */}
+              {(isFree || isGuest) && !inGracePeriod && (
+                <div style={{ margin: "20px 14px 0", padding: 16, background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, textAlign: "left" }}>
+                  <div style={{ display: "inline-block", padding: "3px 8px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 9, fontWeight: 800, letterSpacing: 1, marginBottom: 8, textTransform: "uppercase" }}>✦ pro</div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, textTransform: "lowercase" }}>unlock unlimited scans</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.4 }}>extended search, price alerts, style dna, and priority results.</div>
+                  <button onClick={() => { setUpgradeModal("search_promo"); track("promo_clicked", { location: "search_loading" }); }} style={{ padding: "10px 18px", background: "var(--text-primary)", color: "var(--bg-primary)", border: "none", borderRadius: 999, fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, cursor: "pointer", textTransform: "lowercase", letterSpacing: 0.3 }}>
+                    try pro free →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

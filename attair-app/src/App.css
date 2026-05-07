@@ -2358,6 +2358,12 @@
 
 /* Camera-style stage (scan idle preview + scan results header) */
 .u-camera-stage{box-shadow:0 12px 32px rgba(0,0,0,0.18)}
+
+/* Scan loading sweep line + pulse dot (design canvas UScanIdentifying) */
+.u-scan-sweep{top:20%;animation:u-sweep 2.4s ease-in-out infinite}
+@keyframes u-sweep{0%{top:20%;opacity:0.3}50%{top:78%;opacity:0.95}100%{top:20%;opacity:0.3}}
+.u-pulse-dot{animation:u-pulse-dot 1.4s ease-in-out infinite}
+@keyframes u-pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.85)}}
 .u-cam-corner{opacity:0;transform:scale(0.6);animation:u-corner-in 480ms var(--spring) forwards}
 .u-cam-pin{opacity:0;transform:translate(-50%,-50%) scale(0.6);animation:u-pin-in 420ms var(--spring) forwards}
 @keyframes u-corner-in{to{opacity:1;transform:scale(1)}}
