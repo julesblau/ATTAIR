@@ -6978,31 +6978,34 @@ export default function App() {
 
       {/* ─── TRIAL SUCCESS BANNER ────────────────────────── */}
       {trialSuccess && (
-        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "var(--accent)", color: "var(--text-inverse)", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)", whiteSpace: "nowrap" }}>
-          ✓ 7-day free trial started!
+        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "var(--text-primary)", color: "var(--bg-primary)", padding: "10px 16px", borderRadius: 999, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.18)", display: "flex", alignItems: "center", gap: 8, letterSpacing: 0.3, textTransform: "lowercase" }}>
+          <span style={{ width: 22, height: 22, borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+          </span>
+          7-day free trial started
         </div>
       )}
 
       {/* ─── FOLLOW-UP NUDGE BANNER ────────────────────── */}
       {nudgeBanner && screen === "app" && (
-        <div className="animate-slide-up" style={{ position: "fixed", top: 56, left: 12, right: 12, background: "linear-gradient(135deg, rgba(200, 255, 61, .12), rgba(200, 255, 61, .04))", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", border: "1px solid rgba(200, 255, 61, .25)", borderRadius: 16, padding: "14px 16px", zIndex: 9997, display: "flex", gap: 12, alignItems: "center", boxShadow: "0 8px 32px rgba(0,0,0,.3)" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(200, 255, 61, .15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <div className="animate-slide-up" style={{ position: "fixed", top: 56, left: 14, right: 14, background: "var(--accent)", color: "var(--accent-text)", borderRadius: 18, padding: "14px 16px", zIndex: 9997, display: "flex", gap: 12, alignItems: "center", boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
-              {nudgeBanner.context === "refinement" ? "Your AI stylist is waiting" : "Your results are ready"}
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 0.6, textTransform: "uppercase", marginBottom: 1 }}>
+              {nudgeBanner.context === "refinement" ? "stylist waiting" : "results ready"}
             </div>
-            <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+            <div style={{ fontSize: 12, opacity: 0.75, lineHeight: 1.3 }}>
               {nudgeBanner.context === "refinement"
-                ? "Tap to continue refining your outfit picks."
-                : "Swipe through your matches and save your favorites."}
+                ? "tap to keep refining your picks"
+                : "tap to view your matches"}
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-            <button onClick={() => { setNudgeBanner(null); setTab("scan"); }} style={{ background: "var(--accent)", color: "var(--accent-text)", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>View</button>
-            <button onClick={() => setNudgeBanner(null)} style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 9, cursor: "pointer", padding: "2px 0" }}>Dismiss</button>
-          </div>
+          <button onClick={() => { setNudgeBanner(null); setTab("scan"); }} style={{ background: "var(--accent-text)", color: "var(--accent)", border: "none", borderRadius: 999, padding: "8px 14px", fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap", textTransform: "lowercase", letterSpacing: 0.3 }}>view ›</button>
+          <button onClick={() => setNudgeBanner(null)} aria-label="Dismiss" style={{ background: "transparent", border: "none", color: "var(--accent-text)", padding: 4, cursor: "pointer", flexShrink: 0, opacity: 0.5 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
         </div>
       )}
 
