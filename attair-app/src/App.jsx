@@ -1010,28 +1010,29 @@ const InterstitialAd = ({ onClose }) => {
   }, []);
   return (
     <div className="modal-overlay" onClick={() => timer <= 3 && onClose()}>
-      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, aspectRatio: "9/16", background: "#111114", border: "1px solid rgba(255,255,255,.06)", borderRadius: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, position: "relative" }}>
-        <div className="ad-slot" style={{ width: "90%", height: "70%", borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column", background: spot.gradient, border: "1px solid rgba(255,255,255,.08)" }}>
-          <div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,.06)" }}>
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,.3)", letterSpacing: 1, textTransform: "uppercase" }}>Featured Retailer</span>
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,.15)" }}>Spotlight</span>
-          </div>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 32, fontWeight: 900, color: spot.accent, marginBottom: 8, fontFamily: "var(--font-sans)", letterSpacing: -1 }}>{spot.name}</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,.55)", marginBottom: 20, lineHeight: 1.5 }}>{spot.tagline}</div>
-              <a href={spot.url} target="_blank" rel="noopener noreferrer" onClick={() => { API.logAdEvent("interstitial", "post_scan", "click", spot.name); }} style={{ display: "inline-block", padding: "12px 28px", background: spot.accent, borderRadius: 100, fontSize: 13, fontWeight: 700, color: spot.accent === "#fff" || spot.accent === "#e0e0e0" ? "#0C0C0E" : "#fff", fontFamily: "var(--font-sans)", textDecoration: "none", border: "none", cursor: "pointer" }}>{spot.cta}</a>
-            </div>
-          </div>
-          <div style={{ padding: "8px 12px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,.06)" }}>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,.2)" }}>Discover on ATTAIRE</span>
-          </div>
+      <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, aspectRatio: "9/16", background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: 24, display: "flex", flexDirection: "column", padding: "16px 14px", position: "relative", fontFamily: "var(--font-sans)" }}>
+        {/* Top bar — caps eyebrow + skip timer */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase" }}>sponsored</span>
+          {timer > 0
+            ? <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>skip in {timer}s</span>
+            : <button onClick={onClose} style={{ background: "var(--text-primary)", border: "none", borderRadius: 999, padding: "6px 14px", fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, color: "var(--bg-primary)", cursor: "pointer", textTransform: "lowercase", letterSpacing: 0.3 }}>skip →</button>
+          }
         </div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,.15)" }}>Upgrade to Pro to remove ads</div>
-        {timer > 0
-          ? <div style={{ position: "absolute", top: 16, right: 16, fontSize: 12, color: "rgba(255,255,255,.25)" }}>Skip in {timer}s</div>
-          : <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,.08)", border: "none", borderRadius: 100, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: "#fff", cursor: "pointer", fontFamily: "var(--font-sans)" }}>Skip →</button>
-        }
+
+        {/* Big retailer card */}
+        <div style={{ flex: 1, borderRadius: 18, overflow: "hidden", background: spot.gradient, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", position: "relative" }}>
+          <div style={{ position: "absolute", top: 16, left: 16, padding: "4px 10px", borderRadius: 999, background: "rgba(255,255,255,0.16)", fontFamily: "var(--font-display)", fontSize: 9, fontWeight: 800, color: "#fff", letterSpacing: 0.6, textTransform: "uppercase" }}>featured</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 900, color: spot.accent, marginBottom: 10, letterSpacing: -1, lineHeight: 1 }}>{spot.name}</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 24, lineHeight: 1.5, maxWidth: 240 }}>{spot.tagline}</div>
+          <a href={spot.url} target="_blank" rel="noopener noreferrer" onClick={() => { API.logAdEvent("interstitial", "post_scan", "click", spot.name); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "12px 22px", background: spot.accent, color: spot.accent === "#fff" || spot.accent === "#e0e0e0" ? "var(--text-primary)" : "#fff", fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 700, textDecoration: "none", borderRadius: 999, textTransform: "lowercase", letterSpacing: 0.3 }}>{(spot.cta || "shop").toLowerCase()} →</a>
+        </div>
+
+        {/* Footer */}
+        <div style={{ marginTop: 12, textAlign: "center" }}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 700, color: "var(--text-secondary)", letterSpacing: 0.6, textTransform: "uppercase" }}>discover on attaire</div>
+          <div style={{ fontSize: 11, color: "var(--text-tertiary)", marginTop: 4 }}>upgrade to pro to remove ads</div>
+        </div>
       </div>
     </div>
   );
