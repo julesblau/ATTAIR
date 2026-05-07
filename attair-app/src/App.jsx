@@ -4977,8 +4977,9 @@ export default function App() {
 
   // ─── Offline detection ─────────────────────────────────────
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [offlineDismissed, setOfflineDismissed] = useState(false);
   useEffect(() => {
-    const goOffline = () => setIsOffline(true);
+    const goOffline = () => { setIsOffline(true); setOfflineDismissed(false); };
     const goOnline = () => setIsOffline(false);
     window.addEventListener('offline', goOffline);
     window.addEventListener('online', goOnline);
@@ -12548,6 +12549,42 @@ export default function App() {
     {toast && (
       <div className="toast-container">
         <div className={`toast toast-${toast.type}`}>{toast.message}</div>
+      </div>
+    )}
+    {/* ─── OFFLINE TAKEOVER (design canvas UErrorOffline) ─── */}
+    {isOffline && !offlineDismissed && (
+      <div role="dialog" aria-label="Offline" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 11999, background: "var(--bg-primary)", display: "flex", flexDirection: "column", paddingTop: 50, fontFamily: "var(--font-sans)" }}>
+        <div style={{ padding: "8px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <button onClick={() => setOfflineDismissed(true)} aria-label="Close" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
+          <span style={{ width: 24 }} />
+          <span style={{ width: 24 }} />
+        </div>
+        <div style={{ flex: 1, padding: "40px 14px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+          <div style={{ position: "relative", width: 140, height: 140, marginBottom: 18 }}>
+            <div style={{ position: "absolute", inset: 0, border: "2px solid var(--bg-card)", borderRadius: "50%" }} />
+            <div style={{ position: "absolute", inset: 18, border: "2px solid var(--bg-card)", borderRadius: "50%", borderTopColor: "transparent", borderRightColor: "transparent", transform: "rotate(45deg)" }} />
+            <div style={{ position: "absolute", inset: 36, border: "2px solid var(--border)", borderRadius: "50%" }} />
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ width: 56, height: 56, borderRadius: 999, background: "var(--text-primary)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--bg-primary)" strokeWidth="2" strokeLinecap="round"><path d="M5 13a10 10 0 0114 0M8.5 16.5a5 5 0 017 0M12 20h.01M2 8.82a15 15 0 0120 0"/></svg>
+                <div style={{ position: "absolute", top: -4, right: -4, transform: "rotate(-45deg)", width: 76, height: 3, background: "var(--accent)", borderRadius: 2, transformOrigin: "center" }} />
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "inline-block", padding: "4px 10px", borderRadius: 999, background: "var(--bg-card)", border: "1px solid var(--border)", fontSize: 10, fontWeight: 800, letterSpacing: 0.6, fontFamily: "var(--font-display)", marginBottom: 12, textTransform: "uppercase", color: "var(--text-primary)" }}>OFFLINE</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, letterSpacing: -1.4, lineHeight: 0.95, color: "var(--text-primary)", textTransform: "lowercase" }}>
+            no signal,<br/>
+            <span className="lime-chip">no scan</span>
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 14, lineHeight: 1.5, padding: "0 24px" }}>scanning needs the cloud. check your wifi or cell, then try again.</div>
+        </div>
+        <div style={{ padding: 14 }}>
+          <button onClick={() => { if (navigator.onLine) setIsOffline(false); else setOfflineDismissed(true); }} style={{ width: "100%", height: 52, borderRadius: 16, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, letterSpacing: 0.3, cursor: "pointer", textTransform: "lowercase" }}>
+            try reconnecting →
+          </button>
+        </div>
       </div>
     )}
   </>);
