@@ -6921,9 +6921,15 @@ export default function App() {
                 </div>
                 {p.image && (
                   <div style={{ position: "relative", aspectRatio: "3/4", margin: "0 14px", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)" }}>
-                    <img src={p.image} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="eager" />
+                    <img src={p.image} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: !p.url ? "grayscale(0.5) brightness(0.85)" : "none" }} loading="eager" />
                     {p.match != null && (
                       <div style={{ position: "absolute", top: 12, left: 12, padding: "4px 10px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 10, fontWeight: 800, fontFamily: "var(--font-display)", letterSpacing: 0.4 }}>{p.match}% MATCH</div>
+                    )}
+                    {/* Sold-out overlay (UShopSoldOut) — when no shop URL */}
+                    {!p.url && (
+                      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ padding: "8px 14px", borderRadius: 999, background: "var(--text-primary)", color: "var(--bg-primary)", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase", boxShadow: "0 6px 18px rgba(0,0,0,0.25)" }}>sold out</div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -6961,16 +6967,24 @@ export default function App() {
                     </div>
                   </>
                 )}
-                {p.alternates && (
-                  <div style={{ padding: "14px 14px 0" }}>
+                {/* Alternates row (UShopTiers) — or no-alts state (UShopNoAlts) */}
+                <div style={{ padding: "14px 14px 0" }}>
+                  {p.alternates ? (
                     <div style={{ padding: 12, borderRadius: "var(--radius-lg)", background: "var(--bg-card)", display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--border)" }}>
                       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-primary)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/></svg>
                       <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35, color: "var(--text-primary)" }}>
                         <b>{p.alternates.count || 3} cheaper alternates</b> spotted{p.alternates.from ? <> (from {p.alternates.from})</> : null} — same silhouette, different brands.
                       </div>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div style={{ padding: 12, borderRadius: "var(--radius-lg)", background: "var(--bg-card)", display: "flex", alignItems: "center", gap: 10, border: "1px dashed var(--border)" }}>
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                      <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35, color: "var(--text-secondary)" }}>
+                        <b style={{ color: "var(--text-primary)" }}>no alternates yet</b> — we'll watch for matches and ping you when one drops.
+                      </div>
+                    </div>
+                  )}
+                </div>
                 {p.description && (
                   <div style={{ padding: "14px 14px 0" }}>
                     <div style={{ fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, marginBottom: 6, color: "var(--text-primary)" }}>description</div>
@@ -6983,9 +6997,15 @@ export default function App() {
                 <button onClick={() => { if (isGuest) { setSignupPrompt("save"); return; } quickSaveItem({ name: p.name, brand: p.brand, price: p.price, image_url: p.image, url: p.url, category: p.category }, p.scanId || null); }} aria-label="Save" style={{ width: 52, height: 52, borderRadius: 16, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill={isSavedProduct ? "var(--text-primary)" : "none"} stroke="var(--text-primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21s-7-4.5-9.5-9C1 8.5 3.5 4 7.5 4c2 0 3.5 1 4.5 2.5C13 5 14.5 4 16.5 4c4 0 6.5 4.5 5 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
                 </button>
-                <button onClick={goShop} disabled={!p.url} style={{ flex: 1, height: 52, borderRadius: 16, border: "none", background: p.url ? "var(--text-primary)" : "var(--border)", color: p.url ? "var(--bg-primary)" : "var(--text-secondary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", cursor: p.url ? "pointer" : "not-allowed", letterSpacing: 0.2 }}>
-                  shop {p.brand ? `at ${p.brand}` : "now"} {p.price ? `→ ${p.price}` : "→"}
-                </button>
+                {p.url ? (
+                  <button onClick={goShop} style={{ flex: 1, height: 52, borderRadius: 16, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", cursor: "pointer", letterSpacing: 0.3, textTransform: "lowercase" }}>
+                    shop {p.brand ? `at ${p.brand}` : "now"} {p.price ? `→ ${p.price}` : "→"}
+                  </button>
+                ) : (
+                  <button onClick={() => { close(); /* fall back to similar search via picks */ }} style={{ flex: 1, height: 52, borderRadius: 16, border: "1.5px solid var(--text-primary)", background: "transparent", color: "var(--text-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", cursor: "pointer", letterSpacing: 0.3, textTransform: "lowercase" }}>
+                    find similar →
+                  </button>
+                )}
               </div>
             </div>
           </>
