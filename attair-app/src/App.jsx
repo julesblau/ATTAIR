@@ -7456,42 +7456,75 @@ export default function App() {
             </div>
           )}
 
-          {/* ─── Error (enhanced) ──────────────────────── */}
-          {tab === "scan" && error && phase === "idle" && (
-            <div className="animate-slide-up" style={{ padding: "0 20px 80px" }}>
-              {img && <img src={img} loading="lazy" style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)",borderRadius:16,marginBottom:16}} alt="" />}
-              <div className="scan-error-state">
-                <div className="scan-error-icon">
-                  {error.includes("internet") || error.includes("server") ? "📡" : error.includes("scan") && error.includes("limit") ? "🔒" : "🔍"}
+          {/* ─── Scan failed (design canvas UErrorScan) ──────────── */}
+          {tab === "scan" && error && phase === "idle" && (() => {
+            const isOffline = error.includes("internet") || error.includes("server");
+            const isLimit = error.includes("scan") && error.includes("limit");
+            return (
+              <div className="animate-slide-up" style={{ padding: "8px 14px 80px" }}>
+                <div style={{ padding: "8px 0 6px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button onClick={reset} aria-label="Close" style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--text-primary)" }}>
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+                  </button>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--text-secondary)", textTransform: "uppercase" }}>{isOffline ? "no signal" : isLimit ? "scan limit" : "scan failed"}</span>
+                  <span style={{ width: 24 }} />
                 </div>
-                <div className="scan-error-title">
-                  {error.includes("internet") || error.includes("server") ? t("scan_err_connection") : error.includes("scan") && error.includes("limit") ? t("scan_err_limit") : t("scan_err_failed")}
+                {img && (
+                  <div style={{ position: "relative", aspectRatio: "4/5", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)", margin: "8px 0 14px" }}>
+                    <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(0.7) brightness(0.6)" }} loading="lazy" />
+                    <div style={{ position: "absolute", inset: 16, border: "2px dashed var(--bg-primary)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 64, height: 64, borderRadius: 999, background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 800, lineHeight: 1, color: "var(--text-primary)" }}>?</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: "inline-block", padding: "4px 10px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 10, fontWeight: 800, letterSpacing: 0.6, fontFamily: "var(--font-display)", marginBottom: 10, textTransform: "uppercase" }}>{isOffline ? "no connection" : isLimit ? "out of scans" : "no outfit found"}</div>
+                <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, textTransform: "lowercase", color: "var(--text-primary)" }}>
+                  {isOffline ? <>no signal,<br/><span className="lime-chip">no scan</span></> : isLimit ? <>out of<br/><span className="lime-chip">scans</span></> : <>we couldn't<br/>read this fit</>}
                 </div>
-                <div className="scan-error-msg">{error}</div>
-                <div className="scan-error-tips">
-                  <div className="scan-error-tip">{t("scan_tip_visible")}</div>
-                  <div className="scan-error-tip">{t("scan_tip_lit")}</div>
-                  <div className="scan-error-tip">Screenshots from social media work great</div>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 12, lineHeight: 1.5 }}>{error}</div>
+                <div style={{ padding: "14px 0 0" }}>
+                  {[
+                    { t: "use a clearer photo", s: "good lighting, person in full frame", ico: "◯" },
+                    { t: "try a different angle", s: "standing or three-quarter works best", ico: "◐" },
+                    { t: "skip group photos", s: "one person at a time", ico: "●" },
+                  ].map((tip, i, arr) => (
+                    <div key={i} style={{ display: "flex", gap: 12, padding: "12px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 999, background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16, fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--text-primary)" }}>{tip.ico}</div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{tip.t}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{tip.s}</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <button className="btn-primary" style={{width:"100%",marginTop:16}} onClick={reset}>{t("scan_try_another")}</button>
+                <div style={{ padding: "20px 0 30px", display: "flex", gap: 8 }}>
+                  <button onClick={() => galleryRef.current?.click()} style={{ flex: 1, height: 52, borderRadius: 16, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-primary)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 13, cursor: "pointer", textTransform: "lowercase" }}>upload other</button>
+                  <button onClick={reset} style={{ flex: 1, height: 52, borderRadius: 16, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, letterSpacing: 0.3, cursor: "pointer", textTransform: "lowercase" }}>retake →</button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
-          {/* ─── Empty identification (0 items found) ──── */}
+          {/* ─── Empty identification (0 items found) — design canvas UEmptySearch-flavor ── */}
           {tab === "scan" && results && results.items.length === 0 && phase === "picking" && (
-            <div className="animate-slide-up" style={{ padding: "0 20px 80px" }}>
-              {img && <img src={img} loading="lazy" style={{width:"100%",maxHeight:"25vh",objectFit:"cover",display:"block",filter:"brightness(0.25)",borderRadius:16,marginBottom:16}} alt="" />}
-              <div className="scan-error-state">
-                <div className="scan-error-icon">👀</div>
-                <div className="scan-error-title">{t("scan_err_no_clothing")}</div>
-                <div className="scan-error-msg">Our AI couldn't identify any clothing items in this photo. This usually means the image doesn't contain a clear outfit.</div>
-                <div className="scan-error-tips">
-                  <div className="scan-error-tip">Upload a photo with visible clothing</div>
-                  <div className="scan-error-tip">Close-ups of single items work too</div>
-                  <div className="scan-error-tip">Avoid photos that are mostly scenery</div>
+            <div className="animate-slide-up" style={{ padding: "8px 14px 80px" }}>
+              {img && (
+                <div style={{ position: "relative", aspectRatio: "4/5", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--bg-card)", margin: "8px 0 14px" }}>
+                  <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "grayscale(0.6) brightness(0.65)" }} loading="lazy" />
+                  <div style={{ position: "absolute", inset: 16, border: "2px dashed var(--bg-primary)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: 64, height: 64, borderRadius: 999, background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontFamily: "var(--font-display)", fontSize: 38, fontWeight: 800, lineHeight: 1, color: "var(--text-primary)" }}>?</span>
+                    </div>
+                  </div>
                 </div>
-                <button className="btn-primary" style={{width:"100%",marginTop:16}} onClick={reset}>{t("scan_try_another")}</button>
+              )}
+              <div style={{ display: "inline-block", padding: "4px 10px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 10, fontWeight: 800, letterSpacing: 0.6, fontFamily: "var(--font-display)", marginBottom: 10, textTransform: "uppercase" }}>nothing identified</div>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, letterSpacing: -1.2, lineHeight: 0.95, textTransform: "lowercase", color: "var(--text-primary)" }}>nothing matches<br/>that photo</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 12, lineHeight: 1.5 }}>too dark, too zoomed-in, or no clothing in frame. try a clearer outfit shot.</div>
+              <div style={{ padding: "20px 0 30px" }}>
+                <button onClick={reset} style={{ width: "100%", height: 52, borderRadius: 16, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, letterSpacing: 0.3, cursor: "pointer", textTransform: "lowercase" }}>scan another →</button>
               </div>
             </div>
           )}
@@ -8969,16 +9002,20 @@ export default function App() {
 
                   if (looksData.length === 0) {
                     return (
-                      <div style={{ padding: "40px 32px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.12, marginBottom: 4 }}>
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                        </svg>
-                        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>No outfits saved yet</div>
-                        <div style={{ fontSize: 13, color: "var(--text-tertiary)", lineHeight: 1.5, maxWidth: 260 }}>
-                          Save items from your scans to build complete outfits
+                      <div style={{ padding: "24px 14px 0", textAlign: "center" }}>
+                        <div style={{ position: "relative", width: 200, height: 200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <div style={{ position: "absolute", inset: 20, background: "var(--bg-card)", borderRadius: 24, transform: "rotate(-4deg)" }} />
+                          <div style={{ position: "absolute", inset: 30, background: "var(--bg-primary)", borderRadius: 18, transform: "rotate(3deg)", border: "2px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 5a2 2 0 100-4 2 2 0 000 4zm0 0v3l-9 6h18l-9-6"/>
+                            </svg>
+                          </div>
+                          <div style={{ position: "absolute", top: 4, right: 14, padding: "4px 10px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 10, fontWeight: 800, letterSpacing: 0.4, fontFamily: "var(--font-display)", transform: "rotate(8deg)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>SCAN ME</div>
                         </div>
-                        <button className="btn-primary" style={{ marginTop: 8, padding: "10px 24px", fontSize: 13, borderRadius: 100 }} onClick={() => setTab("scan")}>
-                          Scan an Outfit
+                        <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: -0.8, marginTop: 8, color: "var(--text-primary)", lineHeight: 1.05, textTransform: "lowercase" }}>your closet is<br/>empty (for now)</div>
+                        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 10, padding: "0 24px", lineHeight: 1.5 }}>scan an outfit, double-tap any piece you love, and it lands here.</div>
+                        <button className="btn-primary" style={{ marginTop: 22, padding: "14px 22px", fontSize: 14, borderRadius: 16 }} onClick={() => setTab("scan")}>
+                          start your first scan
                         </button>
                       </div>
                     );
