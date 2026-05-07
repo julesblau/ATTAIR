@@ -3298,7 +3298,7 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
         </>
       )}
 
-      {/* Step 2: Vibes */}
+      {/* Step 2: Vibes — design canvas 3-col grid with on-image labels */}
       {step === 2 && (
         <>
           <div style={{ padding: "20px 16px 10px" }}>
@@ -3308,20 +3308,19 @@ function InspirationPicker({ fade, onContinue, onSkip }) {
             </div>
             <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 8 }}>pick {minVibes}+ to tune your feed</div>
           </div>
-          <div style={{ flex: 1, padding: "0 14px 14px", overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignContent: "flex-start" }}>
+          <div style={{ flex: 1, padding: "14px 14px 0", overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, alignContent: "flex-start" }}>
             {STYLE_AESTHETICS.map((v, i) => {
               const on = selected.includes(v.name);
               return (
-                <button key={v.name} onClick={() => tog(v.name)} style={{ display: "flex", flexDirection: "column", gap: 6, padding: 0, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", transition: "transform 180ms var(--spring)", transform: on ? "scale(0.98)" : "scale(1)" }}>
-                  <div style={{ position: "relative", aspectRatio: "4/5", borderRadius: "var(--radius-lg)", overflow: "hidden", border: on ? "3px solid var(--text-primary)" : "3px solid transparent" }}>
-                    <img src={v.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading={i < 4 ? "eager" : "lazy"} />
-                    {on && (
-                      <div style={{ position: "absolute", top: 8, right: 8, width: 26, height: 26, borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ fontFamily: "var(--font-display)", fontSize: 14, fontWeight: 700, color: "var(--text-primary)", letterSpacing: -0.3, paddingLeft: 2, lineHeight: 1.1, textTransform: "lowercase" }}>{v.name}</div>
+                <button key={v.name} onClick={() => tog(v.name)} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: on ? "3px solid var(--text-primary)" : "3px solid transparent", padding: 0, cursor: "pointer", background: "transparent", transition: "transform 180ms var(--spring)", transform: on ? "scale(0.98)" : "scale(1)" }}>
+                  <img src={v.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading={i < 4 ? "eager" : "lazy"} />
+                  <div style={{ position: "absolute", inset: 0, background: on ? "transparent" : "rgba(0,0,0,0.18)" }} />
+                  {on && (
+                    <div style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l4 4 10-10"/></svg>
+                    </div>
+                  )}
+                  <div style={{ position: "absolute", bottom: 6, left: 6, right: 6, fontFamily: "var(--font-display)", fontSize: 11, fontWeight: 700, color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.4)", textAlign: "left", textTransform: "lowercase" }}>{v.name.toLowerCase()}</div>
                 </button>
               );
             })}
@@ -10515,6 +10514,28 @@ export default function App() {
         {/* ─── Picks tab (B-spine: magazine grid of recommendations) ─── */}
         {tab === "picks" && (
           <div style={{ paddingTop: 8, paddingBottom: 110, background: "var(--bg-primary)" }}>
+            {/* Featured price drop banner — design canvas UBannerPrice */}
+            {(() => {
+              const fresh = (priceAlerts || []).filter(a => a.percent_drop > 0).sort((a, b) => (b.percent_drop || 0) - (a.percent_drop || 0))[0];
+              if (!fresh) return null;
+              return (
+                <div style={{ padding: "12px 16px 0" }}>
+                  <button onClick={() => { if (fresh.url) window.open(fresh.url, "_blank"); }} style={{ width: "100%", padding: 14, borderRadius: 18, background: "var(--accent)", color: "var(--accent-text)", display: "flex", alignItems: "center", gap: 12, border: "none", cursor: "pointer", textAlign: "left" }}>
+                    {fresh.image_url && (
+                      <div style={{ width: 56, height: 70, borderRadius: 10, overflow: "hidden", flexShrink: 0, background: "rgba(0,0,0,0.08)" }}>
+                        <img src={fresh.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" />
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, fontFamily: "var(--font-display)", textTransform: "uppercase" }}>price dropped</div>
+                      <div style={{ fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 700, marginTop: 2, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[fresh.brand, fresh.name || fresh.product_name].filter(Boolean).join(" · ")}</div>
+                      <div style={{ fontSize: 11, marginTop: 4, fontFamily: "var(--font-display)", fontWeight: 700 }}>${Math.round(fresh.original_price)} → <span style={{ fontSize: 15 }}>${Math.round(fresh.current_price)}</span> · save {Math.round(fresh.percent_drop)}%</div>
+                    </div>
+                    <span style={{ fontSize: 20, opacity: 0.7 }}>›</span>
+                  </button>
+                </div>
+              );
+            })()}
             <div style={{ padding: "8px 16px 0" }}>
               <div style={{ fontFamily: "var(--font-display)", fontSize: 44, fontWeight: 700, letterSpacing: -1.6, lineHeight: 0.95, color: "var(--text-primary)" }}>
                 picks for<br/>
