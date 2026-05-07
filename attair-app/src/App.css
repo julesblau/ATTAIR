@@ -2324,7 +2324,8 @@
 .auth input:focus{border-color:var(--border-focus)}
 .auth input::placeholder{color:var(--text-tertiary)}
 .auth-toggle{background:none;border:none;color:var(--accent);font-family:var(--font-sans);font-size:13px;cursor:pointer;padding:8px;text-align:center;width:100%;margin-top:8px;min-height:44px}
-.auth-err{background:rgba(255,80,80,.06);border:1px solid rgba(255,80,80,.12);border-radius:10px;padding:12px;font-size:13px;color:var(--error);margin-bottom:12px;text-align:center;animation:slideDown 200ms ease forwards}
+.auth-err{background:#FBE5E5;border:none;border-radius:10px;padding:10px 12px;font-size:11px;font-weight:600;color:#B83A3A;margin-bottom:10px;text-align:left;display:flex;align-items:center;gap:8px;font-family:var(--font-display);animation:slideDown 200ms ease forwards}
+.auth-err::before{content:"!";display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;background:#B83A3A;color:#FBE5E5;font-weight:800;font-size:13px;flex-shrink:0}
 
 .as{flex:1;display:flex;flex-direction:column;padding-bottom:80px}
 /* ─── Header ─── */
