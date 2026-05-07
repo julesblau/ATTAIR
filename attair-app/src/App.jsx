@@ -7268,6 +7268,17 @@ export default function App() {
 
           {/* ─── Scan Landing (camera-style ready state) ───── */}
           {tab === "scan" && phase === "idle" && !img && (<>
+            {/* Scan-limit warning banner (≤1 left, free tier) — design canvas UBannerLimit */}
+            {isFree && scansLeft != null && scansLeft <= 1 && (
+              <div style={{ margin: "12px 16px 0", padding: 14, borderRadius: 14, background: "#FBE5E5", display: "flex", alignItems: "center", gap: 12 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B83A3A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 13, fontWeight: 700, color: "#B83A3A" }}>{scansLeft === 0 ? "no scans left" : "1 scan left this month"}</div>
+                  <div style={{ fontSize: 11, color: "#7A2C2C", marginTop: 2 }}>resets next month · go pro for unlimited</div>
+                </div>
+                <button onClick={() => setUpgradeModal("scan_limit")} style={{ padding: "8px 12px", borderRadius: 999, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 11, cursor: "pointer", textTransform: "lowercase", letterSpacing: 0.3, flexShrink: 0 }}>upgrade</button>
+              </div>
+            )}
             <div className="screen-enter u-camera-stage" style={{ position: "relative", margin: "12px 16px 0", borderRadius: "var(--radius-lg)", overflow: "hidden", aspectRatio: "3/4", background: "#000" }}>
               {/* Demo backdrop photo */}
               <img src="/unified-assets/m-old.jpg" alt="" loading="eager" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
