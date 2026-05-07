@@ -5300,6 +5300,18 @@ export default function App() {
     try {
       const status = await API.getUserStatus();
       setUserStatus(status);
+      // ─── Post-trial detection: trial recently ended, user back on free ───
+      // Show the design's post-trial paywall once per user (key: trial_ends_at).
+      if (status?.tier === "free" && status?.trial_ends_at) {
+        const ended = new Date(status.trial_ends_at).getTime();
+        if (ended < Date.now()) {
+          const seenKey = `attair_post_trial_${status.trial_ends_at}`;
+          if (!localStorage.getItem(seenKey)) {
+            localStorage.setItem(seenKey, "1");
+            setUpgradeModal("post_trial");
+          }
+        }
+      }
     } catch (err) {
       if (err.message === "Session expired") {
         setAuthed(false);
