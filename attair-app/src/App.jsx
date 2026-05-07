@@ -6935,35 +6935,34 @@ export default function App() {
       {/* ─── SIGNUP PROMPT (guest users) ────────────────── */}
       {signupPrompt && (
         <div className="modal-overlay" onClick={() => setSignupPrompt(null)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ textAlign: "center", padding: "32px 24px" }}>
-            <button className="modal-x" onClick={() => setSignupPrompt(null)} aria-label="Close">✕</button>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>
-              {signupPrompt === "scan_limit" ? "✦" : signupPrompt === "save" ? "♡" : signupPrompt === "social" ? "👥" : "✦"}
-            </div>
-            <h2 className="modal-title" style={{ fontSize: 22, marginBottom: 8 }}>
-              {signupPrompt === "scan_limit" ? "You're on a roll!"
-                : signupPrompt === "save" ? "Save your favorites"
-                : signupPrompt === "social" ? "Join the community"
-                : "Loving what you see?"}
-            </h2>
-            <p className="modal-sub" style={{ marginBottom: 24, lineHeight: 1.5 }}>
-              {signupPrompt === "scan_limit"
-                ? "Create a free account to keep scanning outfits — you get 12 scans per month, plus save items and build wishlists."
-                : signupPrompt === "save"
-                ? "Sign up for free to save items, create wishlists, and get price drop alerts on your favorites."
-                : signupPrompt === "social"
-                ? "Create a free account to follow other stylists, share your looks, and build your style profile."
-                : "Sign up for free to save your results, unlock more scans, and get personalized recommendations."}
-            </p>
-            <button className="cta" style={{ width: "100%", marginBottom: 12 }} onClick={() => {
-              setSignupPrompt(null);
-              trans(() => { setScreen("auth"); setAuthScreen("signup"); });
-            }}>
-              Create Free Account
+          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ textAlign: "center", padding: "32px 24px", background: "var(--bg-primary)", borderRadius: 24 }}>
+            <button className="modal-x" onClick={() => setSignupPrompt(null)} aria-label="Close" style={{ width: 36, height: 36, borderRadius: 999, background: "var(--bg-card)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)", padding: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
             </button>
-            <button style={{ background: "none", border: "none", color: "var(--text-tertiary)", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px 0", minHeight: 44 }}
+            <div style={{ display: "inline-block", padding: "6px 12px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 800, letterSpacing: 1, marginBottom: 14, textTransform: "uppercase" }}>
+              {signupPrompt === "scan_limit" ? "free account" : signupPrompt === "save" ? "sign up to save" : signupPrompt === "social" ? "join attaire" : "sign up"}
+            </div>
+            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 700, letterSpacing: -0.8, marginBottom: 8, color: "var(--text-primary)" }}>
+              {signupPrompt === "scan_limit" ? "you're on a roll"
+                : signupPrompt === "save" ? "save your favorites"
+                : signupPrompt === "social" ? "join the community"
+                : "loving what you see?"}
+            </h2>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 18 }}>
+              {signupPrompt === "scan_limit"
+                ? "create a free account to keep scanning. you get 12 scans per month, plus saves and wishlists."
+                : signupPrompt === "save"
+                ? "sign up free to save items, build wishlists, and get price drop alerts."
+                : signupPrompt === "social"
+                ? "create a free account to follow stylists, share looks, and build your style profile."
+                : "sign up free to save your results, unlock more scans, and get personalized recommendations."}
+            </p>
+            <button onClick={() => { setSignupPrompt(null); trans(() => { setScreen("auth"); setAuthScreen("signup"); }); }} style={{ width: "100%", height: 50, borderRadius: 14, border: "none", background: "var(--text-primary)", color: "var(--bg-primary)", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-display)", letterSpacing: 0.3, marginBottom: 8, cursor: "pointer", textTransform: "lowercase" }}>
+              create free account
+            </button>
+            <button style={{ background: "transparent", border: "none", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer", fontFamily: "var(--font-sans)", padding: "8px 0", minHeight: 44 }}
               onClick={() => setSignupPrompt(null)}>
-              Maybe later
+              maybe later
             </button>
           </div>
         </div>
@@ -6971,8 +6970,9 @@ export default function App() {
 
       {/* ─── UPGRADE SUCCESS BANNER ──────────────────────── */}
       {upgradeSuccess && (
-        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "var(--accent)", color: "var(--text-inverse)", padding: "12px 24px", borderRadius: 12, fontWeight: 700, fontSize: 14, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.4)" }}>
-          Welcome to ATTAIRE Pro!
+        <div style={{ position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)", background: "var(--text-primary)", color: "var(--bg-primary)", padding: "10px 16px", borderRadius: 999, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 13, zIndex: 9999, boxShadow: "0 8px 32px rgba(0,0,0,.18)", display: "flex", alignItems: "center", gap: 8, letterSpacing: 0.3, textTransform: "lowercase" }}>
+          <span style={{ padding: "2px 8px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontSize: 10, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}>pro</span>
+          welcome to attaire
         </div>
       )}
 
