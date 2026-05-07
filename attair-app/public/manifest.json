@@ -4,8 +4,8 @@
   "description": "Scan any outfit and find where to buy it at every price point",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0C0C0E",
-  "theme_color": "#C9A96E",
+  "background_color": "#FAF7EE",
+  "theme_color": "#FAF7EE",
   "orientation": "portrait-primary",
   "categories": ["shopping", "lifestyle", "fashion"],
   "icons": [
