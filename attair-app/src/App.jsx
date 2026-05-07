@@ -10544,7 +10544,12 @@ export default function App() {
                 )}
               </div>
               <div>
-                <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: -1, lineHeight: 1, color: "var(--text-primary)" }}>{(authName || authEmail?.split("@")[0] || "you").toLowerCase()}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: -1, lineHeight: 1, color: "var(--text-primary)" }}>{(authName || authEmail?.split("@")[0] || "you").toLowerCase()}</div>
+                  {isPro && (
+                    <span style={{ padding: "3px 8px", borderRadius: 999, background: "var(--accent)", color: "var(--accent-text)", fontFamily: "var(--font-display)", fontSize: 9, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase" }}>✦ pro</span>
+                  )}
+                </div>
                 <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{authEmail ? `@${authEmail.split("@")[0]}` : "guest"}</div>
                 <div style={{ display: "flex", gap: 14, marginTop: 6, fontSize: 11, color: "var(--text-secondary)" }}>
                   <span><b style={{ fontFamily: "var(--font-display)", fontSize: 13, color: "var(--text-primary)" }}>{(history?.length || 0).toLocaleString()}</b> scans</span>
